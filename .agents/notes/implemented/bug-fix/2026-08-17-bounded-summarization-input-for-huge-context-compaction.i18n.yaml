@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-17-bounded-summarization-input-for-huge-context-compaction.md
+2026-08-17-bounded-summarization-input-for-huge-context-compaction.md: f174b6dd7dde3d5b76f22ce5d0418f30f29f6019
+2026-08-17-bounded-summarization-input-for-huge-context-compaction.zh.md: cb5f91cd936baff653aabdd55f25ca755afb1afd
