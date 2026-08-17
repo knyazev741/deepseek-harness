@@ -5,12 +5,13 @@
  * except workspace Rename/Delete and session Rename/Fork/Archive; the session
  * and workspace hover cards are suppressed while a menu is open.
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-  HoverCard, IconArchiveOutline20, IconBranchOutline16, IconEditOutline16,
-  IconEllipsisOutline16, IconFolderClose16, IconFolderOpen16, IconPlusOutline16,
-  IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot,
+  HoverCard, IconArchiveOutline20, IconBranchOutline16, IconCopyOutline16,
+  IconEditOutline16, IconEllipsisOutline16, IconFolderClose16, IconFolderOpen16,
+  IconPlusOutline16, IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot,
+  Toast, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
@@ -374,6 +375,10 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
   const primaryStatus = statuses[0]
   const showStatus = primaryStatus.state !== 'done' || row.completed
   const [menuOpen, setMenuOpen] = useState(false)
+  // Copy feedback is row-local presentation state, keyed by sequence so an
+  // identical repeated copy restarts the toast cycle (InputBar pattern).
+  const [toast, setToast] = useState<{ seq: number; text: string } | null>(null)
+  const toastSeqRef = useRef(0)
   // Archive hides the row through the registry-global archive set and never
   // touches the session log, so it is not styled as destructive and needs no
   // confirmation dialog.
@@ -382,6 +387,7 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
     { id: 'fork', label: t('menu.fork'), icon: <IconBranchOutline16 /> },
     // 20-native glyph in the menu's 16px icon slot (Menu.module.css .itemIcon).
     { id: 'archive', label: t('menu.archiveSession'), icon: <IconArchiveOutline20 size={16} /> },
+    { id: 'copy-session-id', label: t('menu.copySessionId'), icon: <IconCopyOutline16 size={16} /> },
   ]
   // Figma session cell: pad 8, status slot 16, then a 4px title gap.
   const ownRow = (
@@ -444,6 +450,14 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
               if (id === 'rename') onRename(node.id, row.title)
               if (id === 'fork') onFork(node.id)
               if (id === 'archive') onArchive(node.id)
+              if (id === 'copy-session-id') {
+                toastSeqRef.current += 1
+                const seq = toastSeqRef.current
+                void writeClipboard(node.id).then((ok) => {
+                  if (!ok) return
+                  setToast({ seq, text: t('menu.copySessionIdDone') })
+                })
+              }
             }}
             portal
             closeOnPointerLeave
@@ -463,13 +477,22 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
     </div>
   )
   return (
-    <HoverCard
-      anchor={ownRow}
-      content={<SessionHoverContent node={node} now={now} t={t} />}
-      disabled={menuOpen || drag?.active === true}
-      copyText={row.blank ? undefined : row.title}
-      copyLabel={t('copy')}
-      copiedLabel={t('hover.copied')}
-    />
+    <>
+      <HoverCard
+        anchor={ownRow}
+        content={<SessionHoverContent node={node} now={now} t={t} />}
+        disabled={menuOpen || drag?.active === true}
+        copyText={row.blank ? undefined : row.title}
+        copyLabel={t('copy')}
+        copiedLabel={t('hover.copied')}
+      />
+      {toast !== null && (
+        <Toast
+          key={toast.seq}
+          text={toast.text}
+          onDone={() => { setToast(null) }}
+        />
+      )}
+    </>
   )
 }

@@ -357,6 +357,53 @@ describe('WorkspaceBrowser', () => {
     }
   })
 
+  it('copies the session id from the row menu and confirms with a toast', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+    vi.useFakeTimers()
+    try {
+      mount({
+        useSessions: hook(sessionState([summary('copy-s', 1)])),
+        useWorkspaces: hook(workspaceState([workspace('alpha', ['copy-s'])])),
+      })
+      fireEvent.click(screen.getByText('alpha'))
+      fireEvent.click(screen.getByRole('button', { name: '会话“copy-s”的操作' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: '复制会话 ID' }))
+      expect(writeText).toHaveBeenCalledWith('copy-s')
+      await act(async () => { await Promise.resolve() })
+      expect(screen.getByText('已复制会话 ID')).toBeTruthy()
+      act(() => { vi.advanceTimersByTime(5_000) })
+      expect(screen.queryByText('已复制会话 ID')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+      delete (navigator as { clipboard?: unknown }).clipboard
+    }
+  })
+
+  it('stays silent when the clipboard write is refused', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    })
+    try {
+      mount({
+        useSessions: hook(sessionState([summary('refused-s', 1)])),
+        useWorkspaces: hook(workspaceState([workspace('alpha', ['refused-s'])])),
+      })
+      fireEvent.click(screen.getByText('alpha'))
+      fireEvent.click(screen.getByRole('button', { name: '会话“refused-s”的操作' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: '复制会话 ID' }))
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(screen.queryByText('已复制会话 ID')).toBeNull()
+    } finally {
+      delete (navigator as { clipboard?: unknown }).clipboard
+    }
+  })
+
   it('renders a fork child as a top-level row without a session twist', () => {
     const parent = summary('parent-s', 2)
     const child = { ...summary('child-s', 1), parentId: parent.id }
