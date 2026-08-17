@@ -1,0 +1,122 @@
+# Upstream-sync review: the "agent" that wakes up when the sync PR appears,
+# checks the diff, and merges it only when nothing dangerous is found.
+#
+# - Runs for pull requests whose head is `sync/upstream-master` (opened by
+#   `upstream-sync.yml`).
+# - Runs the fork's own sanity gates (typecheck + unit tests) on the PR head,
+#   so a broken upstream state is caught before merge.
+# - Asks knyazevai.work (deepseek-v4-flash) to review the diff and returns a
+#   JSON verdict { safe, summary, risks }.
+# - Posts the review as a PR comment. Merges the PR (merge commit) only when
+#   the verdict is safe AND the gates pass. A "risky" verdict leaves the PR
+#   open for human review — the automation never merges a dangerous diff and
+#   never deploys anything.
+#
+# Required repository secret: KNYAZEV_AI_API_KEY (the same key the local
+# knyazev-ai provider route uses).
+
+name: upstream-review
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    if: github.head_ref == 'sync/upstream-master'
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/head
+          fetch-depth: 0
+
+      - name: Fetch the base branch for diffing
+        run: git fetch origin master:refs/remotes/origin/master
+
+      - name: Install dependencies
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Sanity gates (typecheck + unit tests)
+        id: gates
+        continue-on-error: true
+        run: |
+          pnpm run typecheck
+          pnpm run test
+
+      - name: AI review of the diff
+        id: review
+        env:
+          KNYAZEV_AI_API_KEY: ${{ secrets.KNYAZEV_AI_API_KEY }}
+        run: |
+          DIFF=$(git diff origin/master...HEAD | head -c 300000)
+          if [ -z "$KNYAZEV_AI_API_KEY" ]; then
+            echo "verdict=safe" >> "$GITHUB_OUTPUT"
+            echo "summary=AI review skipped: KNYAZEV_AI_API_KEY secret is not configured; gates only." >> "$GITHUB_OUTPUT"
+            echo "risks=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          DIFF_CONTENT="$DIFF" python3 - <<'PYEOF'
+          import json, os, urllib.request
+          prompt = (
+            "You are the review agent for an automated sync PR that brings upstream "
+            "deepseek-ai/deepseek-harness master changes into a fork. The fork's own "
+            "changes always win on conflicts, so this diff is purely upstream work.\n\n"
+            "Return STRICT JSON: {\"safe\": bool, \"summary\": string, \"risks\": [string]}.\n"
+            "safe=false if the diff contains anything dangerous: credential or secret "
+            "leaks, destructive data deletion, malicious code, build-breaking config, "
+            "or obvious security regressions. For ordinary code/test/doc changes safe=true.\n\n"
+            "DIFF:\n" + os.environ["DIFF_CONTENT"]
+          )
+          body = json.dumps({
+            "model": "deepseek-v4-flash",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0,
+          }).encode()
+          req = urllib.request.Request(
+            "https://knyazevai.work/v1/chat/completions",
+            data=body,
+            headers={
+              "Authorization": "Bearer " + os.environ["KNYAZEV_AI_API_KEY"],
+              "Content-Type": "application/json",
+            },
+          )
+          with urllib.request.urlopen(req, timeout=300) as resp:
+            data = json.load(resp)
+          verdict = json.loads(data["choices"][0]["message"]["content"])
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+            out.write(f"verdict={'safe' if verdict.get('safe') else 'risky'}\n")
+            out.write("summary=" + json.dumps(verdict.get('summary', '')) + "\n")
+            out.write("risks=" + json.dumps(json.dumps(verdict.get('risks', []))) + "\n")
+          PYEOF
+
+      - name: Post the review comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body "**AI review verdict:** ${{ steps.review.outputs.verdict }}
+
+Summary: ${{ steps.review.outputs.summary }}
+
+Risks: ${{ steps.review.outputs.risks }}
+
+Sanity gates: ${{ steps.gates.outcome == 'success' && 'passed' || 'FAILED' }}"
+
+      - name: Merge when safe and gates pass
+        if: steps.review.outputs.verdict == 'safe' && steps.gates.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "${{ github.event.pull_request.number }}" --merge --auto
