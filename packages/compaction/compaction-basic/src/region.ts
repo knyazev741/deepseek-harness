@@ -88,17 +88,22 @@ interface TransactionFailure {
 }
 
 /**
- * Resolve the next head-anchored range while retaining a priced recent tail
- * and never splitting an assistant tool-call/result pair.
+ * Resolve the next head-anchored range while retaining a priced recent tail,
+ * never splitting an assistant tool-call/result pair, and optionally bounding
+ * the shadowed span to a summarization input budget.
  * @param session - session supplying authoritative current surface positions.
  * @param measurement - unified pressure and surface measurement from the conversation meter.
  * @param retainTokens - minimum recent tail budget retained verbatim.
+ * @param maxInputTokens - maximum conversation tokens one pass may replay to the
+ *   summarizer; `0` keeps the whole region. The budget is soft: the span is the
+ *   shortest prefix exceeding it, and a tool-pair boundary may add one pair.
  * @returns the inclusive positional seq range to compact, or `null`.
  */
 export function selectCompactableRange(
   session: Session,
   measurement: TokenMeasurement,
   retainTokens: number,
+  maxInputTokens = 0,
 ): { start: number; end: number } | null {
   const pricedNodes = measurement.nodes
   if (pricedNodes.length === 0) return null
@@ -126,10 +131,34 @@ export function selectCompactableRange(
   }
   if (keepFromIdx === 0) return null
 
+  // A summarization input budget bounds the shadowed span head-ward, so a
+  // huge-context session is compacted in small fast passes instead of one
+  // prefill that can idle-timeout on a slow gateway. The span is the shortest
+  // prefix whose priced tokens exceed the budget — never a pathologically
+  // small slice, which would fail the "summary must be smaller" check — and
+  // the end cut then extends forward until it is tool-pair balanced; the tail
+  // boundary is already balanced, so the extension terminates there.
+  let headEndIdx = keepFromIdx
+  if (maxInputTokens > 0) {
+    let inputTokens = 0
+    headEndIdx = 0
+    for (let index = 0; index < keepFromIdx; index += 1) {
+      // oxlint-disable-next-line typescript/no-non-null-assertion
+      inputTokens += pricedNodes[index]!.tokens
+      headEndIdx = index + 1
+      if (inputTokens > maxInputTokens) break
+    }
+    while (headEndIdx < keepFromIdx
+      // oxlint-disable-next-line typescript/no-non-null-assertion
+      && !toolPairingBalancedAfter(session, surfaceNodes[headEndIdx - 1]!)) {
+      headEndIdx += 1
+    }
+  }
+
   // oxlint-disable-next-line typescript/no-non-null-assertion
   const first = surfaceNodes[0]!
   // oxlint-disable-next-line typescript/no-non-null-assertion
-  const cutoff = surfaceNodes[keepFromIdx - 1]!
+  const cutoff = surfaceNodes[headEndIdx - 1]!
   return { start: first, end: cutoff }
 }
 

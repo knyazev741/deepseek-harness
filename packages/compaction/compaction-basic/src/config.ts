@@ -22,6 +22,9 @@ const DEFAULT_THRESHOLD_RATIO = 0.8
 /** Default verbatim-tail fraction for every routed model. */
 const DEFAULT_RETAIN_RATIO = 0.16
 
+/** Default maximum conversation tokens replayed into one summarization call. */
+const DEFAULT_MAX_SUMMARIZATION_INPUT_TOKENS = 131_072
+
 /** Fields shared by top-level defaults and exact-target overrides. */
 const POLICY_CONFIG_KEYS = [
   'thresholdRatio',
@@ -30,6 +33,7 @@ const POLICY_CONFIG_KEYS = [
   'summarizationProvider',
   'summarizationModel',
   'maxTokens',
+  'maxSummarizationInputTokens',
   'compactionRetries',
   'maxOverflowRetries',
 ] as const
@@ -89,6 +93,8 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     summarizationProvider: config.summarizationProvider ?? '',
     summarizationModel: config.summarizationModel ?? '',
     maxTokens: config.maxTokens ?? 8192,
+    maxSummarizationInputTokens: config.maxSummarizationInputTokens
+      ?? DEFAULT_MAX_SUMMARIZATION_INPUT_TOKENS,
     compactionRetries: config.compactionRetries ?? 1,
     maxOverflowRetries: config.maxOverflowRetries ?? 1,
     modelPolicies,
@@ -119,6 +125,8 @@ export function resolveTargetPolicy(
     summarizationProvider: override?.summarizationProvider ?? config.summarizationProvider,
     summarizationModel: override?.summarizationModel ?? config.summarizationModel,
     maxTokens: override?.maxTokens ?? config.maxTokens,
+    maxSummarizationInputTokens: override?.maxSummarizationInputTokens
+      ?? config.maxSummarizationInputTokens,
     compactionRetries: override?.compactionRetries ?? config.compactionRetries,
     maxOverflowRetries: override?.maxOverflowRetries ?? config.maxOverflowRetries,
   })
@@ -161,6 +169,7 @@ export function resolveCompactSpec(
     summarizationProvider: policy.summarizationProvider,
     summarizationModel: policy.summarizationModel,
     maxTokens: policy.maxTokens,
+    maxSummarizationInputTokens: policy.maxSummarizationInputTokens,
     compactionRetries: policy.compactionRetries,
     maxOverflowRetries: policy.maxOverflowRetries,
   })
@@ -232,6 +241,7 @@ function validatePolicy(
   const retainRatio = config.retainRatio
   const retainTokens = config.retainTokens
   const maxTokens = config.maxTokens
+  const maxSummarizationInputTokens = config.maxSummarizationInputTokens
   const compactionRetries = config.compactionRetries
   const maxOverflowRetries = config.maxOverflowRetries
   if (thresholdRatio !== undefined) assertRatio(`${name}.thresholdRatio`, thresholdRatio)
@@ -241,6 +251,9 @@ function validatePolicy(
     throw new Error(`${name}: retainRatio and retainTokens are mutually exclusive`)
   }
   if (maxTokens !== undefined) assertPositiveInteger(`${name}.maxTokens`, maxTokens)
+  if (maxSummarizationInputTokens !== undefined) {
+    assertNonNegativeInteger(`${name}.maxSummarizationInputTokens`, maxSummarizationInputTokens)
+  }
   if (compactionRetries !== undefined) {
     assertNonNegativeInteger(`${name}.compactionRetries`, compactionRetries)
   }
