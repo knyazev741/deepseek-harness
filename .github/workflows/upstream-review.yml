@@ -109,11 +109,11 @@ jobs:
         run: |
           gh pr comment "${{ github.event.pull_request.number }}" --body "**AI review verdict:** ${{ steps.review.outputs.verdict }}
 
-Summary: ${{ steps.review.outputs.summary }}
+          Summary: ${{ steps.review.outputs.summary }}
 
-Risks: ${{ steps.review.outputs.risks }}
+          Risks: ${{ steps.review.outputs.risks }}
 
-Sanity gates: ${{ steps.gates.outcome == 'success' && 'passed' || 'FAILED' }}"
+          Sanity gates: ${{ steps.gates.outcome == 'success' && 'passed' || 'FAILED' }}"
 
       - name: Merge when safe and gates pass
         if: steps.review.outputs.verdict == 'safe' && steps.gates.outcome == 'success'
