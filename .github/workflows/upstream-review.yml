@@ -72,7 +72,8 @@ jobs:
 
           # 2. Fresh, isolated DSH home carrying the knyazev-ai route so the
           #    headless runner resolves the agent to knyazev-ai/deepseek-v4-flash.
-          DSH_HOME="$(mktemp -d)"
+          DSH_HOME="$RUNNER_TEMP/dsh-home"
+          mkdir -p "$DSH_HOME"
           export DSH_HOME
           cp .github/review/headless-settings.yaml "$DSH_HOME/settings.yaml"
           export KNYAZEV_AI_API_KEY
@@ -132,6 +133,15 @@ jobs:
               out.write("summary=" + json.dumps(verdict["summary"]) + "\n")
               out.write("risks=" + json.dumps(json.dumps(verdict["risks"])) + "\n")
           PYEOF
+
+      - name: Upload review session artifact
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-session
+          path: ${{ runner.temp }}/dsh-home/sessions/
+          if-no-files-found: warn
 
       - name: Post the review comment
         env:
