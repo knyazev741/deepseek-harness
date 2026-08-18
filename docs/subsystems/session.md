@@ -598,6 +598,23 @@ When several events in one plugin-owned family assemble into one Web Client Conv
 
 The hook bridges' `hook/invoked` / `hook/result` pairs (from `@deepseek-ai/dsh-hook-protocol`) correlate by `handlerId`. `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, and `Stop` fire inside the loop's open turn, so their `hook/*` records are turn-enclosed by construction. `SessionStart` gets no `hook/*` record because it runs before turn 1; its context remains pending in the inbox until a waking delivery opens a turn (see [the hook-bridges Agent Note](../../.agents/notes/implemented/feature/2026-06-30-hook-bridges.md)).
 
+### `external/*` events
+
+External console agents (Codex, ACP clients) write the log-only `external/*` event family into the owning session's log through the host bridge (`@deepseek-ai/dsh-external-session`). Every member is standalone (it may appear between `turn/end` and the next `turn/start`), carries the envelope's `ignorable: true` — a harness build that predates the vocabulary skips it on read instead of refusing the log — and is never a `SurfaceEventType`. Live transcript deltas are not logged; only committed units are. `@deepseek-ai/dsh-session-projection` folds the family into the transcript-shaped `external/transcript` projection.
+
+| Event | Payload | Meaning |
+|---|---|---|
+| `external/session-started` | `{ provider, cwd, model? }` | opened the external session on `provider` in `cwd`, optionally on `model` |
+| `external/turn-started` | `{ turnId }` | opened one external turn |
+| `external/message-added` | `{ turnId, role: 'user' \| 'agent', text }` | one committed message in a turn |
+| `external/tool-activity` | `{ turnId, kind: 'call' \| 'update' \| 'result', title, detail? }` | one tool activity in a turn |
+| `external/permission-asked` | `{ askId, title, options }` | a permission question posed to the human |
+| `external/permission-decided` | `{ askId, outcome }` | the outcome of one permission ask |
+| `external/model-switched` | `{ model }` | the external session switched models |
+| `external/compaction-noticed` | `{ notice }` | the external agent performed a compaction |
+| `external/turn-ended` | `{ turnId, stopReason }` | closed one external turn |
+| `external/session-ended` | `{ stopReason }` | the external session ended |
+
 ## Durability contract
 
 What a persistence backend relies on: the durable log persists every event losslessly, **including** `assistant/chunk` — `seq` must stay contiguous, so chunks cannot be filtered out of the canonical log. A backend may choose its own storage encoding for an event batch as long as `load` returns the exact appended events (the JSONL backend's default packed chunk rows are such an encoding — see [persistence.md](persistence.md)). All `event.data` must be JSON-serializable; `Session.append` enforces this at the source (throwing on non-serializable data), so a bad event never enters the log and `session.events` always equals what a backend can persist. Adding an event type that carries non-serializable data, corrupts core execution nesting, or violates its owner's declared relation is a breaking change to the on-disk format.

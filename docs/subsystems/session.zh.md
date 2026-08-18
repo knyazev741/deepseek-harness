@@ -600,6 +600,23 @@ interface TurnEndReasonMap {
 
 钩子桥接层的 `hook/invoked` / `hook/result` 对（来自 `@deepseek-ai/dsh-hook-protocol`）通过 `handlerId` 关联。`UserPromptSubmit`、`PreToolUse`、`PostToolUse` 与 `Stop` 在 loop 已打开的轮次内触发，因此其 `hook/*` 记录天然位于轮次之内。`SessionStart` 不生成 `hook/*` 记录，因为它在轮次 1 之前运行；其上下文会在 inbox 中保持待处理，直到唤醒交付打开一个轮次（见[钩子桥接 Agent Note](../../.agents/notes/implemented/feature/2026-06-30-hook-bridges.md)）。
 
+### `external/*` 事件
+
+外部终端 agent（Codex、ACP 客户端）通过宿主桥接层（`@deepseek-ai/dsh-external-session`）将仅日志的 `external/*` 事件族写入所属会话的日志。每个成员都是独立事件（可出现在 `turn/end` 与下一个 `turn/start` 之间）、携带 envelop 的 `ignorable: true`（早于该词汇表的构建在读取时会跳过它而不会拒绝日志），且绝不是 `SurfaceEventType`。实时 transcript 增量不入日志；只有已提交的单元才记录。`@deepseek-ai/dsh-session-projection` 将该事件族折叠为 transcript 形态的 `external/transcript` projection。
+
+| 事件 | Payload | 含义 |
+|---|---|---|
+| `external/session-started` | `{ provider, cwd, model? }` | 在 `provider` 上、`cwd` 中打开外部会话，可选地以 `model` 启动 |
+| `external/turn-started` | `{ turnId }` | 打开一个外部轮次 |
+| `external/message-added` | `{ turnId, role: 'user' \| 'agent', text }` | 某个轮次中的一条已提交消息 |
+| `external/tool-activity` | `{ turnId, kind: 'call' \| 'update' \| 'result', title, detail? }` | 某个轮次中的一次工具活动 |
+| `external/permission-asked` | `{ askId, title, options }` | 向人类提出的权限问题 |
+| `external/permission-decided` | `{ askId, outcome }` | 一次权限询问的结果 |
+| `external/model-switched` | `{ model }` | 外部会话切换了模型 |
+| `external/compaction-noticed` | `{ notice }` | 外部 agent 执行了一次压缩 |
+| `external/turn-ended` | `{ turnId, stopReason }` | 关闭一个外部轮次 |
+| `external/session-ended` | `{ stopReason }` | 外部会话结束 |
+
 ## 持久性约定
 
 持久化后端依赖的约定如下：持久日志无损保存每个事件，**包括** `assistant/chunk`；`seq` 必须连续，因此不能从规范日志中过滤分片。后端可以为事件批次选择自己的存储编码，只要 `load` 返回与追加时完全一致的事件即可（JSONL 后端默认启用的打包分片行就是此类编码；见 [persistence.md](persistence.md)）。所有 `event.data` 都必须可序列化为 JSON；`Session.append` 会从源头强制这一要求（遇到不可序列化数据时抛出），因此错误事件绝不会进入日志，`session.events` 始终与后端可持久化的内容一致。新增会携带不可序列化数据、破坏核心执行嵌套或违反事件所有方声明关系的事件类型，都会构成磁盘格式的破坏性变更。
