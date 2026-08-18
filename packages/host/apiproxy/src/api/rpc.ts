@@ -35,6 +35,11 @@ export interface RpcErrorDetailsMap {
   'session-not-found': { sessionId: SessionId }
   'model-unavailable': { provider: string; model: string }
   'session-conflict': { sessionId: SessionId; requestedCwd: string; existingCwd?: string }
+  /**
+   * A session.create named a driver mode that is neither `dsh` nor a
+   * registered external provider, so no session was created.
+   */
+  'unknown-mode': { mode: string }
   'invalid-time-zone': { value: string }
   'workspace-attach-failed': { sessionId: SessionId; workspaceId: string }
   'workspace-not-found': { workspaceId: string }

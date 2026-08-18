@@ -58,6 +58,7 @@ export const sessionSummarySchema = z.object({
   origin: z.enum(['subagent', 'github-actions']).optional(),
   cwd: z.string().optional(),
   agentPreset: z.string().optional(),
+  mode: z.string().optional(),
   projections: z.lazy(() => sessionProjectionsBlockSchema).optional(),
 }) as unknown as z.ZodType<Wire<SessionSummary>>
 
@@ -104,6 +105,7 @@ export const sessionCreateRequestSchema = z.object({
   cwd: z.string().optional(),
   sessionId: sessionIdSchema.optional(),
   agentPreset: z.string().optional(),
+  mode: z.string().optional(),
 }).refine(
   payload => payload.workspaceId === undefined || payload.cwd === undefined,
   { message: 'session.create accepts workspaceId or cwd, not both' },

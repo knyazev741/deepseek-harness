@@ -59,7 +59,7 @@ const ASK = { askId: 'ask-1', title: 'proceed?', options: ['allow', 'reject'] } 
 async function setup(timeoutMs?: number): Promise<{
   ctx: Context
   provider: StubProvider
-  sessionId: string
+  sessionId: SessionId
   fiber: { dispose(): Promise<void> }
 }> {
   const ctx = new Context()
@@ -104,7 +104,7 @@ describe('external-permission decision mapping', () => {
     ctx.userQuestions.registerProvider(qp)
 
     await provider.lastBridge!.requestPermission(sessionId, { ...ASK })
-    expect(qp.seen[0].questions).toEqual([
+    expect(qp.seen[0]?.questions).toEqual([
       { id: 'ask-1', question: 'proceed?', options: [{ label: 'allow' }, { label: 'reject' }] },
     ])
   })

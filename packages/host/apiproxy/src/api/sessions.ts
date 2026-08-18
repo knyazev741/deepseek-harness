@@ -201,6 +201,13 @@ export interface SessionSummary {
   /** Session working directory (header.cwd passthrough); absent when unrecorded. */
   cwd?: string
   /**
+   * Which driver owns this session (header.mode passthrough): absent means the
+   * native agent loop (`dsh`); a value names the registered external provider
+   * (Codex, an ACP client) that drives it. A surface renders mode-aware rows
+   * from this without opening the log.
+   */
+  mode?: string
+  /**
    * Agent preset this session's agent was composed from (header passthrough);
    * absent when the deployment composes no presets. A surface offering a
    * switch reads this to show what the session actually runs rather than what
@@ -257,8 +264,20 @@ export interface SessionsApi {
    * the session header, so a later resume rebuilds the same agent. An unknown
    * id fails with `agent-preset-not-found`, and a preset whose composition
    * cannot be mounted fails with `agent-preset-invalid`.
+   *
+   * `mode` names who drives the new session: omitted/`dsh` builds a native
+   * agent loop, while a registered external-provider name (Codex, an ACP
+   * client) creates the session without a native agent and hands it to the
+   * configured bridge driver. An unregistered or unknown mode fails with
+   * `unknown-mode`.
    */
-  create(request: RpcRequest<{ workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId; agentPreset?: string }>):
+  create(request: RpcRequest<{
+    workspaceId?: WorkspaceId
+    cwd?: string
+    sessionId?: SessionId
+    agentPreset?: string
+    mode?: string
+  }>):
   Promise<RpcResponse<{ sessionId: SessionId; agentPreset?: string }>>
 
   /**

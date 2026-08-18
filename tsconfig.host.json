@@ -278,6 +278,8 @@
     { "path": "./packages/extensions/cordis-host-runner" },
     { "path": "./packages/extensions/tool-cordis" },
     { "path": "./packages/external/external-session" },
+    { "path": "./packages/external/external-session-codex" },
+    { "path": "./packages/external/external-session-bridge" },
     { "path": "./packages/hooks/hook-protocol" },
     { "path": "./packages/hooks/hooks-claude-code" },
     { "path": "./packages/hooks/hooks-codex" },

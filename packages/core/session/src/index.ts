@@ -125,6 +125,9 @@ function validateSessionHeader(id: SessionId, input: unknown): SessionHeader {
   if (record.origin !== undefined && record.origin !== 'subagent' && record.origin !== 'github-actions') {
     throw new Error('session header origin must be "subagent" or "github-actions"')
   }
+  if (record.mode !== undefined && (typeof record.mode !== 'string' || record.mode.length === 0)) {
+    throw new Error('session header mode must be a non-empty string')
+  }
   if (record.delegationDepth !== undefined
     && (typeof record.delegationDepth !== 'number' || !Number.isSafeInteger(record.delegationDepth) || record.delegationDepth < 0)) {
     throw new Error('session header delegationDepth must be a non-negative safe integer')
@@ -884,6 +887,7 @@ export class SessionStore extends Service {
       ...meta?.origin === undefined ? {} : { origin: meta.origin },
       ...meta?.delegationDepth === undefined ? {} : { delegationDepth: meta.delegationDepth },
       ...meta?.agentPreset === undefined ? {} : { agentPreset: meta.agentPreset },
+      ...meta?.mode === undefined ? {} : { mode: meta.mode },
     }
     return Session.create(sessionId, seed, header)
   }

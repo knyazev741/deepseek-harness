@@ -8,5 +8,6 @@ This family lets a session be driven by an external console agent (Codex, Claude
 |---|---|---|
 | [`external-session/`](external-session/README.md) | Service Definition: named-provider registry, session dispatch, the per-session bridge | `ctx.externalSessions` |
 | `external-session-codex/` | Codex dialect provider (in development; evidence transcripts under `tests/evidence/`) | registers on `ctx.externalSessions` |
+| [`external-session-bridge/`](external-session-bridge/README.md) | Host-plane driver: starts an external provider on a host session created in its mode, registers the transcript projection, disposes on session close | `ctx.externalSessions` + `ctx.sessionProjections` |
 
 The ACP provider dialect is planned; see the spec note's phase plan.

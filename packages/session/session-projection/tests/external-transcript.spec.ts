@@ -156,7 +156,7 @@ describe('external/* event vocabulary', () => {
     session.append('external/turn-started', { turnId: 't1' })
     session.append('external/message-added', { turnId: 't1', role: 'agent', text: 'before unrelated' })
     session.append('turn/start', { turn: 1 })
-    session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text', text: 'x' } })
+    session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text: 'x' } })
     const snapshot = ctx.sessionProjections.snapshot(session)
     // The open turn is served until it is ended; the core events contribute nothing.
     expect(snapshot.values['external/transcript']).toEqual({

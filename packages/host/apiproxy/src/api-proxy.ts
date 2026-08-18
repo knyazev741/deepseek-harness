@@ -58,6 +58,10 @@ import {
 } from './api/session-search.ts'
 // Type-only: resolves `ctx.get('sessionProjections')` to the projection registry.
 import type {} from '@deepseek-ai/dsh-session-projection'
+// Type-only: resolves `ctx.get('externalSessions')` for external-mode session
+// creation and provider resolution (optional composition; the external
+// session seams are not mounted in every deployment).
+import type {} from '@deepseek-ai/dsh-external-session'
 // Type-only: resolves `ctx.get('tasks')` to the background job registry.
 import type {} from '@deepseek-ai/dsh-jobs'
 import type { JobSnapshot } from '@deepseek-ai/dsh-jobs'
@@ -506,6 +510,7 @@ function sessionListFields(header: SessionHeader, events: readonly SessionEvent[
   origin?: 'subagent' | 'github-actions'
   cwd?: string
   agentPreset?: string
+  mode?: string
 } {
   // The preset comes from the log, not the header: a session that switched
   // while blank ran its turns under the newer composition, and a picker
@@ -516,6 +521,7 @@ function sessionListFields(header: SessionHeader, events: readonly SessionEvent[
     ...header.origin === undefined ? {} : { origin: header.origin },
     ...header.cwd === undefined ? {} : { cwd: header.cwd },
     ...agentPreset === undefined ? {} : { agentPreset },
+    ...header.mode === undefined ? {} : { mode: header.mode },
   }
 }
 
@@ -1675,6 +1681,23 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     return agent
   }
 
+  /**
+   * Create or adopt a bare host session for an external-mode driver: the
+   * session enters the store (and announces `session/created`) WITHOUT a native
+   * Agent, so the bridge driver (a host plugin reacting to that event) owns the
+   * live external process. `mode` is stamped on the durable header so the mode
+   * survives restart.
+   * @param sessionId - the target (possibly preallocated) session id.
+   * @param cwd - the absolute project directory the external agent runs in.
+   * @param mode - the registered external provider name driving this session.
+   * @returns the entered session (a pre-existing one is returned unchanged).
+   */
+  function ensureExternalSession(sessionId: SessionId, cwd: string, mode: string): Session {
+    const existing = ctx.sessions.get(sessionId)
+    if (existing !== undefined) return existing
+    return ctx.sessions.create(sessionId, { meta: { cwd, mode } })
+  }
+
   /** Resolve or create one path while holding the Host's workspace-create chain. */
   function ensureWorkspace(path: string): Promise<{ workspace: Workspace; created: boolean }> {
     const operation = workspaceCreationChain.then(async () => {
@@ -2118,6 +2141,43 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           }
         }
         const cwd = workspace?.path ?? request.payload.cwd ?? defaults.cwd
+        // `mode` names who drives the new session (client-plane choice): absent
+        // means the native agent loop (`dsh`); a value must resolve to a
+        // registered external provider, which creates the session WITHOUT a
+        // native Agent — the bridge driver (a host plugin reacting to
+        // `session/created`) owns the live external process.
+        const mode = request.payload.mode ?? 'dsh'
+        if (mode !== 'dsh') {
+          const external = ctx.get('externalSessions')
+          if (external === undefined || external.getProvider(mode) === undefined) {
+            return err(request, {
+              code: 'unknown-mode',
+              message: `no external session provider registered for mode "${mode}"`,
+              details: { mode },
+            })
+          }
+          try {
+            await ensureExternalSession(sessionId, cwd, mode)
+          } catch (error: unknown) {
+            return err(request, {
+              code: 'internal',
+              message: `failed to create external session "${sessionId}": ${String(error)}`,
+              details: { mode },
+            })
+          }
+          if (workspace !== undefined) {
+            try {
+              await workspace.attachSession(sessionId)
+            } catch (error: unknown) {
+              return err(request, {
+                code: 'workspace-attach-failed',
+                message: `session "${sessionId}" was created but could not attach to workspace "${workspace.id}": ${String(error)}`,
+                details: { sessionId, workspaceId: workspace.id },
+              })
+            }
+          }
+          return ok(request, { sessionId })
+        }
         const requestedPreset = request.payload.agentPreset
         try {
           await ensureSession(sessionId, cwd, request.payload.sessionId !== undefined, requestedPreset)

@@ -97,6 +97,14 @@ export interface SessionHeader {
    * would replay history the model can no longer act on.
    */
   readonly agentPreset?: string
+  /**
+   * Which driver owns this session: absent means the native agent loop
+   * (`dsh`), while a registered external-provider name means an external
+   * console agent (Codex, an ACP client) drives it. Presented as a
+   * client-plane choice at session creation; durable so the driver stays
+   * resolvable across restart.
+   */
+  readonly mode?: string
 }
 
 /**
@@ -119,6 +127,7 @@ export interface CreateSessionOptions {
     readonly origin?: 'subagent' | 'github-actions'
     readonly delegationDepth?: number
     readonly agentPreset?: string
+    readonly mode?: string
   }
 }
 

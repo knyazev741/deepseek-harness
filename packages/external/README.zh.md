@@ -8,5 +8,6 @@
 |---|---|---|
 | [`external-session/`](external-session/README.md) | Service Definition：命名 provider 注册表、会话分发、每会话桥接 | `ctx.externalSessions` |
 | `external-session-codex/` | Codex 方言 provider（开发中；证据转录见 `tests/evidence/`） | registers on `ctx.externalSessions` |
+| [`external-session-bridge/`](external-session-bridge/README.md) | 宿主侧驱动：在其模式下创建宿主会话时启动外部 provider、注册转录投影、会话关闭时销毁 | `ctx.externalSessions` + `ctx.sessionProjections` |
 
 ACP provider 方言已在规划中；见 spec note 的阶段计划。
