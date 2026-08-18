@@ -117,7 +117,9 @@ export class SessionManager {
   /**
    * Sessions that finished running while not selected — the sidebar's green
    * "done" reminder (manager-owned, survives connection generations; cleared
-   * on select and session-removed, re-armed by the next completion).
+   * on select and session-removed, re-armed by the next completion). Marking
+   * a session unread re-arms it through the same set, so the dot reads and
+   * clears through one fact regardless of how it was armed.
    */
   private readonly completedNotifications = new Set<SessionId>()
   /** Last-observed running bits per session; the true→false edge here arms {@link completedNotifications}. */
@@ -216,6 +218,17 @@ export class SessionManager {
     this.selected = address.childSessionId
     this.completedNotifications.delete(address.childSessionId)
     void this.refreshSubagents(address.childSessionId)
+    this.notifier.notifyNow()
+  }
+
+  /**
+   * Re-arm a session's green "done" reminder after a prior view consumed it
+   * (mark-as-unread). Presentation-only: never touches the session log. The
+   * next select() or a fresh run disarms it via the shared set.
+   * @param sessionId - a listed session id.
+   */
+  markUnread(sessionId: SessionId): void {
+    this.completedNotifications.add(sessionId)
     this.notifier.notifyNow()
   }
 

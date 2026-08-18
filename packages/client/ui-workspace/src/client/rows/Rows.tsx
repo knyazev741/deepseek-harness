@@ -351,7 +351,7 @@ export function SearchResultItem({ result, currentId, onOpen, t }: {
  * @param props.t - the browser root's locale seat.
  * @returns the session row.
  */
-export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, drag, flat = false, t }: {
+export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, onMarkUnread, drag, flat = false, t }: {
   node: SessionNode
   currentId: string | undefined
   now: number
@@ -362,6 +362,8 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
   onFork: (id: SessionNode['id']) => void
   /** Archive this session (row menu action; commits without a dialog). */
   onArchive: (id: SessionNode['id']) => void
+  /** Re-arm this session's green "done" reminder (row menu action). */
+  onMarkUnread: (id: SessionNode['id']) => void
   /** Present only on draggable rows (workspace-group sessions outside search). */
   drag?: RowDragProps | undefined
   /** The row is rendered without a parent Workspace header. */
@@ -388,6 +390,9 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
     // 20-native glyph in the menu's 16px icon slot (Menu.module.css .itemIcon).
     { id: 'archive', label: t('menu.archiveSession'), icon: <IconArchiveOutline20 size={16} /> },
     { id: 'copy-session-id', label: t('menu.copySessionId'), icon: <IconCopyOutline16 size={16} /> },
+    // The green "done" dot itself: marking a session unread re-arms exactly
+    // the state dot the row shows for a finished, unviewed session.
+    { id: 'mark-unread', label: t('menu.markUnread'), icon: <StateDot state="done" size={16} /> },
   ]
   // Figma session cell: pad 8, status slot 16, then a 4px title gap.
   const ownRow = (
@@ -458,6 +463,7 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
                   setToast({ seq, text: t('menu.copySessionIdDone') })
                 })
               }
+              if (id === 'mark-unread') onMarkUnread(node.id)
             }}
             portal
             closeOnPointerLeave

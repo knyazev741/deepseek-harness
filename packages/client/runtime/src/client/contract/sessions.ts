@@ -45,6 +45,13 @@ export interface ISessions {
    */
   openSubagent(address: SubagentAddress): void
   /**
+   * Re-arm a session's green "done" reminder after a prior view consumed it
+   * (mark-as-unread). Presentation-only: the next `open` or a fresh run
+   * disarms it again.
+   * @param id - a listed session id.
+   */
+  markUnread(id: SessionId): void
+  /**
    * Resolve an already discovered direct-parent address without opening it.
    * @param id - possible addressed child id.
    * @returns the retained address, when present.

@@ -72,6 +72,7 @@ export function apply(ctx: ClientContext): void {
     // the current Session Workspace before the recent-Workspace fallback.
     startSession: (workspaceId) => { ctx.workspaces.startSession(workspaceId) },
     open: (sessionId) => { ctx.sessions.open(sessionId) },
+    markSessionUnread: (sessionId) => { ctx.sessions.markUnread(sessionId) },
     searchSessions,
     searchResultLimit: ctx.sessions.searchResultLimit,
     renameSession: async (sessionId, title) => {

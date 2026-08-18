@@ -69,6 +69,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     actions: store.actions,
     startSession: vi.fn(),
     open: vi.fn(),
+    markSessionUnread: vi.fn(),
     searchSessions: vi.fn(async () => ({ items: [], hasMore: false })),
     searchResultLimit: 20,
     renameSession: vi.fn(async () => {}),
@@ -402,6 +403,26 @@ describe('WorkspaceBrowser', () => {
     } finally {
       delete (navigator as { clipboard?: unknown }).clipboard
     }
+  })
+
+  it('mark as unread calls the injected action and the green done dot returns on the echo', () => {
+    const markSessionUnread = vi.fn()
+    const b = mount({
+      useSessions: hook(sessionState([summary('unread-s', 1)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['unread-s'])])),
+      markSessionUnread,
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    fireEvent.click(screen.getByRole('button', { name: '会话“unread-s”的操作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '标记为未读' }))
+    expect(markSessionUnread).toHaveBeenCalledWith(sid('unread-s'))
+    // Runtime echo: the summary lands as completed → the row re-shows the
+    // green done dot that opening the session had cleared.
+    rerender(b, {
+      useSessions: hook(sessionState([summary('unread-s', 1, { completed: true })])),
+    })
+    const sessionRow = screen.getByText('unread-s').closest('[role="treeitem"]') as HTMLElement
+    expect(sessionRow.querySelector('[data-state="done"]')).not.toBeNull()
   })
 
   it('renders a fork child as a top-level row without a session twist', () => {

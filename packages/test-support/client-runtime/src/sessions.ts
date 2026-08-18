@@ -185,7 +185,7 @@ export class TestSessions implements ISessions {
   /** Calls observed on the service-level face, newest last. */
   readonly calls: {
     method: 'open' | 'openSubagent' | 'setSubagentCatalogOpen' | 'refreshSubagents'
-      | 'clear' | 'search' | 'fork'
+      | 'clear' | 'search' | 'fork' | 'markUnread'
     args: unknown[]
   }[] = []
 
@@ -410,6 +410,20 @@ export class TestSessions implements ISessions {
     this.list.update((draft) => {
       draft.current = id
       draft.currentAddress = undefined
+    })
+  }
+
+  /**
+   * Re-arm a session's green "done" reminder (mark-as-unread): recorded, then
+   * mirrored onto the list row so the dot re-shows until the next open clears it.
+   * @param id - session id.
+   */
+  markUnread(id: SessionId): void {
+    this.calls.push({ method: 'markUnread', args: [id] })
+    this.require(id)
+    this.list.update((draft) => {
+      const entry = draft.byId[id]
+      if (entry !== undefined) entry.completed = true
     })
   }
 

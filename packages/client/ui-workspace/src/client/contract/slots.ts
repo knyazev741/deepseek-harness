@@ -98,6 +98,8 @@ export type WorkspaceBrowserInjected = DirectoryPickingInjected & {
   startSession: (workspaceId?: WorkspaceId) => void
   /** Open a real Session. */
   open: (sessionId: SessionId) => void
+  /** Re-arm a session's green "done" reminder (mark-as-unread, row menu action). */
+  markSessionUnread: (sessionId: SessionId) => void
   /**
    * Search current visible conversation messages. The Host fixes the result
    * bound; `hasMore` means the query needs narrowing.

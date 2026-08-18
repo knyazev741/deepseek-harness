@@ -1150,6 +1150,19 @@ describe('completed reminder', () => {
     await refresh
     expect(entry(manager, S2)?.completed).toBe(true)
   })
+
+  it('markUnread re-arms the green done dot for a session whose prior view consumed it', () => {
+    const manager = new SessionManager(new FakeApiClient(), fakeRemote())
+    manager.handleHostEnvelope(added('h1', S1))
+    manager.handleHostEnvelope(added('h2', S2))
+    manager.select(S1)
+    expect(entry(manager, S2)?.completed).toBe(false)
+    manager.markUnread(S2)
+    expect(entry(manager, S2)?.completed).toBe(true)
+    // Opening the session consumes the manually re-armed reminder too.
+    manager.select(S2)
+    expect(entry(manager, S2)?.completed).toBe(false)
+  })
 })
 
 describe('background-job mirror', () => {
