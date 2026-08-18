@@ -1,0 +1,841 @@
+{
+  "frames": [
+    {
+      "kind": "client",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "clientInfo": {
+            "name": "dsh-evidence",
+            "title": "DSH Evidence Recorder",
+            "version": "0.0.1"
+          },
+          "capabilities": {
+            "experimentalApi": false,
+            "requestAttestation": false
+          }
+        }
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "id": 1,
+        "result": {
+          "userAgent": "dsh-evidence/0.147.0 (Mac OS 15.6.1; arm64) Apple_Terminal/455.1 (dsh-evidence; 0.0.1)",
+          "codexHome": "/private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home",
+          "platformFamily": "unix",
+          "platformOs": "macos"
+        }
+      }
+    },
+    {
+      "kind": "client",
+      "note": "notification initialized",
+      "frame": {
+        "jsonrpc": "2.0",
+        "method": "initialized"
+      }
+    },
+    {
+      "kind": "client",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "thread/start",
+        "params": {
+          "cwd": "<volatile:path#1>",
+          "ephemeral": false
+        }
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "remoteControl/status/changed",
+        "params": {
+          "status": "disabled",
+          "serverName": "MacBook-Pro-2.local",
+          "installationId": "71983b77-33df-48c2-99b4-6a0cfbc83234",
+          "environmentId": null
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "id": 2,
+        "result": {
+          "thread": {
+            "id": "<volatile:id#1>",
+            "extra": null,
+            "sessionId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+            "forkedFromId": null,
+            "parentThreadId": null,
+            "preview": "",
+            "ephemeral": false,
+            "section": null,
+            "sectionEnteredAt": null,
+            "historyMode": "legacy",
+            "modelProvider": "fixture",
+            "createdAt": "<volatile:ms>",
+            "updatedAt": 1787028334,
+            "recencyAt": 1787028334,
+            "status": {
+              "type": "idle"
+            },
+            "path": "/private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/sessions/2026/08/18/rollout-2026-08-18T12-45-34-01a01330-6833-7ae0-9a8b-96b9b0d422ca.jsonl",
+            "cwd": "<volatile:path#2>",
+            "cliVersion": "0.147.0",
+            "source": "vscode",
+            "canAcceptDirectInput": true,
+            "threadSource": null,
+            "agentNickname": null,
+            "agentRole": null,
+            "gitInfo": null,
+            "name": null,
+            "turns": []
+          },
+          "model": "fixture-model",
+          "modelProvider": "fixture",
+          "serviceTier": null,
+          "cwd": "<volatile:path#2>",
+          "runtimeWorkspaceRoots": [
+            "/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53"
+          ],
+          "instructionSources": [],
+          "approvalPolicy": "on-request",
+          "approvalsReviewer": "user",
+          "sandbox": {
+            "type": "readOnly",
+            "networkAccess": false
+          },
+          "activePermissionProfile": null,
+          "reasoningEffort": null,
+          "multiAgentMode": "explicitRequestOnly"
+        }
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/started",
+        "params": {
+          "thread": {
+            "id": "<volatile:id#1>",
+            "extra": null,
+            "sessionId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+            "forkedFromId": null,
+            "parentThreadId": null,
+            "preview": "",
+            "ephemeral": false,
+            "section": null,
+            "sectionEnteredAt": null,
+            "historyMode": "legacy",
+            "modelProvider": "fixture",
+            "createdAt": "<volatile:ms>",
+            "updatedAt": 1787028334,
+            "recencyAt": 1787028334,
+            "status": {
+              "type": "idle"
+            },
+            "path": "/private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/sessions/2026/08/18/rollout-2026-08-18T12-45-34-01a01330-6833-7ae0-9a8b-96b9b0d422ca.jsonl",
+            "cwd": "<volatile:path#2>",
+            "cliVersion": "0.147.0",
+            "source": "vscode",
+            "canAcceptDirectInput": true,
+            "threadSource": null,
+            "agentNickname": null,
+            "agentRole": null,
+            "gitInfo": null,
+            "name": null,
+            "turns": []
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "client",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "turn/start",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "input": [
+            {
+              "type": "text",
+              "text": "CONTENT_BEFORE_COMPACT",
+              "text_elements": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "id": 3,
+        "result": {
+          "turn": {
+            "id": "<volatile:id#1>",
+            "items": [],
+            "itemsView": "notLoaded",
+            "status": "inProgress",
+            "error": null,
+            "startedAt": null,
+            "completedAt": null,
+            "durationMs": null
+          }
+        }
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "warning",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "message": "Model metadata for `fixture-model` not found. Defaulting to fallback metadata; this can degrade performance and cause issues."
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/status/changed",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "status": {
+            "type": "active",
+            "activeFlags": []
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "turn/started",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turn": {
+            "id": "<volatile:id#1>",
+            "items": [],
+            "itemsView": "notLoaded",
+            "status": "inProgress",
+            "error": null,
+            "startedAt": "<volatile:ms>",
+            "completedAt": null,
+            "durationMs": null
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "item/started",
+        "params": {
+          "item": {
+            "type": "userMessage",
+            "id": "<volatile:id#1>",
+            "clientId": null,
+            "content": [
+              {
+                "type": "text",
+                "text": "CONTENT_BEFORE_COMPACT",
+                "text_elements": []
+              }
+            ]
+          },
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-683d-72c2-b514-ee677ae7fbc0",
+          "startedAtMs": "<volatile:ms>"
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "item/completed",
+        "params": {
+          "item": {
+            "type": "userMessage",
+            "id": "<volatile:id#1>",
+            "clientId": null,
+            "content": [
+              {
+                "type": "text",
+                "text": "CONTENT_BEFORE_COMPACT",
+                "text_elements": []
+              }
+            ]
+          },
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-683d-72c2-b514-ee677ae7fbc0",
+          "completedAtMs": 1787028334661
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "fixture",
+      "note": "Responses model request seen by the fixture (trimmed)",
+      "url": "/v1/responses",
+      "body": {
+        "model": "fixture-model",
+        "input": [
+          {
+            "role": "developer",
+            "text": [
+              "<skills_instructions>\n## Skills\nA skill is a set of instructions provided through a `SKILL.md` source. Below is the list of skills that can be used. Each entry includes a name, description, and source locator. `file` locators are on the host filesystem, `environment resource` locators are owned by an execution environment, `orchestrator resource` locators are opaque non-filesystem resources, and `custom resource` locators use their provider's access mechanism.\n### Available skills\n- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/imagegen/SKILL.md)\n- openai-docs: Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/openai-docs/SKILL.md)\n- plugin-creator: Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, generate or update marketplace entries for plugin ordering and availability metadata, or update an existing local plugin during development with the CLI-driven cachebuster and reinstall flow. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/plugin-creator/SKILL.md)\n- skill-creator: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/skill-creator/SKILL.md)\n- skill-installer: Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos). (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/skill-installer/SKILL.md)\n</skills_instructions>",
+              "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.\n# Escalation Requests\n\nCommands are run outside the sandbox if they are approved by the user, or match an existing rule that allows it to run unrestricted. The command string is split into independent command segments at shell control operators, including but not limited to:\n\n- Pipes: |\n- Logical operators: &&, ||\n- Command separators: ;\n- Subshell boundaries: (...), $(...)\n\nEach resulting segment is evaluated independently for sandbox restrictions and approval requirements.\n\nExample:\n\ngit pull | tee output.txt\n\nThis is treated as two command segments:\n\n[\"git\", \"pull\"]\n\n[\"tee\", \"output.txt\"]\n\nCommands that use more advanced shell features like redirection (>, >>, <), substitutions ($(...), ...), environment variables (FOO=bar), or wildcard patterns (*, ?) will not be evaluated against rules, to limit the scope of what an approved rule allows.\n\n## How to request escalation\n\nIMPORTANT: To request approval to execute a command that will require escalated privileges:\n\n- Provide the `sandbox_permissions` parameter with the value `\"require_escalated\"`\n- Include a short question asking the user if they want to allow the action in `justification` parameter. e.g. \"Do you want to download and install dependencies for this project?\"\n- Optionally suggest a `prefix_rule` - this will be shown to the user with an option to persist the rule approval for future sessions.\n\nIf you run a command that is important to solving the user's query, but it fails because of sandboxing or with a likely sandbox-related network error (for example DNS/host resolution, registry/index access, or dependency download failure), rerun the command with \"require_escalated\". ALWAYS proceed to use the `justification` parameter - do not message the user before requesting approval for the command.\n\n## When to request escalation\n\nWhile commands are running inside the sandbox, here are some scenarios that will require escalation outside the sandbox:\n\n- You need to run a command that writes to a directory that requires it (e.g. running tests that write to /var)\n- You need to run a GUI app (e.g., open/xdg-open/osascript) to open browsers or files.\n- If you run a command that is important to solving the user's query, but it fails because of sandboxing or with a likely sandbox-related network error (for example DNS/host resolution, registry/index access, or dependency download failure), rerun the command with `require_escalated`. ALWAYS proceed to use the `sandbox_permissions` and `justification` parameters. do not message the user before requesting approval for the command.\n- You are about to take a potentially destructive action such as an `rm` or `git reset` that the user did not explicitly ask for.\n- Be judicious with escalating, but if completing the user's request requires it, you should do so - don't try and circumvent approvals by using other tools.\n\n## prefix_rule guidance\n\nWhen choosing a `prefix_rule`, request one that will allow you to fulfill similar requests from the user in the future without re-requesting escalation. It should be categorical and reasonably scoped to similar capabilities. You should rarely pass the entire command into `prefix_rule`.\n\n### Banned prefix_rules \nAvoid requesting overly broad prefixes that the user would be ill-advised to approve. For example, do not request [\"python3\"], [\"python\", \"-\"], or other similar prefixes that would allow arbitrary scripting.\nNEVER provide a prefix_rule argument for destructive commands like rm.\nNEVER provide a prefix_rule if your command uses a heredoc or herestring. \n\n### Examples\nGood examples of prefixes:\n- [\"npm\", \"run\", \"dev\"]\n- [\"gh\", \"pr\", \"check\"]\n- [\"cargo\", \"test\"]\n</permissions instructions>"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "<environment_context>\n  <cwd>/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53</cwd>\n  <shell>zsh</shell>\n  <current_date>2026-08-18</current_date>\n  <timezone>Asia/Makassar</timezone>\n  <filesystem><workspace_roots><root>/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry></file_system></permission_profile></filesystem>\n</environment_context>"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "CONTENT_BEFORE_COMPACT"
+            ]
+          }
+        ],
+        "toolNames": [
+          "exec_command",
+          "write_stdin",
+          "update_plan",
+          "request_user_input",
+          "view_image",
+          "multi_agent_v1/close_agent",
+          "multi_agent_v1/resume_agent",
+          "multi_agent_v1/send_input",
+          "multi_agent_v1/spawn_agent",
+          "multi_agent_v1/wait_agent",
+          "get_goal",
+          "create_goal",
+          "update_goal",
+          "web_search"
+        ]
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "item/started",
+        "params": {
+          "item": {
+            "type": "agentMessage",
+            "id": "msg_fixture",
+            "text": "",
+            "phase": null,
+            "memoryCitation": null
+          },
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-683d-72c2-b514-ee677ae7fbc0",
+          "startedAtMs": "<volatile:ms>"
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "item/agentMessage/delta",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-683d-72c2-b514-ee677ae7fbc0",
+          "itemId": "msg_fixture",
+          "delta": "PRECOMPACT_CONTENT"
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "item/completed",
+        "params": {
+          "item": {
+            "type": "agentMessage",
+            "id": "msg_fixture",
+            "text": "PRECOMPACT_CONTENT",
+            "phase": null,
+            "memoryCitation": null
+          },
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-683d-72c2-b514-ee677ae7fbc0",
+          "completedAtMs": 1787028334665
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/tokenUsage/updated",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-683d-72c2-b514-ee677ae7fbc0",
+          "tokenUsage": {
+            "total": {
+              "totalTokens": 11,
+              "inputTokens": 10,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1,
+              "reasoningOutputTokens": 0
+            },
+            "last": {
+              "totalTokens": 11,
+              "inputTokens": 10,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1,
+              "reasoningOutputTokens": 0
+            },
+            "modelContextWindow": 258400
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "account/rateLimits/updated",
+        "params": {
+          "rateLimits": {
+            "limitId": "codex",
+            "limitName": null,
+            "primary": null,
+            "secondary": null,
+            "credits": null,
+            "individualLimit": null,
+            "spendControlReached": null,
+            "planType": null,
+            "rateLimitReachedType": null
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/status/changed",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "status": {
+            "type": "idle"
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "turn/completed",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turn": {
+            "id": "<volatile:id#1>",
+            "items": [
+              {
+                "type": "agentMessage",
+                "id": "msg_fixture",
+                "text": "PRECOMPACT_CONTENT",
+                "phase": null,
+                "memoryCitation": null
+              }
+            ],
+            "itemsView": "summary",
+            "status": "completed",
+            "error": null,
+            "startedAt": "<volatile:ms>",
+            "completedAt": "<volatile:ms>",
+            "durationMs": 11
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "client",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "thread/compact/start",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca"
+        }
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "id": 4,
+        "result": {}
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/status/changed",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "status": {
+            "type": "active",
+            "activeFlags": []
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "turn/started",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turn": {
+            "id": "<volatile:id#1>",
+            "items": [],
+            "itemsView": "notLoaded",
+            "status": "inProgress",
+            "error": null,
+            "startedAt": "<volatile:ms>",
+            "completedAt": null,
+            "durationMs": null
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "item/started",
+        "params": {
+          "item": {
+            "type": "contextCompaction",
+            "id": "<volatile:id#1>"
+          },
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-6871-7f20-bffc-c8f86cc808dd",
+          "startedAtMs": "<volatile:ms>"
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "fixture",
+      "note": "Responses model request seen by the fixture (trimmed)",
+      "url": "/v1/responses",
+      "body": {
+        "model": "fixture-model",
+        "input": [
+          {
+            "role": "developer",
+            "text": [
+              "<skills_instructions>\n## Skills\nA skill is a set of instructions provided through a `SKILL.md` source. Below is the list of skills that can be used. Each entry includes a name, description, and source locator. `file` locators are on the host filesystem, `environment resource` locators are owned by an execution environment, `orchestrator resource` locators are opaque non-filesystem resources, and `custom resource` locators use their provider's access mechanism.\n### Available skills\n- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/imagegen/SKILL.md)\n- openai-docs: Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/openai-docs/SKILL.md)\n- plugin-creator: Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, generate or update marketplace entries for plugin ordering and availability metadata, or update an existing local plugin during development with the CLI-driven cachebuster and reinstall flow. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/plugin-creator/SKILL.md)\n- skill-creator: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/skill-creator/SKILL.md)\n- skill-installer: Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos). (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/skill-installer/SKILL.md)\n</skills_instructions>",
+              "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.\n# Escalation Requests\n\nCommands are run outside the sandbox if they are approved by the user, or match an existing rule that allows it to run unrestricted. The command string is split into independent command segments at shell control operators, including but not limited to:\n\n- Pipes: |\n- Logical operators: &&, ||\n- Command separators: ;\n- Subshell boundaries: (...), $(...)\n\nEach resulting segment is evaluated independently for sandbox restrictions and approval requirements.\n\nExample:\n\ngit pull | tee output.txt\n\nThis is treated as two command segments:\n\n[\"git\", \"pull\"]\n\n[\"tee\", \"output.txt\"]\n\nCommands that use more advanced shell features like redirection (>, >>, <), substitutions ($(...), ...), environment variables (FOO=bar), or wildcard patterns (*, ?) will not be evaluated against rules, to limit the scope of what an approved rule allows.\n\n## How to request escalation\n\nIMPORTANT: To request approval to execute a command that will require escalated privileges:\n\n- Provide the `sandbox_permissions` parameter with the value `\"require_escalated\"`\n- Include a short question asking the user if they want to allow the action in `justification` parameter. e.g. \"Do you want to download and install dependencies for this project?\"\n- Optionally suggest a `prefix_rule` - this will be shown to the user with an option to persist the rule approval for future sessions.\n\nIf you run a command that is important to solving the user's query, but it fails because of sandboxing or with a likely sandbox-related network error (for example DNS/host resolution, registry/index access, or dependency download failure), rerun the command with \"require_escalated\". ALWAYS proceed to use the `justification` parameter - do not message the user before requesting approval for the command.\n\n## When to request escalation\n\nWhile commands are running inside the sandbox, here are some scenarios that will require escalation outside the sandbox:\n\n- You need to run a command that writes to a directory that requires it (e.g. running tests that write to /var)\n- You need to run a GUI app (e.g., open/xdg-open/osascript) to open browsers or files.\n- If you run a command that is important to solving the user's query, but it fails because of sandboxing or with a likely sandbox-related network error (for example DNS/host resolution, registry/index access, or dependency download failure), rerun the command with `require_escalated`. ALWAYS proceed to use the `sandbox_permissions` and `justification` parameters. do not message the user before requesting approval for the command.\n- You are about to take a potentially destructive action such as an `rm` or `git reset` that the user did not explicitly ask for.\n- Be judicious with escalating, but if completing the user's request requires it, you should do so - don't try and circumvent approvals by using other tools.\n\n## prefix_rule guidance\n\nWhen choosing a `prefix_rule`, request one that will allow you to fulfill similar requests from the user in the future without re-requesting escalation. It should be categorical and reasonably scoped to similar capabilities. You should rarely pass the entire command into `prefix_rule`.\n\n### Banned prefix_rules \nAvoid requesting overly broad prefixes that the user would be ill-advised to approve. For example, do not request [\"python3\"], [\"python\", \"-\"], or other similar prefixes that would allow arbitrary scripting.\nNEVER provide a prefix_rule argument for destructive commands like rm.\nNEVER provide a prefix_rule if your command uses a heredoc or herestring. \n\n### Examples\nGood examples of prefixes:\n- [\"npm\", \"run\", \"dev\"]\n- [\"gh\", \"pr\", \"check\"]\n- [\"cargo\", \"test\"]\n</permissions instructions>"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "<environment_context>\n  <cwd>/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53</cwd>\n  <shell>zsh</shell>\n  <current_date>2026-08-18</current_date>\n  <timezone>Asia/Makassar</timezone>\n  <filesystem><workspace_roots><root>/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry></file_system></permission_profile></filesystem>\n</environment_context>"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "CONTENT_BEFORE_COMPACT"
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": [
+              "PRECOMPACT_CONTENT"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff summary for another LLM that will resume the task.\n\nInclude:\n- Current progress and key decisions made\n- Important context, constraints, or user preferences\n- What remains to be done (clear next steps)\n- Any critical data, examples, or references needed to continue\n\nBe concise, structured, and focused on helping the next LLM seamlessly continue the work.\n"
+            ]
+          }
+        ],
+        "toolNames": []
+      }
+    },
+    {
+      "kind": "fixture",
+      "note": "Responses model request from auto-compaction (fallback complete)",
+      "url": "/v1/responses",
+      "body": {
+        "model": "fixture-model",
+        "input": [
+          {
+            "role": "developer",
+            "text": [
+              "<skills_instructions>\n## Skills\nA skill is a set of instructions provided through a `SKILL.md` source. Below is the list of skills that can be used. Each entry includes a name, description, and source locator. `file` locators are on the host filesystem, `environment resource` locators are owned by an execution environment, `orchestrator resource` locators are opaque non-filesystem resources, and `custom resource` locators use their provider's access mechanism.\n### Available skills\n- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/imagegen/SKILL.md)\n- openai-docs: Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and self-knowledge—including 'you,' 'your,' 'this app,' or 'this coding agent' when they refer to Codex—and for OpenAI APIs/products and ChatGPT Work. Also use for model choice/migration, prompting, SDKs, Responses, Realtime, agents, evals, and Chat/Work/Codex comparisons. Do not use for generic app/software tasks that merely mention Codex. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/openai-docs/SKILL.md)\n- plugin-creator: Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, generate or update marketplace entries for plugin ordering and availability metadata, or update an existing local plugin during development with the CLI-driven cachebuster and reinstall flow. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/plugin-creator/SKILL.md)\n- skill-creator: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/skill-creator/SKILL.md)\n- skill-installer: Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos). (file: /private/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53/home/skills/.system/skill-installer/SKILL.md)\n</skills_instructions>",
+              "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.\n# Escalation Requests\n\nCommands are run outside the sandbox if they are approved by the user, or match an existing rule that allows it to run unrestricted. The command string is split into independent command segments at shell control operators, including but not limited to:\n\n- Pipes: |\n- Logical operators: &&, ||\n- Command separators: ;\n- Subshell boundaries: (...), $(...)\n\nEach resulting segment is evaluated independently for sandbox restrictions and approval requirements.\n\nExample:\n\ngit pull | tee output.txt\n\nThis is treated as two command segments:\n\n[\"git\", \"pull\"]\n\n[\"tee\", \"output.txt\"]\n\nCommands that use more advanced shell features like redirection (>, >>, <), substitutions ($(...), ...), environment variables (FOO=bar), or wildcard patterns (*, ?) will not be evaluated against rules, to limit the scope of what an approved rule allows.\n\n## How to request escalation\n\nIMPORTANT: To request approval to execute a command that will require escalated privileges:\n\n- Provide the `sandbox_permissions` parameter with the value `\"require_escalated\"`\n- Include a short question asking the user if they want to allow the action in `justification` parameter. e.g. \"Do you want to download and install dependencies for this project?\"\n- Optionally suggest a `prefix_rule` - this will be shown to the user with an option to persist the rule approval for future sessions.\n\nIf you run a command that is important to solving the user's query, but it fails because of sandboxing or with a likely sandbox-related network error (for example DNS/host resolution, registry/index access, or dependency download failure), rerun the command with \"require_escalated\". ALWAYS proceed to use the `justification` parameter - do not message the user before requesting approval for the command.\n\n## When to request escalation\n\nWhile commands are running inside the sandbox, here are some scenarios that will require escalation outside the sandbox:\n\n- You need to run a command that writes to a directory that requires it (e.g. running tests that write to /var)\n- You need to run a GUI app (e.g., open/xdg-open/osascript) to open browsers or files.\n- If you run a command that is important to solving the user's query, but it fails because of sandboxing or with a likely sandbox-related network error (for example DNS/host resolution, registry/index access, or dependency download failure), rerun the command with `require_escalated`. ALWAYS proceed to use the `sandbox_permissions` and `justification` parameters. do not message the user before requesting approval for the command.\n- You are about to take a potentially destructive action such as an `rm` or `git reset` that the user did not explicitly ask for.\n- Be judicious with escalating, but if completing the user's request requires it, you should do so - don't try and circumvent approvals by using other tools.\n\n## prefix_rule guidance\n\nWhen choosing a `prefix_rule`, request one that will allow you to fulfill similar requests from the user in the future without re-requesting escalation. It should be categorical and reasonably scoped to similar capabilities. You should rarely pass the entire command into `prefix_rule`.\n\n### Banned prefix_rules \nAvoid requesting overly broad prefixes that the user would be ill-advised to approve. For example, do not request [\"python3\"], [\"python\", \"-\"], or other similar prefixes that would allow arbitrary scripting.\nNEVER provide a prefix_rule argument for destructive commands like rm.\nNEVER provide a prefix_rule if your command uses a heredoc or herestring. \n\n### Examples\nGood examples of prefixes:\n- [\"npm\", \"run\", \"dev\"]\n- [\"gh\", \"pr\", \"check\"]\n- [\"cargo\", \"test\"]\n</permissions instructions>"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "<environment_context>\n  <cwd>/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53</cwd>\n  <shell>zsh</shell>\n  <current_date>2026-08-18</current_date>\n  <timezone>Asia/Makassar</timezone>\n  <filesystem><workspace_roots><root>/var/folders/rn/nvn1x4xx67bgkp2j5b47n14w0000gn/T/codex-evidence-R0py53</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry></file_system></permission_profile></filesystem>\n</environment_context>"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "CONTENT_BEFORE_COMPACT"
+            ]
+          },
+          {
+            "role": "assistant",
+            "text": [
+              "PRECOMPACT_CONTENT"
+            ]
+          },
+          {
+            "role": "user",
+            "text": [
+              "You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff summary for another LLM that will resume the task.\n\nInclude:\n- Current progress and key decisions made\n- Important context, constraints, or user preferences\n- What remains to be done (clear next steps)\n- Any critical data, examples, or references needed to continue\n\nBe concise, structured, and focused on helping the next LLM seamlessly continue the work.\n"
+            ]
+          }
+        ],
+        "toolNames": []
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/tokenUsage/updated",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-6871-7f20-bffc-c8f86cc808dd",
+          "tokenUsage": {
+            "total": {
+              "totalTokens": 11,
+              "inputTokens": 10,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1,
+              "reasoningOutputTokens": 0
+            },
+            "last": {
+              "totalTokens": 11,
+              "inputTokens": 10,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1,
+              "reasoningOutputTokens": 0
+            },
+            "modelContextWindow": 258400
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "account/rateLimits/updated",
+        "params": {
+          "rateLimits": {
+            "limitId": "codex",
+            "limitName": null,
+            "primary": null,
+            "secondary": null,
+            "credits": null,
+            "individualLimit": null,
+            "spendControlReached": null,
+            "planType": null,
+            "rateLimitReachedType": null
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/tokenUsage/updated",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-6871-7f20-bffc-c8f86cc808dd",
+          "tokenUsage": {
+            "total": {
+              "totalTokens": 22,
+              "inputTokens": 20,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2,
+              "reasoningOutputTokens": 0
+            },
+            "last": {
+              "totalTokens": 11,
+              "inputTokens": 10,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 1,
+              "reasoningOutputTokens": 0
+            },
+            "modelContextWindow": 258400
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "account/rateLimits/updated",
+        "params": {
+          "rateLimits": {
+            "limitId": "codex",
+            "limitName": null,
+            "primary": null,
+            "secondary": null,
+            "credits": null,
+            "individualLimit": null,
+            "spendControlReached": null,
+            "planType": null,
+            "rateLimitReachedType": null
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/tokenUsage/updated",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-6871-7f20-bffc-c8f86cc808dd",
+          "tokenUsage": {
+            "total": {
+              "totalTokens": 22,
+              "inputTokens": 20,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 2,
+              "reasoningOutputTokens": 0
+            },
+            "last": {
+              "totalTokens": 5449,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "cacheWriteInputTokens": 0,
+              "outputTokens": 0,
+              "reasoningOutputTokens": 0
+            },
+            "modelContextWindow": 258400
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "account/rateLimits/updated",
+        "params": {
+          "rateLimits": {
+            "limitId": "codex",
+            "limitName": null,
+            "primary": null,
+            "secondary": null,
+            "credits": null,
+            "individualLimit": null,
+            "spendControlReached": null,
+            "planType": null,
+            "rateLimitReachedType": null
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "item/completed",
+        "params": {
+          "item": {
+            "type": "contextCompaction",
+            "id": "<volatile:id#1>"
+          },
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turnId": "01a01330-6871-7f20-bffc-c8f86cc808dd",
+          "completedAtMs": 1787028334713
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "warning",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "message": "Heads up: Long threads and multiple compactions can cause the model to be less accurate. Start a new thread when possible to keep threads small and targeted."
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "thread/status/changed",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "status": {
+            "type": "idle"
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    },
+    {
+      "kind": "server",
+      "frame": {
+        "method": "turn/completed",
+        "params": {
+          "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca",
+          "turn": {
+            "id": "<volatile:id#1>",
+            "items": [],
+            "itemsView": "notLoaded",
+            "status": "completed",
+            "error": null,
+            "startedAt": "<volatile:ms>",
+            "completedAt": "<volatile:ms>",
+            "durationMs": 8
+          }
+        },
+        "emittedAtMs": "<volatile:ms>"
+      }
+    }
+  ],
+  "threadId": "01a01330-6833-7ae0-9a8b-96b9b0d422ca"
+}
