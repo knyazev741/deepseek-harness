@@ -17,12 +17,13 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionEventMap, SessionId } from '@deepseek-ai/dsh-session'
+import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { ExternalTurnId } from './types.ts'
 import type {
   ExternalAgentDescriptor,
   ExternalBridgeContext,
   ExternalModelInfo,
+  ExternalPermissionAnswerer,
   ExternalPermissionDecision,
   ExternalSessionEvent,
   ExternalSessionProvider,
@@ -36,6 +37,7 @@ export type {
   ExternalBridgeContext,
   ExternalModelDirectory,
   ExternalModelInfo,
+  ExternalPermissionAnswerer,
   ExternalPermissionAsk,
   ExternalPermissionDecision,
   ExternalSessionEvent,
@@ -88,6 +90,8 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   private sessions = new Map<SessionId, string>()
   /** Per-session disposal signals aborted on {@link dispose}. */
   private disposals = new Map<SessionId, AbortController>()
+  /** The registered permission answerer, or undefined while the channel is unwired. */
+  private permissionAnswerer: ExternalPermissionAnswerer | undefined
 
   constructor(ctx: Context) {
     super(ctx, 'externalSessions')
@@ -102,6 +106,7 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    */
   registerProvider(provider: ExternalSessionProvider): () => void {
     const name = provider.provider
+    // oxlint-disable-next-line typescript/no-misused-promises -- synchronous cleanup; direct return preserves disposer identity
     return this.ctx.effect(function* (this: ExternalSessions) {
       if (this.providers.has(name)) {
         throw new ExternalSessionError(
@@ -118,6 +123,31 @@ export class ExternalSessions extends Service implements ExternalSessionsService
       // repository's fail-loud registration semantics.
       this.ctx.emit('external/provider-added', descriptorOf(provider))
     }.bind(this), 'externalSessions.registerProvider()')
+  }
+
+  /**
+   * Register the permission answerer that every per-session bridge's
+   * {@link ExternalBridgeContext.requestPermission} consults. Registration is
+   * effect-scoped and HMR safe, mirroring {@link registerProvider}: at most one
+   * channel is active, and disposing it restores the fail-closed default.
+   * @param answerer - answers an external session's permission asks on behalf
+   *   of the human.
+   * @returns the exact Cordis effect disposer.
+   */
+  registerPermissionChannel(answerer: ExternalPermissionAnswerer): () => void {
+    // oxlint-disable-next-line typescript/no-misused-promises -- synchronous cleanup; direct return preserves disposer identity
+    return this.ctx.effect(function* (this: ExternalSessions) {
+      if (this.permissionAnswerer !== undefined) {
+        throw new ExternalSessionError(
+          'an external session permission channel is already registered',
+          'DUPLICATE_PERMISSION_CHANNEL',
+        )
+      }
+      this.permissionAnswerer = answerer
+      yield () => {
+        this.permissionAnswerer = undefined
+      }
+    }.bind(this), 'externalSessions.registerPermissionChannel()')
   }
 
   /**
@@ -261,13 +291,17 @@ export class ExternalSessions extends Service implements ExternalSessionsService
         if (session === undefined) return
         appendSessionEvent(session, event)
       },
-      requestPermission: async (_sid, _ask): Promise<ExternalPermissionDecision> => {
-        // Phase 1: the ask-user permission bridge (a host plugin) wires this
-        // channel in a later phase; until then it fails closed.
-        throw new ExternalSessionError(
-          'external session permission channel is not wired (the external-permission host plugin wires it)',
-          'PERMISSION_UNWIRED',
-        )
+      requestPermission: async (sessionId, ask): Promise<ExternalPermissionDecision> => {
+        const answerer = this.permissionAnswerer
+        if (answerer === undefined) {
+          // Phase 1: the ask-user permission bridge (a host plugin) registers
+          // this channel; until then it fails closed.
+          throw new ExternalSessionError(
+            'external session permission channel is not wired (the external-permission host plugin wires it)',
+            'PERMISSION_UNWIRED',
+          )
+        }
+        return answerer(sessionId, ask)
       },
       streamDelta: (_sid, _turnId, _delta) => {
         // Live-only: deltas ride the host frame channel and are never durable.
@@ -294,7 +328,7 @@ function descriptorOf(provider: ExternalSessionProvider): ExternalAgentDescripto
  * @param event - the event fragment to record.
  */
 function appendSessionEvent(session: Session, event: ExternalSessionEvent): void {
-  session.append(event.type, event.data as SessionEventMap[typeof event.type])
+  session.append(event.type, event.data)
 }
 
 export default ExternalSessions

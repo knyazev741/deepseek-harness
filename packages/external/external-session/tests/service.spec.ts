@@ -178,6 +178,53 @@ describe('ExternalSessions dispatch', () => {
   })
 })
 
+describe('ExternalSessions permission channel', () => {
+  it('routes requestPermission through a registered answerer', async () => {
+    const { service } = await setup()
+    const provider = new StubProvider('alpha', 'Alpha')
+    service.registerProvider(provider)
+    service.registerPermissionChannel(async (_sid, ask) =>
+      ask.options[0] === 'allow' ? 'allowed' : 'rejected')
+    const sessionId = SessionId('s1')
+    await service.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+
+    await expect(provider.lastBridge!.requestPermission(sessionId, {
+      askId: 'ask-1',
+      title: 'proceed?',
+      options: ['allow', 'reject'],
+    })).resolves.toBe('allowed')
+  })
+
+  it('rejects a duplicate permission channel loud', async () => {
+    const { service } = await setup()
+    service.registerPermissionChannel(async () => 'cancelled')
+    expect(() => { service.registerPermissionChannel(async () => 'cancelled') })
+      .toThrow(expect.objectContaining({ code: 'DUPLICATE_PERMISSION_CHANNEL' }))
+  })
+
+  it('disposal of the permission channel restores the fail-closed default (HMR safety)', async () => {
+    const { service } = await setup()
+    const provider = new StubProvider('alpha', 'Alpha')
+    service.registerProvider(provider)
+    const sessionId = SessionId('s1')
+    await service.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+
+    const dispose = service.registerPermissionChannel(async () => 'allowed')
+    await expect(provider.lastBridge!.requestPermission(sessionId, {
+      askId: 'ask-1',
+      title: 'proceed?',
+      options: ['allow', 'reject'],
+    })).resolves.toBe('allowed')
+
+    dispose()
+    await expect(provider.lastBridge!.requestPermission(sessionId, {
+      askId: 'ask-1',
+      title: 'proceed?',
+      options: ['allow', 'reject'],
+    })).rejects.toMatchObject({ code: 'PERMISSION_UNWIRED' })
+  })
+})
+
 describe('ExternalSessions bridge to the session log', () => {
   it('appends an accepted event fragment to a live session', async () => {
     const ctx = new Context()

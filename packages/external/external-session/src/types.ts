@@ -90,6 +90,20 @@ export interface ExternalPermissionAsk {
 export type ExternalPermissionDecision = 'allowed' | 'rejected' | 'cancelled'
 
 /**
+ * Answers one external session's permission ask on behalf of the human. Host
+ * packages register an implementation on the service so the per-session bridge
+ * stops failing closed; the provider correlates by ask id and applies the
+ * returned decision.
+ * @param sessionId - the live external session posing the ask.
+ * @param ask - the permission question and its options.
+ * @returns the decision applied to the ask.
+ */
+export type ExternalPermissionAnswerer = (
+  sessionId: SessionId,
+  ask: ExternalPermissionAsk,
+) => Promise<ExternalPermissionDecision>
+
+/**
  * A writer-side session-event fragment (type plus payload) that a provider
  * hands to {@link ExternalBridgeContext.appendEvent}; the live session stamps
  * `seq`, `time`, and (for the log-only family) `ignorable`. The type union is

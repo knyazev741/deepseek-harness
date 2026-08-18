@@ -41,6 +41,8 @@
       "@deepseek-ai/dsh-invariants": ["./packages/runtime-diagnostics/invariants/src/index.ts"],
       "@deepseek-ai/dsh-external-session": ["./packages/external/external-session/src/index.ts"],
       "@deepseek-ai/dsh-external-session/invariant": ["./packages/external/external-session/src/invariant.ts"],
+      "@deepseek-ai/dsh-external-permission": ["./packages/interaction/external-permission/src/index.ts"],
+      "@deepseek-ai/dsh-external-permission/invariant": ["./packages/interaction/external-permission/src/invariant.ts"],
       "@deepseek-ai/dsh-tool-call-timeout-policy": ["./packages/guard/timeout-policy/src"],
       "@deepseek-ai/dsh-tool-call-timeout-policy/invariant": ["./packages/guard/timeout-policy/src/invariant.ts"],
       "@deepseek-ai/dsh-typert-registry": ["./packages/typert/registry/src/index.ts"],

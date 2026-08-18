@@ -21,7 +21,7 @@ Modes are not presets: choosing one composes the same host process and fixes the
 `start` hands each provider one per-session [`ExternalBridgeContext`](src/types.ts):
 
 - `appendEvent(sessionId, event)` — writes a writer-side event fragment into the durable session log when a live session is registered (log-only, `ignorable: true`); otherwise drops it. Sequencing and the `ignorable` marker are stamped by the session, not the caller.
-- `requestPermission(sessionId, ask)` — fails closed while no permission channel is wired (rejects `PERMISSION_UNWIRED`); the ask-user bridge is a host responsibility.
+- `requestPermission(sessionId, ask)` — consults the registered permission channel and fails closed while none is wired (rejects `PERMISSION_UNWIRED`); the ask-user bridge is a host responsibility. `registerPermissionChannel(answerer)` registers the channel, effect-scoped and HMR safe like `registerProvider`: at most one is active, and disposing it restores the fail-closed default.
 - `streamDelta(sessionId, turnId, delta)` — forward-only live deltas, never durable.
 - `disposal` — an `AbortSignal` that fires when the session is disposed, so the provider can tear down its process.
 
@@ -50,6 +50,6 @@ No effect: the events are appended outside any model request and share no reques
 ## Known Limitations and Deferred Work
 
 - **No streaming durability guarantee** — live transcript deltas ride `streamDelta` on the live frame path only and are never written to the durable log; replay reconstructs committed `external/*` units, not the frame deltas.
-- **Permission semantics are provider-agnostic and fail closed** — until the ask-user permission bridge lands, `requestPermission` rejects with `PERMISSION_UNWIRED`; the eventual decisions apply per-ask without auditing against an open DSH turn (Phase 1 has no native `approval/asked` pair).
+- **Permission semantics are provider-agnostic and fail closed** — until a permission channel is registered via `registerPermissionChannel`, `requestPermission` rejects with `PERMISSION_UNWIRED`; the eventual decisions apply per-ask without auditing against an open DSH turn (Phase 1 has no native `approval/asked` pair).
 - **Durable and live bridge wiring is host-owned** — `appendEvent` writes only when a live session is registered, and the frame channel and ask-user wiring are responsibilities of later host packages, not this Service Definition.
 - **No Config here** — provider configuration (command, roster, disposal grace) is validated by each provider package; this seam passes no tunables through.

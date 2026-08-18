@@ -21,7 +21,7 @@ Mode 不是预设：选择某一个 mode 会在同一宿主进程中组合，并
 `start` 为每个会话向提供方提供一个 [`ExternalBridgeContext`](src/types.ts)：
 
 - `appendEvent(sessionId, event)`——在注册了实时会话时，把写方事件片段写入持久会话日志（仅日志，`ignorable: true`）；否则丢弃。序号与 `ignorable` 标记由会话加盖，而非调用方。
-- `requestPermission(sessionId, ask)`——在未接入任何权限通道时故障关闭（拒绝 `PERMISSION_UNWIRED`）；ask-user bridge 是宿主的职责。
+- `requestPermission(sessionId, ask)`——咨询已注册的权限通道，在未注册任何通道时故障关闭（拒绝 `PERMISSION_UNWIRED`）；ask-user bridge 是宿主的职责。`registerPermissionChannel(answerer)` 注册该通道，像 `registerProvider` 一样按 effect 作用域且 HMR 安全：同一时刻最多激活一个，dispose 它即恢复故障关闭的默认行为。
 - `streamDelta(sessionId, turnId, delta)`——仅转发的实时增量，绝不持久化。
 - `disposal`——一个 `AbortSignal`，在会话被 dispose 时触发，让提供方能够拆解其进程。
 
@@ -50,6 +50,6 @@ Mode 不是预设：选择某一个 mode 会在同一宿主进程中组合，并
 ## 已知限制与暂缓事项
 
 - **无流式持久化保证**——实时转写增量仅通过 `streamDelta` 走实时帧路径，绝不写入持久日志；重放重建已提交的 `external/*` 单元，而非帧增量。
-- **权限语义与提供方无关且故障关闭**——在 ask-user 权限 bridge 落地之前，`requestPermission` 会以 `PERMISSION_UNWIRED` 拒绝；最终决策按 ask 应用，且不会对照未打开的 DSH turn 进行审计（阶段 1 没有原生 `approval/asked` 配对）。
+- **权限语义与提供方无关且故障关闭**——在通过 `registerPermissionChannel` 注册权限通道之前，`requestPermission` 会以 `PERMISSION_UNWIRED` 拒绝；最终决策按 ask 应用，且不会对照未打开的 DSH turn 进行审计（阶段 1 没有原生 `approval/asked` 配对）。
 - **持久化与实时 bridge 的接线由宿主负责**——`appendEvent` 仅在注册了实时会话时写入，而帧通道与 ask-user 接线是后续宿主程序包的职责，而非该 Service Definition。
 - **此处无 Config**——提供方配置（command、roster、dispose 宽限期）由每个提供方程序包自行校验；该 seam 不传递任何可调参数。
