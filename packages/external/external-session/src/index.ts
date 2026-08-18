@@ -102,7 +102,6 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    */
   registerProvider(provider: ExternalSessionProvider): () => void {
     const name = provider.provider
-    // oxlint-disable-next-line typescript/no-misused-promises -- synchronous cleanup; direct return preserves disposer identity
     return this.ctx.effect(function* (this: ExternalSessions) {
       if (this.providers.has(name)) {
         throw new ExternalSessionError(
