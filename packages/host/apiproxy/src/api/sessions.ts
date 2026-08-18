@@ -14,6 +14,7 @@ import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/t
 import type { RpcId, RpcRequest, RpcResponse } from './rpc.ts'
 import type { ToolEventView } from './events.ts'
 import type { WorkspaceId } from './workspace.ts'
+import type { CommandResult } from '@deepseek-ai/dsh-commands'
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
@@ -370,6 +371,20 @@ export interface SessionsApi {
     clientTimeZone?: string
   }>):
   Promise<RpcResponse<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
+
+  /**
+   * Routes one slash command line for an external-mode session through its
+   * provider's native surfaces instead of the agent-loop command registry. An
+   * external session has no native Agent, so this is the per-mode command
+   * boundary: `/compact` runs the provider's native compact (recording
+   * `external/compaction-noticed`), `/model <id>` switches the live session's
+   * model (`external/model-switched`), and any other line — slash or plain —
+   * is forwarded verbatim as prompt text to the external agent. A native-mode
+   * session rejects with `invalid-mode`: it routes through the command
+   * registry instead.
+   */
+  command(request: RpcRequest<{ sessionId: SessionId; line: string }>):
+  Promise<RpcResponse<CommandResult>>
 
   /** Reads one durable image after proving that this session's log references its id. */
   attachment(request: RpcRequest<{ sessionId: SessionId; attachmentId: AttachmentIdType }>):

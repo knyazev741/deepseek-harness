@@ -40,6 +40,18 @@ export interface RpcErrorDetailsMap {
    * registered external provider, so no session was created.
    */
   'unknown-mode': { mode: string }
+  /**
+   * session.command addressed a native-mode session, but the per-session-mode
+   * command boundary is only for external-mode sessions; native sessions route
+   * through the agent-loop command registry.
+   */
+  'invalid-mode': { sessionId: SessionId }
+  /**
+   * A generic entry point resolved a session created in an external drive mode;
+   * such a session has no native Agent and must route through its external-session
+   * provider rather than the agent-loop dispatch.
+   */
+  'external-session': { sessionId: SessionId; mode: string }
   'invalid-time-zone': { value: string }
   'workspace-attach-failed': { sessionId: SessionId; workspaceId: string }
   'workspace-not-found': { workspaceId: string }

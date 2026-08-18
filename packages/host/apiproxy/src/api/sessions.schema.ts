@@ -303,6 +303,18 @@ export const sessionPromptValueSchema = z.object({
   }).optional(),
 }) satisfies z.ZodType<Wire<ResponseValue<'session.prompt'>>>
 
+/** session.command request payload: one exact slash line for an external-mode session. */
+export const sessionCommandRequestSchema = z.object({
+  sessionId: sessionIdSchema,
+  line: z.string(),
+}) satisfies z.ZodType<Wire<RequestPayload<'session.command'>>>
+
+/** session.command response value: the routed command outcome. */
+export const sessionCommandValueSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('success'), text: z.string().optional() }),
+  z.object({ kind: z.literal('error'), text: z.string() }),
+]) satisfies z.ZodType<Wire<ResponseValue<'session.command'>>>
+
 /** Opaque attachment id after string-shape validation. */
 export const attachmentIdSchema = z.string().min(1) as unknown as z.ZodType<AttachmentIdType>
 
