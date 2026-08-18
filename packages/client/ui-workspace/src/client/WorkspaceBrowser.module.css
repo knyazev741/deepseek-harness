@@ -299,6 +299,40 @@
   padding-left: 0;
 }
 
+/* Wide-only browsing tabs separating the workspace tree from the CI-review
+   background. No new palette: active fill and hover reuse interactive and
+   elevated-button semantic tokens. */
+.tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin: 0 0 6px;
+  border-radius: 8px;
+}
+
+.tab {
+  flex: 1;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  padding: 0 8px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.tab:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.tabActive {
+  background: var(--dsw-alias-button-elevated-fill);
+  color: var(--dsw-alias-label-primary);
+}
+
 /* Relative for the bottom fade overlay. */
 .treeBody {
   flex: 1;

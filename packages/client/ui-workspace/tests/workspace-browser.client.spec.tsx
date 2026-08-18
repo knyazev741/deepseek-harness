@@ -124,7 +124,7 @@ describe('WorkspaceBrowser', () => {
       useSessions: hook(sessions),
       useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s']), workspace('beta', ['beta-s'])])),
     })
-    expect(screen.getByText('工作区')).toBeTruthy()
+    expect(screen.getAllByText('工作区').length).toBeGreaterThanOrEqual(2) // header label + Workspaces tab
     expect(screen.getByText('alpha')).toBeTruthy()
     // Sessions hidden while their group is folded.
     expect(screen.queryByText('alpha-s')).toBeNull()
@@ -150,13 +150,39 @@ describe('WorkspaceBrowser', () => {
     expect(screen.getByRole('menuitem', { name: '手动排序' }).hasAttribute('disabled')).toBe(false)
     fireEvent.click(screen.getByRole('menuitem', { name: '按工作区' }))
     expect(b.store.getSnapshot().groupBy).toBe('workspace')
-    expect(screen.getByText('工作区')).toBeTruthy()
+    expect(screen.getAllByText('工作区').length).toBeGreaterThanOrEqual(2) // header label + Workspaces tab
 
     // Escape closes the menu without picking.
     fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
     expect(b.store.getSnapshot().groupBy).toBe('workspace')
+  })
+
+  it('Background tab shows only CI-review sessions grouped by workspace', () => {
+    const b = mount({
+      useSessions: hook(sessionState([
+        summary('review-a', 3, { origin: 'github-actions' }),
+        summary('plain-s', 2),
+      ])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['review-a', 'plain-s'])])),
+    })
+    expect(b.store.getSnapshot().tab).toBe('workspaces')
+    fireEvent.click(screen.getByText('alpha'))
+    expect(screen.getByText('review-a')).toBeTruthy()
+    expect(screen.getByText('plain-s')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: '后台' }))
+    expect(b.store.getSnapshot().tab).toBe('background')
+    // The project group header stays; only the CI-review session remains.
+    expect(screen.getByText('alpha')).toBeTruthy()
+    expect(screen.getByText('review-a')).toBeTruthy()
+    expect(screen.queryByText('plain-s')).toBeNull()
+
+    // Back to the workspace tree restores both rows.
+    fireEvent.click(screen.getByRole('tab', { name: '工作区' }))
+    expect(b.store.getSnapshot().tab).toBe('workspaces')
+    expect(screen.getByText('plain-s')).toBeTruthy()
   })
 
   it('persists flat-list drag order locally and applies Last updated within that account', async () => {

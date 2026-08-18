@@ -15,11 +15,16 @@ export const UNGROUPED_KEY = ''
 /** Display label for the ungrouped bucket row. */
 export const UNGROUPED_LABEL = 'Ungrouped'
 
+/** Coarse durable origin of a session (subagent child or CI-review run). */
+export type SessionOrigin = 'subagent' | 'github-actions'
+
 /** One top-level session row in a group or the flat list. */
 export interface SessionNode {
   id: SessionId
   /** Stored display title; the renderer substitutes the localized New Session label for blank rows. */
   title: string
+  /** Coarse durable origin; CI-review runs surface the Background tab and a badge. */
+  origin?: SessionOrigin
   /** The provisional blank session (renderer shows the localized New Session title). */
   blank: boolean
   /** The runtime Session list reports an interaction awaiting this user. */
@@ -59,6 +64,8 @@ export interface SearchResultNode {
   id: SessionId
   title: string
   workspace: string
+  /** Coarse durable origin; CI-review runs surface the GitHub Actions badge. */
+  origin?: SessionOrigin
   /** The runtime Session list reports an interaction awaiting this user. */
   pendingInteraction?: PendingInteractionStatus
   running: boolean
@@ -176,16 +183,18 @@ function groupByWorkspace(
   workspaces: readonly WorkspaceView[],
   archived: ReadonlySet<SessionId>,
   ungroupedOrder: readonly string[] | undefined,
+  origin: SessionOrigin | undefined,
 ): Group[] {
   const groups: Group[] = []
   const accounted = new Set<SessionId>()
+  const matchesOrigin = (session: SessionSummary): boolean => origin === undefined || session.origin === origin
   for (const workspace of workspaces) {
     const members: SessionSummary[] = []
     for (const id of workspace.sessionIds) {
       const summary = list.byId[id]
       if (summary === undefined) continue // account may lead the list pull; the row appears when the summary lands
       accounted.add(id)
-      if (!sessionVisible(summary, list.current, archived)) continue
+      if (!sessionVisible(summary, list.current, archived) || !matchesOrigin(summary)) continue
       members.push(summary)
     }
     groups.push(buildGroup(
@@ -196,7 +205,8 @@ function groupByWorkspace(
   const stray = list.ids
     .map(id => list.byId[id])
     .filter((s): s is SessionSummary =>
-      s !== undefined && !accounted.has(s.id) && sessionVisible(s, list.current, archived))
+      s !== undefined && !accounted.has(s.id)
+        && sessionVisible(s, list.current, archived) && matchesOrigin(s))
   if (stray.length > 0) {
     groups.push(buildGroup(
       UNGROUPED_KEY,
@@ -223,6 +233,7 @@ function sessionNode(
     runningSubagentCount: descendants.get(s.id)?.runningCount ?? 0,
     completed: s.completed === true,
     updatedAt: s.updatedAt,
+    ...(s.origin === undefined ? {} : { origin: s.origin }),
     ...(s.pendingInteraction === undefined ? {} : { pendingInteraction: s.pendingInteraction }),
   }
 }
@@ -239,6 +250,7 @@ function sessionNode(
  * @param workspaces - real workspaces in stable Host order.
  * @param archivedSessionIds - registry-global archive set.
  * @param view - local expansion arrays.
+ * @param origin - optional durable-origin filter (the Background tab narrows to CI-review runs).
  * @returns group sections in render order.
  */
 export function deriveGroups(
@@ -246,6 +258,7 @@ export function deriveGroups(
   workspaces: readonly WorkspaceView[],
   archivedSessionIds: readonly SessionId[],
   view: TreeView,
+  origin?: SessionOrigin,
 ): GroupNode[] {
   const archived = new Set(archivedSessionIds)
   const expandedGroups = new Set(view.expandedGroups)
@@ -255,7 +268,7 @@ export function deriveGroups(
     : (workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId as string | undefined)
         ?? UNGROUPED_KEY
   const groups: GroupNode[] = []
-  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
+  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder, origin)) {
     const expanded = expandedGroups.has(g.key)
     groups.push({
       key: g.key,
@@ -385,6 +398,7 @@ export function deriveSearchResults(
           ? {}
           : { pendingInteraction: summary.pendingInteraction }),
         completed: summary.completed === true,
+        ...(summary.origin === undefined ? {} : { origin: summary.origin }),
         ...match === undefined ? {} : { snippet: match.snippet },
       }
     }),

@@ -439,6 +439,10 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
         </span>
       )}
       <span className={css.title}>{title}</span>
+      {/* CI-review runs carry their durable origin: a compact inline badge. */}
+      {node.origin === 'github-actions' && (
+        <span className={css.githubBadge}>GitHub Actions</span>
+      )}
       {/* A blank New Session row is a provisional placeholder: nothing has
           happened in it yet, so a "now" timestamp and the row verbs
           (rename/fork/archive) would all act on content that does not

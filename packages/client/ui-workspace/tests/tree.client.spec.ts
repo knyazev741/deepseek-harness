@@ -141,6 +141,27 @@ describe('deriveGroups', () => {
     ).items[0]).toMatchObject({ id: parent.id, runningSubagentCount: 2 })
   })
 
+  it('propagates the durable origin into rows and narrows groups to it', () => {
+    const review = { ...summary('review', 5), origin: 'github-actions' as const }
+    const plain = summary('plain', 4)
+    const sessions = list(review, plain)
+    const filtered = deriveGroups(
+      sessions, [workspace('project', ['review', 'plain'])], noArchive, view(['project']), 'github-actions',
+    )
+    expect(filtered[0]!.sessions.map(node => [node.id, node.origin])).toEqual([[sid('review'), 'github-actions']])
+    expect(filtered[0]!.sessionCount).toBe(1)
+    // Without a filter the origin rides along only when present.
+    const all = deriveGroups(sessions, [workspace('project', ['review', 'plain'])], noArchive, view(['project']))
+    expect(all[0]!.sessions[0]).toMatchObject({ id: review.id, origin: 'github-actions' })
+    expect(all[0]!.sessions[1]).not.toHaveProperty('origin')
+    expect(deriveFlat(sessions, noArchive).find(node => node.id === review.id)).toMatchObject({ origin: 'github-actions' })
+    const search = deriveSearchResults(
+      sessions, [workspace('project', ['review', 'plain'])], 'review', noArchive,
+      { items: [], hasMore: false }, 10,
+    )
+    expect(search.items[0]).toMatchObject({ origin: 'github-actions' })
+  })
+
   it('ignores fork lineage and sorts every ungrouped session as a top-level row', () => {
     const parent = summary('parent', 1)
     const oldChild = { ...summary('old-child', 10), parentId: parent.id }
@@ -392,18 +413,22 @@ describe('deriveSearchResults', () => {
 })
 
 describe('createWorkspaceViewStore', () => {
-  it('stores grouping, ordering, Workspace expansion, and recent-session view order', () => {
+  it('stores grouping, ordering, Workspace expansion, browser tab, and recent-session view order', () => {
     const store = createWorkspaceViewStore().create()
     expect(store.getSnapshot().groupBy).toBe('workspace')
     expect(store.getSnapshot().orderBy).toBe('updated')
+    expect(store.getSnapshot().tab).toBe('workspaces')
+    store.actions.setTab('background')
     store.actions.setGroupBy('flat')
     store.actions.setOrderBy('updated')
     store.actions.setGroupExpanded('alpha', true)
     store.actions.syncSessionOrderAccount('alpha', ['two', 'one'], { one: 1, two: 2 })
     store.actions.setSessionOrder('alpha', ['one', 'two'])
     expect(store.getSnapshot().groupBy).toBe('flat')
+    expect(store.getSnapshot().tab).toBe('background')
     expect(store.getSnapshot()).toMatchObject({
       orderBy: 'updated',
+      tab: 'background',
       groupExpansion: { alpha: true },
       sessionOrderByAccount: { alpha: ['one', 'two'] },
       sessionUpdatedAtByAccount: { alpha: { one: 1, two: 2 } },

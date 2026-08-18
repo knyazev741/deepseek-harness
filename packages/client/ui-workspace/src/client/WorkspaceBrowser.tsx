@@ -19,7 +19,7 @@ import type {
   SessionId, SessionListState, SessionSearchResultItem, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { WorkspaceBrowserProps } from './contract/slots.ts'
-import type { SessionNode, SessionOrderBy } from './tree.ts'
+import type { SessionNode, SessionOrderBy, SessionOrigin } from './tree.ts'
 import { deriveFlat, deriveGroups, deriveSearchResults, UNGROUPED_KEY } from './tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './rows/Rows.tsx'
 import { FLAT_SESSION_ORDER_KEY } from './stores.ts'
@@ -243,6 +243,8 @@ type SessionTreeProps = Pick<
   onSessionArchive: (sessionId: SessionNode['id']) => void
   /** Session order behavior: fixed after edits, or additionally promoted by user activity. */
   orderBy: SessionOrderBy
+  /** Narrow the derived groups to one durable origin (the Background tab's CI-review view). */
+  originFilter?: SessionOrigin | undefined
 }
 
 /** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
@@ -251,7 +253,7 @@ function SessionTree({
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
-  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, t,
+  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, originFilter, t,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const current = list.current
@@ -324,8 +326,8 @@ function SessionTree({
       ...(sessionOrderByAccount[UNGROUPED_KEY] === undefined
         ? {}
         : { ungroupedOrder: sessionOrderByAccount[UNGROUPED_KEY] }),
-    }),
-    [list, orderedWorkspaces, archivedSessionIds, expandedGroups, sessionOrderByAccount],
+    }, originFilter),
+    [list, orderedWorkspaces, archivedSessionIds, expandedGroups, sessionOrderByAccount, originFilter],
   )
   const now = Date.now()
   const commitSessionDrag = (activeDrag: DragState, over: NonNullable<DragState['over']>): void => {
@@ -773,6 +775,7 @@ export function WorkspaceBrowser({
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
   const groupBy = useStore(s => s.groupBy)
   const orderBy = useStore(s => s.orderBy)
+  const tab = useStore(s => s.tab)
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
@@ -975,13 +978,50 @@ export function WorkspaceBrowser({
       setDeleteError(reason instanceof Error ? reason.message : String(reason))
     })
   }
+  // One shared session-tree renderer for the workspace and Background tabs:
+  // the only difference is the durable-origin filter the Background tab applies.
+  const renderSessionTree = (originFilter: SessionOrigin | undefined) => (
+    <SessionTree
+      useSessions={useSessions}
+      onSessionRename={onSessionRename}
+      onSessionArchive={onSessionArchive}
+      forkSession={forkSession}
+      markSessionUnread={markSessionUnread}
+      workspaces={workspaces}
+      groupExpansion={groupExpansion}
+      setGroupExpanded={actions.setGroupExpanded}
+      sessionOrderByAccount={sessionOrderByAccount}
+      sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
+      syncSessionOrderAccount={actions.syncSessionOrderAccount}
+      setSessionOrder={actions.setSessionOrder}
+      archivedSessionIds={archivedSessionIds}
+      startSession={startSession}
+      open={open}
+      insertWorkspaceBefore={insertWorkspaceBefore}
+      insertSessionBefore={insertSessionBefore}
+      orderBy={orderBy}
+      originFilter={originFilter}
+      t={t}
+      onRenameRequest={(workspaceId, currentTitle) => {
+        setRenameTarget({ workspaceId, currentTitle })
+        setRenameDraft(currentTitle)
+        setRenameError(null)
+      }}
+      onDeleteRequest={(workspaceId, title) => {
+        setDeleteTarget({ workspaceId, title })
+        setDeleteError(null)
+      }}
+    />
+  )
 
   return (
     <div className={clsx(css.root, !wide && css.rail)}>
       <div className={css.sectionHeader}>
         {wide && (
           <span className={clsx(css.sectionLabel, css.wide, searchExpanded && css.sectionLabelHidden)}>
-            {groupBy === 'flat' ? t('section.sessions') : t('section.workspaces')}
+            {tab === 'background'
+              ? t('browser.tab.background')
+              : (groupBy === 'flat' ? t('section.sessions') : t('section.workspaces'))}
           </span>
         )}
         {wide && (
@@ -1089,6 +1129,30 @@ export function WorkspaceBrowser({
         />
       </div>
 
+      {/* Wide-only browsing tabs: the workspace tree, or the CI-review background. */}
+      {wide && (
+        <div className={css.tabs} role="tablist" aria-label={t('browser.tabs.aria')}>
+          <button
+            type="button"
+            className={clsx(css.tab, tab === 'workspaces' && css.tabActive)}
+            role="tab"
+            aria-selected={tab === 'workspaces'}
+            onClick={() => { actions.setTab('workspaces') }}
+          >
+            {t('browser.tab.workspaces')}
+          </button>
+          <button
+            type="button"
+            className={clsx(css.tab, tab === 'background' && css.tabActive)}
+            role="tab"
+            aria-selected={tab === 'background'}
+            onClick={() => { actions.setTab('background') }}
+          >
+            {t('browser.tab.background')}
+          </button>
+        </div>
+      )}
+
       {/* The collapsed rail keeps search as its own 36px control. */}
       {!wide && <div className={css.search}>
         <Tooltip label={t('search')}>
@@ -1110,65 +1174,36 @@ export function WorkspaceBrowser({
       {/* Always-mounted seat keeps the region's flex slot while the list
           itself is wide-only. */}
       <div className={css.listArea}>
-        {wide && (normalizedQuery !== ''
-          ? (
-            <SearchResults
-              useSessions={useSessions}
-              open={open}
-              workspaces={workspaces}
-              archivedSessionIds={archivedSessionIds}
-              query={normalizedQuery}
-              remote={remoteSearch}
-              resultLimit={searchResultLimit}
-              t={t}
-            />
-          )
-          : groupBy === 'flat'
+        {wide && (tab === 'background'
+          ? renderSessionTree('github-actions')
+          : (normalizedQuery !== ''
             ? (
-              <FlatList
-                useSessions={useSessions} open={open} forkSession={forkSession} markSessionUnread={markSessionUnread}
-                onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
+              <SearchResults
+                useSessions={useSessions}
+                open={open}
+                workspaces={workspaces}
                 archivedSessionIds={archivedSessionIds}
-                orderBy={orderBy}
-                sessionOrderByAccount={sessionOrderByAccount}
-                sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
-                syncSessionOrderAccount={actions.syncSessionOrderAccount}
-                setSessionOrder={actions.setSessionOrder}
+                query={normalizedQuery}
+                remote={remoteSearch}
+                resultLimit={searchResultLimit}
                 t={t}
               />
             )
-            : (
-              <SessionTree
-                useSessions={useSessions}
-                onSessionRename={onSessionRename}
-                onSessionArchive={onSessionArchive}
-                forkSession={forkSession}
-                markSessionUnread={markSessionUnread}
-                workspaces={workspaces}
-                groupExpansion={groupExpansion}
-                setGroupExpanded={actions.setGroupExpanded}
-                sessionOrderByAccount={sessionOrderByAccount}
-                sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
-                syncSessionOrderAccount={actions.syncSessionOrderAccount}
-                setSessionOrder={actions.setSessionOrder}
-                archivedSessionIds={archivedSessionIds}
-                startSession={startSession}
-                open={open}
-                insertWorkspaceBefore={insertWorkspaceBefore}
-                insertSessionBefore={insertSessionBefore}
-                orderBy={orderBy}
-                t={t}
-                onRenameRequest={(workspaceId, currentTitle) => {
-                  setRenameTarget({ workspaceId, currentTitle })
-                  setRenameDraft(currentTitle)
-                  setRenameError(null)
-                }}
-                onDeleteRequest={(workspaceId, title) => {
-                  setDeleteTarget({ workspaceId, title })
-                  setDeleteError(null)
-                }}
-              />
-            ))}
+            : groupBy === 'flat'
+              ? (
+                <FlatList
+                  useSessions={useSessions} open={open} forkSession={forkSession} markSessionUnread={markSessionUnread}
+                  onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
+                  archivedSessionIds={archivedSessionIds}
+                  orderBy={orderBy}
+                  sessionOrderByAccount={sessionOrderByAccount}
+                  sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
+                  syncSessionOrderAccount={actions.syncSessionOrderAccount}
+                  setSessionOrder={actions.setSessionOrder}
+                  t={t}
+                />
+              )
+              : renderSessionTree(undefined)))}
       </div>
 
       <Modal

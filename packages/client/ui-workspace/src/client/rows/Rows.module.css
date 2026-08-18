@@ -196,6 +196,21 @@
   flex: 1;
 }
 
+/* CI-review origin: a compact inline pill riding the row's secondary
+   caption treatment — no new palette, only existing semantic tokens. */
+.githubBadge {
+  flex: none;
+  margin-right: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
 .meta {
   overflow: hidden;
   text-overflow: ellipsis;

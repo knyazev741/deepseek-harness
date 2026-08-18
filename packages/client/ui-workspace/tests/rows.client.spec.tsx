@@ -72,6 +72,26 @@ describe('workspace browser rows', () => {
     expect(screen.getByText('Flat Session').previousElementSibling?.querySelector('[data-state="ongoing"]')).toBeTruthy()
   })
 
+  it('renders the GitHub Actions badge only on a CI-review (github-actions) session row', () => {
+    const renderRow = (origin: SessionNode['origin'] | undefined) => render(
+      <SessionNodeItem
+        node={{
+          id: sid('ci'), title: 'CI run', blank: false, running: false,
+          runningSubagentCount: 0, completed: false, updatedAt: 0, ...(origin === undefined ? {} : { origin }),
+        }}
+        currentId={undefined} now={0} onOpen={vi.fn()}
+        onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} onMarkUnread={vi.fn()} t={t}
+      />,
+    )
+    const withBadge = renderRow('github-actions')
+    expect(screen.getByText('GitHub Actions')).toBeTruthy()
+    withBadge.unmount()
+    renderRow(undefined)
+    expect(screen.queryByText('GitHub Actions')).toBeNull()
+    renderRow('subagent')
+    expect(screen.queryByText('GitHub Actions')).toBeNull()
+  })
+
   it('renders a selected content-search row and opens only its session', () => {
     const onOpen = vi.fn()
     const result: SearchResultNode = {
