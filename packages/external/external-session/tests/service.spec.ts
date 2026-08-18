@@ -25,6 +25,7 @@ class StubProvider implements ExternalSessionProvider {
   lastBridge: ExternalBridgeContext | undefined
   readonly prompts: string[] = []
   readonly interrupted: SessionId[] = []
+  readonly compacted: SessionId[] = []
   readonly switched: { sessionId: SessionId; model: string }[] = []
   readonly disposed: SessionId[] = []
 
@@ -50,6 +51,10 @@ class StubProvider implements ExternalSessionProvider {
 
   interrupt(sessionId: SessionId): void {
     this.interrupted.push(sessionId)
+  }
+
+  async compact(sessionId: SessionId): Promise<void> {
+    this.compacted.push(sessionId)
   }
 
   async listModels(): Promise<ExternalModelInfo[]> {
@@ -121,13 +126,14 @@ describe('ExternalSessions registry', () => {
 
     await expect(service.prompt(SessionId('none'), 'hi')).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
     expect(() => { service.interrupt(SessionId('none')) }).toThrow(expect.objectContaining({ code: 'UNKNOWN_SESSION' }))
+    await expect(service.compact(SessionId('none'))).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
     await expect(service.setModel(SessionId('none'), 'm')).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
     await expect(service.dispose(SessionId('none'))).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
   })
 })
 
 describe('ExternalSessions dispatch', () => {
-  it('hands the bridge at start and dispatches prompt/interrupt/setModel/dispose to the owning provider', async () => {
+  it('hands the bridge at start and dispatches prompt/interrupt/compact/setModel/dispose to the owning provider', async () => {
     const { service } = await setup()
     const provider = new StubProvider('alpha', 'Alpha')
     service.registerProvider(provider)
@@ -144,6 +150,9 @@ describe('ExternalSessions dispatch', () => {
 
     service.interrupt(sessionId)
     expect(provider.interrupted).toEqual([sessionId])
+
+    await service.compact(sessionId)
+    expect(provider.compacted).toEqual([sessionId])
 
     await service.setModel(sessionId, 'm1')
     expect(provider.switched).toEqual([{ sessionId, model: 'm1' }])
@@ -276,6 +285,7 @@ describe('ExternalSessions model listing', () => {
       async start() {},
       async prompt() { return { turnId: ExternalTurnId('t1') } },
       interrupt() {},
+      async compact() {},
       async listModels() { return roster },
       async setModel() {},
       async dispose() {},

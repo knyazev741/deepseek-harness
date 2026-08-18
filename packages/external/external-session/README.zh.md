@@ -4,7 +4,7 @@
 
 外部交互式 agent（智能体）会话 Service Definition。负责定义 `ctx.externalSessions` 服务约定（[`ExternalSessionsService`](src/types.ts)）：一个按命名注册的提供方注册表，其提供方代表外部 agent 进程（Codex、Claude Code、ACP 客户端）驱动实时会话，此外还负责在 start 时交给提供方的按会话 bridge。作为[能力 seam 拆分](../../../.agents/notes/implemented/architecture/2026-06-13-capability-seams.md)中的 Service Definition 角色，它只依赖 cordis、品牌化 ID 原语、会话信封类型与 harness 错误基类——绝不依赖具体的外部 agent 或其线协议。第一个提供方（`external-session-codex`）与宿主 bridge 驱动是单独的程序包，消费该 seam 的约定。设计与阶段排期见[外部交互式 agent 会话规范说明](../../../.agents/notes/proposed/feature/2026-08-18-external-interactive-agent-sessions.md)。
 
-用一句话概括约定：注册表把唯一的提供方名称（`provider`，也是会话 mode id）映射到 [`ExternalSessionProvider`](src/types.ts) 实现；`start(request)` 解析提供方、记录会话到提供方的路由，并把实时 [`ExternalBridgeContext`](src/types.ts) 交给它——`appendEvent`（仅日志的会话事件）、`requestPermission`（询问人类）、`streamDelta`（仅实时的增量）、以及 `disposal` 信号。后续调用——`prompt`、`interrupt`、`setModel`、`dispose`——只接收会话 id 并分发给所属提供方。
+用一句话概括约定：注册表把唯一的提供方名称（`provider`，也是会话 mode id）映射到 [`ExternalSessionProvider`](src/types.ts) 实现；`start(request)` 解析提供方、记录会话到提供方的路由，并把实时 [`ExternalBridgeContext`](src/types.ts) 交给它——`appendEvent`（仅日志的会话事件）、`requestPermission`（询问人类）、`streamDelta`（仅实时的增量）、以及 `disposal` 信号。后续调用——`prompt`、`interrupt`、`compact`、`setModel`、`dispose`——只接收会话 id 并分发给所属提供方。`compact` 运行提供方的原生上下文压缩（外部模式下的 `/compact` 映射到这里）；原生表面缺少该操作的提供方会大声拒绝。
 
 注册表按 effect 作用域实现 HMR 安全：`registerProvider(provider)` 返回确切的 Cordis effect disposer。移除提供方会阻止新的启动，但不会撤销已交给持有者的实时会话。
 

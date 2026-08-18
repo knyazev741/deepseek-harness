@@ -94,6 +94,15 @@ class CodexProvider implements ExternalSessionProvider {
   }
 
   /**
+   * Run the app-server's native compact on the live session; the run records
+   * `external/compaction-noticed` through the session bridge on completion.
+   * @param sessionId - the live external session.
+   */
+  async compact(sessionId: SessionId): Promise<void> {
+    await this.require(sessionId).compact(new AbortController().signal)
+  }
+
+  /**
    * List the models this native install can switch to. Uses a live session's
    * wire when one exists; otherwise a short-lived wire against the deployment
    * working directory (the catalog is local, so the workspace is immaterial).

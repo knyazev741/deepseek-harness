@@ -183,6 +183,14 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
    */
   interrupt(sessionId: SessionId): void
   /**
+   * Compact the session through the provider's native mechanism. The external
+   * agent owns its context compaction; the harness never re-implements it
+   * across the wire. A provider whose native surface lacks the operation
+   * rejects loud so the caller can surface the limitation.
+   * @param sessionId - the live external session.
+   */
+  compact(sessionId: SessionId): Promise<void>
+  /**
    * List the models this mode can switch to, from its native catalog or its
    * configured roster per {@link ExternalAgentDescriptor.modelDirectory}.
    * @returns the disclosed models.
@@ -226,6 +234,11 @@ export interface ExternalSessionsService {
    * @param sessionId - the live external session.
    */
   interrupt(sessionId: SessionId): void
+  /**
+   * Compact a live external session through its provider's native mechanism.
+   * @param sessionId - the live external session.
+   */
+  compact(sessionId: SessionId): Promise<void>
   /**
    * List the models a provider can switch to.
    * @param provider - the registered provider name.

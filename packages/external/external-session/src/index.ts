@@ -219,6 +219,17 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   }
 
   /**
+   * Compact a live external session through its provider's native mechanism;
+   * the provider records `external/compaction-noticed` on the bridge.
+   * @param sessionId - the live external session.
+   * @throws {@link ExternalSessionError} when the session is not live or the
+   *   provider's native compact rejects.
+   */
+  async compact(sessionId: SessionId): Promise<void> {
+    await this.providerFor(sessionId).compact(sessionId)
+  }
+
+  /**
    * List the models a provider can switch to.
    * @param provider - the registered provider name.
    * @returns the disclosed models.
