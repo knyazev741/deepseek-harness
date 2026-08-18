@@ -79,10 +79,11 @@ export interface SessionHeader {
    */
   readonly seedLength?: number
   /**
-   * Coarse product classification for a session created as a subagent child.
-   * This is presentation metadata, not proof that the child is continuable.
+   * Coarse durable product classification for a session's creation context —
+   * a subagent child or a headless CI-review run. This is presentation
+   * metadata, not proof of continuability.
    */
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'github-actions'
   /**
    * Delegation depth: absent (zero) for a top-level session, parent depth + 1
    * for a subagent child. Persisted so a recursion budget survives restart and
@@ -115,7 +116,7 @@ export interface CreateSessionOptions {
     readonly parentSession?: SessionId
     readonly createdAt?: number
     readonly seedLength?: number
-    readonly origin?: 'subagent'
+    readonly origin?: 'subagent' | 'github-actions'
     readonly delegationDepth?: number
     readonly agentPreset?: string
   }

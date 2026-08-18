@@ -32,7 +32,7 @@ type FeedRow = {
   id: string
   cwd?: string
   parentId?: string
-  origin?: 'subagent'
+  origin?: 'subagent' | 'github-actions'
   running?: boolean
   blank?: boolean
   agentPreset?: string
@@ -93,6 +93,12 @@ describe('list store projection', () => {
     b.svc.handleHostEnvelope({ rpcId: 'r1' as never, payload: { type: 'host/session-added', blank: true, sessionId: sid('s2') } as never })
     await Promise.resolve()
     expect(b.svc.list.getSnapshot().ids).toContain('s2')
+  })
+
+  it('threads a github-actions origin from the host list into the summary', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 'ci', origin: 'github-actions' }])
+    expect(b.svc.list.getSnapshot().byId[sid('ci')]).toMatchObject({ origin: 'github-actions' })
   })
 })
 

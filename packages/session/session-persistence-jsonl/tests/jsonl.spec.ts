@@ -948,6 +948,18 @@ describe('JsonlSessionPersistence: scanLog unit', () => {
     expect(() => scanLog(Buffer.from(log))).toThrow(/session header/)
   })
 
+  it('round-trips a github-actions session origin', () => {
+    const line = toHeaderLine({
+      version: 0,
+      id: SessionId('ci-run'),
+      createdAt: 1,
+      delegationDepth: 0,
+      origin: 'github-actions',
+    })
+    const log = `${JSON.stringify(line)}\n`
+    expect(scanLog(Buffer.from(log)).meta.origin).toBe('github-actions')
+  })
+
   it('a seq gap after the last turn/end bounds the preserved tail (torn fragment tolerated)', () => {
     const log = [
       JSON.stringify({ type: 'session', version: 0, id: 'g', createdAt: 1, delegationDepth: 0 }),

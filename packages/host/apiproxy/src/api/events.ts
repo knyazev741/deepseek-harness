@@ -130,7 +130,7 @@ export type HostFrame =
     sessionId: SessionId
     blank: boolean
     parentSessionId?: SessionId
-    origin?: 'subagent'
+    origin?: 'subagent' | 'github-actions'
     cwd?: string
     agentPreset?: string
   }

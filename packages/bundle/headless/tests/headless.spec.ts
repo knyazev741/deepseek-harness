@@ -245,6 +245,64 @@ describe('headless runner', () => {
     expect(() => { apply(ctx, { task: 't' }) }).toThrow('must provide ctx.appExit')
   })
 
+  it('forwards DSH_SESSION_ORIGIN onto the created session header', async () => {
+    const previous = process.env.DSH_SESSION_ORIGIN
+    process.env.DSH_SESSION_ORIGIN = 'github-actions'
+    try {
+      const created: Array<string | undefined> = []
+      const test = await bench({
+        before(session) { created.push(session.header.origin) },
+        afterPrompt: () => {},
+      })
+      await test.run()
+      expect(created).toEqual(['github-actions'])
+      await test.ctx.fiber.dispose()
+    } finally {
+      if (previous === undefined) delete process.env.DSH_SESSION_ORIGIN
+      else process.env.DSH_SESSION_ORIGIN = previous
+    }
+  })
+
+  it('leaves the origin unset when DSH_SESSION_ORIGIN is empty', async () => {
+    const previous = process.env.DSH_SESSION_ORIGIN
+    process.env.DSH_SESSION_ORIGIN = ''
+    try {
+      const created: Array<string | undefined> = []
+      const test = await bench({
+        before(session) { created.push(session.header.origin) },
+        afterPrompt: () => {},
+      })
+      await test.run()
+      expect(created).toEqual([undefined])
+      await test.ctx.fiber.dispose()
+    } finally {
+      if (previous === undefined) delete process.env.DSH_SESSION_ORIGIN
+      else process.env.DSH_SESSION_ORIGIN = previous
+    }
+  })
+
+  it('fails loud on an unsupported DSH_SESSION_ORIGIN value', async () => {
+    const ctx = new Context()
+    const previous = process.env.DSH_SESSION_ORIGIN
+    process.env.DSH_SESSION_ORIGIN = 'bogus'
+    try {
+      let err = ''
+      internals.stdout = { write: () => true }
+      internals.stderr = { write: (chunk: string) => { err += chunk; return true } }
+      const exited = new Promise<number>((resolve) => { ctx.provide('appExit', resolve) })
+      ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'p', model: 'm' }) } as never)
+      ctx.provide('sessions', { flush: () => Promise.resolve(true) } as never)
+      ctx.provide('agents', { create: () => Promise.reject(new Error('unreached')) } as never)
+      apply(ctx, { task: 't' })
+      expect(await exited).toBe(1)
+      expect(err).toContain('DSH_SESSION_ORIGIN must be "subagent" or "github-actions", got "bogus"')
+    } finally {
+      if (previous === undefined) delete process.env.DSH_SESSION_ORIGIN
+      else process.env.DSH_SESSION_ORIGIN = previous
+    }
+    await ctx.fiber.dispose()
+  })
+
   it('validates config: the task is required', () => {
     expect(() => new Config({} as never)).toThrow()
     expect(new Config({ task: 'x' })).toEqual({ task: 'x' })

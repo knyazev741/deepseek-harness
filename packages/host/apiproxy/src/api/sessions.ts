@@ -197,7 +197,7 @@ export interface SessionSummary {
   /** fork/spawn lineage (session.header.parentSession passthrough); absent for root sessions. */
   parentSessionId?: SessionId
   /** Coarse durable origin used by navigation surfaces; never proves resumability. */
-  origin?: 'subagent'
+  origin?: 'subagent' | 'github-actions'
   /** Session working directory (header.cwd passthrough); absent when unrecorded. */
   cwd?: string
   /**

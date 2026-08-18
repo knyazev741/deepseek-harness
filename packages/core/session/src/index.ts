@@ -122,8 +122,8 @@ function validateSessionHeader(id: SessionId, input: unknown): SessionHeader {
     && (typeof record.seedLength !== 'number' || !Number.isSafeInteger(record.seedLength) || record.seedLength < 0)) {
     throw new Error('session header seedLength must be a non-negative safe integer')
   }
-  if (record.origin !== undefined && record.origin !== 'subagent') {
-    throw new Error('session header origin must be "subagent"')
+  if (record.origin !== undefined && record.origin !== 'subagent' && record.origin !== 'github-actions') {
+    throw new Error('session header origin must be "subagent" or "github-actions"')
   }
   if (record.delegationDepth !== undefined
     && (typeof record.delegationDepth !== 'number' || !Number.isSafeInteger(record.delegationDepth) || record.delegationDepth < 0)) {

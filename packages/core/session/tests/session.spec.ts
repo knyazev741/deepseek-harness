@@ -1292,6 +1292,15 @@ describe('SessionStore', () => {
     })
   })
 
+  it('attaches a github-actions origin from meta to the header', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId('ci-run'), {
+      meta: { origin: 'github-actions' },
+    })
+    expect(session.header.origin).toBe('github-actions')
+  })
+
   it('rejects non-JSON and invalid scalar session metadata', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)

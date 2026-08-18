@@ -177,6 +177,22 @@ describe('rowToMeta', () => {
     })).toMatchObject({ id: 'with-origin', origin: 'subagent' })
   })
 
+  it('restores a github-actions origin', () => {
+    expect(rowToMeta({
+      id: 'ci-run',
+      version: 0,
+      created_at: 1,
+      cwd: null,
+      parent_session: null,
+      seed_length: null,
+      origin: 'github-actions',
+      incarnation: 'ci-run',
+      revision: 1,
+      delegation_depth: null,
+      agent_preset: null,
+    })).toMatchObject({ id: 'ci-run', origin: 'github-actions' })
+  })
+
   it('rejects fractional stored creation metadata', () => {
     expect(() => rowToMeta({
       id: 'fractional',

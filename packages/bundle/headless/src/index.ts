@@ -51,6 +51,20 @@ interface HeadlessIo {
   exit(code: number): void
 }
 
+/**
+ * Resolve the requested session origin from `DSH_SESSION_ORIGIN`. Empty or
+ * absent → `undefined` (no origin on the header). Any other non-empty value
+ * fails loudly: a typo would otherwise silently drop the marker the caller
+ * asked for.
+ * @returns the durable session origin, or `undefined` to leave it unset.
+ */
+function headlessOrigin(): 'subagent' | 'github-actions' | undefined {
+  const raw = process.env.DSH_SESSION_ORIGIN
+  if (raw === undefined || raw === '') return undefined
+  if (raw === 'subagent' || raw === 'github-actions') return raw
+  throw new Error(`DSH_SESSION_ORIGIN must be "subagent" or "github-actions", got "${raw}"`)
+}
+
 /** The process streams the runner writes to; tests substitute captures. */
 export const internals: { stdout: HeadlessIo['stdout']; stderr: HeadlessIo['stderr'] } = {
   stdout: process.stdout,
@@ -108,9 +122,13 @@ async function run(ctx: Context, task: string, io: HeadlessIo): Promise<void> {
   // host plane and the agent reads them from the global layer. A deployment
   // that DOES configure one has to join it here first
   // (@deepseek-ai/dsh-agent-presets README, "Composing a child agent").
+  const origin = headlessOrigin()
   const { agent } = await agents.create({
     sessionId: SessionId(`session-${randomUUID()}`),
-    meta: { cwd: process.cwd() },
+    meta: {
+      cwd: process.cwd(),
+      ...(origin === undefined ? {} : { origin }),
+    },
     agentOptions: { provider: selection.provider, model: selection.model },
     setup: (agentCtx) => {
       const selected: ModelSelectionRef = { current: selection, assembled: undefined }

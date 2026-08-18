@@ -132,6 +132,24 @@ describe('sessions.list cold merge', () => {
     ]))
   })
 
+  it('projects a github-actions origin through the cold list', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(UserQuestionService)
+    const meta = header('ci-run', 100, { origin: 'github-actions' })
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      locate: () => undefined,
+      readFrom: () => Promise.reject(new Error('unexpected read')),
+    } as never)
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+
+    const response = await api.sessions.list(request({}))
+    expect(response.result.ok).toBe(true)
+    if (!response.result.ok) throw new Error('unreachable')
+    expect(response.result.value.items[0]).toMatchObject({ sessionId: sid('ci-run'), origin: 'github-actions' })
+  })
+
   it('can disable bounded blank probes without hiding cold Sessions', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)

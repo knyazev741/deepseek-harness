@@ -23,7 +23,7 @@ export interface SessionListEntry {
   blank: boolean
   parentSessionId?: SessionId
   /** Coarse durable origin for navigation filtering; not a continuation capability. */
-  origin?: 'subagent'
+  origin?: 'subagent' | 'github-actions'
   cwd?: string
   /** Agent preset the session's agent was composed from (summary passthrough). */
   agentPreset?: string

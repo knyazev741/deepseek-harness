@@ -95,7 +95,7 @@ export interface CreateAgentOptions {
     readonly cwd?: string
     readonly parentSession?: SessionId
     readonly seedLength?: number
-    readonly origin?: 'subagent'
+    readonly origin?: 'subagent' | 'github-actions'
     readonly delegationDepth?: number
     readonly agentPreset?: string
   }

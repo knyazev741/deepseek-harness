@@ -38,7 +38,7 @@ export interface HeaderLine {
   cwd?: string
   parentSession?: SessionId
   seedLength?: number
-  origin?: 'subagent'
+  origin?: 'subagent' | 'github-actions'
   delegationDepth: number
   agentPreset?: string
 }
@@ -101,7 +101,8 @@ function isHeaderLine(value: unknown): value is HeaderLine {
     && (value as { delegationDepth: number }).delegationDepth >= 0
     && !Object.is((value as { delegationDepth: number }).delegationDepth, -0)
     && ((value as { origin?: unknown }).origin === undefined
-      || (value as { origin?: unknown }).origin === 'subagent')
+      || (value as { origin?: unknown }).origin === 'subagent'
+      || (value as { origin?: unknown }).origin === 'github-actions')
     && ((value as { agentPreset?: unknown }).agentPreset === undefined
       || typeof (value as { agentPreset?: unknown }).agentPreset === 'string')
   )
