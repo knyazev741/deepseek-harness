@@ -1,0 +1,35 @@
+agent-default-model:
+  provider: knyazev-ai
+  model: deepseek-v4-flash
+
+llm-pi-ai:
+  providers:
+    knyazev-ai:
+      apiKeyEnv: KNYAZEV_AI_API_KEY
+      api: openai-completions
+      baseURL: https://knyazevai.work/v1
+      streamIdleTimeoutMs: 900000
+      compat:
+        thinkingFormat: qwen
+        supportsReasoningEffort: false
+      reasoning: high
+      models:
+        - id: deepseek-v4-flash
+          name: DeepSeek V4 Flash
+          contextWindow: 400000
+          maxTokens: 40000
+          reasoningEfforts:
+            off: null
+            high: high
+            max: max
+        - id: kimi-2.6
+          name: Kimi 2.6
+          contextWindow: 262144
+          maxTokens: 40000
+          reasoningEfforts:
+            off: null
+            high: high
+            max: max
+        - id: minimax-2.7
+          name: MiniMax 2.7
+          contextWindow: 204800

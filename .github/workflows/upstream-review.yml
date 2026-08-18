@@ -5,15 +5,18 @@
 #   `upstream-sync.yml`).
 # - Runs the fork's own sanity gates (typecheck + unit tests) on the PR head,
 #   so a broken upstream state is caught before merge.
-# - Asks knyazevai.work (deepseek-v4-flash) to review the diff and returns a
-#   JSON verdict { safe, summary, risks }.
+# - Runs a multi-turn DeepSeek Harness headless agent on knyazevai.work
+#   (deepseek-v4-flash) that reviews the diff over several turns and returns a
+#   JSON verdict { safe, summary, risks } that CI parses from stdout.
 # - Posts the review as a PR comment. Merges the PR (merge commit) only when
 #   the verdict is safe AND the gates pass. A "risky" verdict leaves the PR
 #   open for human review — the automation never merges a dangerous diff and
 #   never deploys anything.
 #
 # Required repository secret: KNYAZEV_AI_API_KEY (the same key the local
-# knyazev-ai provider route uses).
+# knyazev-ai provider route uses). A missing or invalid key fails the review
+# run, which fails closed to safe=false: the PR is never auto-merged without
+# a review.
 
 name: upstream-review
 
@@ -62,45 +65,72 @@ jobs:
         env:
           KNYAZEV_AI_API_KEY: ${{ secrets.KNYAZEV_AI_API_KEY }}
         run: |
-          DIFF=$(git diff origin/master...HEAD | head -c 300000)
-          if [ -z "$KNYAZEV_AI_API_KEY" ]; then
-            echo "verdict=safe" >> "$GITHUB_OUTPUT"
-            echo "summary=AI review skipped: KNYAZEV_AI_API_KEY secret is not configured; gates only." >> "$GITHUB_OUTPUT"
-            echo "risks=[]" >> "$GITHUB_OUTPUT"
-            exit 0
+          set -euo pipefail
+
+          # 1. Write the full sync diff for the review agent to read.
+          git diff origin/master...HEAD > /tmp/sync-diff.txt
+
+          # 2. Fresh, isolated DSH home carrying the knyazev-ai route so the
+          #    headless runner resolves the agent to knyazev-ai/deepseek-v4-flash.
+          DSH_HOME="$(mktemp -d)"
+          export DSH_HOME
+          cp .github/review/headless-settings.yaml "$DSH_HOME/settings.yaml"
+          export KNYAZEV_AI_API_KEY
+
+          # 3. The multi-turn review task, from a committed file.
+          TASK="$(cat .github/review/reviewer-task.txt)"
+
+          # 4. Run the multi-turn headless agent; it runs fully from source
+          #    (no build needed). Exit 0 == final turn completed, 1 == error.
+          set +e
+          pnpm dsh --profile headless "$TASK" > review.stdout 2> review.stderr
+          DSH_RC=$?
+          set -e
+
+          # 5. Extract the trailing JSON verdict robustly (prose may precede it;
+          #    pnpm adds its own stdout banner). Fail closed to safe=false on a
+          #    nonzero run or an unparseable verdict.
+          if [ "$DSH_RC" -eq 0 ]; then
+            REVIEW_STDOUT="$(cat review.stdout)"
+          else
+            REVIEW_STDOUT=""
+            echo "dsh headless exited $DSH_RC; stderr:" >&2
+            cat review.stderr >&2
           fi
-          DIFF_CONTENT="$DIFF" python3 - <<'PYEOF'
-          import json, os, urllib.request
-          prompt = (
-            "You are the review agent for an automated sync PR that brings upstream "
-            "deepseek-ai/deepseek-harness master changes into a fork. The fork's own "
-            "changes always win on conflicts, so this diff is purely upstream work.\n\n"
-            "Return STRICT JSON: {\"safe\": bool, \"summary\": string, \"risks\": [string]}.\n"
-            "safe=false if the diff contains anything dangerous: credential or secret "
-            "leaks, destructive data deletion, malicious code, build-breaking config, "
-            "or obvious security regressions. For ordinary code/test/doc changes safe=true.\n\n"
-            "DIFF:\n" + os.environ["DIFF_CONTENT"]
-          )
-          body = json.dumps({
-            "model": "deepseek-v4-flash",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0,
-          }).encode()
-          req = urllib.request.Request(
-            "https://knyazevai.work/v1/chat/completions",
-            data=body,
-            headers={
-              "Authorization": "Bearer " + os.environ["KNYAZEV_AI_API_KEY"],
-              "Content-Type": "application/json",
-            },
-          )
-          with urllib.request.urlopen(req, timeout=300) as resp:
-            data = json.load(resp)
-          verdict = json.loads(data["choices"][0]["message"]["content"])
+          export REVIEW_STDOUT
+          python3 - <<'PYEOF'
+          import json, os
+
+          raw = os.environ.get("REVIEW_STDOUT", "")
+
+          def iter_objects(s):
+              dec = json.JSONDecoder()
+              i, n = 0, len(s)
+              while i < n:
+                  try:
+                      obj, end = dec.raw_decode(s, i)
+                      yield obj
+                      i = end
+                  except ValueError:
+                      i += 1
+
+          verdict = None
+          for obj in iter_objects(raw):
+              if isinstance(obj, dict) and isinstance(obj.get("safe"), bool):
+                  verdict = obj
+
+          if verdict is None:
+              verdict = {"safe": False, "summary": "review failed", "risks": []}
+          else:
+              risks = verdict.get("risks")
+              verdict["safe"] = bool(verdict.get("safe"))
+              verdict["summary"] = str(verdict.get("summary") or "review failed")
+              verdict["risks"] = [str(r) for r in risks] if isinstance(risks, list) else []
+
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-            out.write(f"verdict={'safe' if verdict.get('safe') else 'risky'}\n")
-            out.write("summary=" + json.dumps(verdict.get('summary', '')) + "\n")
-            out.write("risks=" + json.dumps(json.dumps(verdict.get('risks', []))) + "\n")
+              out.write(f"verdict={'safe' if verdict['safe'] else 'risky'}\n")
+              out.write("summary=" + json.dumps(verdict["summary"]) + "\n")
+              out.write("risks=" + json.dumps(json.dumps(verdict["risks"])) + "\n")
           PYEOF
 
       - name: Post the review comment
