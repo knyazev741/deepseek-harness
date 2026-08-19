@@ -547,13 +547,17 @@ export class SessionManager {
    * @returns the create result.
    */
   async create(
-    opts: { workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId } = {},
+    opts: { workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId; mode?: string; model?: string } = {},
   ): Promise<RpcResult<{ sessionId: SessionId }>> {
     try {
       const shared = opts.sessionId === undefined ? {} : { sessionId: opts.sessionId }
+      const modeModel = {
+        ...(opts.mode === undefined ? {} : { mode: opts.mode }),
+        ...(opts.model === undefined ? {} : { model: opts.model }),
+      }
       const payload = opts.workspaceId !== undefined
-        ? { workspaceId: opts.workspaceId, ...shared }
-        : { ...(opts.cwd === undefined ? {} : { cwd: opts.cwd }), ...shared }
+        ? { workspaceId: opts.workspaceId, ...shared, ...modeModel }
+        : { ...(opts.cwd === undefined ? {} : { cwd: opts.cwd }), ...shared, ...modeModel }
       const { result } = await this.api.sessions.create(payload)
       if (result.ok) {
         this.recordMutation({ kind: 'upsert', summary: {

@@ -1,0 +1,95 @@
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dsw-text);
+}
+
+.seat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-border, rgba(255 255 255 / 0.14));
+  border-radius: 8px;
+  background: var(--dsw-surface, rgba(255 255 255 / 0.06));
+  color: var(--dsw-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.seat:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.seatIcon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.seatLabel {
+  white-space: nowrap;
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  opacity: 0.7;
+}
+
+.modelSeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-border, rgba(255 255 255 / 0.14));
+  border-radius: 8px;
+  background: var(--dsw-surface, rgba(255 255 255 / 0.06));
+  color: var(--dsw-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.modelSeat:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.modelLabel {
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.modelValue {
+  white-space: nowrap;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0;
+}
+
+.itemName {
+  white-space: nowrap;
+}
+
+.itemDesc,
+.itemModels {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.itemFail {
+  font-size: 12px;
+  color: var(--dsw-warning, #f0b429);
+  white-space: nowrap;
+}
