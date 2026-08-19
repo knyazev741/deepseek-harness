@@ -50,6 +50,9 @@ async function bench() {
       },
     },
   } as never)
+  // The external transcript nodes register into ui-conversation's event
+  // registry; provide the registry so the apply's inject branch mounts.
+  ctx.provide('conversationEvents', { register: () => () => {} } as never)
   return {
     ctx, slots: ctx.get('slots') as SlotRegistry, creates, externalModesCalls,
     failCreate: (message: string) => { createFail = message },

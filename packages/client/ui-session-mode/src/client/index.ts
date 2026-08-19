@@ -18,6 +18,7 @@ import type { ModePickerInjected } from './ModePicker.tsx'
 import { ModePicker } from './ModePicker.tsx'
 import { ModeSeatController } from './seat-store.ts'
 import { en, zh, type ModeSeatKey } from './locales.ts'
+import { registerExternalTranscriptNodes, registerExternalTranscriptRenderers } from './transcript/register.ts'
 // Type-only: pulls the ui-slots LocaleNamespaceMap merge for this picker's copy.
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
@@ -43,6 +44,14 @@ export function apply(ctx: ClientContext): void {
   const { api } = ctx.get('connection') as ConnectionHandle
 
   ctx.effect(() => ctx.locale.register('sessionMode', { zh, en }), 'ui-session-mode: picker dictionaries')
+
+  // The external-session transcript rows need ui-conversation's node
+  // machinery; wait for its `conversationEvents` service and the chat-node
+  // declaration before registering, so the two plugins compose in any order.
+  ctx.inject(['conversationEvents', 'conversation'], (scope: ClientContext) => {
+    registerExternalTranscriptNodes(scope)
+    registerExternalTranscriptRenderers(scope)
+  })
 
   // Register the hero seat. Binding inside the conversation scope mirrors the
   // agent-preset seat: the session flow lives there, and the staged choice
