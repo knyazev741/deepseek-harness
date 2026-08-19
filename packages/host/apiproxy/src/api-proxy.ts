@@ -1763,12 +1763,15 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * @param sessionId - the target (possibly preallocated) session id.
    * @param cwd - the absolute project directory the external agent runs in.
    * @param mode - the registered external provider name driving this session.
+   * @param model - optional initial model id from the mode's catalog/roster.
    * @returns the entered session (a pre-existing one is returned unchanged).
    */
-  function ensureExternalSession(sessionId: SessionId, cwd: string, mode: string): Session {
+  function ensureExternalSession(sessionId: SessionId, cwd: string, mode: string, model?: string): Session {
     const existing = ctx.sessions.get(sessionId)
     if (existing !== undefined) return existing
-    return ctx.sessions.create(sessionId, { meta: { cwd, mode } })
+    return ctx.sessions.create(sessionId, {
+      meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
+    })
   }
 
   /** Resolve or create one path while holding the Host's workspace-create chain. */
@@ -2230,7 +2233,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             })
           }
           try {
-            await ensureExternalSession(sessionId, cwd, mode)
+            await ensureExternalSession(sessionId, cwd, mode, request.payload.model)
           } catch (error: unknown) {
             return err(request, {
               code: 'internal',

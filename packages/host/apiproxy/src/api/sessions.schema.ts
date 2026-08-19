@@ -106,6 +106,7 @@ export const sessionCreateRequestSchema = z.object({
   sessionId: sessionIdSchema.optional(),
   agentPreset: z.string().optional(),
   mode: z.string().optional(),
+  model: z.string().optional(),
 }).refine(
   payload => payload.workspaceId === undefined || payload.cwd === undefined,
   { message: 'session.create accepts workspaceId or cwd, not both' },

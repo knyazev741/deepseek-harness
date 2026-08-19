@@ -78,6 +78,9 @@ function startOnProvider(ctx: Context, session: Session, mode: string): void {
     sessionId: session.id,
     provider: mode,
     cwd,
+    // The initial model the create gateway stamped on the durable header; the
+    // provider resolves it against its own catalog/roster at start.
+    ...session.header.model === undefined ? {} : { model: session.header.model },
   }).catch((error: unknown) => {
     // A provider that rejects start (e.g. an unavailable child process) must
     // surface: the session is already published, so the failure cannot unwind

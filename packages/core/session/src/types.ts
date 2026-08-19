@@ -105,6 +105,12 @@ export interface SessionHeader {
    * resolvable across restart.
    */
   readonly mode?: string
+  /**
+   * Initial model for an external-mode session: a provider id from that mode's
+   * catalog/roster, stamped at creation so the bridge driver can hand it to
+   * the provider at start. Absent lets the provider/default apply.
+   */
+  readonly model?: string
 }
 
 /**
@@ -128,6 +134,7 @@ export interface CreateSessionOptions {
     readonly delegationDepth?: number
     readonly agentPreset?: string
     readonly mode?: string
+    readonly model?: string
   }
 }
 

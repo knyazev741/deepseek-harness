@@ -36,6 +36,7 @@ class StubProvider implements ExternalSessionProvider {
   async start(_request: ExternalSessionStart, _bridge: ExternalBridgeContext) {}
   async prompt() { return { turnId: ExternalTurnId('t1') } }
   interrupt() {}
+  async compact() {}
   async listModels() { return [] }
   async setModel() {}
   async dispose() {}
@@ -73,6 +74,20 @@ describe('session.create mode arms', () => {
     expect(list.result.ok).toBe(true)
     const row = list.result.ok ? list.result.value.items.find(item => item.sessionId === SessionId('e1')) : undefined
     expect(row?.mode).toBe('alpha')
+  })
+
+  it('stamps an initial model on the external session header for the driver', async () => {
+    const ctx = await harness()
+    const result = await ctx.apiProxy.sessions.create(request({
+      sessionId: SessionId('e1m'),
+      cwd: '/tmp',
+      mode: 'alpha',
+      model: 'gpt-5',
+    }))
+    expect(result.result.ok).toBe(true)
+    const session = ctx.sessions.get(SessionId('e1m'))
+    expect(session?.header.mode).toBe('alpha')
+    expect(session?.header.model).toBe('gpt-5')
   })
 
   it('fails loud with unknown-mode when the provider is not registered', async () => {

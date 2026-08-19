@@ -310,6 +310,12 @@ export interface SessionsApi {
    * client) creates the session without a native agent and hands it to the
    * configured bridge driver. An unregistered or unknown mode fails with
    * `unknown-mode`.
+   *
+   * `model` names the initial model for an external-mode session (a provider
+   * id from that mode's `externalModes` catalog or `config` roster); it is
+   * stored on the header so the bridge driver can hand it to the provider at
+   * start. Ignored for a `dsh`-mode session, which routes `model` through the
+   * ordinary model-selection machinery.
    */
   create(request: RpcRequest<{
     workspaceId?: WorkspaceId
@@ -317,6 +323,7 @@ export interface SessionsApi {
     sessionId?: SessionId
     agentPreset?: string
     mode?: string
+    model?: string
   }>):
   Promise<RpcResponse<{ sessionId: SessionId; agentPreset?: string }>>
 
