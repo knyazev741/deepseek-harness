@@ -1,0 +1,33 @@
+/**
+ * Package-owned invariant companion for `@deepseek-ai/dsh-client-ui-session-mode`.
+ * @module @deepseek-ai/dsh-client-ui-session-mode/invariant
+ */
+
+/* jscpd:ignore-start */
+import type { Context } from '@deepseek-ai/cordis'
+import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+
+const PACKAGE_NAME = '@deepseek-ai/dsh-client-ui-session-mode'
+
+/** Cordis companion plugin name. */
+export const name = 'client-ui-session-mode-invariant'
+/** Service required before the companion can reserve package ownership. */
+export const inject = ['invariants']
+
+/**
+ * No runtime invariant: the mode/model seat is client presentation over the
+ * host session-create gate and the external-session registry, each of which
+ * owns its own runtime checks (mode validation at session.create, provider
+ * modelDirectory checks in external-session). Nothing material is reserved in
+ * this package beyond the empty node apply.
+ */
+const install: InvariantInstaller = () => {}
+
+/**
+ * Register this package's invariant companion.
+ * @param ctx - Cordis context carrying the invariant service.
+ * @returns The installed registration's disposer after setup succeeds.
+ */
+export const apply = (ctx: Context): Promise<() => void> =>
+  Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))
+/* jscpd:ignore-end */

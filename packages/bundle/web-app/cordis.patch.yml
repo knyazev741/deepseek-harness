@@ -270,6 +270,9 @@
     - id: ui-user-questions
       name: '@deepseek-ai/dsh-client-ui-user-questions'
 
+    - id: ui-session-mode
+      name: '@deepseek-ai/dsh-client-ui-session-mode'
+
     - id: ui-trajectory
       name: '@deepseek-ai/dsh-client-ui-trajectory'
 
