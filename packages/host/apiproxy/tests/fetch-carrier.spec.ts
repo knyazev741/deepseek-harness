@@ -44,6 +44,9 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       async create(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { sessionId: 's-new' as never } } }
       },
+      async externalModes(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { groups: [], failures: [] } } }
+      },
       async history(request) {
         if (request.payload.sessionId === ('with-projections' as never)) {
           return {
@@ -108,6 +111,9 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       async cancel(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { accepted: true as const } } }
       },
+      async command(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { kind: 'success' as const } } }
+      },
     },
     subagents: {
       async list(request) {
@@ -162,7 +168,7 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
     },
     workspace: {
       async list(request) {
-        return { rpcId: request.rpcId, result: { ok: true, value: { items: [], archivedSessionIds: [] } } }
+        return { rpcId: request.rpcId, result: { ok: true, value: { items: [], archivedSessionIds: [], pinnedSessionIds: [] } } }
       },
       async create(request) {
         return {
@@ -190,6 +196,12 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       },
       async archiveSession(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { archivedSessionIds: [request.payload.sessionId] } } }
+      },
+      async setSessionPinned(request) {
+        return {
+          rpcId: request.rpcId,
+          result: { ok: true, value: { pinnedSessionIds: request.payload.pinned ? [request.payload.sessionId] : [] } },
+        }
       },
     },
     agentPresets: {

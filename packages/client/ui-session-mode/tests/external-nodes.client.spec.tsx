@@ -9,6 +9,7 @@
 
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import type { ChatNode, ChatNodeKind, ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import {
   ExternalCompactionRow,
   ExternalMessageRow,
@@ -16,13 +17,12 @@ import {
   ExternalPermissionRow,
   ExternalToolRow,
 } from '../src/client/transcript/external-nodes.tsx'
-import type { ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 
 afterEach(cleanup)
 
-/** Build the minimal runtime share each row reads: the frozen node. */
-function rowProps(node: { kind: string; data: unknown }): ChatNodeViewProps {
-  return { node } as unknown as ChatNodeViewProps
+/** Build the runtime share each row reads, keyed to the row's kind. */
+function rowProps<Kind extends ChatNodeKind>(node: { kind: Kind; data: ChatNode<Kind>['data'] }): ChatNodeViewProps<Kind> {
+  return { node } as unknown as ChatNodeViewProps<Kind>
 }
 
 describe('external message row', () => {

@@ -21,6 +21,12 @@ import {
   watchUserPatches,
 } from '../src/index.ts'
 
+// The capture plugin under test writes its applied config to a well-known
+// global slot; the spec reads/writes/deletes it to observe re-applies.
+declare global {
+  var __capturedValue: string | undefined
+}
+
 const NAME = 'dsh-test-bin'
 
 const tmp = (): string => mkdtempSync(join(tmpdir(), 'dsh-user-patches-'))
@@ -397,7 +403,7 @@ describe('boot with user patches', () => {
     } finally {
       await dispose()
       await ctx.fiber.dispose()
-      delete globalThis.__capturedValue
+      globalThis.__capturedValue = undefined
     }
   })
 

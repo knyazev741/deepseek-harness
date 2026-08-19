@@ -72,7 +72,7 @@ describe('the hero mode-seat controller', () => {
     expect(snapshot.error).toBeNull()
     expect(snapshot.modes).toHaveLength(2)
     expect(snapshot.modes[0]).toMatchObject({ provider: 'codex', label: 'Codex', hasModels: true })
-    expect(snapshot.modes[0].models).toEqual([
+    expect(snapshot.modes[0]?.models).toEqual([
       { id: 'gpt-5', name: 'GPT-5' },
       { id: 'sonnet', name: 'Sonnet' },
     ])
@@ -202,7 +202,7 @@ describe('the hero mode-seat controller', () => {
       vi.fn(),
     )
     await controller.load()
-    expect(controller.store.getSnapshot().modes[0].models)
+    expect(controller.store.getSnapshot().modes[0]?.models)
       .toEqual([{ id: 'gpt-5', name: 'GPT-5', description: 'flagship' }])
   })
 

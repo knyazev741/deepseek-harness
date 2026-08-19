@@ -36,7 +36,7 @@ describe('external transcript registration', () => {
     const ctx = {
       conversationEvents: { register: vi.fn() },
       slots: {
-        inject: (slot: string, cb: () => unknown) => { cb() },
+        inject: (_slot: string, cb: () => unknown) => { cb() },
         register: (meta: RegisterMeta) => { metas.push(meta) },
       },
     } as never

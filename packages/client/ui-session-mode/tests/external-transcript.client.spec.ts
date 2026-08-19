@@ -77,13 +77,13 @@ describe('external permission node', () => {
     const askedMatch = def.match(asked)!
     expect(def.match(decided)).toEqual({ id: 'a1', role: 'update' })
 
-    let state = def.start(context([{ event: asked, role: 'start' }]), { event: asked, role: 'start' } as never, undefined as never)
+    let state = def.start(context([{ event: asked, role: 'start' }]) as never, { event: asked, role: 'start' } as never, undefined as never)
     state = def.update(context([{ event: asked, role: 'start' }, { event: decided, role: 'update' }], state) as never, { event: decided, role: 'update' } as never)
 
     const node = def.buildViewNode!(context(
       [{ event: asked, role: 'start' }, { event: decided, role: 'update' }],
       state,
-    ))
+    ) as never)
     expect(node).toMatchObject({
       kind: 'external-permission',
       data: { askId: 'a1', title: 'Run?', options: ['Yes', 'No'], outcome: 'allowed' },
@@ -121,11 +121,11 @@ describe('external message node negatives', () => {
   const def = externalMessageDefinition
   it('rejects non-message events and non-objects', () => {
     expect(def.match(event('external/tool-activity', 3, {}))).toBeNull()
-    expect(def.match(null)).toBeNull()
+    expect(def.match(null as never)).toBeNull()
   })
   it('no-ops start and update', () => {
     const m = { event: event('external/message-added', 3, { role: 'agent', text: 'hi' }), role: 'update' } as never
-    expect(def.start(context([m]) as never, m)).toEqual({})
+    expect(def.start(context([m]) as never, m, undefined as never)).toEqual({})
     expect(def.update(context([m]) as never, m)).toEqual({})
   })
   it('skips empty windows and missing payloads', () => {
@@ -139,11 +139,11 @@ describe('external tool node negatives', () => {
   const def = externalToolDefinition
   it('rejects non-tool events', () => {
     expect(def.match(event('external/message-added', 4, {}))).toBeNull()
-    expect(def.match(undefined)).toBeNull()
+    expect(def.match(undefined as never)).toBeNull()
   })
   it('no-ops start and update', () => {
     const m = { event: event('external/tool-activity', 4, { kind: 'call', title: 'bash' }), role: 'update' } as never
-    expect(def.start(context([m]) as never, m)).toEqual({})
+    expect(def.start(context([m]) as never, m, undefined as never)).toEqual({})
     expect(def.update(context([m]) as never, m)).toEqual({})
   })
   it('skips empty windows, missing titles, and renders without detail', () => {
@@ -157,14 +157,14 @@ describe('external tool node negatives', () => {
 describe('external permission node negatives', () => {
   const def = externalPermissionDefinition
   it('rejects malformed and unrelated events', () => {
-    expect(def.match(null)).toBeNull()
+    expect(def.match(null as never)).toBeNull()
     expect(def.match(event('external/permission-asked', 5, { askId: 7, title: 'x' }))).toBeNull()
     expect(def.match(event('external/permission-asked', 5, { askId: '', title: 'x' }))).toBeNull()
     expect(def.match(event('external/permission-decided', 5, { askId: '' }))).toBeNull()
     expect(def.match(event('external/message-added', 5, { role: 'agent', text: 'hi' }))).toBeNull()
   })
   it('starts from a missing event with empty defaults', () => {
-    const asked = def.start(context([]) as never, { event: null, role: 'start' } as never)
+    const asked = def.start(context([]) as never, { event: null, role: 'start' } as never, undefined as never)
     expect(asked).toEqual({ asked: { askId: '', title: '', options: [] } })
   })
   it('update returns the prior state for non-decisions and missing outcomes', () => {
@@ -179,13 +179,13 @@ describe('external permission node negatives', () => {
     expect(out).toEqual({ ...base, decided: { askId: '', outcome: 'allowed' } })
   })
   it('skips an undefined state', () => {
-    expect(def.buildViewNode!(context([], undefined))).toBeNull()
+    expect(def.buildViewNode!(context([], undefined) as never)).toBeNull()
   })
   it('skips a state with no first match', () => {
-    expect(def.buildViewNode!(context([], { asked: { askId: 'a1', title: 'Run?', options: ['Yes'] } }))).toBeNull()
+    expect(def.buildViewNode!(context([], { asked: { askId: 'a1', title: 'Run?', options: ['Yes'] } }) as never)).toBeNull()
   })
   it('builds from a decided-first stream with no start', () => {
-    const node = def.buildViewNode!(decidedContext({ asked: { askId: 'a1', title: 'Run?', options: ['Yes'] } }))
+    const node = def.buildViewNode!(decidedContext({ asked: { askId: 'a1', title: 'Run?', options: ['Yes'] } }) as never)
     expect(node).toMatchObject({ kind: 'external-permission', anchorSeq: 0, data: { askId: 'a1' } })
   })
 })
@@ -199,10 +199,10 @@ describe('external compaction and model node negatives', () => {
   })
   it('no-op start and update', () => {
     const cm = { event: event('external/compaction-noticed', 7, { notice: 'n' }), role: 'update' } as never
-    expect(compaction.start(context([cm]) as never, cm)).toEqual({})
+    expect(compaction.start(context([cm]) as never, cm, undefined as never)).toEqual({})
     expect(compaction.update(context([cm]) as never, cm)).toEqual({})
     const mm = { event: event('external/model-switched', 7, { model: 'm' }), role: 'update' } as never
-    expect(model.start(context([mm]) as never, mm)).toEqual({})
+    expect(model.start(context([mm]) as never, mm, undefined as never)).toEqual({})
     expect(model.update(context([mm]) as never, mm)).toEqual({})
   })
   it('skip empty windows and missing payloads', () => {
