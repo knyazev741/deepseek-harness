@@ -174,6 +174,45 @@ export type QueueAction =
   | { kind: 'remove' }
   | { kind: 'steer' }
 
+/**
+ * Who answers a mode's model list: `provider` means a native model catalog,
+ * `config` a validated roster from the provider's own configuration.
+ * Mirrors {@link ExternalModelDirectory} from `dsh-external-session`.
+ */
+export type ExternalModelDirectory = 'provider' | 'config'
+
+/** One model a registered external mode can switch to (provider-native id). */
+export interface ExternalModelView {
+  /** Model id accepted by the provider's setModel. */
+  id: string
+  /** Human-readable model name for selectors. */
+  name: string
+  /** Optional user-facing distinction from otherwise similar models. */
+  description?: string
+}
+
+/** One registered external mode and its disclosed model catalog. */
+export interface ExternalModeGroup {
+  /** Registry name; also the session mode id and the session.create `mode` value. */
+  provider: string
+  /** Mode display label. */
+  label: string
+  /** Who answers this mode's model list. */
+  modelDirectory: ExternalModelDirectory
+  /** Models in provider-preferred order; empty when the mode offers none. */
+  models: ExternalModelView[]
+}
+
+/** A mode whose model catalog lookup failed; the mode itself remains selectable. */
+export interface ExternalModeFailure {
+  /** Registry name / mode id. */
+  provider: string
+  /** Mode display label. */
+  label: string
+  /** Lookup failure diagnostic. */
+  message: string
+}
+
 /** One Session list entry. */
 export interface SessionSummary {
   sessionId: SessionId
@@ -385,6 +424,17 @@ export interface SessionsApi {
    */
   command(request: RpcRequest<{ sessionId: SessionId; line: string }>):
   Promise<RpcResponse<CommandResult>>
+
+  /**
+   * Reads the registered external-session modes (the new-session mode picker's
+   * data) together with each mode's disclosed model catalog. Host-scoped, so
+   * it needs no session: the picker renders on the new-session screen before a
+   * session exists. A mode whose catalog lookup fails still appears, in
+   * `failures`, so the picker can offer the mode with an inline reason and let
+   * the session default its model.
+   */
+  externalModes(request: RpcRequest<{}>):
+  Promise<RpcResponse<{ groups: ExternalModeGroup[]; failures: ExternalModeFailure[] }>>
 
   /** Reads one durable image after proving that this session's log references its id. */
   attachment(request: RpcRequest<{ sessionId: SessionId; attachmentId: AttachmentIdType }>):

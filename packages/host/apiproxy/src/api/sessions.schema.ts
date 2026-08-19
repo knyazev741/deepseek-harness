@@ -248,6 +248,28 @@ export const sessionModelsRequestSchema = z.object({
   sessionId: sessionIdSchema,
 }) satisfies z.ZodType<Wire<RequestPayload<'session.models'>>>
 
+/** session.externalModes request payload (host-scoped; no session needed). */
+export const sessionExternalModesRequestSchema = z.object({}) satisfies z.ZodType<Wire<RequestPayload<'session.externalModes'>>>
+
+/** session.externalModes response value. */
+export const sessionExternalModesValueSchema = z.object({
+  groups: z.array(z.object({
+    provider: z.string().min(1),
+    label: z.string().min(1),
+    modelDirectory: z.union([z.literal('provider'), z.literal('config')]),
+    models: z.array(z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().optional(),
+    })),
+  })),
+  failures: z.array(z.object({
+    provider: z.string().min(1),
+    label: z.string().min(1),
+    message: z.string(),
+  })),
+}) satisfies z.ZodType<Wire<ResponseValue<'session.externalModes'>>>
+
 /** session.models response value. */
 export const sessionModelsValueSchema = z.object({
   current: modelSelectionSchema,

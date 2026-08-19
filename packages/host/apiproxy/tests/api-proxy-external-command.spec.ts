@@ -36,6 +36,7 @@ class CommandProvider implements ExternalSessionProvider {
   readonly switched: Array<{ sessionId: SessionId; model: string }> = []
   readonly prompts: string[] = []
   rejectModel = false
+  models: Array<{ id: string; name: string; description?: string }> = []
 
   constructor(
     readonly provider: string,
@@ -58,7 +59,7 @@ class CommandProvider implements ExternalSessionProvider {
       data: { notice: 'The external agent compacted its conversation context.' },
     })
   }
-  async listModels() { return [] }
+  async listModels() { return this.models }
   async setModel(sessionId: SessionId, model: string) {
     if (this.rejectModel) {
       throw new Error('external-session-codex: the Codex app-server 0.147.0 exposes no runtime model-switch on a live thread')
@@ -196,5 +197,65 @@ describe('session.command external-mode routing', () => {
     const result = await ctx.apiProxy.sessions.command(request({ sessionId: SessionId('missing'), line: '/compact' }))
     expect(result.result.ok).toBe(false)
     expect(result.result.ok ? undefined : result.result.error?.code).toBe('session-not-found')
+  })
+})
+
+describe('session.externalModes new-session mode catalog', () => {
+  it('lists registered external modes with their model catalogs', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    provider.models = [
+      { id: 'gpt-5', name: 'GPT-5' },
+      { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'smaller' },
+    ]
+
+    const result = await ctx.apiProxy.sessions.externalModes(request({}))
+    expect(result.result.ok).toBe(true)
+    expect(result.result.ok ? result.result.value : undefined).toEqual({
+      groups: [{
+        provider: 'alpha',
+        label: 'Alpha',
+        modelDirectory: 'config',
+        models: [
+          { id: 'gpt-5', name: 'GPT-5' },
+          { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'smaller' },
+        ],
+      }],
+      failures: [],
+    })
+  })
+
+  it('keeps a mode selectable in failures when its catalog lookup rejects', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    // Force listModels to reject by replacing it.
+    const original = provider.listModels.bind(provider)
+    provider.listModels = async () => { throw new Error('catalog down') }
+
+    const result = await ctx.apiProxy.sessions.externalModes(request({}))
+    expect(result.result.ok).toBe(true)
+    const value = result.result.ok ? result.result.value : undefined
+    expect(value).toEqual({
+      groups: [],
+      failures: [{
+        provider: 'alpha',
+        label: 'Alpha',
+        message: 'catalog down',
+      }],
+    })
+    provider.listModels = original
+  })
+
+  it('returns empty when no external-session registry is composed', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(UserQuestionService)
+    await ctx.plugin(AgentRegistry)
+    context = ctx
+    ctx.apiProxy = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+
+    const result = await ctx.apiProxy.sessions.externalModes(request({}))
+    expect(result.result.ok).toBe(true)
+    expect(result.result.ok ? result.result.value : undefined).toEqual({ groups: [], failures: [] })
   })
 })

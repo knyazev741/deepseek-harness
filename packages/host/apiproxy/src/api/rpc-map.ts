@@ -32,6 +32,7 @@ export interface RpcMethodMap {
   'session.fork': SessionsApi['fork']
   'session.prompt': SessionsApi['prompt']
   'session.command': SessionsApi['command']
+  'session.externalModes': SessionsApi['externalModes']
   'session.attachment': SessionsApi['attachment']
   'session.updateQueue': SessionsApi['updateQueue']
   'session.cancel': SessionsApi['cancel']

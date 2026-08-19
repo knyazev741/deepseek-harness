@@ -2352,6 +2352,49 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         return ok(request, { current: { ...current }, routable, groups, failures })
       },
 
+      // The new-session mode picker's data: every registered external mode with
+      // its disclosed model catalog. Host-scoped — no session exists yet on the
+      // picker. A mode whose catalog lookup fails still appears under
+      // `failures` so the picker can offer it with an inline reason; the agent
+      // list itself comes from the same registry (always synchronous), so a
+      // missing/absent `${ctx.get('externalSessions')}` yields empty groups
+      // rather than failing the picker (the deployment simply has no external
+      // modes).
+      async externalModes(request) {
+        const external = ctx.get('externalSessions')
+        if (external === undefined) {
+          return ok(request, { groups: [], failures: [] })
+        }
+        const agents = external.listAgents()
+        const settled = await Promise.all(agents.map(async (agent) => {
+          try {
+            const models = await external.listModels(agent.provider)
+            const group: ExternalModeGroup = {
+              provider: agent.provider,
+              label: agent.label,
+              modelDirectory: agent.modelDirectory,
+              models: models.map(model => ({
+                id: model.id,
+                name: model.name,
+                ...model.description === undefined ? {} : { description: model.description },
+              })),
+            }
+            return { kind: 'group' as const, group }
+          } catch (error: unknown) {
+            const failure: ExternalModeFailure = {
+              provider: agent.provider,
+              label: agent.label,
+              message: error instanceof Error ? error.message : String(error),
+            }
+            return { kind: 'failure' as const, failure }
+          }
+        }))
+        return ok(request, {
+          groups: settled.flatMap(item => item.kind === 'group' ? [item.group] : []),
+          failures: settled.flatMap(item => item.kind === 'failure' ? [item.failure] : []),
+        })
+      },
+
       async selectModel(request) {
         const { sessionId, provider, model, reasoningEffort } = request.payload
         const found = await agentFor(sessionId)

@@ -26,6 +26,7 @@ import {
   sessionListValueSchema,
   sessionModelsValueSchema,
   sessionCommandValueSchema,
+  sessionExternalModesValueSchema,
   sessionPromptValueSchema,
   sessionRenameValueSchema,
   sessionSearchValueSchema,
@@ -97,6 +98,7 @@ export interface IApiClient {
     fork(payload: RequestPayload<'session.fork'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.fork'>>>
     prompt(payload: RequestPayload<'session.prompt'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.prompt'>>>
     command(payload: RequestPayload<'session.command'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.command'>>>
+    externalModes(payload: RequestPayload<'session.externalModes'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.externalModes'>>>
     attachment(payload: RequestPayload<'session.attachment'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.attachment'>>>
     updateQueue(payload: RequestPayload<'session.updateQueue'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.updateQueue'>>>
     cancel(payload: RequestPayload<'session.cancel'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.cancel'>>>
@@ -182,6 +184,7 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'session.fork': sessionForkValueSchema,
   'session.prompt': sessionPromptValueSchema,
   'session.command': sessionCommandValueSchema,
+  'session.externalModes': sessionExternalModesValueSchema,
   'session.attachment': sessionAttachmentValueSchema,
   'session.updateQueue': sessionUpdateQueueValueSchema,
   'session.cancel': sessionCancelValueSchema,
@@ -423,6 +426,7 @@ export abstract class AbstractApiClient implements IApiClient {
     fork: (payload, signal) => this.callUnary('session.fork', payload, signal),
     prompt: (payload, signal) => this.callUnary('session.prompt', payload, signal),
     command: (payload, signal) => this.callUnary('session.command', payload, signal),
+    externalModes: (payload, signal) => this.callUnary('session.externalModes', payload, signal),
     attachment: (payload, signal) => this.callUnary('session.attachment', payload, signal),
     updateQueue: (payload, signal) => this.callUnary('session.updateQueue', payload, signal),
     cancel: (payload, signal) => this.callUnary('session.cancel', payload, signal),

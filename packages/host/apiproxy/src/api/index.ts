@@ -43,6 +43,7 @@ export interface ApiProxy {
 
 // ---- Domain interfaces and payload entities ----
 export type {
+  ExternalModeFailure, ExternalModeGroup, ExternalModelDirectory, ExternalModelView,
   HistoryEntry, ModelCatalogFailure, ModelCatalogModel, ModelProviderGroup, ModelReasoning,
   ModelReasoningEffort, ModelSelection, PromptContentPart, QueueAction, SessionModels,
   SessionListMetadata, SessionProjectionsBlock, SessionSearchItem, SessionsApi, SessionSummary,
