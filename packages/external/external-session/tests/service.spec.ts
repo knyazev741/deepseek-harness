@@ -44,7 +44,7 @@ class StubProvider implements ExternalSessionProvider {
     this.lastBridge = bridge
   }
 
-  async prompt(sessionId: SessionId, text: string): Promise<{ turnId: ExternalTurnId }> {
+  async prompt(_sessionId: SessionId, text: string): Promise<{ turnId: ExternalTurnId }> {
     this.prompts.push(text)
     return { turnId: ExternalTurnId(`turn-${this.prompts.length}`) }
   }
@@ -277,7 +277,7 @@ describe('ExternalSessions model listing', () => {
     const { service } = await setup()
     // Provider-scoped Config passthrough: the roster lives with the provider,
     // which is what `modelDirectory: 'config'` advertises.
-    const roster: readonly ExternalModelInfo[] = [{ id: 'cfg-1', name: 'Config Model One' }]
+    const roster: ExternalModelInfo[] = [{ id: 'cfg-1', name: 'Config Model One' }]
     const provider: ExternalSessionProvider = {
       provider: 'cfg',
       label: 'Config',

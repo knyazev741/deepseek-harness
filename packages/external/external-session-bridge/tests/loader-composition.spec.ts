@@ -66,6 +66,7 @@ const stubProvider: ExternalSessionProvider = {
     return { turnId: ExternalTurnId('t1') }
   },
   interrupt() {},
+  async compact() {},
   async listModels() { return [] },
   async setModel() {},
   async dispose() { providerState.disposed = true },

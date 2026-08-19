@@ -37,6 +37,7 @@ class StubProvider implements ExternalSessionProvider {
 
   async prompt() { return { turnId: ExternalTurnId('t1') } }
   interrupt() {}
+  async compact() {}
   async listModels() { return [] }
   async setModel() {}
   async dispose() {}
