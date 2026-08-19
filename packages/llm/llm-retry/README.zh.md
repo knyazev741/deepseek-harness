@@ -4,9 +4,11 @@
 
 一个函数插件，通过 agent loop（智能体循环）在已关闭步骤上触发的 `agent/request-error` waterfall（瀑布式事件）应用确切提供方重试策略。它不包装 `ctx.llm.stream()`：每次适配器调用仍是一次提供方尝试，每次重试都会开启新的编号轮次。
 
-每个提供方适配器都拥有可选的嵌套 `retryPolicy`；路由在 `ctx.llm` 上注册时会捕获该策略，任何到达该注册最终适配器边界的调用都会携带它。如果之后释放或替换路由，进行中的失败仍会保留当时为其提供服务的策略；在选中任何最终适配器前发生的失败没有提供方策略，会继续委托。省略策略时使用 normal mode：为 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 和 `TRANSPORT` 重试两次，并采用从 500 ms 到 10 秒的有界指数退避与 10% jitter。`EMPTY_RESPONSE` 是适配器对未产生任何持久内容的退化提供方完成所作的分类，因此可安全重复。normal 策略可以更改其有限预算、符合条件的 code 和退避配置。always mode 会先请求下游恢复，再无次数上限地重试每个模型请求失败；成功、取消或插件 dispose（资源释放）会在活跃的委托恢复完全停稳后终止它。
+每个提供方适配器都拥有可选的嵌套 `retryPolicy`；路由在 `ctx.llm` 上注册时会捕获该策略，任何到达该注册最终适配器边界的调用都会携带它。如果之后释放或替换路由，进行中的失败仍会保留当时为其提供服务的策略；在选中任何最终适配器前发生的失败没有提供方策略，会继续委托。省略策略时使用 normal mode：为 `EMPTY_RESPONSE`、`FIRST_CHUNK_TIMEOUT`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 和 `TRANSPORT` 重试两次，并采用从 500 ms 到 10 秒的有界指数退避与 10% jitter。`EMPTY_RESPONSE` 是适配器对未产生任何持久内容的退化提供方完成所作的分类，因此可安全重复。normal 策略可以更改其有限预算、符合条件的 code 和退避配置。always mode 会先请求下游恢复，再无次数上限地重试每个模型请求失败；成功、取消或插件 dispose（资源释放）会在活跃的委托恢复完全停稳后终止它。
 
 两种 mode 都使用带对称 jitter 的有界指数退避。有效 `providerRetryAfterMs` 不超过 `maxDelayMs` 时会替换本地退避，并且不加 jitter。超出上限的提供方延迟会使 normal mode 继续委托；always mode 则改用已配置的本地退避，避免该指令终止重试。
+
+normal mode 会把 `FIRST_CHUNK_TIMEOUT`（模型请求在其首分片预算内未产生任何分片——通常是提示词过大无法 prefill）视为特例：在调度自己的退避之前先咨询下游恢复。它接受下游返回的 `{ kind: 'retry' }` 决定，并且不再追加另一条 `llm/retry` 事件，这与上下文溢出路径一致。当下游未恢复任何内容（低压力、无容量元数据或非重试决定）时，llm-retry 会回退到自己的 normal-mode 退避，使普通重试仍然发生。compaction-basic 实现下游一侧，并由其 `idleTimeoutPressureRatio` 门控。
 
 等待前，插件会追加一条不进入表层的 `llm/retry` 事件，其中包含共享 `retryId`、提供方、mode、已解析策略的规范 key、失败和计划延迟。该载荷由可安全用于浏览器的 `@deepseek-ai/dsh-llm-retry/types` 子路径导出，因此远程渲染器无需加载策略运行时即可使用该持久状态。该 key 包含所有影响行为的字段，并对 normal mode 的 code 排序，因为合格性采用集合成员关系判断。只有提供方与完整策略 key 都相同的事件才会延续重试编号；因此，用限制、code 成员关系或退避不同的路由替换后，会开始自己的历史。normal 事件包含有限上限；always 事件省略该上限，UI 会渲染 `∞`。等待完成时，插件会在返回 `{ kind: 'retry' }` 前立即追加 `llm/retry-started`，其中带有相同的 `retryId`、轮次、步骤与重试编号；退避期间取消则不会写入 started 事件。随后循环关闭失败轮次，并在同一持久历史上开启重试轮次。取消与插件 dispose 会中止活跃退避，在应用中止前等待活跃的委托恢复结算，并使 dispose 前捕获的 callback 只能以失败结束。
 

@@ -7,7 +7,7 @@ import type {
   SaveImageAttachment,
   StoredImageAttachment,
 } from '@deepseek-ai/dsh-attachment'
-import LlmRuntime, { createUserMessage, CONTEXT_WINDOW_EXCEEDED_CODE, LlmError, ReasoningEffortId, userAgent } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, CONTEXT_WINDOW_EXCEEDED_CODE, FIRST_CHUNK_TIMEOUT_CODE, LlmError, ReasoningEffortId, userAgent } from '@deepseek-ai/dsh-llm'
 import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
@@ -336,10 +336,13 @@ describe('PiAiAdapter provider routing', () => {
 
   it('stops the SDK request when the adapter idle watchdog expires', async () => {
     const server = await mockServer([{ events: textEvents, delayMs: 200 }])
-    const ctx = await harness(server.url, { streamIdleTimeoutMs: 20 })
+    // No chunk ever arrives within the first-chunk budget, so the stream is
+    // killed on the first-chunk budget and reported as a first-chunk timeout
+    // rather than a generic idle timeout.
+    const ctx = await harness(server.url, { streamIdleTimeoutMs: 20, firstChunkIdleTimeoutMs: 20 })
 
     const result = await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
-    expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
+    expect(result.finish).toMatchObject({ kind: 'error', failure: { code: FIRST_CHUNK_TIMEOUT_CODE } })
     await Promise.race([
       server.responseClosed,
       new Promise<never>((_resolve, reject) => {
@@ -730,6 +733,9 @@ describe('provider profile lifecycle', () => {
       { streamIdleTimeoutMs: 0 },
       { streamIdleTimeoutMs: Number.NaN },
       { streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
+      { firstChunkIdleTimeoutMs: 0 },
+      { firstChunkIdleTimeoutMs: Number.NaN },
+      { firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
     ]
     for (const entry of invalid) {
       const ctx = new Context()
@@ -812,6 +818,23 @@ describe('provider profile lifecycle', () => {
     expect(() => resolveProfiles({
       openai: { streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
     })).toThrow(/streamIdleTimeoutMs.*no greater/)
+    expect(() => resolveProfiles({
+      openai: { firstChunkIdleTimeoutMs: 0 },
+    })).toThrow(/firstChunkIdleTimeoutMs.*positive finite/)
+    expect(() => resolveProfiles({
+      openai: { firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
+    })).toThrow(/firstChunkIdleTimeoutMs.*no greater/)
+  })
+
+  it('defaults the first-chunk idle budget to 900s and the idle budget to 300s', () => {
+    const resolved = resolveProfiles({ openai: {} }).get('openai')
+    expect(resolved?.streamIdleTimeoutMs).toBe(300_000)
+    expect(resolved?.firstChunkIdleTimeoutMs).toBe(900_000)
+    const tuned = resolveProfiles({
+      openai: { streamIdleTimeoutMs: 5_000, firstChunkIdleTimeoutMs: 10_000 },
+    }).get('openai')
+    expect(tuned?.streamIdleTimeoutMs).toBe(5_000)
+    expect(tuned?.firstChunkIdleTimeoutMs).toBe(10_000)
   })
 })
 

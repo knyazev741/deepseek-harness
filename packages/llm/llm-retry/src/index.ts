@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto'
 import type { Context, Events } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, RequestErrorAction } from '@deepseek-ai/dsh-agent'
+import { FIRST_CHUNK_TIMEOUT_CODE, TIMEOUT_CODE } from '@deepseek-ai/dsh-llm'
 import type { LlmFailure, ResolvedRetryPolicy } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { RetryId } from './brand.ts'
@@ -168,6 +169,28 @@ export function apply(ctx: Context, config: Config = {}, internals: RetryInterna
       if (downstream.type === 'error') {
         ctx.logger.warn(
           `llm-retry: provider "${provider}" always policy ignored a downstream recovery failure: %o`,
+          downstream.error,
+        )
+      }
+      if (downstream.type === 'decision' && downstream.decision?.kind === 'retry') {
+        return downstream.decision
+      }
+    } else if (failure.code === FIRST_CHUNK_TIMEOUT_CODE || failure.code === TIMEOUT_CODE) {
+      // A first-chunk or total-request timeout at high context pressure means
+      // the prompt was too large to prefill (or to stream within budget), so a
+      // blind retry of the same payload would recur. Consult downstream
+      // (compaction-basic) first: honor its retry decision without appending
+      // another llm/retry event, mirroring the overflow path. If downstream
+      // does not recover (low pressure, no capacity, or a non-retry decision),
+      // fall through to the normal backoff below so a plain retry still happens.
+      if (signal.aborted || lifetime.signal.aborted) return
+      const fusedSignal = AbortSignal.any([signal, lifetime.signal])
+      const downstream = await settleDownstream(next)
+      if (fusedSignal.aborted) return
+      if (downstream.type === 'error') {
+        ctx.logger.warn(
+          `llm-retry: provider "${provider}" timeout policy ignored `
+          + 'a downstream recovery failure: %o',
           downstream.error,
         )
       }

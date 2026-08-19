@@ -371,6 +371,36 @@ describe('boot with user patches', () => {
     }
   })
 
+  it('re-runs apply() with the replaced config through HMR', { timeout: 20_000 }, async () => {
+    const dir = tmp()
+    const userDir = tmp()
+    const filename = join(userDir, PROFILE_PATCH_FILENAME)
+    writeFileSync(join(dir, 'capture.mjs'), [
+      'export const name = "capture"',
+      'export function apply(_ctx, config = {}) { globalThis.__capturedValue = config.value }',
+      '',
+    ].join('\n'))
+    writeFileSync(join(dir, 'cordis.yml'), '- id: capture\n  name: ./capture.mjs\n  config:\n    value: base\n')
+    const basePatches = [{ id: 'capture', config: { value: 'generated' } }]
+    const ctx = await boot(NAME, join(dir, 'cordis.yml'), basePatches)
+    await ctx.plugin(Timer)
+    await ctx.plugin(Hmr, { root: [], ignored: [], debounce: 0 })
+    const dispose = await watchUserPatches(ctx, {
+      binName: NAME,
+      filename,
+      compose: userPatches => [...basePatches, ...userPatches],
+    })
+    try {
+      expect(globalThis.__capturedValue).toBe('generated')
+      writeFileSync(filename, '- id: capture\n  config:\n    value: live\n')
+      await eventually(() => globalThis.__capturedValue === 'live', 'apply() was not re-run with the replaced config')
+    } finally {
+      await dispose()
+      await ctx.fiber.dispose()
+      delete globalThis.__capturedValue
+    }
+  })
+
   it('fails loud when the exact watcher lacks HMR or a root Include', async () => {
     const dir = tmp()
     const withoutHmr = await boot(NAME, writeTree(dir))

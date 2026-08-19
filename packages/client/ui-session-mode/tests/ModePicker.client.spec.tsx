@@ -83,6 +83,29 @@ describe('the session-mode picker', () => {
     expect(actions.select).toHaveBeenCalledWith('codex')
   })
 
+  it('staging the native row from the mode menu clears a staged model seat', () => {
+    const { actions } = renderPicker({ current: 'codex', model: 'gpt-5' })
+    fireEvent.click(screen.getByRole('button', { name: /codex/i }))
+
+    fireEvent.click(screen.getAllByText(en['mode.native']).at(-1)!)
+    expect(actions.select).toHaveBeenCalledWith('dsh')
+  })
+
+  it('offers no model seat for a staged external mode missing from the catalog', () => {
+    renderPicker({ current: 'ghost' })
+
+    // The picker shows a ghosted external mode's id but no model seat, because
+    // there is no catalog entry to source models from.
+    expect(screen.queryByRole('button', { name: /model/i })).toBeNull()
+  })
+
+  it('falls the model seat value back to the id when the staged model is missing', () => {
+    renderPicker({ current: 'codex', model: 'ghost' })
+
+    fireEvent.click(screen.getByRole('button', { name: /ghost/i }))
+    expect(screen.getByText('ghost')).toBeTruthy()
+  })
+
   it('offers a model seat for an external mode and lists its models', () => {
     renderPicker({ current: 'codex', model: 'gpt-5' })
 
@@ -92,6 +115,29 @@ describe('the session-mode picker', () => {
 
     // The seat value and the opened menu item both name the model.
     expect(screen.getAllByText('GPT-5').length).toBeGreaterThan(0)
+  })
+
+  it('selecting a model through the seat stages it', () => {
+    const { actions } = renderPicker({ current: 'codex' })
+
+    fireEvent.click(screen.getByRole('button', { name: /model/i }))
+    fireEvent.click(screen.getByText('GPT-5'))
+
+    expect(actions.selectModel).toHaveBeenCalledWith('gpt-5')
+  })
+
+  it('shows a model description when the model publishes one', () => {
+    const { actions } = renderPicker({
+      current: 'codex',
+      modes: [{
+        provider: 'codex', label: 'Codex', hasModels: true,
+        models: [{ id: 'gpt-5', name: 'GPT-5', description: 'flagship' }],
+      }],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /model/i }))
+    expect(screen.getByText('flagship')).toBeTruthy()
+    expect(actions.selectModel).not.toHaveBeenCalled()
   })
 
   it('disables the model seat with the inline reason when the mode discloses no models', () => {
@@ -113,6 +159,27 @@ describe('the session-mode picker', () => {
 
     expect(screen.getByText('Bot')).toBeTruthy()
     expect(screen.getByText(en['mode.modelUnavailable'])).toBeTruthy()
+  })
+
+  it('closes the mode menu on an outside dismissal', () => {
+    renderPicker()
+    fireEvent.click(screen.getByRole('button'))
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.getByRole('button').getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('closes the model menu on an outside dismissal without staging', () => {
+    const { actions } = renderPicker({ current: 'codex' })
+
+    fireEvent.click(screen.getByRole('button', { name: /model/i }))
+    expect(screen.getByRole('button', { name: /model/i }).getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.getByRole('button', { name: /model/i }).getAttribute('aria-expanded')).toBe('false')
+    expect(actions.selectModel).not.toHaveBeenCalled()
   })
 
   it('says it is busy while the catalog loads', () => {

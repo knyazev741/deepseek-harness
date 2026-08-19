@@ -12,7 +12,7 @@ import {
   resolveTargetPolicy,
 } from '@deepseek-ai/dsh-compaction-basic/src/config.ts'
 import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
-import LlmRuntime, { createUserMessage, CallId, CONTEXT_WINDOW_EXCEEDED_CODE, createToolResultMessage, LlmAdapter , createMessage } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, CallId, CONTEXT_WINDOW_EXCEEDED_CODE, FIRST_CHUNK_TIMEOUT_CODE, TIMEOUT_CODE, createToolResultMessage, LlmAdapter , createMessage } from '@deepseek-ai/dsh-llm'
 import type {
   ContentBlock,
   GenerateOptions,
@@ -290,6 +290,7 @@ describe('compact configuration and defaults', () => {
 
     expect(resolved).toEqual({
       thresholdRatio: 0.8,
+      idleTimeoutPressureRatio: 0.5,
       retainRatio: 0.16,
       summarizationProvider: '',
       summarizationModel: '',
@@ -320,6 +321,25 @@ describe('compact configuration and defaults', () => {
       retainTokens: 70,
     })
     expect(retentionOnly).not.toHaveProperty('retainRatio')
+  })
+
+  it('resolves the idle-timeout pressure ratio default and exact override', () => {
+    expect(resolveConfig({})).toMatchObject({ idleTimeoutPressureRatio: 0.5 })
+    expect(resolveConfig({ idleTimeoutPressureRatio: 0.2 }))
+      .toMatchObject({ idleTimeoutPressureRatio: 0.2 })
+    expect(resolveTargetPolicy(resolveConfig({ idleTimeoutPressureRatio: 0.9 }), {
+      provider: MODEL,
+      model: MODEL,
+    }).idleTimeoutPressureRatio).toBe(0.9)
+    const overridden = resolveTargetPolicy(resolveConfig({
+      idleTimeoutPressureRatio: 0.9,
+      modelPolicies: [{
+        provider: MODEL,
+        model: MODEL,
+        idleTimeoutPressureRatio: 0.3,
+      }],
+    }), { provider: MODEL, model: MODEL })
+    expect(overridden.idleTimeoutPressureRatio).toBe(0.3)
   })
 
   it('merges exact provider/model policy overrides and scales ratios per model', () => {
@@ -430,6 +450,8 @@ describe('compact configuration and defaults', () => {
       [{ summarizationModel: '' }, /must be set together/],
       [{ thresholdRatio: 0 }, /number in \(0, 1\]/],
       [{ thresholdRatio: 1.1 }, /number in \(0, 1\]/],
+      [{ idleTimeoutPressureRatio: 0 }, /idleTimeoutPressureRatio.*number in \(0, 1\]/],
+      [{ idleTimeoutPressureRatio: 1.1 }, /idleTimeoutPressureRatio.*number in \(0, 1\]/],
       [{ retainRatio: 0.9 }, /retainRatio \(0.9\) must be less than the resolved thresholdRatio \(0.8\)/],
       [{ thresholdRatio: 0.1 }, /retainRatio \(0.16\) must be less than the resolved thresholdRatio \(0.1\)/],
       [{ retainTokens: -1 }, /non-negative integer/],
@@ -1545,6 +1567,14 @@ describe('automatic listener and loader composition', () => {
     return Object.assign(new Error(message), { code: CONTEXT_WINDOW_EXCEEDED_CODE })
   }
 
+  function firstChunkTimeout(message = 'no chunk before budget'): Error & { code: string } {
+    return Object.assign(new Error(message), { code: FIRST_CHUNK_TIMEOUT_CODE })
+  }
+
+  function streamTimeout(message = 'request timed out'): Error & { code: string } {
+    return Object.assign(new Error(message), { code: TIMEOUT_CODE })
+  }
+
   it('compacts before a step above threshold using the durable routed model and remains idle below it', async () => {
     const ctx = createContext()
     const compact = new TestCompactionEngine(ctx, {
@@ -1651,6 +1681,72 @@ describe('automatic listener and loader composition', () => {
     expect(session.surface.replaceGeneration).toBe(beforeGeneration + 1)
     expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
     expect(session.surface.nodes).toContain(retainedSeq)
+  })
+
+  it('compacts a first-chunk timeout when routed pressure is at or above the idle-timeout ratio', async () => {
+    const ctx = createContext()
+    void new TestCompactionEngine(ctx, {
+      idleTimeoutPressureRatio: 0.5,
+      maxOverflowRetries: 1,
+    })
+    const session = conversation(4)
+    expect(ctx.tokenMeter.measure(session).totalTokens).toBeGreaterThanOrEqual(500)
+
+    expect(await recover(ctx, agent(session, MODEL), firstChunkTimeout())).toBe(true)
+    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
+  })
+
+  it('delegates a first-chunk timeout below the idle-timeout ratio without compacting', async () => {
+    const ctx = createContext()
+    void new TestCompactionEngine(ctx, {
+      idleTimeoutPressureRatio: 0.5,
+      maxOverflowRetries: 1,
+    })
+    const session = conversation(2)
+    expect(ctx.tokenMeter.measure(session).totalTokens).toBeLessThan(500)
+
+    expect(await recover(ctx, agent(session, MODEL), firstChunkTimeout())).toBe(false)
+    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(false)
+  })
+
+  it('delegates a first-chunk timeout when the routed model exposes no context capacity', async () => {
+    const ctx = createContext()
+    vi.spyOn(ctx.llm, 'resolveModelInfo').mockImplementation((provider, model) =>
+      Promise.resolve({ provider, id: model, name: model }))
+    void new TestCompactionEngine(ctx, {
+      idleTimeoutPressureRatio: 0.5,
+      maxOverflowRetries: 1,
+    })
+    const session = conversation(4)
+
+    expect(await recover(ctx, agent(session, MODEL), firstChunkTimeout())).toBe(false)
+    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(false)
+  })
+
+  it('compacts a total-request timeout when routed pressure is at or above the idle-timeout ratio', async () => {
+    const ctx = createContext()
+    void new TestCompactionEngine(ctx, {
+      idleTimeoutPressureRatio: 0.5,
+      maxOverflowRetries: 1,
+    })
+    const session = conversation(4)
+    expect(ctx.tokenMeter.measure(session).totalTokens).toBeGreaterThanOrEqual(500)
+
+    expect(await recover(ctx, agent(session, MODEL), streamTimeout())).toBe(true)
+    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
+  })
+
+  it('delegates a total-request timeout below the idle-timeout ratio without compacting', async () => {
+    const ctx = createContext()
+    void new TestCompactionEngine(ctx, {
+      idleTimeoutPressureRatio: 0.5,
+      maxOverflowRetries: 1,
+    })
+    const session = conversation(2)
+    expect(ctx.tokenMeter.measure(session).totalTokens).toBeLessThan(500)
+
+    expect(await recover(ctx, agent(session, MODEL), streamTimeout())).toBe(false)
+    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(false)
   })
 
   it('authorizes overflow retry when pruning alone advances an indivisible surface', async () => {

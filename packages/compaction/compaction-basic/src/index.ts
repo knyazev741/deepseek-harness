@@ -15,7 +15,7 @@ import type { CompactionResult, CompactionTrigger } from '@deepseek-ai/dsh-compa
 import type { TokenMeter } from '@deepseek-ai/dsh-token-meter'
 import type { TokenMeasurement } from '@deepseek-ai/dsh-token-meter'
 import type { Session } from '@deepseek-ai/dsh-session'
-import { CONTEXT_WINDOW_EXCEEDED_CODE, assertNever } from '@deepseek-ai/dsh-llm'
+import { CONTEXT_WINDOW_EXCEEDED_CODE, FIRST_CHUNK_TIMEOUT_CODE, TIMEOUT_CODE, assertNever } from '@deepseek-ai/dsh-llm'
 import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
@@ -118,6 +118,7 @@ const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   provider: z.string().required(),
   model: z.string().required(),
   thresholdRatio: thresholdRatioSchema,
+  idleTimeoutPressureRatio: thresholdRatioSchema,
   retainRatio: retainRatioSchema,
   retainTokens: retainTokensSchema,
   summarizationProvider: summarizationProviderSchema,
@@ -141,6 +142,7 @@ export class BasicCompactionEngine extends CompactionEngine {
 
   static Config: z<BasicCompactionConfig> = z.object({
     thresholdRatio: thresholdRatioSchema,
+    idleTimeoutPressureRatio: thresholdRatioSchema,
     retainRatio: retainRatioSchema,
     retainTokens: retainTokensSchema,
     summarizationProvider: summarizationProviderSchema,
@@ -217,13 +219,33 @@ export class BasicCompactionEngine extends CompactionEngine {
       { agent, failure, signal },
       next,
     ) => {
-      if (failure.code !== CONTEXT_WINDOW_EXCEEDED_CODE || signal.aborted) return next()
+      const isOverflow = failure.code === CONTEXT_WINDOW_EXCEEDED_CODE
+      const isTimeout = failure.code === FIRST_CHUNK_TIMEOUT_CODE || failure.code === TIMEOUT_CODE
+      if ((!isOverflow && !isTimeout) || signal.aborted) return next()
       this.overflowAgents.set(agent.session, agent)
       const target = routedTarget(agent.session)
       if (target === undefined) return next()
       const policy = resolveTargetPolicy(this.config, target)
       const retries = this.overflowRetries.get(agent) ?? 0
       if (retries >= policy.maxOverflowRetries) return next()
+
+      // A first-chunk or total-request timeout means the prompt was too large
+      // to prefill (or to stream within budget), so it only compacts under
+      // high context pressure; at low pressure the retry policy above should
+      // retry the same payload instead. Without capacity metadata there is no
+      // way to gate, so delegate the decision upstream.
+      if (isTimeout) {
+        const measurement = this.ctx.tokenMeter.measure(agent.session)
+        const context = (await this.ctx.llm.resolveModelInfo(
+          target.provider,
+          target.model,
+          signal,
+        )).context
+        if (context?.contextWindow === undefined) return next()
+        if (measurement.totalTokens < context.contextWindow * policy.idleTimeoutPressureRatio) {
+          return next()
+        }
+      }
 
       const generation = agent.session.surface.replaceGeneration
       let result: CompactionResult | null

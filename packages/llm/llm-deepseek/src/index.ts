@@ -22,6 +22,7 @@ import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { getOrCreateAnonymousUserId, type AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
 import {
   DEFAULT_CONTEXT_WINDOW,
+  DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS,
   DEFAULT_MAX_TOKENS,
   DEFAULT_STREAM_IDLE_TIMEOUT_MS,
   DeepSeekAdapter,
@@ -30,6 +31,7 @@ import type { DeepSeekCatalogModel, DeepSeekConnectionOptions } from './adapter.
 
 export {
   DEFAULT_CONTEXT_WINDOW,
+  DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS,
   DEFAULT_MAX_TOKENS,
   DEFAULT_STREAM_IDLE_TIMEOUT_MS,
   DeepSeekAdapter,
@@ -76,6 +78,8 @@ export interface Config {
   models?: DeepSeekCatalogModel[]
   /** Maximum provider idle time while one stream read is outstanding (default five minutes). */
   streamIdleTimeoutMs?: number
+  /** Budget for the wait until a stream's first value (default fifteen minutes). */
+  firstChunkIdleTimeoutMs?: number
   /** Provider-owned model-request retry policy; omission uses normal defaults. */
   retryPolicy?: RetryPolicyConfig
 }
@@ -97,6 +101,7 @@ export const Config: z<Config> = z.object({
   defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW),
   models: z.array(catalogModel).default(DEFAULT_MODELS),
   streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS),
+  firstChunkIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS),
   retryPolicy: RetryPolicySchema,
 })
 
@@ -180,6 +185,14 @@ export function resolveAdapterOptions(config: Config, environment?: LaunchEnviro
       `llm-deepseek: streamIdleTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`,
     )
   }
+  const firstChunkIdleTimeoutMs = config.firstChunkIdleTimeoutMs ?? DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS
+  if (!Number.isFinite(firstChunkIdleTimeoutMs)
+    || firstChunkIdleTimeoutMs <= 0
+    || firstChunkIdleTimeoutMs > MAX_TIMER_DELAY_MS) {
+    throw new Error(
+      `llm-deepseek: firstChunkIdleTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`,
+    )
+  }
   return {
     apiKeyEnv: credentialRef(config.apiKeyEnv ?? DEFAULT_API_KEY_ENV),
     baseURL: config.baseURL
@@ -193,6 +206,7 @@ export function resolveAdapterOptions(config: Config, environment?: LaunchEnviro
     defaultContextWindow: config.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
     models: resolveModels(config.models),
     streamIdleTimeoutMs,
+    firstChunkIdleTimeoutMs,
     retryPolicy: resolveRetryPolicy(config.retryPolicy, 'llm-deepseek: retryPolicy'),
   }
 }

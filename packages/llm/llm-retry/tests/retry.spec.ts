@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Fiber } from '@deepseek-ai/cordis'
-import LlmRuntime, { createUserMessage, CallId, EMPTY_RESPONSE_CODE, LlmAdapter, LlmError, resolveRetryPolicy  } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, CallId, EMPTY_RESPONSE_CODE, FIRST_CHUNK_TIMEOUT_CODE, TIMEOUT_CODE, LlmAdapter, LlmError, resolveRetryPolicy  } from '@deepseek-ai/dsh-llm'
 import type {
   AlwaysRetryPolicyConfig,
   BackoffConfig,
@@ -742,6 +742,92 @@ describe('provider-routed retry policy', () => {
 
     expect(adapter.requests).toHaveLength(2)
     expect(agent.session.events.some(event => event.type === 'llm/retry')).toBe(false)
+  })
+
+  it('delegates a FIRST_CHUNK_TIMEOUT to downstream and honors its retry without an own event', async () => {
+    const adapter = new ScriptedAdapter([
+      new LlmError('no chunk before budget', FIRST_CHUNK_TIMEOUT_CODE),
+      textResponse('recovered'),
+    ])
+    ;({ ctx: context } = await harness(adapter, {
+      mock: normalConfig({ retryableCodes: [FIRST_CHUNK_TIMEOUT_CODE] }),
+    }))
+    context.on('agent/request-error', async () => ({ kind: 'retry' }))
+    const agent = context.agentLoop.create(SessionId('retry-first-chunk-delegate'), {
+      provider: 'mock',
+      model: 'mock',
+    })
+    const idle = waitForIdle(context, agent)
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await idle
+
+    expect(adapter.requests).toHaveLength(2)
+    expect(agent.session.events.some(event => event.type === 'llm/retry')).toBe(false)
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'recovered' }],
+    })
+  })
+
+  it('delegates a TIMEOUT to downstream and honors its retry without an own event', async () => {
+    const adapter = new ScriptedAdapter([
+      new LlmError('request timed out', TIMEOUT_CODE),
+      textResponse('recovered'),
+    ])
+    ;({ ctx: context } = await harness(adapter, {
+      mock: normalConfig({ retryableCodes: [TIMEOUT_CODE] }),
+    }))
+    context.on('agent/request-error', async () => ({ kind: 'retry' }))
+    const agent = context.agentLoop.create(SessionId('retry-timeout-delegate'), {
+      provider: 'mock',
+      model: 'mock',
+    })
+    const idle = waitForIdle(context, agent)
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await idle
+
+    expect(adapter.requests).toHaveLength(2)
+    expect(agent.session.events.some(event => event.type === 'llm/retry')).toBe(false)
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'recovered' }],
+    })
+  })
+
+  it('falls back to its own bounded backoff when downstream returns no decision for a FIRST_CHUNK_TIMEOUT', async () => {
+    vi.useFakeTimers()
+    const adapter = new ScriptedAdapter([
+      new LlmError('no chunk before budget', FIRST_CHUNK_TIMEOUT_CODE),
+      textResponse('recovered'),
+    ])
+    ;({ ctx: context } = await harness(adapter, {
+      mock: normalConfig({
+        retryableCodes: [FIRST_CHUNK_TIMEOUT_CODE],
+        backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
+      }),
+    }, undefined, { random: () => 0.5 }))
+    const agent = context.agentLoop.create(SessionId('retry-first-chunk-fallback'), {
+      provider: 'mock',
+      model: 'mock',
+    })
+    const scheduled = waitForRetry(context, agent, 1)
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    expect((await scheduled).data).toMatchObject({
+      mode: 'normal',
+      failure: { message: 'no chunk before budget', code: FIRST_CHUNK_TIMEOUT_CODE },
+    })
+    const idle = waitForIdle(context, agent)
+    await vi.advanceTimersByTimeAsync(1)
+    await idle
+
+    expect(adapter.requests).toHaveLength(2)
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'recovered' }],
+    })
   })
 
   it.each([

@@ -8,6 +8,7 @@ import type { ReactNode } from 'react'
 import type {
   ModelRetryNode, TurnErrorNode, UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ContextPressureProjection } from '@deepseek-ai/dsh-token-meter/client'
 import { JsonBlock, MessageText, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts'
 import { ImageGallery, type ImageLoader } from '@deepseek-ai/dsh-client-ui-attachment'
@@ -42,14 +43,33 @@ function retrySeconds(milliseconds: number): number {
   return Math.max(1, Math.ceil(milliseconds / 1_000))
 }
 
+/** Provider-neutral failure codes that mean a too-large prompt stalled the first chunk. */
+const TIMEOUT_CODES = new Set(['FIRST_CHUNK_TIMEOUT', 'TIMEOUT'])
+
+/** Prompt-side share of route capacity at which a stalled first chunk reads as a too-large context. */
+const HIGH_CONTEXT_PRESSURE_RATIO = 0.5
+
+/**
+ * Whether the session's context is under enough pressure that a first-chunk
+ * timeout is most plausibly a too-large prompt rather than a transient drop.
+ * @param pressure - the session's context-pressure projection value.
+ * @returns true when both figures are present and prompt size is at least half the capacity.
+ */
+function isHighContextPressure(pressure: ContextPressureProjection | undefined): boolean {
+  return pressure?.pressureTokens !== undefined
+    && pressure?.contextWindow !== undefined
+    && pressure.pressureTokens / pressure.contextWindow >= HIGH_CONTEXT_PRESSURE_RATIO
+}
+
 interface RetryCountdown {
   deadline: number
   seconds: number
 }
 
-function ModelRetryItem({ node, active, t }: {
+function ModelRetryItem({ node, active, highPressure, t }: {
   node: ModelRetryNode
   active: boolean
+  highPressure: boolean
   t: ChatViewSlotProps['t']
 }) {
   // Anchor the host-scheduled delay to this browser's first render of the
@@ -91,6 +111,11 @@ function ModelRetryItem({ node, active, t }: {
         ? t('message.retry.started')
         : t('message.retry.scheduled')
   const seconds = active ? remainingSeconds : scheduledSeconds
+  // A first-chunk timeout under a high-pressure context is a size problem the
+  // retry will repeat; surface the /compact remedy right at the disclosure.
+  const showCompactHint = highPressure
+    && node.failure.code !== undefined
+    && TIMEOUT_CODES.has(node.failure.code)
 
   return (
     <details className={css.retryRow} data-active={active || undefined}>
@@ -108,6 +133,11 @@ function ModelRetryItem({ node, active, t }: {
           <span className={css.retryDetailLabel}>{t('message.retry.failure')}</span>
           {node.failure.message}
         </div>
+        {showCompactHint && (
+          <p className={css.retryCompactHint}>
+            {t('message.retry.compactHint')}
+          </p>
+        )}
       </div>
     </details>
   )
@@ -277,9 +307,17 @@ export const CompactionNodeView = memo(function CompactionNodeView({ node, t }: 
 })
 
 /** Correlated retry-chain keyed Chat renderer. */
-export const RetryNodeView = memo(function RetryNodeView({ node, t }: ChatNodeViewProps<'model-retry'>) {
+export const RetryNodeView = memo(function RetryNodeView({ node, t, useProjection }: ChatNodeViewProps<'model-retry'>) {
   const data = node.data
-  return <ModelRetryItem node={data.current} active={data.current.retryState === 'scheduled'} t={t} />
+  const highPressure = isHighContextPressure(useProjection('contextPressure'))
+  return (
+    <ModelRetryItem
+      node={data.current}
+      active={data.current.retryState === 'scheduled'}
+      t={t}
+      highPressure={highPressure}
+    />
+  )
 })
 
 /** Terminal turn-error keyed Chat renderer. */

@@ -17,6 +17,9 @@ import css from './ContextMeter.module.css'
 const RADIUS = 5.5
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
+/** Occupancy percent at or above which the meter flags a context as large. */
+const HIGH_PRESSURE_PERCENT = 50
+
 /**
  * Marker the localized occupancy sentence is split on, so the panel headline
  * keeps the reading in its own tone while each locale still owns the word
@@ -72,6 +75,12 @@ export function ContextMeter({ useProjection, t }: ContextMeterProps) {
   if (context === null) return null
   const percent = context.percent
   const reading = `${percent}%`
+  // A fresh aria role lets both sighted users (amber ring) and assistive tech
+  // hear that the context is large once occupancy crosses the threshold.
+  const highPressure = percent >= HIGH_PRESSURE_PERCENT
+  const ariaLabel = highPressure
+    ? `${t('context.aria', { percent: reading })} · ${t('context.high')}`
+    : t('context.aria', { percent: reading })
   const [headBefore = '', headAfter = ''] = t('context.aria', { percent: READING_SLOT })
     .split(READING_SLOT)
     .map(part => part.trim())
@@ -94,7 +103,8 @@ export function ContextMeter({ useProjection, t }: ContextMeterProps) {
         <button
           type="button"
           className={css.trigger}
-          aria-label={t('context.aria', { percent: reading })}
+          aria-label={ariaLabel}
+          data-warning={highPressure || undefined}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => { setOpen(!open) }}
@@ -102,7 +112,7 @@ export function ContextMeter({ useProjection, t }: ContextMeterProps) {
           <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden>
             <circle className={css.track} cx="7" cy="7" r={RADIUS} />
             <circle
-              className={css.fill}
+              className={highPressure ? `${css.fill} ${css.high}` : css.fill}
               cx="7"
               cy="7"
               r={RADIUS}

@@ -8,7 +8,7 @@
  * @module dsh-llm-deepseek/adapter
  */
 
-import { attributionHeaders, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError, isQuotaExceededError, LlmAdapter, LlmError, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { attributionHeaders, CONTEXT_WINDOW_EXCEEDED_CODE, FIRST_CHUNK_TIMEOUT_CODE, isContextWindowExceededError, isQuotaExceededError, LlmAdapter, LlmError, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {
   GenerateOptions,
   LlmModelInfo,
@@ -66,6 +66,8 @@ export interface DeepSeekConnectionOptions {
   models: readonly DeepSeekCatalogModel[]
   /** Maximum provider idle time while one stream read is outstanding. */
   streamIdleTimeoutMs: number
+  /** Budget for the wait until a stream's first value; usually larger than the idle interval. */
+  firstChunkIdleTimeoutMs: number
   /** Provider-owned model-request retry policy, already resolved. */
   retryPolicy: ResolvedRetryPolicy
 }
@@ -87,11 +89,14 @@ export interface DeepSeekAdapterOptions {
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
 export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000
+/** Default budget for the wait until an adapter stream's first value. */
+export const DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS = 900_000
 /** Default combined request/response context capacity. */
 export const DEFAULT_CONTEXT_WINDOW = 1_000_000
 /** Default per-request output-token cap. */
 export const DEFAULT_MAX_TOKENS = 256_000
 const STREAM_IDLE_TIMEOUT_CODE = 'LLM_STREAM_IDLE_TIMEOUT'
+const FIRST_CHUNK_IDLE_TIMEOUT_CODE = 'LLM_FIRST_CHUNK_IDLE_TIMEOUT'
 const OFF_REASONING_EFFORT = ReasoningEffortId('off')
 const LOW_REASONING_EFFORT = ReasoningEffortId('low')
 const HIGH_REASONING_EFFORT = ReasoningEffortId('high')
@@ -155,7 +160,8 @@ export function httpErrorCode(status: number, error?: WireError['error']): strin
  * registered under (the harness model name IS the wire model name).
  *
  * One stable signal reaches both initial fetch and body reads. Caller aborts
- * map to `ABORTED`; the configured per-read idle watchdog maps to `TIMEOUT`.
+ * map to `ABORTED`; the configured per-read idle watchdog maps to `TIMEOUT`
+ * and its first-chunk wait maps to the distinct `FIRST_CHUNK_TIMEOUT`.
  */
 export class DeepSeekAdapter extends LlmAdapter {
   constructor(private readonly config: DeepSeekAdapterOptions) {
@@ -228,7 +234,12 @@ export class DeepSeekAdapter extends LlmAdapter {
     const upstream = options.signal === undefined
       ? consumer.signal
       : AbortSignal.any([options.signal, consumer.signal])
-    using watchdog = idleWatchdog(upstream, connection.streamIdleTimeoutMs, STREAM_IDLE_TIMEOUT_CODE)
+    using watchdog = idleWatchdog(upstream, {
+      firstChunkMs: connection.firstChunkIdleTimeoutMs,
+      firstChunkCode: FIRST_CHUNK_IDLE_TIMEOUT_CODE,
+      idleMs: connection.streamIdleTimeoutMs,
+      idleCode: STREAM_IDLE_TIMEOUT_CODE,
+    })
     const iterator = this.request(
       options,
       watchdog.signal,
@@ -248,6 +259,13 @@ export class DeepSeekAdapter extends LlmAdapter {
         yield result.value
       }
     } catch (error: unknown) {
+      if (timeoutOf(watchdog.signal, FIRST_CHUNK_IDLE_TIMEOUT_CODE) !== undefined) {
+        throw new LlmError(
+          `DeepSeek first-chunk idle timeout after ${connection.firstChunkIdleTimeoutMs}ms`,
+          FIRST_CHUNK_TIMEOUT_CODE,
+          { cause: error },
+        )
+      }
       if (timeoutOf(watchdog.signal, STREAM_IDLE_TIMEOUT_CODE) !== undefined) {
         throw new LlmError(
           `DeepSeek stream idle timeout after ${connection.streamIdleTimeoutMs}ms`,

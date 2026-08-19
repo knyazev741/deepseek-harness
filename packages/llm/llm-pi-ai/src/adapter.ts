@@ -34,6 +34,7 @@ import type {
 import {
   attributionHeaders,
   contentHasImage,
+  FIRST_CHUNK_TIMEOUT_CODE,
   LlmAdapter,
   LlmError,
   ReasoningEffortId,
@@ -52,6 +53,11 @@ import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { toPiContext } from './context.ts'
 import { toStreamChunks } from './stream.ts'
+
+/** Timeout code for the wait until a stream's first chunk. */
+const FIRST_CHUNK_IDLE_TIMEOUT_CODE = 'LLM_FIRST_CHUNK_IDLE_TIMEOUT'
+/** Timeout code for idle time between streamed chunks. */
+const STREAM_IDLE_TIMEOUT_CODE = 'LLM_STREAM_IDLE_TIMEOUT'
 
 /** One resolution's frozen view: the profiles and the collection built from them. */
 interface PiAiSnapshot {
@@ -301,7 +307,13 @@ export class PiAiAdapter extends LlmAdapter {
       ? consumer.signal
       : AbortSignal.any([options.signal, consumer.signal])
     const streamIdleTimeoutMs = profile.streamIdleTimeoutMs
-    using watchdog = idleWatchdog(upstream, streamIdleTimeoutMs, 'LLM_STREAM_IDLE_TIMEOUT')
+    const firstChunkIdleTimeoutMs = profile.firstChunkIdleTimeoutMs
+    using watchdog = idleWatchdog(upstream, {
+      firstChunkMs: firstChunkIdleTimeoutMs,
+      firstChunkCode: FIRST_CHUNK_IDLE_TIMEOUT_CODE,
+      idleMs: streamIdleTimeoutMs,
+      idleCode: STREAM_IDLE_TIMEOUT_CODE,
+    })
 
     try {
       const containsImage = options.messages.some(message => contentHasImage(message.content))
@@ -333,7 +345,8 @@ export class PiAiAdapter extends LlmAdapter {
       try {
         while (true) {
           const result = await watchdog.next(iterator)
-          const timeout = timeoutOf(watchdog.signal, 'LLM_STREAM_IDLE_TIMEOUT')
+          const timeout = timeoutOf(watchdog.signal, STREAM_IDLE_TIMEOUT_CODE)
+            ?? timeoutOf(watchdog.signal, FIRST_CHUNK_IDLE_TIMEOUT_CODE)
           if (timeout !== undefined) throw timeout
           if (result.done) {
             exhausted = true
@@ -352,7 +365,14 @@ export class PiAiAdapter extends LlmAdapter {
         }
       }
     } catch (error: unknown) {
-      if (timeoutOf(watchdog.signal, 'LLM_STREAM_IDLE_TIMEOUT') !== undefined) {
+      if (timeoutOf(watchdog.signal, FIRST_CHUNK_IDLE_TIMEOUT_CODE) !== undefined) {
+        throw new LlmError(
+          `pi-ai first-chunk idle timeout after ${firstChunkIdleTimeoutMs}ms`,
+          FIRST_CHUNK_TIMEOUT_CODE,
+          { cause: error },
+        )
+      }
+      if (timeoutOf(watchdog.signal, STREAM_IDLE_TIMEOUT_CODE) !== undefined) {
         throw new LlmError(`pi-ai stream idle timeout after ${streamIdleTimeoutMs}ms`, 'TIMEOUT', { cause: error })
       }
       if (options.signal?.aborted) {

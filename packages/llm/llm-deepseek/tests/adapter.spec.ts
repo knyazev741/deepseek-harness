@@ -6,6 +6,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { createLaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import LlmRuntime, { createUserMessage,
   CONTEXT_WINDOW_EXCEEDED_CODE,
+  FIRST_CHUNK_TIMEOUT_CODE,
   ProviderRequestId,
   QUOTA_EXCEEDED_CODE,
   ReasoningEffortId,
@@ -550,13 +551,61 @@ describe('DeepSeekAdapter against a mock server', () => {
       })
       return Promise.resolve(new Response(body, { status: 200 }))
     })
-    const adapter = adapterOf({ baseURL: 'https://example.invalid', streamIdleTimeoutMs: 100 })
+    // No chunk ever arrives, so the watchdog fires on the first-chunk budget and
+    // reports a first-chunk timeout rather than a generic idle timeout.
+    const adapter = adapterOf({
+      baseURL: 'https://example.invalid',
+      streamIdleTimeoutMs: 100,
+      firstChunkIdleTimeoutMs: 100,
+    })
+    try {
+      const drain = (async () => {
+        for await (const _chunk of adapter.stream({ provider: 'deepseek-official', model: 'm', messages: [] })) { /* drain */ }
+      })()
+      const rejected = expect(drain).rejects.toMatchObject({ code: FIRST_CHUNK_TIMEOUT_CODE })
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(100)
+      await rejected
+      expect(stopped).toBe(true)
+    } finally {
+      fetchSpy.mockRestore()
+    }
+  })
+
+  it('reports a later inter-chunk idle stall as TIMEOUT, not a first-chunk timeout', async () => {
+    vi.useFakeTimers()
+    const encoder = new TextEncoder()
+    let stopped = false
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+      const signal = init?.signal
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          signal?.addEventListener('abort', () => {
+            stopped = true
+            controller.error(signal.reason)
+          }, { once: true })
+          // The first content chunk arrives within the generous first-chunk
+          // budget; the stream then stalls past the short idle budget. The
+          // remaining events (block-end/finish) never arrive.
+          setTimeout(() => { controller.enqueue(encoder.encode(`data: ${textEvents[1]}\n\n`)) }, 10)
+        },
+      })
+      return Promise.resolve(new Response(body, { status: 200 }))
+    })
+    const adapter = adapterOf({
+      baseURL: 'https://example.invalid',
+      streamIdleTimeoutMs: 100,
+      firstChunkIdleTimeoutMs: 500,
+    })
     try {
       const drain = (async () => {
         for await (const _chunk of adapter.stream({ provider: 'deepseek-official', model: 'm', messages: [] })) { /* drain */ }
       })()
       const rejected = expect(drain).rejects.toMatchObject({ code: 'TIMEOUT' })
-      await vi.advanceTimersByTimeAsync(0)
+      // First chunk at 10ms (within the 500ms first-chunk budget).
+      await vi.advanceTimersByTimeAsync(10)
+      // The next read never gets the remaining events; past the 100ms idle
+      // budget this is a plain idle timeout, not a first-chunk timeout.
       await vi.advanceTimersByTimeAsync(100)
       await rejected
       expect(stopped).toBe(true)
@@ -1031,6 +1080,10 @@ describe('plugin registration and config', () => {
       .toThrow(/streamIdleTimeoutMs.*positive finite/)
     expect(() => resolveAdapterOptions({ streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 }))
       .toThrow(/streamIdleTimeoutMs.*no greater/)
+    expect(() => resolveAdapterOptions({ firstChunkIdleTimeoutMs: Number.POSITIVE_INFINITY }))
+      .toThrow(/firstChunkIdleTimeoutMs.*positive finite/)
+    expect(() => resolveAdapterOptions({ firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 }))
+      .toThrow(/firstChunkIdleTimeoutMs.*no greater/)
 
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
@@ -1042,6 +1095,27 @@ describe('plugin registration and config', () => {
       baseURL: 'http://127.0.0.1:1',
       streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1,
     })).rejects.toThrow(/streamIdleTimeoutMs/)
+    await expect(ctx.plugin(LlmDeepSeek, {
+      baseURL: 'http://127.0.0.1:1',
+      firstChunkIdleTimeoutMs: 0,
+    })).rejects.toThrow(/firstChunkIdleTimeoutMs/)
+    await expect(ctx.plugin(LlmDeepSeek, {
+      baseURL: 'http://127.0.0.1:1',
+      firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1,
+    })).rejects.toThrow(/firstChunkIdleTimeoutMs/)
+  })
+
+  it('defaults the first-chunk idle budget to 900s and the idle budget to 300s', () => {
+    const resolved = resolveAdapterOptions({ baseURL: 'https://example.invalid' })
+    expect(resolved.streamIdleTimeoutMs).toBe(300_000)
+    expect(resolved.firstChunkIdleTimeoutMs).toBe(900_000)
+    const tuned = resolveAdapterOptions({
+      baseURL: 'https://example.invalid',
+      streamIdleTimeoutMs: 5_000,
+      firstChunkIdleTimeoutMs: 10_000,
+    })
+    expect(tuned.streamIdleTimeoutMs).toBe(5_000)
+    expect(tuned.firstChunkIdleTimeoutMs).toBe(10_000)
   })
 
   it('rejects invalid nested retryPolicy before registering the provider', async () => {

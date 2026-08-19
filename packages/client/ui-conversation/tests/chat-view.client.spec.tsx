@@ -143,13 +143,16 @@ function emptySessions() {
 
 function emptyWorkspaces() {
   const store = createSnapshotStore<WorkspaceListState>({
-    items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+    items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
     baselinesReady: true, recentWorkspaceId: undefined,
   })
   return bindSnapshotSelector(store)
 }
 
-function makeHarness(init?: Partial<ConversationSnapshot>) {
+function makeHarness(
+  init?: Partial<ConversationSnapshot>,
+  projection?: ChatViewSlotProps['useProjection'],
+) {
   const { set, source } = makeSource(init)
   const openDetails = vi.fn<(t: SelectionTarget) => void>()
   const openFile = vi.fn<(path: string) => void>()
@@ -267,7 +270,7 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
     useSession: bindSnapshotSelector(source),
     useSessions: emptySessions(),
     useWorkspaces: emptyWorkspaces(),
-    useProjection: (() => undefined),
+    useProjection: projection ?? (() => undefined),
     useInput: (() => { throw new Error('unused') }),
     inputActions: {
       setDraft: () => {},
@@ -578,6 +581,51 @@ describe('ChatView', () => {
     const cancelledDisclosure = view.container.querySelector('details') as HTMLDetailsElement
     expect(cancelledDisclosure.dataset.active).toBeUndefined()
     expect(within(cancelledDisclosure).getByRole('status').textContent).toContain('重试已取消')
+  })
+
+  it('suggests /compact when a first-chunk timeout lands on a high-pressure context', () => {
+    const timeoutNode: ModelRetryNode = {
+      ...retry(2),
+      failure: { code: 'FIRST_CHUNK_TIMEOUT', message: 'first chunk timeout' },
+    }
+    const pressure = (key: string): unknown =>
+      key === 'contextPressure' ? { pressureTokens: 96_000, contextWindow: 128_000 } : undefined
+    const h = makeHarness(
+      { nodes: [user(1, 'try'), timeoutNode], running: true },
+      pressure as ChatViewSlotProps['useProjection'],
+    )
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText(/\/compact/)).toBeTruthy()
+  })
+
+  it('keeps the /compact hint off a low-pressure first-chunk timeout', () => {
+    const timeoutNode: ModelRetryNode = {
+      ...retry(2),
+      failure: { code: 'FIRST_CHUNK_TIMEOUT', message: 'first chunk timeout' },
+    }
+    const lowPressure = (key: string): unknown =>
+      key === 'contextPressure' ? { pressureTokens: 32_000, contextWindow: 128_000 } : undefined
+    const h = makeHarness(
+      { nodes: [user(1, 'try'), timeoutNode], running: true },
+      lowPressure as ChatViewSlotProps['useProjection'],
+    )
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByText(/\/compact/)).toBeNull()
+  })
+
+  it('keeps the /compact hint off a non-timeout failure under high pressure', () => {
+    const plainNode: ModelRetryNode = {
+      ...retry(2),
+      failure: { code: 'TRANSPORT', message: '连接被重置' },
+    }
+    const pressure = (key: string): unknown =>
+      key === 'contextPressure' ? { pressureTokens: 96_000, contextWindow: 128_000 } : undefined
+    const h = makeHarness(
+      { nodes: [user(1, 'try'), plainNode], running: true },
+      pressure as ChatViewSlotProps['useProjection'],
+    )
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByText(/\/compact/)).toBeNull()
   })
 
   it('renders terminal turn failures inline with their durable message and optional code', () => {

@@ -37,6 +37,12 @@
   stroke-linecap: round;
 }
 
+/* Large-context warning tint (occupancy at or above the HIGH_PRESSURE_PERCENT
+   threshold); the amber alias keeps the cue token-defined across themes. */
+.fill.high {
+  stroke: var(--dsw-alias-state-warn-primary);
+}
+
 .panel {
   position: absolute;
   bottom: calc(100% + 8px);

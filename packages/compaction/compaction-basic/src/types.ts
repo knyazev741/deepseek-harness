@@ -10,6 +10,12 @@ import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
 export interface CompactionPolicyConfig {
   /** Compact at this fraction of the model's context window. Defaults to `0.8`. */
   thresholdRatio?: number
+  /**
+   * Fraction of the model's context window above which a `FIRST_CHUNK_TIMEOUT`
+   * triggers compaction instead of a plain retry. Below it the retry policy
+   * retries the same payload. Defaults to `0.5`.
+   */
+  idleTimeoutPressureRatio?: number
   /** Recent context retained as a fraction of the model's window. Defaults to `0.16`. */
   retainRatio?: number
   /** Absolute recent-context budget; mutually exclusive with `retainRatio`. */
@@ -57,6 +63,7 @@ export type ResolvedRetention =
 /** Validated policy fields shared before and after exact-target matching. */
 interface ResolvedPolicyFields {
   readonly thresholdRatio: number
+  readonly idleTimeoutPressureRatio: number
   readonly summarizationProvider: string
   readonly summarizationModel: string
   readonly maxTokens: number

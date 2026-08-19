@@ -47,6 +47,29 @@ export const EMPTY_RESPONSE_CODE = 'EMPTY_RESPONSE'
  */
 export const INVALID_CREDENTIAL_CODE = 'INVALID_CREDENTIAL'
 
+/**
+ * Canonical provider-neutral code for a model request that produced no
+ * streamed chunk at all before its first-chunk budget elapsed. Distinct from
+ * a mid-stream `TIMEOUT` (connection stalled after at least one chunk): no
+ * progress is proof the provider never began a response, which for large
+ * prompts means the prefill outlasted the budget rather than a transient
+ * transport drop. Consumers route it to size-aware recovery (compaction)
+ * instead of a blind same-payload retry.
+ */
+export const FIRST_CHUNK_TIMEOUT_CODE = 'FIRST_CHUNK_TIMEOUT'
+
+/**
+ * Canonical provider-neutral code for a request whose connection stalled or
+ * exceeded its total budget after the stream had already begun — the
+ * mid-stream counterpart to {@link FIRST_CHUNK_TIMEOUT_CODE}. Adapters also
+ * map SDK-level request timeouts here, so a `TIMEOUT` may describe a prompt
+ * whose prefill outlasted the transport budget as well as a transient
+ * mid-stream drop. Size-aware recovery (compaction) therefore treats it like
+ * a first-chunk timeout: retry the same payload at low pressure, compact at
+ * high pressure rather than blindly repeating the oversized request.
+ */
+export const TIMEOUT_CODE = 'TIMEOUT'
+
 /** Structured codes and plain phrases that explicitly name a context bound being exceeded. */
 const STRUCTURED_CONTEXT_OVERFLOW = new RegExp(
   String.raw`(?:^|[^a-z0-9])context[\s_-](?:length|window)[\s_-]`

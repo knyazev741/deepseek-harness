@@ -19,7 +19,11 @@ const tEn = makeTranslate(en, commonEn) as ContextMeterProps['t']
 const BREAKDOWN = { systemTokens: 120, toolsTokens: 21_500, messageTokens: 477_000 }
 
 const segmentClass = css.segment
+const fillClass = css.fill
+const highClass = css.high
 if (segmentClass === undefined) throw new Error('segment class missing from ContextMeter.module.css')
+if (fillClass === undefined) throw new Error('fill class missing from ContextMeter.module.css')
+if (highClass === undefined) throw new Error('high class missing from ContextMeter.module.css')
 
 /** Stub the projection seat: a key-addressed table of whole values. */
 function projections(values: Record<string, unknown>): ContextMeterProps['useProjection'] {
@@ -99,6 +103,38 @@ describe('ContextMeter', () => {
     const trigger = view.getByRole('button', { name: '上下文已用 2%' })
     fireEvent.click(trigger)
     expect(view.container.querySelector('[role="dialog"]')!.textContent).toContain('~3K / 128K')
+  })
+
+  it('flags a large context on the ring and in the accessible name at/above the warning threshold', () => {
+    // Exactly the threshold (50%) turns on the warning; 25% stays quiet.
+    const boundary = meter({
+      contextPressure: { pressureTokens: 64_000, contextWindow: 128_000 },
+      contextBreakdown: BREAKDOWN,
+    })
+    const boundaryTrigger = boundary.getByRole('button', { name: '上下文已用 50% · 上下文占用过高' })
+    expect(boundaryTrigger.getAttribute('data-warning')).toBeDefined()
+    expect(boundaryTrigger.querySelector(`circle.${fillClass}`)?.classList.contains(highClass)).toBe(true)
+
+    const highView = meter({
+      contextPressure: { pressureTokens: 96_000, contextWindow: 128_000 },
+      contextBreakdown: BREAKDOWN,
+    })
+    const highTrigger = highView.getByRole('button', { name: '上下文已用 75% · 上下文占用过高' })
+    expect(highTrigger.getAttribute('data-warning')).toBeDefined()
+    // The warning travels with the English reading too, each locale own words.
+    const enHigh = meter({
+      contextPressure: { pressureTokens: 96_000, contextWindow: 128_000 },
+      contextBreakdown: BREAKDOWN,
+    }, tEn)
+    enHigh.getByRole('button', { name: '75% of context used · high context pressure' })
+
+    const lowView = meter({
+      contextPressure: { pressureTokens: 32_000, contextWindow: 128_000 },
+      contextBreakdown: BREAKDOWN,
+    })
+    const lowTrigger = lowView.getByRole('button', { name: '上下文已用 25%' })
+    expect(lowTrigger.getAttribute('data-warning')).toBeNull()
+    expect(lowTrigger.querySelector(`circle.${fillClass}`)?.classList.contains(highClass)).toBe(false)
   })
 
   it('omits the composition rows while the contextBreakdown projection is absent', () => {

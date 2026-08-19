@@ -19,6 +19,9 @@ import type {
 /** Default request-pressure fraction for every routed model. */
 const DEFAULT_THRESHOLD_RATIO = 0.8
 
+/** Default context-pressured first-chunk timeout compaction trigger for every routed model. */
+const DEFAULT_IDLE_TIMEOUT_PRESSURE_RATIO = 0.5
+
 /** Default verbatim-tail fraction for every routed model. */
 const DEFAULT_RETAIN_RATIO = 0.16
 
@@ -28,6 +31,7 @@ const DEFAULT_MAX_SUMMARIZATION_INPUT_TOKENS = 131_072
 /** Fields shared by top-level defaults and exact-target overrides. */
 const POLICY_CONFIG_KEYS = [
   'thresholdRatio',
+  'idleTimeoutPressureRatio',
   'retainRatio',
   'retainTokens',
   'summarizationProvider',
@@ -76,6 +80,8 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
   }
 
   const thresholdRatio = config.thresholdRatio ?? DEFAULT_THRESHOLD_RATIO
+  const idleTimeoutPressureRatio = config.idleTimeoutPressureRatio
+    ?? DEFAULT_IDLE_TIMEOUT_PRESSURE_RATIO
   const retention = resolveRetention(config, { retainRatio: DEFAULT_RETAIN_RATIO })
   validateRatioRetention(thresholdRatio, retention, 'BasicCompactionConfig')
   const modelPolicies = resolveModelPolicies(config.modelPolicies)
@@ -89,6 +95,7 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
 
   return deepFreeze({
     thresholdRatio,
+    idleTimeoutPressureRatio,
     ...retention,
     summarizationProvider: config.summarizationProvider ?? '',
     summarizationModel: config.summarizationModel ?? '',
@@ -121,6 +128,7 @@ export function resolveTargetPolicy(
   return deepFreeze({
     target: { provider: target.provider, model: target.model },
     thresholdRatio: override?.thresholdRatio ?? config.thresholdRatio,
+    idleTimeoutPressureRatio: override?.idleTimeoutPressureRatio ?? config.idleTimeoutPressureRatio,
     ...resolveRetention(override ?? {}, inheritedRetention),
     summarizationProvider: override?.summarizationProvider ?? config.summarizationProvider,
     summarizationModel: override?.summarizationModel ?? config.summarizationModel,
@@ -164,6 +172,7 @@ export function resolveCompactSpec(
     target: { ...policy.target },
     contextWindow,
     thresholdRatio: policy.thresholdRatio,
+    idleTimeoutPressureRatio: policy.idleTimeoutPressureRatio,
     thresholdTokens,
     retainTokens,
     summarizationProvider: policy.summarizationProvider,
@@ -238,6 +247,7 @@ function validatePolicy(
   name: string,
 ): void {
   const thresholdRatio = config.thresholdRatio
+  const idleTimeoutPressureRatio = config.idleTimeoutPressureRatio
   const retainRatio = config.retainRatio
   const retainTokens = config.retainTokens
   const maxTokens = config.maxTokens
@@ -245,6 +255,9 @@ function validatePolicy(
   const compactionRetries = config.compactionRetries
   const maxOverflowRetries = config.maxOverflowRetries
   if (thresholdRatio !== undefined) assertRatio(`${name}.thresholdRatio`, thresholdRatio)
+  if (idleTimeoutPressureRatio !== undefined) {
+    assertRatio(`${name}.idleTimeoutPressureRatio`, idleTimeoutPressureRatio)
+  }
   if (retainRatio !== undefined) assertRatio(`${name}.retainRatio`, retainRatio)
   if (retainTokens !== undefined) assertNonNegativeInteger(`${name}.retainTokens`, retainTokens)
   if (retainRatio !== undefined && retainTokens !== undefined) {
