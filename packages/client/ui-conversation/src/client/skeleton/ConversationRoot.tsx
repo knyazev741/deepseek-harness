@@ -120,6 +120,7 @@ export function ConversationRoot({
         onClose: () => { setPickerOpen(false) },
       })}
       {renderSlot('conversation.hero.agentPreset', {})}
+      {renderSlot('conversation.hero.sessionMode', {})}
     </div>
   )
 

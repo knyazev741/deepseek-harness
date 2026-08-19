@@ -143,6 +143,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * the next one rather than applied to a current one.
      */
     'conversation.hero.agentPreset': { kind: 'single'; scope: 'root'; owner: HeroAgentPresetOwnerProps }
+    /**
+     * The session-mode picker on the new-session screen: chooses who drives the
+     * next session (`dsh` native agent loop vs a registered external console
+     * agent) and, for an external mode, its initial model. Root scope: rendered
+     * before a session exists, so the choice is staged for creation rather than
+     * applied to a current one.
+     */
+    'conversation.hero.sessionMode': { kind: 'single'; scope: 'root'; owner: HeroSessionModeOwnerProps }
     // 'conversation.input.overlay' merges in ui-input-trigger (the dependency
     // direction is the hard constraint — ui-input-trigger cannot import
     // this package, while this package's input contract already imports
@@ -243,6 +251,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Owner share of the hero agent-preset chip: the shell supplies nothing. */
 export interface HeroAgentPresetOwnerProps {
   /** Marker field: the chip owns its own roster, staging, and menu state. */
+  children?: never
+}
+
+/** Owner share of the hero session-mode picker: the shell supplies nothing. */
+export interface HeroSessionModeOwnerProps {
+  /** Marker field: the picker owns its catalog, staging, and model seat. */
   children?: never
 }
 
@@ -575,6 +589,7 @@ export type ConversationSlotProps =
     | 'conversation.input.left' | 'conversation.input.right'
     | 'conversation.hero.workspace'
     | 'conversation.hero.agentPreset'
+    | 'conversation.hero.sessionMode'
   >
   & InjectFace<ConversationInjected>
   & PropsLocale<'conversation'>
