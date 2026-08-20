@@ -115,7 +115,10 @@ describe('runnerCommand config', () => {
       runnerFailureSignatures: ['fake-runner: profile rejected'],
     })
     expect(sandbox.confine(['true'], policy).argv).toEqual([
-      'fake-runner', ...bwrapProfileArgs(policy), '--', 'true',
+      'fake-runner',
+      '--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc', '--die-with-parent',
+      '--tmpfs', '/tmp', '--bind', '/ws', '/ws', '--bind', stateRoot, stateRoot,
+      '--', 'true',
     ])
   })
 

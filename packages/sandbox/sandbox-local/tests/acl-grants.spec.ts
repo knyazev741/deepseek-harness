@@ -173,6 +173,26 @@ describe('windows-acl write grants (LocalSandboxProvider)', () => {
     }
   })
 
+  it('rejects a workspace-write state root without a session id instead of dropping it', async () => {
+    try {
+      const { sandbox, fiber } = await setup()
+      const ws = workspaceRoot()
+      const state = mkdtempSync(join(tmpdir(), 'dsh-acl-grants-agentless-state-'))
+      scratch.push(ws, state)
+
+      expect(() => sandbox.confine(['true'], {
+        mode: 'workspace-write',
+        workspaceRoot: ws,
+        stateRoot: realpathSync.native(state),
+      })).toThrow(/stateRoot.*sessionId/u)
+      expect(mockState.grants).toHaveLength(0)
+
+      await fiber.dispose()
+    } finally {
+      cleanup()
+    }
+  })
+
   it('read-only materializes no capability; upgrade creates them and downgrade leaves them reusable', async () => {
     try {
       const { sandbox, fiber } = await setup()

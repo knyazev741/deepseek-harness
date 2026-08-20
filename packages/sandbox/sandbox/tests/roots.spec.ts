@@ -4,12 +4,11 @@
  * deriving from `writableRoots` — cannot drift.
  */
 
-import { realpathSync } from 'node:fs'
+import { mkdtempSync, realpathSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { mkdtempSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { canonicalPath, writableRoots } from '@deepseek-ai/dsh-sandbox'
+import { canonicalPath, canonicalStateRoot, writableRoots } from '@deepseek-ai/dsh-sandbox'
 
 describe('canonicalPath', () => {
   it('resolves symlinks (an existing path realpaths)', () => {
@@ -19,6 +18,14 @@ describe('canonicalPath', () => {
 
   it('returns the spelling as-is when the path cannot be resolved (conservative — matches nothing until it exists)', () => {
     expect(canonicalPath('/does/not/exist/anywhere-xyz')).toBe('/does/not/exist/anywhere-xyz')
+  })
+
+  it.skipIf(process.platform === 'win32')('canonicalizes an absolute symlink alias for a state root', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'dsh-state-alias-'))
+    const target = mkdtempSync(join(parent, 'target-'))
+    const alias = join(parent, 'alias')
+    symlinkSync(target, alias, 'dir')
+    expect(canonicalStateRoot(alias)).toBe(realpathSync.native(target))
   })
 })
 

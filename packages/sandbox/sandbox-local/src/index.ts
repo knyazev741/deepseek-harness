@@ -352,13 +352,18 @@ export class LocalSandboxProvider extends SandboxProvider {
    * session/workspace pair. An optional state root is granted through that
    * private capability and revoked with it. The runner receives `--write-sid` plus
    * `--temp-write-sid` and grants nothing itself. Agentless workspace-write
-   * calls pass the ambient temp ROOT and no SID flags: the runner creates and
-   * removes a random private child directory for that one invocation.
+   * calls without a state root pass the ambient temp ROOT and no SID flags: the
+   * runner creates and removes a random private child directory for that one
+   * invocation. Supplying a state root without a session id fails closed
+   * instead of dropping the requested grant.
    * @param policy - the resolved per-call policy.
    * @returns the runner invocation.
    */
   private windowsAclRunnerArgv(policy: SandboxPolicy): string[] {
     const sessionId = policy.sessionId
+    if (policy.mode === 'workspace-write' && policy.stateRoot !== undefined && sessionId === undefined) {
+      throw new Error('sandbox-local windows-acl workspace-write stateRoot requires sessionId')
+    }
     if (sessionId === undefined || policy.mode === 'read-only') {
       return [
         ...this.windowsAclRunnerInvocation(),

@@ -50,8 +50,8 @@ export function canonicalPath(path: string): string {
  */
 export function canonicalStateRoot(stateRoot: string | undefined): string | undefined {
   if (stateRoot === undefined) return undefined
+  if (!isAbsolute(stateRoot)) throw new Error('sandbox stateRoot must be absolute')
   const canonical = canonicalPath(stateRoot)
-  if (!isAbsolute(canonical)) throw new Error('sandbox stateRoot must be absolute')
   return canonical
 }
 

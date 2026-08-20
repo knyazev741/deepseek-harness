@@ -58,4 +58,11 @@ describe('state-root profile grants', () => {
     expect(() => landlockProfileArgs(policy)).toThrow(/stateRoot must be absolute/u)
     expect(() => seatbeltProfileArgs(policy)).toThrow(/stateRoot must be absolute/u)
   })
+
+  it('rejects an existing relative state root before canonicalization', () => {
+    const policy: SandboxPolicy = { mode: 'workspace-write', workspaceRoot: '/workspace', stateRoot: '.' }
+    expect(() => bwrapProfileArgs(policy)).toThrow(/stateRoot must be absolute/u)
+    expect(() => landlockProfileArgs(policy)).toThrow(/stateRoot must be absolute/u)
+    expect(() => seatbeltProfileArgs(policy)).toThrow(/stateRoot must be absolute/u)
+  })
 })
