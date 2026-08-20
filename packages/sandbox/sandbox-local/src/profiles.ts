@@ -5,11 +5,13 @@
  */
 
 import { grantArgs as landlockGrantArgs } from '@deepseek-ai/node-addon-landlock-run'
-import { writableRoots } from '@deepseek-ai/dsh-sandbox'
+import { canonicalStateRoot, writableRoots } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
 
 /**
- * Build the bwrap profile arguments for one file-effect policy.
+ * Build the bwrap profile arguments for one file-effect policy. Under
+ * `workspace-write`, an optional state root is bound at its canonical path in
+ * addition to the workspace and private `/tmp` mount.
  * @param policy - file-effect policy to express as bwrap mounts.
  * @returns profile arguments before the trailing separator and command argv.
  */
@@ -18,12 +20,16 @@ export function bwrapProfileArgs(policy: SandboxPolicy): string[] {
   if (policy.mode === 'workspace-write') {
     args.push('--tmpfs', '/tmp')
     args.push('--bind', policy.workspaceRoot, policy.workspaceRoot)
+    const stateRoot = canonicalStateRoot(policy.stateRoot)
+    if (stateRoot !== undefined) args.push('--bind', stateRoot, stateRoot)
   }
   return args
 }
 
 /**
- * Build the Landlock launcher grants for one file-effect policy.
+ * Build the Landlock launcher grants for one file-effect policy. Under
+ * `workspace-write`, an optional state root is granted at its canonical path
+ * in addition to the workspace and temp roots.
  * @param policy - file-effect policy to express as Landlock allow-list grants.
  * @returns launcher grant arguments before the trailing separator and command argv.
  */
@@ -31,6 +37,8 @@ export function landlockProfileArgs(policy: SandboxPolicy): string[] {
   const readWrite = ['/dev/null']
   if (policy.mode === 'workspace-write') {
     readWrite.push('/tmp', policy.workspaceRoot)
+    const stateRoot = canonicalStateRoot(policy.stateRoot)
+    if (stateRoot !== undefined) readWrite.push(stateRoot)
   }
   return landlockGrantArgs({ readOnly: ['/'], readWrite })
 }
@@ -43,7 +51,7 @@ function sbplString(path: string): string {
 /**
  * Build the sandbox-exec arguments and SBPL profile for one policy. The
  * writable roots come from the shared {@link writableRoots} helper (canonical,
- * deduplicated) so the Seatbelt grant and the in-process fs fence
+ * deduplicated, including an optional state root) so the Seatbelt grant and the in-process fs fence
  * (`@deepseek-ai/dsh-fs-sandbox`) can never drift apart.
  * @param policy - file-effect policy to express as an SBPL profile.
  * @returns sandbox-exec arguments before the trailing separator and command argv.

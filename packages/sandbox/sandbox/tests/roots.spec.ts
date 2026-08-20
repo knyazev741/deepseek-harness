@@ -36,4 +36,20 @@ describe('writableRoots', () => {
     // Deduplicated after canonicalization (/tmp and os.tmpdir() may coincide).
     expect(new Set(roots).size).toBe(roots.length)
   })
+
+  it('workspace-write grants the canonical state root and deduplicates it with existing roots', () => {
+    const ws = mkdtempSync(join(tmpdir(), 'dsh-ws-'))
+    const state = mkdtempSync(join(tmpdir(), 'dsh-state-'))
+    const roots = writableRoots({ mode: 'workspace-write', workspaceRoot: ws, stateRoot: state })
+    expect(roots).toContain(realpathSync.native(state))
+    expect(new Set(roots).size).toBe(roots.length)
+
+    const duplicate = writableRoots({ mode: 'workspace-write', workspaceRoot: ws, stateRoot: ws })
+    expect(duplicate.filter(root => root === realpathSync.native(ws))).toHaveLength(1)
+  })
+
+  it('read-only ignores the state root', () => {
+    const state = mkdtempSync(join(tmpdir(), 'dsh-state-'))
+    expect(writableRoots({ mode: 'read-only', workspaceRoot: '/workspace', stateRoot: state })).toEqual([])
+  })
 })
