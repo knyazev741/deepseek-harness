@@ -353,7 +353,7 @@ const SECRET_TEXT_PATTERN = new RegExp(
   'giu',
 )
 const LOCAL_PATH_PATTERN = new RegExp(
-  String.raw`(?:\/(?:Users|home|private|tmp|var|opt)\/|[A-Za-z]:[\\/]|\\\\(?:Users|home|private|tmp|var|opt)\\)[^"'\x60<>\r\n]*`,
+  String.raw`(?:\/(?:Users|home|private|tmp|var|opt)\/|[A-Za-z]:[\\/]|\\\\(?:Users|home|private|tmp|var|opt)\\|\\\\[^\\/"'\x60<>\r\n]+\\[^\\/"'\x60<>\r\n]+\\)[^"'\x60<>\r\n]*`,
   'gu',
 )
 const SECRET_KEY_MARKERS = [

@@ -106,6 +106,88 @@ describe('mcp-gateway invariant', () => {
     await ctx.fiber.dispose()
   })
 
+  it('rejects an orphan durable result without gateway call state', async () => {
+    const ctx = new Context()
+    await ctx.plugin(InvariantRegistry)
+    await ctx.plugin(McpGatewayInvariant)
+    const session = Session.create(SessionId('orphan-result'))
+    const sessionId = String(session.id)
+    ctx.emit('mcp-gateway/lease-created', { route: '/mcp/orphan', sessionId })
+    expect(() => {
+      ctx.emit('session/event', session, {
+        type: 'external/tool-result',
+        seq: 0,
+        time: 1,
+        data: { callId: 'orphan-call', name: 'allowed', isError: true, error: { message: 'bounded' } },
+      } as never)
+    }).toThrow(InvariantError)
+    await ctx.fiber.dispose()
+  })
+
+  it('rejects a durable result emitted under another session for an existing call id', async () => {
+    const ctx = new Context()
+    await ctx.plugin(InvariantRegistry)
+    await ctx.plugin(McpGatewayInvariant)
+    const owner = Session.create(SessionId('owned-result'))
+    const ownerId = String(owner.id)
+    const wrongSession = Session.create(SessionId('wrong-result-session'))
+    ctx.emit('mcp-gateway/lease-created', { route: '/mcp/owned', sessionId: ownerId })
+    ctx.emit('session/event', owner, {
+      type: 'external/tool-call',
+      seq: 0,
+      time: 1,
+      data: { callId: 'owned-call', name: 'allowed', arguments: {} },
+    } as never)
+    ctx.emit('mcp-gateway/call-started', { route: '/mcp/owned', callId: 'owned-call', sessionId: ownerId })
+    expect(() => {
+      ctx.emit('session/event', wrongSession, {
+        type: 'external/tool-result',
+        seq: 0,
+        time: 2,
+        data: { callId: 'owned-call', name: 'allowed', isError: false, result: { ok: true } },
+      } as never)
+    }).toThrow(InvariantError)
+    ctx.emit('session/event', owner, {
+      type: 'external/tool-result',
+      seq: 1,
+      time: 3,
+      data: { callId: 'owned-call', name: 'allowed', isError: false, result: { ok: true } },
+    } as never)
+    ctx.emit('mcp-gateway/call-terminal', { route: '/mcp/owned', callId: 'owned-call', sessionId: ownerId })
+    ctx.emit('mcp-gateway/lease-disposed', { route: '/mcp/owned', sessionId: ownerId })
+    await ctx.fiber.dispose()
+  })
+
+  it('rejects a terminal event that names another live route', async () => {
+    const ctx = new Context()
+    await ctx.plugin(InvariantRegistry)
+    await ctx.plugin(McpGatewayInvariant)
+    const session = Session.create(SessionId('route-owner'))
+    const sessionId = String(session.id)
+    ctx.emit('mcp-gateway/lease-created', { route: '/mcp/route-a', sessionId })
+    ctx.emit('mcp-gateway/lease-created', { route: '/mcp/route-b', sessionId })
+    ctx.emit('session/event', session, {
+      type: 'external/tool-call',
+      seq: 0,
+      time: 1,
+      data: { callId: 'route-call', name: 'allowed', arguments: {} },
+    } as never)
+    ctx.emit('mcp-gateway/call-started', { route: '/mcp/route-a', callId: 'route-call', sessionId })
+    ctx.emit('session/event', session, {
+      type: 'external/tool-result',
+      seq: 1,
+      time: 2,
+      data: { callId: 'route-call', name: 'allowed', isError: false, result: { ok: true } },
+    } as never)
+    expect(() => {
+      ctx.emit('mcp-gateway/call-terminal', { route: '/mcp/route-b', callId: 'route-call', sessionId })
+    }).toThrow(InvariantError)
+    ctx.emit('mcp-gateway/call-terminal', { route: '/mcp/route-a', callId: 'route-call', sessionId })
+    ctx.emit('mcp-gateway/lease-disposed', { route: '/mcp/route-a', sessionId })
+    ctx.emit('mcp-gateway/lease-disposed', { route: '/mcp/route-b', sessionId })
+    await ctx.fiber.dispose()
+  })
+
   it('rejects teardown with an authoritative durable call that never entered the gateway', async () => {
     const ctx = new Context()
     await ctx.plugin(InvariantRegistry)

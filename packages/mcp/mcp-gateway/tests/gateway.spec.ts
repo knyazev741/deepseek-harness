@@ -590,6 +590,7 @@ describe('authenticated MCP gateway', () => {
             apiKeyValue: 'error-api-key',
             nested: { secretValue: 'error-password', tokenValue: 'error-token' },
             path: '/Users/knyaz/Application Support/private error.json',
+            uncPath: String.raw`\\server\share\Application Support\private error.txt`,
           }))
         }
         return {
@@ -597,6 +598,7 @@ describe('authenticated MCP gateway', () => {
           apiKeyValue: 'success-api-key',
           nested: { secretValue: 'success-password', tokenValue: 'success-token' },
           path: '/Users/knyaz/Application Support/private success.json',
+          uncPath: String.raw`\\server\share\Application Support\private success.txt`,
         }
       },
     })
@@ -609,38 +611,60 @@ describe('authenticated MCP gateway', () => {
       apiKeyValue: 'call-api-key',
       nested: { secretValue: 'call-secret', tokenValue: 'call-token' },
       path: '/Users/knyaz/Application Support/call file.txt',
+      uncPath: String.raw`\\server\share\Application Support\call file.txt`,
       safe: { key: 'keep this key' },
     }
     const success = await client.callTool({ name: 'allowed', arguments: callArguments })
     expect(observedArguments).toEqual(callArguments)
     const successJson = JSON.stringify(success)
+    expect(successJson).toContain('uncPath')
     expect(successJson).toContain('preserve this structure')
     expect(successJson).toContain('preserve this benign key')
     for (const secret of [
       'success-api-key', 'success-password', 'success-token', 'Application Support/private success.json',
+      String.raw`\\server\share\Application Support\private success.txt`,
+      'Application Support\\private success.txt',
+      'private success.txt',
       'call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt',
+      String.raw`\\server\share\Application Support\call file.txt`, 'Application Support\\call file.txt',
+      'call file.txt',
     ]) {
       expect(successJson).not.toContain(secret)
     }
     const firstCall = owner.session.events.find(event => event.type === 'external/tool-call')
     const firstDurable = JSON.stringify(firstCall)
-    for (const secret of ['call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt']) {
+    for (const secret of [
+      'call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt',
+      String.raw`\\server\share\Application Support\call file.txt`, 'Application Support\\call file.txt',
+      'call file.txt',
+    ]) {
       expect(firstDurable).not.toContain(secret)
     }
 
     fail = true
     const error = await client.callTool({ name: 'allowed', arguments: callArguments })
     const errorJson = JSON.stringify(error)
+    expect(errorJson).toContain('uncPath')
     for (const secret of [
       'error-api-key', 'error-password', 'error-token', 'Application Support/private error.json',
+      String.raw`\\server\share\Application Support\private error.txt`,
+      'Application Support\\private error.txt',
+      'private error.txt',
       'call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt',
+      String.raw`\\server\share\Application Support\call file.txt`, 'Application Support\\call file.txt',
+      'call file.txt',
     ]) {
       expect(errorJson).not.toContain(secret)
     }
     const durable = JSON.stringify(owner.session.events)
+    expect(durable).toContain('uncPath')
     for (const secret of [
       'error-api-key', 'error-password', 'error-token', 'Application Support/private error.json',
+      String.raw`\\server\share\Application Support\private error.txt`, 'Application Support\\private error.txt',
+      'private error.txt',
       'call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt',
+      String.raw`\\server\share\Application Support\call file.txt`, 'Application Support\\call file.txt',
+      'call file.txt',
     ]) {
       expect(durable).not.toContain(secret)
     }

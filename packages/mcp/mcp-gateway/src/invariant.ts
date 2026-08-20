@@ -18,6 +18,7 @@ interface LeaseState {
 
 interface DurableCallState {
   readonly sessionId: string
+  readonly route?: string
   resultCommitted: boolean
 }
 
@@ -50,30 +51,44 @@ const install: InvariantInstaller = (ctx: Context, fail: InvariantFailure) => {
   ctx.on('session/event', (session, event: SessionEvent) => {
     if (event.type !== 'external/tool-call' && event.type !== 'external/tool-result') return
     const sessionId = String(session.id)
-    if (leaseForSession(leases, sessionId) === undefined) return
     const callId = eventCallId(event)
     const call = calls.get(callId)
     const durable = durableCalls.get(callId)
     if (event.type === 'external/tool-call') {
-      if (durable !== undefined) fail(`MCP gateway call ${JSON.stringify(callId)} committed more than one durable call`)
-      durableCalls.set(callId, { sessionId, resultCommitted: false })
+      if (durable !== undefined) {
+        if (durable.sessionId !== sessionId) fail(`MCP gateway call ${JSON.stringify(callId)} changed session ownership`)
+        fail(`MCP gateway call ${JSON.stringify(callId)} committed more than one durable call`)
+      }
+      if (leaseForSession(leases, sessionId) === undefined) return
+      const route = call?.route
+      if (call !== undefined && call.sessionId !== sessionId) {
+        fail(`MCP gateway call ${JSON.stringify(callId)} changed session ownership`)
+      }
+      durableCalls.set(callId, {
+        sessionId,
+        ...route === undefined ? {} : { route },
+        resultCommitted: false,
+      })
       if (call !== undefined) {
-        if (call.sessionId !== sessionId) fail(`MCP gateway call ${JSON.stringify(callId)} changed session ownership`)
         call.durableCall = true
       }
       return
     }
-    if (durable === undefined) {
-      if (call !== undefined) fail(`MCP gateway call ${JSON.stringify(callId)} has no durable call before its result`)
-      return
-    }
+    if (durable === undefined) fail(`MCP gateway call ${JSON.stringify(callId)} has no durable call before its result`)
     if (durable.sessionId !== sessionId) fail(`MCP gateway call ${JSON.stringify(callId)} changed session ownership`)
+    if (durable.route === undefined) fail(`MCP gateway call ${JSON.stringify(callId)} has no active route ownership`)
+    const lease = leases.get(durable.route)
+    if (lease === undefined || lease.sessionId !== sessionId) {
+      fail(`MCP gateway call ${JSON.stringify(callId)} has no active route ownership`)
+    }
+    if (call === undefined) fail(`MCP gateway call ${JSON.stringify(callId)} has no gateway call ownership`)
+    if (call.sessionId !== sessionId) fail(`MCP gateway call ${JSON.stringify(callId)} changed session ownership`)
+    if (call.route !== durable.route || !lease.calls.has(callId)) {
+      fail(`MCP gateway call ${JSON.stringify(callId)} changed route ownership`)
+    }
     if (durable.resultCommitted) fail(`MCP gateway call ${JSON.stringify(callId)} committed more than one durable result`)
     durable.resultCommitted = true
-    if (call !== undefined) {
-      if (call.sessionId !== sessionId) fail(`MCP gateway call ${JSON.stringify(callId)} changed session ownership`)
-      call.durableResult = true
-    }
+    call.durableResult = true
   }, { global: true })
 
   ctx.on('mcp-gateway/lease-created', ({ route, sessionId }) => {
@@ -90,6 +105,10 @@ const install: InvariantInstaller = (ctx: Context, fail: InvariantFailure) => {
     if (durable !== undefined && durable.sessionId !== sessionId) {
       fail(`MCP gateway call ${JSON.stringify(callId)} changed session ownership`)
     }
+    if (durable !== undefined && durable.route !== undefined && durable.route !== route) {
+      fail(`MCP gateway call ${JSON.stringify(callId)} changed route ownership`)
+    }
+    if (durable !== undefined) durableCalls.set(callId, { ...durable, route })
     lease.calls.add(callId)
     calls.set(callId, {
       route,
