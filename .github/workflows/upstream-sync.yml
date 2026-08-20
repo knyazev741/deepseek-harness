@@ -2,14 +2,15 @@
 # into this fork as a reviewable PR.
 #
 # - Runs hourly (and on manual dispatch).
-# - Creates/updates branch `sync/upstream-master` = upstream master rebased
-#   onto our master; on conflict OUR (fork) version wins, so the fork's own
+# - Creates/updates branch `sync/upstream-master` = fork master merged with
+#   upstream master; on conflict OUR (fork) version wins, so the fork's own
 #   changes are never silently overwritten by upstream.
-# - The rebase runs non-interactively: `-X ours` covers content conflicts,
-#   `--empty=drop` skips commits that become empty, and modify/delete +
-#   rename/delete conflicts (which `-X ours` cannot auto-resolve) are also
-#   resolved in the fork's favor: keep the fork's file when it still exists,
-#   keep the deletion when the fork removed it.
+# - A single `git merge -X ours` is used instead of a 337-commit rebase: same
+#   resulting tree, but no sequencer machinery (a conflicted rebase on runner
+#   git 2.54 leaves a stale .git/index.lock that kills every later git call).
+#   `-X ours` covers content conflicts; modify/delete + rename/delete
+#   conflicts are also resolved in the fork's favor: keep the fork's file
+#   when it still exists, keep the deletion when the fork removed it.
 # - Opens (or updates) a PR sync/upstream-master -> master. The companion
 #   workflow `upstream-review.yml` reviews that PR with an LLM and merges it
 #   only when the review and the sanity gates approve.
@@ -55,41 +56,52 @@ jobs:
           set -euo pipefail
           git config user.name 'dsh-sync[bot]'
           git config user.email 'dsh-sync[bot]@users.noreply.github.com'
-          git checkout -B sync/upstream-master upstream/master
-          # Replay upstream commits on top of our master. -X ours keeps the
-          # fork's version of any hunk that conflicts with fork changes;
-          # --empty=drop skips upstream commits that become empty. Rebase
-          # stops on modify/delete and rename/delete conflicts, which -X ours
-          # cannot auto-resolve, so resolve those in the fork's favor too:
-          # keep the fork's file when it still exists, keep the deletion when
-          # the fork removed it. Then continue until the rebase completes.
-          if ! git rebase -X ours --empty=drop master; then
-            # A rebase that stops on conflicts can leave a stale
-            # .git/index.lock behind (seen on runner git 2.54); we are the
-            # only git process here, so a lock at this point is stale.
+          git checkout -B sync/upstream-master master
+          # Merge upstream master onto fork master. -X ours keeps the fork's
+          # version of any hunk that conflicts with fork changes; a single
+          # merge is used instead of a long rebase (a conflicted rebase on
+          # runner git 2.54 leaves a stale .git/index.lock that kills later
+          # git calls). We are the only git process here, so any lock found
+          # at these points is stale and safe to clear.
+          rm -f .git/index.lock
+          if ! git merge -X ours --no-edit upstream/master; then
             rm -f .git/index.lock
-            while [ -n "$(git diff --name-only --diff-filter=U)" ]; do
-              while IFS= read -r -d '' f; do
-                if git cat-file -e "HEAD:$f" 2>/dev/null; then
-                  # The fork still has this file: keep the fork's version.
-                  git checkout --ours -- "$f"
-                else
-                  # The fork deleted this file: keep the deletion.
-                  git rm -f --ignore-unmatch -- "$f"
-                fi
-                git add -- "$f"
-              done < <(git diff --name-only --diff-filter=U -z)
+            if [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+              # No unresolved conflicts, yet the merge failed: a stale lock
+              # prevented it from writing its conflicted index. Roll back
+              # and retry once; never commit a partial merge.
+              echo "merge failed with no unresolved conflicts; rolling back and retrying" >&2
+              git merge --abort 2>/dev/null || true
               rm -f .git/index.lock
-              GIT_EDITOR=true git rebase --continue || {
-                rm -f .git/index.lock
-                GIT_EDITOR=true git rebase --continue
-              }
-            done
+              git merge -X ours --no-edit upstream/master || { echo "merge failed again; aborting" >&2; exit 1; }
+            fi
           fi
-          # Never push a half-rebased branch: if the rebase is still in
-          # progress, fail the step instead of pushing fork-deleting diffs.
-          if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
-            echo "rebase did not complete; refusing to push sync/upstream-master" >&2
+          # Resolve modify/delete + rename/delete conflicts (which -X ours
+          # cannot auto-resolve) in the fork's favor: keep the fork's file
+          # when it still exists, keep the deletion when the fork removed it.
+          while [ -n "$(git diff --name-only --diff-filter=U)" ]; do
+            rm -f .git/index.lock
+            while IFS= read -r -d '' f; do
+              if git cat-file -e "HEAD:$f" 2>/dev/null; then
+                # The fork still has this file: keep the fork's version.
+                git checkout --ours -- "$f"
+              else
+                # The fork deleted this file: keep the deletion.
+                git rm -f --ignore-unmatch -- "$f"
+              fi
+              git add -- "$f"
+            done < <(git diff --name-only --diff-filter=U -z)
+            rm -f .git/index.lock
+          done
+          if [ -f .git/MERGE_HEAD ]; then
+            git commit --no-edit || { rm -f .git/index.lock; git commit --no-edit; }
+          fi
+          # Never push a half-merged or corrupted result: upstream is ahead
+          # of the fork (behind != 0), so the merge result MUST differ from
+          # fork master. Equal trees mean upstream changes were silently
+          # dropped (e.g. by a failed index write) — fail instead.
+          if [ -f .git/MERGE_HEAD ] || [ "$(git rev-parse HEAD^{tree})" = "$(git rev-parse master^{tree})" ]; then
+            echo "merge did not complete; refusing to push sync/upstream-master" >&2
             exit 1
           fi
           git push -f origin sync/upstream-master
@@ -101,7 +113,7 @@ jobs:
         run: |
           BODY="Automated sync of upstream \`deepseek-ai/deepseek-harness\` master into this fork.
 
-          - Head: \`sync/upstream-master\` (upstream master rebased onto fork master; conflicting hunks resolved in the fork's favor).
+          - Head: \`sync/upstream-master\` (upstream master merged onto fork master; conflicting hunks resolved in the fork's favor).
           - Reviewed by \`upstream-review.yml\` (LLM verdict + sanity gates) before any auto-merge.
           - Review the diff, then merge when it looks safe — or let the review workflow merge it automatically.
           - Deploys are never performed by this automation."
