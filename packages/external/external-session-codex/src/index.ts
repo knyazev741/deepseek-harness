@@ -179,12 +179,11 @@ class CodexProvider implements ExternalSessionProvider {
     this.lifecycles.set(request.sessionId, lifecycle)
     const start = this.startLifecycle(request, bridge, lifecycle)
     lifecycle.start = start
-    try {
-      await start
-    } catch (error: unknown) {
-      if (this.lifecycles.get(request.sessionId) === lifecycle) this.lifecycles.delete(request.sessionId)
-      throw error
-    }
+    // Keep the failed owner until the registry rolls its route back or a
+    // concurrent disposal claims it. Both paths must be able to reap the
+    // partially constructed child without turning the handoff into an
+    // UNKNOWN_SESSION failure.
+    await start
   }
 
   private async startLifecycle(

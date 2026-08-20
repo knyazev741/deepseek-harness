@@ -5,7 +5,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import * as ExternalCodexInvariant from '@deepseek-ai/dsh-external-session-codex/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
@@ -156,6 +156,43 @@ describe('external-session-codex registration', () => {
       await harness.close()
     }
   }, 60_000)
+
+  it('disposes a failed provider owner during registry rollback', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      const service = harness.ctx.externalSessions
+      const provider = harness.provider
+      const originalStart = provider.start.bind(provider)
+      let disposal: Promise<void> | undefined
+      const startSpy = vi.spyOn(provider, 'start').mockImplementation(async (request, bridge) => {
+        try {
+          await originalStart(request, bridge)
+        } catch (error: unknown) {
+          disposal = service.dispose(request.sessionId)
+          throw error
+        }
+      })
+
+      const opening = service.start({
+        sessionId: harness.sessionId,
+        provider: 'codex',
+        cwd: `${harness.workspace}/missing-start-directory`,
+        sandbox: 'read-only',
+        approvalPolicy: 'ask',
+      })
+      await expect(opening).rejects.toThrow(/ENOENT|spawn/u)
+      if (disposal === undefined) throw new Error('registry disposal was not scheduled')
+      await expect(disposal).resolves.toBeUndefined()
+      await expect(service.dispose(harness.sessionId)).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
+      expect(harness.handles.every(handle => handle.pid <= 0)).toBe(true)
+      expect(harness.recorded.events).not.toContainEqual(expect.objectContaining({
+        type: 'external/session-started',
+      }))
+      startSpy.mockRestore()
+    } finally {
+      await harness.close()
+    }
+  })
 
   it('stores model and effort and applies them to the next turn', async () => {
     const harness = await startCodexHarness([{ kind: 'complete', text: 'MODEL_SWITCHED' }])

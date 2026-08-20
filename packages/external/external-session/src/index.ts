@@ -209,9 +209,14 @@ export class ExternalSessions extends Service implements ExternalSessionsService
     try {
       await provider.start(resolved, this.createBridge(controller))
     } catch (error) {
-      this.sessions.delete(request.sessionId)
-      if (this.disposals.get(request.sessionId) === controller) {
+      const ownsRoute = this.sessions.get(request.sessionId) === request.provider
+        && this.disposals.get(request.sessionId) === controller
+      if (ownsRoute) {
+        this.sessions.delete(request.sessionId)
         this.disposals.delete(request.sessionId)
+        controller.abort()
+        await provider.dispose(request.sessionId).catch(() => {})
+      } else {
         controller.abort()
       }
       throw error
