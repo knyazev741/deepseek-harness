@@ -1,5 +1,7 @@
 # Codex app-server 0.147.0 — evidence transcripts
 
+English | [中文](README.zh.md)
+
 Recorded JSON-RPC transcripts of the **real** `codex app-server --stdio` wire for
 `@openai/codex@0.147.0`, captured through an in-process OpenAI Responses SSE
 fixture. These are the ground-truth method and notification names every later
