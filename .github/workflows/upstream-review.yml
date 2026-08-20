@@ -28,6 +28,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # The sync PR's diff includes upstream's .github/workflows/* changes;
+  # merging (or any workflow-file update) requires the `workflows` permission.
+  workflows: write
 
 jobs:
   review:
