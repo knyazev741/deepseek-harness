@@ -391,6 +391,151 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/compaction/compaction/src/types.ts:33`](../packages/compaction/compaction/src/types.ts)
 
+### `external/*`
+
+<a id="externalcompaction-noticed--log-only"></a>
+
+#### `external/compaction-noticed` — log-only
+
+```ts persistence-catalog
+/**
+ * The external agent performed a compaction; `notice` is its human-visible
+ * summary text. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/compaction-noticed': ExternalCompactionNoticedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:76`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalmessage-added--log-only"></a>
+
+#### `external/message-added` — log-only
+
+```ts persistence-catalog
+/**
+ * One committed message in turn `turnId` — committed units only, never a
+ * live delta. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/message-added': ExternalMessageAddedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:50`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalmodel-switched--log-only"></a>
+
+#### `external/model-switched` — log-only
+
+```ts persistence-catalog
+/**
+ * The external session switched its live model to `model`. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/model-switched': ExternalModelSwitchedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:71`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalpermission-asked--log-only"></a>
+
+#### `external/permission-asked` — log-only
+
+```ts persistence-catalog
+/**
+ * A permission question posed to the human. `askId` pairs it with the
+ * `external/permission-decided` that follows. Log-only `ignorable: true`;
+ * not a `SurfaceEventType`.
+ */
+'external/permission-asked': ExternalPermissionAskedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:61`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalpermission-decided--log-only"></a>
+
+#### `external/permission-decided` — log-only
+
+```ts persistence-catalog
+/**
+ * The outcome of a prior `external/permission-asked` with the same
+ * `askId`. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/permission-decided': ExternalPermissionDecidedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:66`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalsession-ended--log-only"></a>
+
+#### `external/session-ended` — log-only
+
+```ts persistence-catalog
+/**
+ * The external session ended with a stop reason. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/session-ended': ExternalSessionEndedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:86`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalsession-started--log-only"></a>
+
+#### `external/session-started` — log-only
+
+```ts persistence-catalog
+/**
+ * A live external agent session opened on `provider` in `cwd`, optionally
+ * starting on `model`, with the provider-owned thread identity returned by
+ * a successful thread start. Log-only `ignorable: true`; not a
+ * `SurfaceEventType`. Standalone: the bridge appends it before any turn.
+ */
+'external/session-started': ExternalSessionStartedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:40`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externaltool-activity--log-only"></a>
+
+#### `external/tool-activity` — log-only
+
+```ts persistence-catalog
+/**
+ * One tool activity (call, update, or result) in turn `turnId`. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/tool-activity': ExternalToolActivityData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:55`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalturn-ended--log-only"></a>
+
+#### `external/turn-ended` — log-only
+
+```ts persistence-catalog
+/**
+ * Turn `turnId` ended with a stop reason. Log-only `ignorable: true`; not
+ * a `SurfaceEventType`.
+ */
+'external/turn-ended': ExternalTurnEndedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:81`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalturn-started--log-only"></a>
+
+#### `external/turn-started` — log-only
+
+```ts persistence-catalog
+/**
+ * One external turn opened, identified by the provider-issued `turnId`.
+ * Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/turn-started': ExternalTurnStartedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:45`](../packages/session/session-projection/src/external-transcript.ts)
+
 ### `feedback/*`
 
 <a id="feedbackrecord--log-only"></a>

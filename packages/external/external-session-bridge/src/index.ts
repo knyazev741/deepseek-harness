@@ -26,6 +26,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { externalTranscriptProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import { ExternalProviderThreadId, parseExternalProviderThreadId } from '@deepseek-ai/dsh-external-session'
 // Type-only: brings in external-session's `Context.externalSessions` merge.
 import type {} from '@deepseek-ai/dsh-external-session'
 
@@ -60,13 +61,12 @@ export interface Config {}
 export const Config: z<Config> = z.object({})
 
 /** Return the durable provider thread id, or null for an invalid persisted id. */
-function durableProviderThreadId(session: Session): string | null | undefined {
+function durableProviderThreadId(session: Session) {
   for (let index = session.events.length - 1; index >= 0; index -= 1) {
     const event = session.events[index]
     if (event?.type !== 'external/session-started') continue
     const data = event.data
-    if (typeof data.providerThreadId !== 'string' || data.providerThreadId.length === 0) return null
-    return data.providerThreadId
+    return parseExternalProviderThreadId(data.providerThreadId) ?? null
   }
   return undefined
 }
@@ -107,7 +107,7 @@ function startOnProvider(ctx: Context, session: Session, mode: string): void {
   const providerThreadId = durableProviderThreadId(session)
   const operation = providerThreadId === undefined
     ? ctx.externalSessions.start(request)
-    : ctx.externalSessions.resume(request, providerThreadId === null ? '' : providerThreadId)
+    : ctx.externalSessions.resume(request, providerThreadId === null ? ExternalProviderThreadId('') : providerThreadId)
   void operation.catch((error: unknown) => {
     // A provider that rejects start (e.g. an unavailable child process) must
     // surface: the session is already published, so the failure cannot unwind

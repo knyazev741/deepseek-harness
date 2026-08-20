@@ -8,7 +8,7 @@
 
 `start(request)` 会在首次异步状态根目录操作前发布可取消的提供方生命周期记录，解析会话的 sandbox 与 approval fold，创建私有 Codex 状态目录，然后通过 [`dsh-subprocess`](../../subprocess/subprocess/README.md) 在会话工作目录下启动 app-server。dispose 会取消该记录并等待启动回滚后才返回，因此路由 dispose 后不会再启动子进程。它执行 `initialize` → `initialized` → `thread/start { cwd, ephemeral: false, model?, sandbox, approvalPolicy }`，并在该提供方实例生命周期内保留非临时线程 id。一旦线程存在，提供方就发出 `external/session-started`。
 
-`resume(request, providerThreadId)` 发布同样的生命周期，但执行 `initialize` → `initialized` → `thread/resume { threadId, model?, sandbox, approvalPolicy }`。它要求持久化的不透明 id，不会发出新的 `external/session-started`；id 缺失或未知时会拒绝，并且不会回退到 `thread/start`。宿主只在实时操作需要提供方时，才通过 `SessionPersistence.prepare`、`SessionStore.enter` 与 `SessionStore.announce` 物化冷会话。
+`resume(request, providerThreadId)` 发布同样的生命周期，但执行 `initialize` → `initialized` → `thread/resume { threadId, model?, sandbox, approvalPolicy }`。它要求持久化的品牌化不透明 id，不会发出新的 `external/session-started`；id 缺失或未知时会拒绝，并且不会回退到 `thread/start`。宿主只在实时操作需要提供方时，才通过 `SessionPersistence.prepare`、`SessionStore.enter` 与 `SessionStore.announce` 物化冷会话。
 
 `prompt(text)` 严格串行地轮转：它等待上一条轮次的 `turn/completed` 终态通知，在同一条线程上提交下一条 `turn/start`，并立即返回提供方签发的轮次 id。该轮次随后异步流式运行至完成：`item/agentMessage/delta` 被转发到 `streamDelta`（仅实时，绝不持久化）；一条完成的 `agentMessage` 被提交为 `external/message-added { role: 'agent' }`，提交的 prompt 被提交为 `{ role: 'user' }`，`commandExecution` 项被提交为 `external/tool-activity { kind: 'call' | 'result' }`，终态的 `turn/completed` 被提交为 `external/turn-ended`（`completed` / `aborted` / `error` / `max-tokens`）。`interrupt()` 发送尽力而为的 `turn/interrupt`，其中断后的终态映射为 `aborted`。
 

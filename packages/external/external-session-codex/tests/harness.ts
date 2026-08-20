@@ -17,6 +17,7 @@ import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import type {
   ExternalBridgeContext,
   ExternalPermissionDecision,
+  ExternalProviderThreadId,
   ExternalSessionProvider,
 } from '@deepseek-ai/dsh-external-session'
 import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
@@ -63,7 +64,7 @@ export interface CodexTestHarness {
   /** Open the session on the recorded bridge (provider.start). */
   start(model?: string): Promise<void>
   /** Attach the session on the recorded bridge (provider.resume). */
-  resume(providerThreadId: string): Promise<void>
+  resume(providerThreadId: ExternalProviderThreadId): Promise<void>
   /** Wait until at least `count` events of `type` have been recorded. */
   waitCount(type: string, count: number, timeoutMs?: number): Promise<void>
   /** Wait until the recorded deltas mention `needle`. */

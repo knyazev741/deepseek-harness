@@ -20,6 +20,11 @@
 
 import { z } from 'zod'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import {
+  ExternalProviderThreadId,
+  parseExternalProviderThreadId,
+  type ExternalProviderThreadId as ExternalProviderThreadIdValue,
+} from '@deepseek-ai/dsh-external-session'
 // Type-only import: erased at runtime, so the index → external-transcript value
 // edge stays acyclic even though external-transcript names index's type.
 import type { ProjectionDefinition } from './index.ts'
@@ -97,7 +102,7 @@ export interface ExternalSessionStartedData {
   readonly cwd: string
   readonly model?: string
   /** Opaque provider-owned thread identity used for an explicit cold resume. */
-  readonly providerThreadId: string
+  readonly providerThreadId: ExternalProviderThreadIdValue
 }
 /** Opens one external turn, identified by the provider-issued id. */
 export interface ExternalTurnStartedData {
@@ -178,7 +183,7 @@ export interface ExternalTranscriptProjection {
   readonly provider: string
   readonly cwd: string
   /** Opaque provider identity retained for host attachment; transcript renderers ignore it. */
-  readonly providerThreadId?: string
+  readonly providerThreadId?: ExternalProviderThreadIdValue
   /** The current model, once started on or switched to one. */
   readonly sessionModel?: string
   readonly turns: readonly ExternalTranscriptTurn[]
@@ -194,7 +199,7 @@ export interface ExternalTranscriptProjection {
 interface ExternalTranscriptState {
   provider: string | null
   cwd: string | null
-  providerThreadId: string | null
+  providerThreadId: ExternalProviderThreadIdValue | null
   sessionModel: string | null
   turns: ExternalTranscriptTurn[]
   open: ExternalTranscriptTurn | null
@@ -237,7 +242,7 @@ const turnSchema = z.object({
 const externalTranscriptSchema = z.object({
   provider: z.string(),
   cwd: z.string(),
-  providerThreadId: z.string().optional(),
+  providerThreadId: z.string().min(1).transform(ExternalProviderThreadId).optional(),
   sessionModel: z.string().optional(),
   turns: z.array(turnSchema),
   stopReason: z.string().optional(),
@@ -295,7 +300,7 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
         ...state,
         provider: event.data.provider,
         cwd: event.data.cwd,
-        providerThreadId: event.data.providerThreadId,
+        providerThreadId: parseExternalProviderThreadId(event.data.providerThreadId) ?? null,
         sessionModel: event.data.model ?? state.sessionModel,
       }
     case 'external/turn-started':

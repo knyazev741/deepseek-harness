@@ -24,6 +24,7 @@ import type {
   ExternalBridgeContext,
   ExternalModelDirectory,
   ExternalModelInfo,
+  ExternalProviderThreadId,
   ExternalSessionProvider,
   ExternalSessionStart,
   ExternalTurnId,
@@ -172,7 +173,7 @@ class CodexProvider implements ExternalSessionProvider {
   async resume(
     request: ExternalSessionStart,
     bridge: ExternalBridgeContext,
-    providerThreadId: string,
+    providerThreadId: ExternalProviderThreadId,
   ): Promise<void> {
     if (providerThreadId.length === 0) {
       throwable('provider thread id must be non-empty for resume')
@@ -183,7 +184,7 @@ class CodexProvider implements ExternalSessionProvider {
   private async open(
     request: ExternalSessionStart,
     bridge: ExternalBridgeContext,
-    providerThreadId?: string,
+    providerThreadId?: ExternalProviderThreadId,
   ): Promise<void> {
     if (this.lifecycles.has(request.sessionId)) {
       throwable(`external session ${String(request.sessionId)} is already starting or live`)
@@ -210,7 +211,7 @@ class CodexProvider implements ExternalSessionProvider {
     request: ExternalSessionStart,
     bridge: ExternalBridgeContext,
     lifecycle: CodexLifecycle,
-    providerThreadId?: string,
+    providerThreadId?: ExternalProviderThreadId,
   ): Promise<void> {
     let session: CodexExternalSession | undefined
     try {

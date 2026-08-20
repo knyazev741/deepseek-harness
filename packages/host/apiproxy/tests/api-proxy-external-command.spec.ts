@@ -9,12 +9,20 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
+import Loader from '@deepseek-ai/cordis-plugin-loader'
+import Include from '@deepseek-ai/cordis-plugin-include'
 import SessionStore, { SESSION_FORMAT_VERSION, SessionId, SessionPreparation } from '@deepseek-ai/dsh-session'
+import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SessionProjection from '@deepseek-ai/dsh-session-projection'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import ExternalSessions, {
+  ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
   type ExternalSessionProvider,
@@ -35,11 +43,13 @@ class CommandProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   lastBridge: ExternalBridgeContext | undefined
   started = 0
-  readonly resumed: string[] = []
+  readonly resumed: ExternalProviderThreadId[] = []
   readonly compacted = new Set<SessionId>()
   readonly switched: Array<{ sessionId: SessionId; model: string }> = []
   readonly prompts: string[] = []
   rejectModel = false
+  rejectListModels: Error | undefined
+  listModelsCalls = 0
   models: Array<{ id: string; name: string; description?: string }> = []
 
   constructor(
@@ -51,7 +61,7 @@ class CommandProvider implements ExternalSessionProvider {
     this.started += 1
     this.lastBridge = bridge
   }
-  async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: string): Promise<void> {
+  async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void> {
     this.resumed.push(providerThreadId)
     this.lastBridge = bridge
   }
@@ -68,7 +78,11 @@ class CommandProvider implements ExternalSessionProvider {
       data: { notice: 'The external agent compacted its conversation context.' },
     })
   }
-  async listModels() { return this.models }
+  async listModels() {
+    this.listModelsCalls += 1
+    if (this.rejectListModels !== undefined) throw this.rejectListModels
+    return this.models
+  }
   async setModel(sessionId: SessionId, model: string) {
     if (this.rejectModel) {
       throw new Error('external-session-codex: the Codex app-server 0.147.0 exposes no runtime model-switch on a live thread')
@@ -94,9 +108,186 @@ async function harness(): Promise<{ ctx: Context; provider: CommandProvider }> {
 }
 
 let context: Context | undefined
+let restartRoot: string | undefined
 afterEach(async () => {
   await context?.fiber.dispose()
   context = undefined
+  if (restartRoot !== undefined) await rm(restartRoot, { recursive: true, force: true })
+  restartRoot = undefined
+})
+
+interface RestartProviderState {
+  started: number
+  readonly resumed: ExternalProviderThreadId[]
+  readonly prompts: string[]
+  bridge: ExternalBridgeContext | undefined
+}
+
+/** Provider state used by the real Loader/persistence restart test. */
+function restartProvider(state: RestartProviderState): ExternalSessionProvider {
+  return {
+    provider: 'alpha',
+    label: 'Alpha',
+    modelDirectory: 'config',
+    async start(request, bridge) {
+      state.started += 1
+      state.bridge = bridge
+      bridge.appendEvent(request.sessionId, {
+        type: 'external/session-started',
+        data: {
+          provider: 'alpha',
+          cwd: request.cwd,
+          providerThreadId: ExternalProviderThreadId('jsonl-restart-thread'),
+        },
+      })
+    },
+    async resume(_request, bridge, providerThreadId) {
+      state.resumed.push(providerThreadId)
+      state.bridge = bridge
+    },
+    async prompt(sessionId, text) {
+      state.prompts.push(text)
+      state.bridge!.appendEvent(sessionId, {
+        type: 'external/message-added',
+        data: { turnId: 'restart-turn', role: 'user', text },
+      })
+      return { turnId: ExternalTurnId('restart-turn') }
+    },
+    interrupt() {},
+    async compact() {},
+    async listModels() { return [] },
+    async setModel() {},
+    async dispose() {},
+  }
+}
+
+/** Build one fresh host composition over the same JSONL root. */
+async function loadRestartComposition(
+  root: string,
+  state: RestartProviderState,
+): Promise<Context> {
+  const configPath = join(root, `cordis-${String(state.started)}.yml`)
+  await writeFile(configPath, [
+    "- name: '@deepseek-ai/dsh-session'",
+    "- name: '@deepseek-ai/dsh-session-persistence-jsonl'",
+    '  config:',
+    `    root: ${join(root, 'sessions')}`,
+    '    compression: none',
+    '    writeBatchMaxDelayMs: 1',
+    "- name: '@deepseek-ai/dsh-session-projection'",
+    "- name: '@deepseek-ai/dsh-external-session'",
+    "- name: '@deepseek-ai/dsh-user-questions'",
+    "- name: '@deepseek-ai/dsh-agent'",
+    "- name: '@deepseek-ai/dsh-external-session-bridge'",
+    "- name: 'stub:restart-provider'",
+    '',
+  ].join('\n'))
+  const ctx = new Context()
+  ctx.baseUrl = pathToFileURL(root).href + '/'
+  await ctx.plugin(Loader)
+  ctx.loader.builtins.include = Include
+  const modules = new Map<string, unknown>([
+    ['@deepseek-ai/dsh-session', SessionStore],
+    ['@deepseek-ai/dsh-session-persistence-jsonl', JsonlSessionPersistence],
+    ['@deepseek-ai/dsh-session-projection', SessionProjection],
+    ['@deepseek-ai/dsh-external-session', ExternalSessions],
+    ['@deepseek-ai/dsh-user-questions', UserQuestionService],
+    ['@deepseek-ai/dsh-agent', AgentRegistry],
+    ['@deepseek-ai/dsh-external-session-bridge', ExternalSessionBridge],
+    ['stub:restart-provider', {
+      name: 'stub:restart-provider',
+      inject: ['externalSessions'],
+      apply(providerContext: Context) {
+        providerContext.externalSessions.registerProvider(restartProvider(state))
+      },
+    }],
+  ])
+  ctx.loader.internal = {
+    version: 'v2',
+    async import(specifier: string) {
+      if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
+      return modules.get(specifier)
+    },
+  } as unknown as NonNullable<typeof ctx.loader.internal>
+  await ctx.loader.create({
+    name: 'cordis:include',
+    config: { path: pathToFileURL(configPath).href },
+  })
+  await ctx.loader.await()
+  ctx.apiProxy = createApiProxy(ctx, {
+    defaultModelSelection: () => ({ provider: 'p', model: 'm' }),
+    cwd: '/tmp',
+  })
+  return ctx
+}
+
+/** Cross the bridge's async session-created dispatch. */
+function flushRestartStart(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0))
+}
+
+describe('session external-mode JSONL restart', () => {
+  it('keeps reads process-free and resumes once on the first live operation', async () => {
+    restartRoot = await mkdtemp(join(tmpdir(), 'dsh-external-jsonl-restart-'))
+    const sessionId = SessionId('jsonl-restart')
+    const firstState: RestartProviderState = { started: 0, resumed: [], prompts: [], bridge: undefined }
+    const first = await loadRestartComposition(restartRoot, firstState)
+    context = first
+
+    const created = await first.apiProxy.sessions.create(request({
+      sessionId,
+      cwd: '/tmp',
+      mode: 'alpha',
+    }))
+    expect(created.result).toMatchObject({ ok: true, value: { sessionId } })
+    await flushRestartStart()
+    expect(firstState.started).toBe(1)
+    expect(firstState.resumed).toEqual([])
+    const firstSession = first.sessions.get(sessionId)
+    if (firstSession === undefined) throw new Error('first composition did not publish the session')
+    await first.sessions.flush(firstSession)
+    const raw = await first.sessionPersistence.readRaw(sessionId)
+    expect(raw?.content).toContain('jsonl-restart-thread')
+
+    await first.fiber.dispose()
+    context = undefined
+
+    const secondState: RestartProviderState = { started: 0, resumed: [], prompts: [], bridge: undefined }
+    const second = await loadRestartComposition(restartRoot, secondState)
+    context = second
+    try {
+      const listed = await second.apiProxy.sessions.list(request({}))
+      expect(listed.result).toMatchObject({ ok: true, value: { items: [{ sessionId }] } })
+      const history = await second.apiProxy.sessions.history(request({ sessionId }))
+      expect(history.result).toMatchObject({ ok: true })
+      expect(secondState.started).toBe(0)
+      expect(secondState.resumed).toEqual([])
+      expect((await second.sessionPersistence.list()).map(meta => meta.id)).toContain(sessionId)
+      expect((await second.sessionPersistence.list()).find(meta => meta.id === sessionId)?.mode).toBe('alpha')
+      expect(second.get('externalSessions')).toBeDefined()
+
+      const prepare = vi.spyOn(second.sessionPersistence, 'prepare')
+      const enter = vi.spyOn(second.sessions, 'enter')
+      const announce = vi.spyOn(second.sessions, 'announce')
+      const command = await second.apiProxy.sessions.command(request({ sessionId, line: 'resume after restart' }))
+
+      expect(command.result).toMatchObject({ ok: true, value: { kind: 'success' } })
+      expect(secondState.started).toBe(0)
+      expect(secondState.resumed).toEqual([ExternalProviderThreadId('jsonl-restart-thread')])
+      expect(secondState.prompts).toEqual(['resume after restart'])
+      expect(prepare).toHaveBeenCalledOnce()
+      expect(enter).toHaveBeenCalledOnce()
+      expect(announce).toHaveBeenCalledOnce()
+      const resumedSession = second.sessions.get(sessionId)
+      if (resumedSession === undefined) throw new Error('resume did not publish the session')
+      await second.sessions.flush(resumedSession)
+      expect((await second.sessionPersistence.readRaw(sessionId))?.content)
+        .toContain('resume after restart')
+    } finally {
+      await second.fiber.dispose()
+      context = undefined
+    }
+  })
 })
 
 /**
@@ -111,6 +302,50 @@ async function bootExternal(ctx: Context, sessionId: SessionId): Promise<void> {
 }
 
 describe('session.command external-mode routing', () => {
+  it('serves session.models from the external provider catalog only', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    provider.models = [{ id: 'external-model', name: 'External Model', description: 'provider-owned' }]
+    const sessionId = SessionId('cold-models')
+    await bootExternal(ctx, sessionId)
+
+    const result = await ctx.apiProxy.sessions.models(request({ sessionId }))
+    expect(result.result).toEqual({
+      ok: true,
+      value: {
+        current: { provider: 'alpha', model: '' },
+        routable: true,
+        groups: [{
+          id: 'alpha',
+          name: 'Alpha',
+          models: [{ id: 'external-model', name: 'External Model', description: 'provider-owned' }],
+        }],
+        failures: [],
+      },
+    })
+    expect(provider.listModelsCalls).toBe(1)
+  })
+
+  it('reports an external provider catalog failure without native rows', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    provider.rejectListModels = new Error('external catalog offline')
+    const sessionId = SessionId('external-models-failure')
+    await bootExternal(ctx, sessionId)
+
+    const result = await ctx.apiProxy.sessions.models(request({ sessionId }))
+    expect(result.result).toEqual({
+      ok: true,
+      value: {
+        current: { provider: 'alpha', model: '' },
+        routable: true,
+        groups: [],
+        failures: [{ id: 'alpha', name: 'Alpha', message: 'external catalog offline' }],
+      },
+    })
+    expect(provider.listModelsCalls).toBe(1)
+  })
+
   it('materializes one cold external session and resumes its durable thread on first command', async () => {
     const { ctx, provider } = await harness()
     context = ctx
@@ -127,7 +362,7 @@ describe('session.command external-mode routing', () => {
       type: 'external/session-started' as const,
       seq: 0,
       time: 1,
-      data: { provider: 'alpha', cwd: '/tmp', providerThreadId: 'opaque-cold-command' },
+      data: { provider: 'alpha', cwd: '/tmp', providerThreadId: ExternalProviderThreadId('opaque-cold-command') },
       ignorable: true as const,
     }]
     const inspect = vi.fn(async () => ({ meta, events }))

@@ -10,6 +10,8 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import ExternalSessions, {
+  ExternalProviderThreadId,
+  parseExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
   type ExternalModelDirectory,
@@ -29,7 +31,7 @@ class StubProvider implements ExternalSessionProvider {
   readonly compacted: SessionId[] = []
   readonly switched: { sessionId: SessionId; model: string }[] = []
   readonly disposed: SessionId[] = []
-  readonly resumed: Array<{ sessionId: SessionId; providerThreadId: string }> = []
+  readonly resumed: Array<{ sessionId: SessionId; providerThreadId: ExternalProviderThreadId }> = []
   resumeError: Error | undefined
   resumeGate: Promise<void> | undefined
 
@@ -52,7 +54,7 @@ class StubProvider implements ExternalSessionProvider {
   async resume(
     request: ExternalSessionStart,
     bridge: ExternalBridgeContext,
-    providerThreadId: string,
+    providerThreadId: ExternalProviderThreadId,
   ): Promise<void> {
     if (this.resumeError !== undefined) throw this.resumeError
     this.resumed.push({ sessionId: request.sessionId, providerThreadId })
@@ -94,6 +96,13 @@ async function setup(): Promise<{ ctx: Context; service: ExternalSessions }> {
 }
 
 describe('ExternalSessions registry', () => {
+  it('brands and parses non-empty provider thread identities at the boundary', () => {
+    const parsed = parseExternalProviderThreadId('opaque-thread-1')
+    expect(parsed).toBe(ExternalProviderThreadId('opaque-thread-1'))
+    expect(parseExternalProviderThreadId('')).toBeUndefined()
+    expect(parseExternalProviderThreadId(42)).toBeUndefined()
+  })
+
   it('registers, lists, lists agents, looks up, and removes providers', async () => {
     const { ctx, service } = await setup()
     const added: string[] = []
@@ -169,10 +178,13 @@ describe('ExternalSessions registry', () => {
     service.registerProvider(provider)
     const sessionId = SessionId('resume-1')
 
-    await service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, 'opaque-thread-1')
+    await service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, ExternalProviderThreadId('opaque-thread-1'))
 
     expect(provider.startCount).toBe(0)
-    expect(provider.resumed).toEqual([{ sessionId, providerThreadId: 'opaque-thread-1' }])
+    expect(provider.resumed).toEqual([{
+      sessionId,
+      providerThreadId: ExternalProviderThreadId('opaque-thread-1'),
+    }])
   })
 
   it('rejects a resume without a durable provider thread id', async () => {
@@ -181,7 +193,7 @@ describe('ExternalSessions registry', () => {
 
     await expect(service.resume({
       sessionId: SessionId('resume-missing-id'), provider: 'alpha', cwd: '/tmp',
-    }, '')).rejects.toMatchObject({ code: 'INVALID_PROVIDER_THREAD_ID' })
+    }, ExternalProviderThreadId(''))).rejects.toMatchObject({ code: 'INVALID_PROVIDER_THREAD_ID' })
   })
 
   it('shares one in-flight resume and rolls back its route after rejection', async () => {
@@ -192,8 +204,8 @@ describe('ExternalSessions registry', () => {
     service.registerProvider(provider)
     const sessionId = SessionId('resume-race')
 
-    const first = service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, 'opaque-thread-race')
-    const second = service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, 'opaque-thread-race')
+    const first = service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, ExternalProviderThreadId('opaque-thread-race'))
+    const second = service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, ExternalProviderThreadId('opaque-thread-race'))
     await Promise.resolve()
     expect(provider.resumed).toHaveLength(1)
     gate.reject(new Error('resume failed'))

@@ -9,6 +9,7 @@ import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjection from '@deepseek-ai/dsh-session-projection'
 import ExternalSessions, {
+  ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
   type ExternalSessionProvider,
@@ -19,7 +20,7 @@ import * as bridge from '@deepseek-ai/dsh-external-session-bridge'
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   started: boolean | undefined
-  resumed: string | undefined
+  resumed: ExternalProviderThreadId | undefined
   disposeError: Error | undefined
 
   constructor(
@@ -31,13 +32,13 @@ class StubProvider implements ExternalSessionProvider {
     this.started = true
     bridgeCtx.appendEvent(request.sessionId, {
       type: 'external/session-started',
-      data: { provider: this.provider, cwd: request.cwd, providerThreadId: 'opaque-thread-started' },
+      data: { provider: this.provider, cwd: request.cwd, providerThreadId: ExternalProviderThreadId('opaque-thread-started') },
     })
   }
   async resume(
     request: ExternalSessionStart,
     bridgeCtx: ExternalBridgeContext,
-    providerThreadId: string,
+    providerThreadId: ExternalProviderThreadId,
   ): Promise<void> {
     this.resumed = providerThreadId
     bridgeCtx.appendEvent(request.sessionId, {
@@ -110,7 +111,7 @@ describe('external-session-bridge driver', () => {
           type: 'external/session-started',
           seq: 0,
           time: 1,
-          data: { provider: 'alpha', cwd: '/tmp', providerThreadId: 'opaque-thread-cold' },
+          data: { provider: 'alpha', cwd: '/tmp', providerThreadId: ExternalProviderThreadId('opaque-thread-cold') },
           ignorable: true,
         },
       ],
@@ -128,7 +129,7 @@ describe('external-session-bridge driver', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
 
     expect(provider.started).toBeUndefined()
-    expect(provider.resumed).toBe('opaque-thread-cold')
+    expect(provider.resumed).toBe(ExternalProviderThreadId('opaque-thread-cold'))
     detach()
   })
 })

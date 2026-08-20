@@ -13,6 +13,7 @@ import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import ExternalSessions, {
+  ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
   type ExternalSessionProvider,
@@ -35,7 +36,7 @@ class StubProvider implements ExternalSessionProvider {
     readonly label: string,
   ) {}
   async start(_request: ExternalSessionStart, _bridge: ExternalBridgeContext) {}
-  async resume(_request: ExternalSessionStart, _bridge: ExternalBridgeContext, _providerThreadId: string) {}
+  async resume(_request: ExternalSessionStart, _bridge: ExternalBridgeContext, _providerThreadId: ExternalProviderThreadId) {}
   async prompt() { return { turnId: ExternalTurnId('t1') } }
   interrupt() {}
   async compact() {}

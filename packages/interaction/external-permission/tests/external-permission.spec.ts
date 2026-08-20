@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import ExternalSessions, {
+  ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
   type ExternalSessionProvider,
@@ -34,7 +35,7 @@ class StubProvider implements ExternalSessionProvider {
   async start(_request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
     this.lastBridge = bridge
   }
-  async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, _providerThreadId: string): Promise<void> {
+  async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, _providerThreadId: ExternalProviderThreadId): Promise<void> {
     this.lastBridge = bridge
   }
 

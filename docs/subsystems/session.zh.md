@@ -602,11 +602,11 @@ interface TurnEndReasonMap {
 
 ### `external/*` 事件
 
-外部终端 agent（Codex、ACP 客户端）通过宿主桥接层（`@deepseek-ai/dsh-external-session`）将仅日志的 `external/*` 事件族写入所属会话的日志。每个成员都是独立事件（可出现在 `turn/end` 与下一个 `turn/start` 之间）、携带 envelop 的 `ignorable: true`（早于该词汇表的构建在读取时会跳过它而不会拒绝日志），且绝不是 `SurfaceEventType`。实时 transcript 增量不入日志；只有已提交的单元才记录。`@deepseek-ai/dsh-session-projection` 将该事件族折叠为 transcript 形态的 `external/transcript` projection。
+外部终端 agent（Codex、ACP 客户端）通过宿主桥接层（`@deepseek-ai/dsh-external-session`）将仅日志的 `external/*` 事件族写入所属会话的日志。每个成员都是独立事件（可出现在 `turn/end` 与下一个 `turn/start` 之间）、携带 envelop 的 `ignorable: true`（早于该词汇表的构建在读取时会跳过它而不会拒绝日志），且绝不是 `SurfaceEventType`。实时 transcript 增量不入日志；只有已提交的单元才记录。`external/session-started` 保存成功启动返回的提供方不透明 `providerThreadId`；冷会话接入时将该身份传给显式 `resume`，且不会把它渲染为 transcript 内容。`@deepseek-ai/dsh-session-projection` 将该事件族折叠为 transcript 形态的 `external/transcript` projection，同时保留该身份供宿主接入。
 
 | 事件 | Payload | 含义 |
 |---|---|---|
-| `external/session-started` | `{ provider, cwd, model? }` | 在 `provider` 上、`cwd` 中打开外部会话，可选地以 `model` 启动 |
+| `external/session-started` | `{ provider, cwd, model?, providerThreadId }` | 在 `provider` 上、`cwd` 中打开外部会话，可选地以 `model` 启动，并记录提供方拥有的线程身份 |
 | `external/turn-started` | `{ turnId }` | 打开一个外部轮次 |
 | `external/message-added` | `{ turnId, role: 'user' \| 'agent', text }` | 某个轮次中的一条已提交消息 |
 | `external/tool-activity` | `{ turnId, kind: 'call' \| 'update' \| 'result', title, detail? }` | 某个轮次中的一次工具活动 |

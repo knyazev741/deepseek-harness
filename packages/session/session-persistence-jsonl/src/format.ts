@@ -41,6 +41,8 @@ export interface HeaderLine {
   origin?: 'subagent' | 'github-actions'
   delegationDepth: number
   agentPreset?: string
+  mode?: string
+  model?: string
 }
 
 /**
@@ -60,6 +62,8 @@ export function toHeaderLine(header: SessionHeader): HeaderLine {
     ...header.origin !== undefined ? { origin: header.origin } : {},
     delegationDepth: header.delegationDepth ?? 0,
     ...header.agentPreset !== undefined ? { agentPreset: header.agentPreset } : {},
+    ...header.mode !== undefined ? { mode: header.mode } : {},
+    ...header.model !== undefined ? { model: header.model } : {},
   }
 }
 
@@ -82,6 +86,8 @@ export function fromHeaderLine(line: HeaderLine): SessionHeader {
     ...line.origin !== undefined ? { origin: line.origin } : {},
     delegationDepth: line.delegationDepth,
     ...line.agentPreset !== undefined ? { agentPreset: line.agentPreset } : {},
+    ...line.mode !== undefined ? { mode: line.mode } : {},
+    ...line.model !== undefined ? { model: line.model } : {},
   }
 }
 

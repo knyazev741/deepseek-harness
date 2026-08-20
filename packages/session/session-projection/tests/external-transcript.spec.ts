@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { ExternalProviderThreadId } from '@deepseek-ai/dsh-external-session'
 import SessionProjectionRegistry, {
   externalTranscriptProjectionDefinition,
 } from '@deepseek-ai/dsh-session-projection'
@@ -27,7 +28,7 @@ function appendFullExternalRun(session: Session): void {
     provider: 'codex',
     cwd: '/work',
     model: 'gpt-5',
-    providerThreadId: 'opaque-thread-1',
+    providerThreadId: ExternalProviderThreadId('opaque-thread-1'),
   })
   session.append('external/turn-started', { turnId: 't1' })
   session.append('external/message-added', { turnId: 't1', role: 'user', text: 'add a test' })
@@ -54,7 +55,12 @@ describe('external/* event vocabulary', () => {
     expect(original.seq).toBe(12)
 
     const expectedData = [
-      { provider: 'codex', cwd: '/work', model: 'gpt-5', providerThreadId: 'opaque-thread-1' },
+      {
+        provider: 'codex',
+        cwd: '/work',
+        model: 'gpt-5',
+        providerThreadId: ExternalProviderThreadId('opaque-thread-1'),
+      },
       { turnId: 't1' },
       { turnId: 't1', role: 'user', text: 'add a test' },
       { turnId: 't1', role: 'agent', text: 'on it' },
@@ -87,7 +93,16 @@ describe('external/* event vocabulary', () => {
     // an ignorable type it does not know instead of refusing the log). Seeding
     // replays the constructor's auto-`session/end-seed`, hence length 4.
     const seeded = Session.create(SessionId('unknown-seed'), [
-      { type: 'external/session-started', seq: 0, time: 1, data: { provider: 'codex', cwd: '/work', providerThreadId: 'opaque-thread-unknown' } },
+      {
+        type: 'external/session-started',
+        seq: 0,
+        time: 1,
+        data: {
+          provider: 'codex',
+          cwd: '/work',
+          providerThreadId: ExternalProviderThreadId('opaque-thread-unknown'),
+        },
+      },
       unknown,
       { type: 'external/turn-started', seq: 2, time: 3, data: { turnId: 't1' } },
     ])
@@ -109,7 +124,7 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
-      providerThreadId: 'opaque-thread-unknown',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-unknown'),
       turns: [
         {
           turnId: 't1',
@@ -131,7 +146,7 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
-      providerThreadId: 'opaque-thread-1',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-1'),
       sessionModel: 'gpt-5.1',
       turns: [
         {
@@ -162,11 +177,13 @@ describe('external/* event vocabulary', () => {
     session.append('external/session-started', {
       provider: 'codex',
       cwd: '/work',
-      providerThreadId: 'opaque-thread-for-resume',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-for-resume'),
     })
 
     const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
-    expect(projection).toMatchObject({ providerThreadId: 'opaque-thread-for-resume' })
+    expect(projection).toMatchObject({
+      providerThreadId: ExternalProviderThreadId('opaque-thread-for-resume'),
+    })
     expect(projection).not.toHaveProperty('turns.0.providerThreadId')
   })
 
@@ -176,7 +193,7 @@ describe('external/* event vocabulary', () => {
     session.append('external/session-started', {
       provider: 'codex',
       cwd: '/work',
-      providerThreadId: 'opaque-thread-unrelated',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-unrelated'),
     })
     session.append('external/turn-started', { turnId: 't1' })
     session.append('external/message-added', { turnId: 't1', role: 'agent', text: 'before unrelated' })
@@ -187,7 +204,7 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
-      providerThreadId: 'opaque-thread-unrelated',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-unrelated'),
       turns: [
         {
           turnId: 't1',

@@ -22,6 +22,7 @@ import Include from '@deepseek-ai/cordis-plugin-include'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjection from '@deepseek-ai/dsh-session-projection'
 import ExternalSessions, {
+  ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
   type ExternalSessionProvider,
@@ -46,7 +47,7 @@ const stubProvider: ExternalSessionProvider = {
     providerState.bridge = bridgeCtx
     bridgeCtx.appendEvent(request.sessionId, {
       type: 'external/session-started',
-      data: { provider: 'stub', cwd: request.cwd, providerThreadId: 'opaque-thread-stub' },
+      data: { provider: 'stub', cwd: request.cwd, providerThreadId: ExternalProviderThreadId('opaque-thread-stub') },
     })
   },
   async resume(_request, _bridgeCtx, _providerThreadId) {},

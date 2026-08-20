@@ -18,6 +18,9 @@
       "path": "../../core/session"
     },
     {
+      "path": "../../external/external-session"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

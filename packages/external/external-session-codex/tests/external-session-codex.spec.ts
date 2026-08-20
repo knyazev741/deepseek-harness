@@ -5,8 +5,14 @@
  */
 
 import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import {
+  ExternalProviderThreadId,
+  parseExternalProviderThreadId,
+} from '@deepseek-ai/dsh-external-session'
 import * as ExternalCodexInvariant from '@deepseek-ai/dsh-external-session-codex/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { startCodexHarness, type CodexTestHarness } from './harness.ts'
@@ -313,7 +319,9 @@ describe('external-session-codex persistent turns', () => {
       await harness.provider.prompt(harness.sessionId, 'before host restart')
       await harness.waitTurns(1)
       await harness.provider.dispose(harness.sessionId)
-      await harness.resume(providerThreadId as string)
+      const parsedThreadId = parseExternalProviderThreadId(providerThreadId)
+      if (parsedThreadId === undefined) throw new Error('fixture did not provide a valid provider thread id')
+      await harness.resume(parsedThreadId)
 
       expect(harness.recorded.events.filter(event => event.type === 'external/session-started'))
         .toHaveLength(1)
@@ -321,6 +329,50 @@ describe('external-session-codex persistent turns', () => {
       await harness.waitTurns(2)
       expect(agentMessageTexts(harness)).toEqual([first, second])
       expect(responseInputTexts(harness.fixture.requests[1]!.body)).toContain(first)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('rejects an unknown real Codex thread, rolls back the route, and keeps the log readable', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      await harness.ctx.plugin(JsonlSessionPersistence, {
+        root: join(harness.workspace, 'session-log'),
+        compression: 'none',
+      })
+      const service = harness.ctx.externalSessions
+      const request = {
+        sessionId: harness.sessionId,
+        provider: 'codex',
+        cwd: harness.workspace,
+        sandbox: 'read-only' as const,
+        approvalPolicy: 'ask' as const,
+      }
+      const startSpy = vi.spyOn(harness.provider, 'start')
+      await service.start(request)
+      const session = harness.ctx.sessions.get(harness.sessionId)
+      if (session === undefined) throw new Error('Codex harness session was not published')
+      await vi.waitFor(() => {
+        expect(session.events.filter(event => event.type === 'external/session-started')).toHaveLength(1)
+      })
+      await harness.ctx.sessions.flush(session)
+      await service.dispose(harness.sessionId)
+      await harness.ctx.sessions.flush(session)
+      const startedBeforeResume = session.events.filter(event => event.type === 'external/session-started').length
+
+      await expect(service.resume(request, ExternalProviderThreadId('00000000-0000-0000-0000-000000000000')))
+        .rejects.toThrow(/thread|not found|unknown/u)
+      expect(startSpy).toHaveBeenCalledOnce()
+      await awaitQuiescent(harness)
+      await expect(service.dispose(harness.sessionId)).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
+      expect(session.events.filter(event => event.type === 'external/session-started'))
+        .toHaveLength(startedBeforeResume)
+
+      await harness.ctx.sessions.flush(session)
+      const loaded = await harness.ctx.sessionPersistence.load(harness.sessionId)
+      expect(loaded.events.map(event => event.type)).toContain('external/session-started')
+      expect(loaded.events.map(event => event.type)).toContain('external/session-ended')
     } finally {
       await harness.close()
     }

@@ -19,7 +19,7 @@ import type {
   ExternalSessionStart,
   ReasoningEffort,
 } from '@deepseek-ai/dsh-external-session'
-import { ExternalTurnId } from '@deepseek-ai/dsh-external-session'
+import { ExternalProviderThreadId, ExternalTurnId } from '@deepseek-ai/dsh-external-session'
 import type { SessionEventMap, SessionId } from '@deepseek-ai/dsh-session'
 import type { ExternalBridgeContext } from '@deepseek-ai/dsh-external-session'
 import type { ConfinedArgv, SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
@@ -157,7 +157,7 @@ export class CodexExternalSession {
   private readonly spec: CodexSessionSpec
   private settings: CodexWireSettings
   private modelCatalog: readonly ExternalModelInfo[] | undefined
-  private threadId: string | undefined
+  private threadId: ExternalProviderThreadId | undefined
   private live: LiveProcess | undefined
   private activeEnd: {
     raw: string
@@ -204,7 +204,7 @@ export class CodexExternalSession {
    * @param signal - operation cancellation.
    * @returns the durable provider thread id.
    */
-  async start(signal: AbortSignal): Promise<string> {
+  async start(signal: AbortSignal): Promise<ExternalProviderThreadId> {
     if (this.live !== undefined) {
       if (this.threadId === undefined) throw new Error('external-session-codex: live wire has no provider thread id')
       return this.threadId
@@ -230,7 +230,7 @@ export class CodexExternalSession {
    * @param providerThreadId - opaque provider thread id from the durable log.
    * @param signal - operation cancellation.
    */
-  async resume(providerThreadId: string, signal: AbortSignal): Promise<void> {
+  async resume(providerThreadId: ExternalProviderThreadId, signal: AbortSignal): Promise<void> {
     if (providerThreadId.length === 0) {
       throw new Error('external-session-codex: provider thread id must be non-empty')
     }
@@ -535,7 +535,7 @@ export class CodexExternalSession {
       await Promise.race([wire.initialize(signal), processFailure])
       if (this.threadId === undefined || !resume) {
         const id = await Promise.race([wire.startPersistentThread(this.spec.cwd, signal, this.settings), processFailure])
-        this.threadId = id
+        this.threadId = ExternalProviderThreadId(id)
       } else {
         await Promise.race([wire.resumeThread(this.threadId, signal, this.settings), processFailure])
       }

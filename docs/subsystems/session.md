@@ -600,11 +600,11 @@ The hook bridges' `hook/invoked` / `hook/result` pairs (from `@deepseek-ai/dsh-h
 
 ### `external/*` events
 
-External console agents (Codex, ACP clients) write the log-only `external/*` event family into the owning session's log through the host bridge (`@deepseek-ai/dsh-external-session`). Every member is standalone (it may appear between `turn/end` and the next `turn/start`), carries the envelope's `ignorable: true` — a harness build that predates the vocabulary skips it on read instead of refusing the log — and is never a `SurfaceEventType`. Live transcript deltas are not logged; only committed units are. `@deepseek-ai/dsh-session-projection` folds the family into the transcript-shaped `external/transcript` projection.
+External console agents (Codex, ACP clients) write the log-only `external/*` event family into the owning session's log through the host bridge (`@deepseek-ai/dsh-external-session`). Every member is standalone (it may appear between `turn/end` and the next `turn/start`), carries the envelope's `ignorable: true` — a harness build that predates the vocabulary skips it on read instead of refusing the log — and is never a `SurfaceEventType`. Live transcript deltas are not logged; only committed units are. The `external/session-started` record keeps the provider-owned opaque `providerThreadId` returned by a successful start; cold attachment passes that identity to explicit `resume` and never renders it as transcript content. `@deepseek-ai/dsh-session-projection` folds the family into the transcript-shaped `external/transcript` projection while retaining that identity for host attachment.
 
 | Event | Payload | Meaning |
 |---|---|---|
-| `external/session-started` | `{ provider, cwd, model? }` | opened the external session on `provider` in `cwd`, optionally on `model` |
+| `external/session-started` | `{ provider, cwd, model?, providerThreadId }` | opened the external session on `provider` in `cwd`, optionally on `model`, and recorded the provider-owned thread identity |
 | `external/turn-started` | `{ turnId }` | opened one external turn |
 | `external/message-added` | `{ turnId, role: 'user' \| 'agent', text }` | one committed message in a turn |
 | `external/tool-activity` | `{ turnId, kind: 'call' \| 'update' \| 'result', title, detail? }` | one tool activity in a turn |

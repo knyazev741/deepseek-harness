@@ -6,9 +6,10 @@
  * Internal control state belongs with the {@link ExternalSessions} implementation;
  * this module stays the published surface.
  *
- * Opaque cross-boundary ids are branded. {@link ExternalTurnId} is the one the
- * seam owns; {@link SessionId} comes pre-branded from `dsh-session`, imported
- * here without a cycle because `dsh-session` never depends on this family.
+ * Opaque cross-boundary ids are branded. {@link ExternalTurnId} and
+ * {@link ExternalProviderThreadId} are owned by this seam; {@link SessionId}
+ * comes pre-branded from `dsh-session`, imported here without a cycle because
+ * `dsh-session` never depends on this family.
  *
  * @module @deepseek-ai/dsh-external-session/types
  */
@@ -41,6 +42,27 @@ export type ExternalTurnId = Branded<'ExternalTurnId'>
  */
 export function ExternalTurnId(id: string): ExternalTurnId {
   return id as ExternalTurnId
+}
+
+/** Identifies one provider-owned persistent thread across a host restart. */
+export type ExternalProviderThreadId = Branded<'ExternalProviderThreadId'>
+
+/**
+ * Brand a provider thread id at a trusted wire boundary.
+ * @param id - the provider-issued thread id.
+ * @returns the same id with the provider-thread brand.
+ */
+export function ExternalProviderThreadId(id: string): ExternalProviderThreadId {
+  return id as ExternalProviderThreadId
+}
+
+/**
+ * Parse a durable or wire value as a non-empty provider thread id.
+ * @param value - an unknown value read from a durable event or provider wire.
+ * @returns the branded id when the value is a non-empty string.
+ */
+export function parseExternalProviderThreadId(value: unknown): ExternalProviderThreadId | undefined {
+  return typeof value === 'string' && value.length > 0 ? ExternalProviderThreadId(value) : undefined
 }
 
 /**
@@ -190,9 +212,9 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
    * Attach an existing provider thread without creating a replacement thread.
    * @param request - the resolved session identity and policy values.
    * @param bridge - the live conduit for durable and transient activity.
-   * @param providerThreadId - the opaque provider thread id persisted by start.
+   * @param providerThreadId - the branded provider thread id persisted by start.
    */
-  resume(request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: string): Promise<void>
+  resume(request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void>
   /**
    * Submit one user prompt as the next turn.
    * @param sessionId - the live external session.
@@ -251,9 +273,9 @@ export interface ExternalSessionsService {
   /**
    * Attach a persisted external session to its provider-owned thread.
    * @param request - the resolved session identity and policy values.
-   * @param providerThreadId - the opaque provider thread id persisted by start.
+   * @param providerThreadId - the branded provider thread id persisted by start.
    */
-  resume(request: ExternalSessionStartRequest, providerThreadId: string): Promise<void>
+  resume(request: ExternalSessionStartRequest, providerThreadId: ExternalProviderThreadId): Promise<void>
   /**
    * Submit one prompt to a live external session.
    * @param sessionId - the live external session.

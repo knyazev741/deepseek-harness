@@ -25,6 +25,7 @@ import type {
   ExternalModelInfo,
   ExternalPermissionAnswerer,
   ExternalPermissionDecision,
+  ExternalProviderThreadId,
   ExternalSessionEvent,
   ExternalSessionStartRequest,
   ExternalSessionProvider,
@@ -34,6 +35,7 @@ import type {
 } from './types.ts'
 
 export { ExternalTurnId } from './types.ts'
+export { ExternalProviderThreadId, parseExternalProviderThreadId } from './types.ts'
 export type {
   ExternalAgentDescriptor,
   ExternalBridgeContext,
@@ -201,9 +203,9 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    * is a distinct operation: providers must reject a missing or unknown id and
    * never create a replacement thread.
    * @param request - the resolved session identity and policy values.
-   * @param providerThreadId - the opaque provider thread id from the durable log.
+   * @param providerThreadId - the branded provider thread id from the durable log.
    */
-  async resume(request: ExternalSessionStartRequest, providerThreadId: string): Promise<void> {
+  async resume(request: ExternalSessionStartRequest, providerThreadId: ExternalProviderThreadId): Promise<void> {
     if (providerThreadId.length === 0) {
       throw new ExternalSessionError(
         'external provider thread id must be non-empty for resume',
@@ -217,7 +219,7 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   private attach(
     request: ExternalSessionStartRequest,
     operation: 'start' | 'resume',
-    providerThreadId?: string,
+    providerThreadId?: ExternalProviderThreadId,
   ): Promise<void> {
     const pending = this.attachments.get(request.sessionId)
     if (pending !== undefined) return pending.promise

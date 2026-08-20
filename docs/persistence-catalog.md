@@ -90,7 +90,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }[T]
 ```
 
-Sources: [`packages/core/session/src/types.ts:336`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:343`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:372`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:404`](../packages/core/session/src/types.ts)
+Sources: [`packages/core/session/src/types.ts:353`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:360`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:389`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:421`](../packages/core/session/src/types.ts)
 
 ## Events
 
@@ -215,7 +215,7 @@ Source: [`packages/interaction/user-approval/src/index.ts:67`](../packages/inter
 
 Types: [StreamChunk](subsystems/llm-streaming.md)
 
-Source: [`packages/core/session/src/types.ts:266`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:283`](../packages/core/session/src/types.ts)
 
 <a id="assistantmessage--surface"></a>
 
@@ -233,7 +233,7 @@ Source: [`packages/core/session/src/types.ts:266`](../packages/core/session/src/
 
 Types: [TokenUsage](subsystems/llm-streaming.md)
 
-Source: [`packages/core/session/src/types.ts:273`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:290`](../packages/core/session/src/types.ts)
 
 ### `command/*`
 
@@ -389,6 +389,151 @@ Types: [ContentBlock](subsystems/core.md) · [TokenUsage](subsystems/llm-streami
 
 Source: [`packages/compaction/compaction/src/types.ts:33`](../packages/compaction/compaction/src/types.ts)
 
+### `external/*`
+
+<a id="externalcompaction-noticed--log-only"></a>
+
+#### `external/compaction-noticed` — log-only
+
+```ts persistence-catalog
+/**
+ * The external agent performed a compaction; `notice` is its human-visible
+ * summary text. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/compaction-noticed': ExternalCompactionNoticedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:76`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalmessage-added--log-only"></a>
+
+#### `external/message-added` — log-only
+
+```ts persistence-catalog
+/**
+ * One committed message in turn `turnId` — committed units only, never a
+ * live delta. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/message-added': ExternalMessageAddedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:50`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalmodel-switched--log-only"></a>
+
+#### `external/model-switched` — log-only
+
+```ts persistence-catalog
+/**
+ * The external session switched its live model to `model`. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/model-switched': ExternalModelSwitchedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:71`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalpermission-asked--log-only"></a>
+
+#### `external/permission-asked` — log-only
+
+```ts persistence-catalog
+/**
+ * A permission question posed to the human. `askId` pairs it with the
+ * `external/permission-decided` that follows. Log-only `ignorable: true`;
+ * not a `SurfaceEventType`.
+ */
+'external/permission-asked': ExternalPermissionAskedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:61`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalpermission-decided--log-only"></a>
+
+#### `external/permission-decided` — log-only
+
+```ts persistence-catalog
+/**
+ * The outcome of a prior `external/permission-asked` with the same
+ * `askId`. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/permission-decided': ExternalPermissionDecidedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:66`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalsession-ended--log-only"></a>
+
+#### `external/session-ended` — log-only
+
+```ts persistence-catalog
+/**
+ * The external session ended with a stop reason. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/session-ended': ExternalSessionEndedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:86`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalsession-started--log-only"></a>
+
+#### `external/session-started` — log-only
+
+```ts persistence-catalog
+/**
+ * A live external agent session opened on `provider` in `cwd`, optionally
+ * starting on `model`, with the provider-owned thread identity returned by
+ * a successful thread start. Log-only `ignorable: true`; not a
+ * `SurfaceEventType`. Standalone: the bridge appends it before any turn.
+ */
+'external/session-started': ExternalSessionStartedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:40`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externaltool-activity--log-only"></a>
+
+#### `external/tool-activity` — log-only
+
+```ts persistence-catalog
+/**
+ * One tool activity (call, update, or result) in turn `turnId`. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/tool-activity': ExternalToolActivityData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:55`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalturn-ended--log-only"></a>
+
+#### `external/turn-ended` — log-only
+
+```ts persistence-catalog
+/**
+ * Turn `turnId` ended with a stop reason. Log-only `ignorable: true`; not
+ * a `SurfaceEventType`.
+ */
+'external/turn-ended': ExternalTurnEndedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:81`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalturn-started--log-only"></a>
+
+#### `external/turn-started` — log-only
+
+```ts persistence-catalog
+/**
+ * One external turn opened, identified by the provider-issued `turnId`.
+ * Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/turn-started': ExternalTurnStartedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:45`](../packages/session/session-projection/src/external-transcript.ts)
+
 ### `feedback/*`
 
 <a id="feedbackrecord--log-only"></a>
@@ -543,7 +688,7 @@ Source: [`packages/plan/plan-mode/src/index.ts:53`](../packages/plan/plan-mode/s
 'request/context': RequestContext
 ```
 
-Source: [`packages/core/session/src/types.ts:309`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:326`](../packages/core/session/src/types.ts)
 
 <a id="requestheader--log-only"></a>
 
@@ -557,7 +702,7 @@ Source: [`packages/core/session/src/types.ts:309`](../packages/core/session/src/
 'request/header': { header: EpochHeader; reason: RequestHeaderReason }
 ```
 
-Source: [`packages/core/session/src/types.ts:304`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:321`](../packages/core/session/src/types.ts)
 
 ### `sandbox/*`
 
@@ -632,7 +777,7 @@ Source: [`packages/schedule/schedule/src/types.ts:219`](../packages/schedule/sch
 'session/end-seed': Record<string, never>
 ```
 
-Source: [`packages/core/session/src/types.ts:332`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:349`](../packages/core/session/src/types.ts)
 
 <a id="sessiontitle--log-only"></a>
 
@@ -674,7 +819,7 @@ Source: [`packages/session/session-title-llm/src/index.ts:43`](../packages/sessi
 'step/end': { turn: number; step: number }
 ```
 
-Source: [`packages/core/session/src/types.ts:256`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:273`](../packages/core/session/src/types.ts)
 
 <a id="stepstart--log-only"></a>
 
@@ -685,7 +830,7 @@ Source: [`packages/core/session/src/types.ts:256`](../packages/core/session/src/
 'step/start': { turn: number; step: number }
 ```
 
-Source: [`packages/core/session/src/types.ts:254`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:271`](../packages/core/session/src/types.ts)
 
 ### `subagent/*`
 
@@ -719,7 +864,7 @@ Source: [`packages/subagent/subagent/src/descriptor.ts:37`](../packages/subagent
 
 Types: [TodoItem](subsystems/session.md)
 
-Source: [`packages/core/session/src/types.ts:299`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:316`](../packages/core/session/src/types.ts)
 
 ### `tool/*`
 
@@ -738,7 +883,7 @@ Source: [`packages/core/session/src/types.ts:299`](../packages/core/session/src/
 
 Types: [CallId](subsystems/core.md)
 
-Source: [`packages/core/session/src/types.ts:279`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:296`](../packages/core/session/src/types.ts)
 
 <a id="toolcode-dispatch--log-only"></a>
 
@@ -813,7 +958,7 @@ Source: [`packages/core/tools/src/types.ts:40`](../packages/core/tools/src/types
 }
 ```
 
-Source: [`packages/core/session/src/types.ts:291`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:308`](../packages/core/session/src/types.ts)
 
 ### `tool-workflow/*`
 
@@ -893,7 +1038,7 @@ Source: [`packages/workflow/tool-workflow/src/types.ts:47`](../packages/workflow
 
 Types: [TurnEndReason](subsystems/session.md)
 
-Source: [`packages/core/session/src/types.ts:252`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:269`](../packages/core/session/src/types.ts)
 
 <a id="turnstart--log-only"></a>
 
@@ -909,7 +1054,7 @@ Source: [`packages/core/session/src/types.ts:252`](../packages/core/session/src/
 'turn/start': { turn: number }
 ```
 
-Source: [`packages/core/session/src/types.ts:243`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:260`](../packages/core/session/src/types.ts)
 
 ### `user/*`
 
@@ -928,7 +1073,7 @@ Source: [`packages/core/session/src/types.ts:243`](../packages/core/session/src/
 'user/message': UserMessage
 ```
 
-Source: [`packages/core/session/src/types.ts:264`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:281`](../packages/core/session/src/types.ts)
 
 ### `web/*`
 

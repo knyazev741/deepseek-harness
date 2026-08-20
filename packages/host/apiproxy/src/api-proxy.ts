@@ -37,7 +37,8 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {
   ApiProxy, ConfigurableProviderView, CredentialView, GoalRef, HistoryEntry, HostFrame,
   ModelCatalogFailure, ModelProviderGroup, ExternalModeFailure, ExternalModeGroup,
-  ModelReasoning, MuxFrame, PromptContentPart, QuestionResponsePayload, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
+  ExternalModelView, ModelReasoning, MuxFrame, PromptContentPart, QuestionResponsePayload,
+  SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
   QueuedInboxItem, SessionSummary, SettingsNamespaceView, SubagentAddress, JobView, ToolEventView,
   WorkspaceId, WorkspaceView,
 } from './api/index.ts'
@@ -62,6 +63,7 @@ import type {} from '@deepseek-ai/dsh-session-projection'
 // creation and provider resolution (optional composition; the external
 // session seams are not mounted in every deployment).
 import type {} from '@deepseek-ai/dsh-external-session'
+import { parseExternalProviderThreadId } from '@deepseek-ai/dsh-external-session'
 // Value edge: the host-side external-mode command router reuses the canonical
 // slash-line parser so its `/compact` and `/model` arms and the pass-through
 // default match the command registry's own syntax, and the CommandResult type
@@ -353,6 +355,38 @@ async function buildModelCatalog(ctx: Context): Promise<{
   return {
     groups: catalog.flatMap(item => item.kind === 'group' ? [item.group] : []).filter(group => group.models.length > 0),
     failures: catalog.flatMap(item => item.kind === 'failure' ? [item.failure] : []),
+  }
+}
+
+/** Build the session-scoped catalog from one registered external provider. */
+async function buildExternalSessionCatalog(
+  ctx: Context,
+  provider: string,
+): Promise<{ groups: ModelProviderGroup[]; failures: ModelCatalogFailure[] }> {
+  const external = ctx.get('externalSessions')
+  if (external === undefined) return { groups: [], failures: [] }
+  const descriptor = external.getProvider(provider)
+  if (descriptor === undefined) return { groups: [], failures: [] }
+  try {
+    const models = await external.listModels(provider)
+    const entries: ExternalModelView[] = models.map(model => ({
+      id: model.id,
+      name: model.name,
+      ...model.description === undefined ? {} : { description: model.description },
+    }))
+    return {
+      groups: [{ id: provider, name: descriptor.label, models: entries }],
+      failures: [],
+    }
+  } catch (error: unknown) {
+    return {
+      groups: [],
+      failures: [{
+        id: provider,
+        name: descriptor.label,
+        message: error instanceof Error ? error.message : String(error),
+      }],
+    }
   }
 }
 
@@ -1559,14 +1593,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   }
 
   /** Return the latest durable provider thread id, or undefined when absent. */
-  function externalProviderThreadId(events: readonly SessionEvent[]): string | undefined {
+  function externalProviderThreadId(events: readonly SessionEvent[]) {
     for (let index = events.length - 1; index >= 0; index -= 1) {
       const event = events[index]
       if (event?.type !== 'external/session-started') continue
       const data = event.data as { providerThreadId?: unknown }
-      return typeof data.providerThreadId === 'string' && data.providerThreadId.length > 0
-        ? data.providerThreadId
-        : undefined
+      return parseExternalProviderThreadId(data.providerThreadId)
     }
     return undefined
   }
@@ -2485,7 +2517,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             provider: externalSession.header.mode ?? 'unknown',
             model: currentModel ?? '',
           }
-          const { groups, failures } = await buildModelCatalog(ctx)
+          const { groups, failures } = await buildExternalSessionCatalog(
+            ctx,
+            externalSession.header.mode ?? 'unknown',
+          )
           return ok(request, { current, routable: true, groups, failures })
         }
         const found = await agentFor(sessionId)
