@@ -131,7 +131,7 @@ export interface ExternalToolCallRecord {
   readonly callId: ExternalToolCallId
   /** Registered Harness tool name. */
   readonly name: string
-  /** Arguments before the lossless JSON snapshot. */
+  /** Arguments before the synchronous lossless JSON snapshot at API entry. */
   readonly arguments: unknown
   /** Optional provider turn override; the bridge derives one when omitted. */
   readonly turnId?: string
@@ -145,7 +145,7 @@ export interface ExternalToolResultRecord {
   readonly name?: string
   /** Whether the result represents a failed tool execution. */
   readonly isError?: boolean
-  /** Successful result before the lossless JSON snapshot. */
+  /** Successful result before the synchronous lossless JSON snapshot at API entry. */
   readonly result?: unknown
   /** Alias accepted for a canonical tools-pipeline result value. */
   readonly value?: unknown
@@ -262,8 +262,10 @@ export interface ExternalSessionEvent<T extends SessionEventType = SessionEventT
  * logged. The service emits a typed `external/session-delta` event for the
  * host mux; the permission channel remains host-owned and fails closed until
  * a host answerer is registered. A live session with a SessionStore also
- * receives an `ExternalToolPrincipal` whose recorder commits one bounded
- * `external/tool-call` followed by one matching `external/tool-result`.
+ * receives an `ExternalToolPrincipal` whose recorder synchronously detaches
+ * caller-owned values at API entry, commits one bounded `external/tool-call`
+ * followed by one matching `external/tool-result`, and seeds call-id
+ * uniqueness from the session log.
  */
 export interface ExternalBridgeContext {
   /**
@@ -358,7 +360,9 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
    */
   setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
   /**
-   * Dispose the live session and its process tree.
+   * Dispose the live session and its process tree. The returned promise waits
+   * for an in-flight start/resume to settle before provider teardown; concurrent
+   * calls share the same quiescence promise.
    * @param sessionId - the live external session.
    */
   dispose(sessionId: SessionId): Promise<void>
@@ -415,7 +419,9 @@ export interface ExternalSessionsService {
    */
   setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
   /**
-   * Dispose a live external session and its process tree.
+   * Dispose a live external session and its process tree. The returned promise
+   * waits for an in-flight start/resume to settle before provider teardown;
+   * concurrent calls share the same quiescence promise.
    * @param sessionId - the live external session.
    */
   dispose(sessionId: SessionId): Promise<void>

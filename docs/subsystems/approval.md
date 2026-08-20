@@ -157,7 +157,7 @@ overrideOf(session: Session): ApprovalPolicy | undefined
 
 Types: [Agent](core.md) · [Session](session.md)
 
-Source: [`packages/interaction/user-approval/src/index.ts:222`](../../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:219`](../../packages/interaction/user-approval/src/index.ts)
 
 <a id="approval-events"></a>
 

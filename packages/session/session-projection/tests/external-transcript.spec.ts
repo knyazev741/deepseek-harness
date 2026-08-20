@@ -291,4 +291,127 @@ describe('external/* event vocabulary', () => {
       }],
     })
   })
+
+  it('ignores malformed external turns and tool calls without breaking snapshots', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-malformed-turn'),
+    })
+    session.append('external/turn-started', { turnId: '' })
+    session.append('external/tool-call', {
+      callId: ExternalToolCallId(''),
+      name: 'read',
+      arguments: {},
+    })
+    session.append('external/tool-call', {
+      callId: ExternalToolCallId('malformed-name'),
+      name: '',
+      arguments: {},
+    })
+
+    expect(() => ctx.sessionProjections.snapshot(session)).not.toThrow()
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({ turns: [] })
+  })
+
+  it('ignores a result with the wrong tool name', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-wrong-name'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-wrong-name' })
+    session.append('external/tool-call', {
+      turnId: 'turn-wrong-name',
+      callId: ExternalToolCallId('wrong-name-call'),
+      name: 'read',
+      arguments: {},
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-wrong-name',
+      callId: ExternalToolCallId('wrong-name-call'),
+      name: 'write',
+      isError: false,
+      result: { ignored: true },
+    })
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({ turns: [{ toolCalls: [{ name: 'read', arguments: {} }] }] })
+    expect(projection).not.toHaveProperty('turns.0.toolCalls.0.result')
+  })
+
+  it('keeps one durable call node and its first result when duplicates appear', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-duplicate-records'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-duplicate-records' })
+    const call = {
+      turnId: 'turn-duplicate-records',
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      arguments: {},
+    }
+    session.append('external/tool-call', call)
+    session.append('external/tool-call', call)
+    session.append('external/tool-result', {
+      turnId: 'turn-duplicate-records',
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      isError: false,
+      result: { first: true },
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-duplicate-records',
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      isError: false,
+      result: { second: true },
+    })
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({
+      turns: [{ toolCalls: [{ callId: ExternalToolCallId('duplicate-call'), result: { first: true } }] }],
+    })
+    expect(projection?.turns[0]?.toolCalls).toHaveLength(1)
+  })
+
+  it('ignores a conflicting result that carries both success and error fields', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-conflicting-result'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-conflicting-result' })
+    session.append('external/tool-call', {
+      turnId: 'turn-conflicting-result',
+      callId: ExternalToolCallId('conflicting-result'),
+      name: 'write',
+      arguments: {},
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-conflicting-result',
+      callId: ExternalToolCallId('conflicting-result'),
+      name: 'write',
+      isError: false,
+      result: { ok: true },
+      error: { message: 'also failed' },
+    } as never)
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({
+      turns: [{ toolCalls: [{ callId: ExternalToolCallId('conflicting-result'), name: 'write', arguments: {} }] }],
+    })
+    expect(projection).not.toHaveProperty('turns.0.toolCalls.0.result')
+    expect(projection).not.toHaveProperty('turns.0.toolCalls.0.error')
+  })
 })

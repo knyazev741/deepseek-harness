@@ -92,21 +92,18 @@ import type {
   ApprovalOutcome,
   ExternalApprovalAskedData,
   ExternalApprovalDecidedData,
-  ExternalApprovalPrincipal,
-  ExternalApprovalRequest,
 } from './types.ts'
+import type { ExternalApprovalPrincipal, ExternalApprovalRequest } from './external-types.ts'
 
 export { ApprovalRequestId } from './types.ts'
 export type {
   ApprovalOutcome,
   ExternalApprovalAskedData,
   ExternalApprovalDecidedData,
-  ExternalApprovalPrincipal,
-  ExternalApprovalRecorder,
-  ExternalApprovalRequest,
   ExternalToolCallId,
   ExternalToolPrincipalId,
 } from './types.ts'
+export type { ExternalApprovalPrincipal, ExternalApprovalRecorder, ExternalApprovalRequest } from './external-types.ts'
 
 /** Every {@link ApprovalOutcome}, for runtime normalization of answerer returns. */
 const OUTCOMES: readonly ApprovalOutcome[] = ['allowed-once', 'rejected', 'cancelled', 'unavailable']

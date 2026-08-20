@@ -144,9 +144,46 @@ describe('approval invariants', () => {
     expect(() => session.append('external/approval-decided', {
       id,
       principalId,
-      sessionId: SessionId('other-session'),
+      sessionId: session.id,
       callId: ExternalToolCallId('other-call'),
       outcome: 'rejected',
     })).toThrow(/does not match external\/approval-asked/)
+  })
+
+  it('rejects an external approval event whose session id is not its owning Session', async () => {
+    const ctx = await setup()
+    const session = ctx.sessions.create(SessionId('external-owner'))
+    expect(() => session.append('external/approval-asked', {
+      id: ApprovalRequestId('external-owner-mismatch'),
+      principalId: ExternalToolPrincipalId('external-owner-principal'),
+      sessionId: SessionId('different-owner'),
+      callId: ExternalToolCallId('external-owner-call'),
+      toolName: 'bash',
+    })).toThrow(/owning Session id/)
+  })
+
+  it('rejects an external approval decision after the external Session has ended', async () => {
+    const ctx = await setup()
+    const session = ctx.sessions.create(SessionId('external-ended'))
+    const id = ApprovalRequestId('external-ended-ask')
+    const principalId = ExternalToolPrincipalId('external-ended-principal')
+    const callId = ExternalToolCallId('external-ended-call')
+    session.append('external/approval-asked', {
+      id,
+      principalId,
+      sessionId: session.id,
+      callId,
+      toolName: 'bash',
+    })
+    ;(session.append as unknown as (type: string, data: unknown) => unknown)(
+      'external/session-ended', { stopReason: 'completed' },
+    )
+    expect(() => session.append('external/approval-decided', {
+      id,
+      principalId,
+      sessionId: session.id,
+      callId,
+      outcome: 'cancelled',
+    })).toThrow(/session has ended/)
   })
 })

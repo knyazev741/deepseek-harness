@@ -741,11 +741,13 @@ async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningE
 
 /**
  * Dispose a live external session and its process tree. The bridge's
- * disposal signal fires before the provider tears down.
+ * disposal signal fires first; the returned promise waits for any in-flight
+ * start/resume to settle before disposing the scope and provider. Concurrent
+ * callers receive the same teardown promise.
  * @param sessionId - the live external session.
  * @throws {@link ExternalSessionError} when the session is not live.
  */
-async dispose(sessionId: SessionId): Promise<void>
+dispose(sessionId: SessionId): Promise<void>
 ```
 
 Types: [SessionId](core.md)

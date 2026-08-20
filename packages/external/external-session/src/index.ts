@@ -133,6 +133,8 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   private scopes = new Map<SessionId, Scope>()
   /** In-flight start/resume operations shared by concurrent attach callers. */
   private attachments = new Map<SessionId, { promise: Promise<void>; token: object }>()
+  /** In-flight disposals shared by concurrent callers until provider teardown settles. */
+  private teardowns = new Map<SessionId, Promise<void>>()
   /** The registered permission answerer, or undefined while the channel is unwired. */
   private permissionAnswerer: ExternalPermissionAnswerer | undefined
 
@@ -248,7 +250,11 @@ export class ExternalSessions extends Service implements ExternalSessionsService
     return this.attach(request, 'resume', providerThreadId)
   }
 
-  /** Start or resume one provider attachment while retaining rollback ownership. */
+  /**
+   * Start or resume one provider attachment while retaining rollback ownership.
+   * The attachment remains registered until the provider promise settles so a
+   * concurrent disposal can share the same quiescence barrier.
+   */
   private attach(
     request: ExternalSessionStartRequest,
     operation: 'start' | 'resume',
@@ -285,6 +291,12 @@ export class ExternalSessions extends Service implements ExternalSessionsService
           )
         } else {
           await provider.resume(resolved, bridge, providerThreadId)
+        }
+        if (controller.signal.aborted) {
+          throw new ExternalSessionError(
+            `external session ${String(request.sessionId)} was disposed during startup`,
+            'SESSION_DISPOSED',
+          )
         }
         deferred.resolve(undefined)
       } catch (error) {
@@ -364,21 +376,50 @@ export class ExternalSessions extends Service implements ExternalSessionsService
 
   /**
    * Dispose a live external session and its process tree. The bridge's
-   * disposal signal fires before the provider tears down.
+   * disposal signal fires first; the returned promise waits for any in-flight
+   * start/resume to settle before disposing the scope and provider. Concurrent
+   * callers receive the same teardown promise.
    * @param sessionId - the live external session.
    * @throws {@link ExternalSessionError} when the session is not live.
    */
-  async dispose(sessionId: SessionId): Promise<void> {
-    const provider = this.providerFor(sessionId)
+  dispose(sessionId: SessionId): Promise<void> {
+    const existing = this.teardowns.get(sessionId)
+    if (existing !== undefined) return existing
+    const providerName = this.sessions.get(sessionId)
+    if (providerName === undefined) {
+      return Promise.reject(new ExternalSessionError(
+        `no live external session ${String(sessionId)}`,
+        'UNKNOWN_SESSION',
+      ))
+    }
+    let provider: ExternalSessionProvider
+    try {
+      provider = this.expectProvider(providerName)
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+    }
     this.sessions.delete(sessionId)
     const controller = this.disposals.get(sessionId)
     this.disposals.delete(sessionId)
     controller?.abort()
-    try {
-      await this.disposeScope(sessionId)
-    } finally {
-      await provider.dispose(sessionId)
+    const attachment = this.attachments.get(sessionId)?.promise
+    const teardown = (async () => {
+      // Provider startup/resume owns the bridge until its promise settles. The
+      // abort signal requests cancellation, but a provider may be late or
+      // non-cooperative, so teardown must wait before disposing that provider.
+      await attachment?.catch(() => {})
+      try {
+        await this.disposeScope(sessionId)
+      } finally {
+        await provider.dispose(sessionId)
+      }
+    })()
+    this.teardowns.set(sessionId, teardown)
+    const cleanup = (): void => {
+      if (this.teardowns.get(sessionId) === teardown) this.teardowns.delete(sessionId)
     }
+    void teardown.then(cleanup, cleanup)
+    return teardown
   }
 
   /** Look up a provider for dispatch or fail loud. */
@@ -425,7 +466,7 @@ export class ExternalSessions extends Service implements ExternalSessionsService
         appendSessionEvent(session, event)
       }, (scope) => {
         this.scopes.set(sessionId, scope)
-      })
+      }, session.events)
     return {
       ...principal === undefined ? {} : { principal },
       appendEvent: (eventSessionId, event) => {
@@ -526,6 +567,7 @@ function createExternalPrincipal(
   turn: ExternalTurnRef,
   append: (event: ExternalSessionEvent) => void,
   retainScope: (scope: Scope) => void,
+  events: readonly SessionEvent[],
 ): ExternalToolPrincipal {
   const principal = {
     kind: 'external' as const,
@@ -536,19 +578,26 @@ function createExternalPrincipal(
   }
   const scope = createScope(root, principal)
   principal.ctx = scope.ctx
-  principal.recorder = createExternalToolRecorder(disposal, turn, append)
+  principal.recorder = createExternalToolRecorder(disposal, turn, append, events)
   retainScope(scope)
   return principal
 }
 
-/** Recorder state is serialized so concurrent gateway calls retain call/result order. */
+/**
+ * Recorder state is serialized so concurrent gateway calls retain call/result
+ * order. Caller-owned values are detached synchronously before entering the
+ * queue, and the initial sets are seeded from the owning session log so the
+ * call-id uniqueness guarantee survives resume and HMR attachments.
+ */
 function createExternalToolRecorder(
   disposal: AbortSignal,
   turn: ExternalTurnRef,
   append: (event: ExternalSessionEvent) => void,
+  events: readonly SessionEvent[],
 ): ToolExecutionRecorder & { readonly signal: AbortSignal } {
-  const pending = new Map<string, PendingExternalToolCall>()
-  const completed = new Set<string>()
+  const seeded = seedExternalToolRecorder(events)
+  const pending = seeded.pending
+  const completed = seeded.completed
   let tail = Promise.resolve()
 
   const enqueue = <T>(operation: () => T | PromiseLike<T>): Promise<T> => {
@@ -559,63 +608,148 @@ function createExternalToolRecorder(
 
   return {
     signal: disposal,
-    recordCall: value => enqueue(() => {
-      assertExternalSessionOpen(disposal)
-      const call = normalizeExternalToolCall(value)
+    recordCall: (value) => {
+      let call: NormalizedExternalToolCall
+      try {
+        // Detach caller-owned nested arguments before this operation enters
+        // the serialized queue. The queue controls commit order only.
+        call = normalizeExternalToolCall(value)
+      } catch (error) {
+        return rejectedRecorderOperation(error)
+      }
+      return enqueue(() => {
+        assertExternalSessionOpen(disposal)
+        const key = String(call.callId)
+        if (pending.has(key) || completed.has(key)) {
+          throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} is already recorded`, 'DUPLICATE_TOOL_CALL')
+        }
+        const turnId = call.turnId ?? turn.current
+        const data: ExternalToolCallData = {
+          ...turnId === undefined ? {} : { turnId },
+          callId: call.callId,
+          name: call.name,
+          arguments: call.arguments,
+        }
+        assertExternalToolRecordSize(data, 'call')
+        append({ type: 'external/tool-call', data })
+        pending.set(key, { ...call, ...turnId === undefined ? {} : { turnId } })
+      })
+    },
+    recordResult: (value) => {
+      let result: NormalizedExternalToolResult
+      try {
+        // Error facts and JSON result values are detached at API entry for the
+        // same reason as call arguments: callers may mutate them immediately.
+        result = normalizeExternalToolResult(value)
+      } catch (error) {
+        return rejectedRecorderOperation(error)
+      }
+      return enqueue(() => {
+        assertExternalSessionOpen(disposal)
+        const key = String(result.callId)
+        const call = pending.get(key)
+        if (call === undefined) {
+          if (completed.has(key)) {
+            throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} already recorded a result`, 'DUPLICATE_TOOL_RESULT')
+          }
+          throw new ExternalSessionError(`no matching external tool call for ${JSON.stringify(key)}`, 'UNMATCHED_TOOL_RESULT')
+        }
+        if (result.name !== undefined && result.name !== call.name) {
+          throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} names ${JSON.stringify(result.name)} instead of ${JSON.stringify(call.name)}`, 'TOOL_RESULT_NAME_MISMATCH')
+        }
+        if (result.turnId !== undefined && call.turnId !== undefined && result.turnId !== call.turnId) {
+          throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} has a different turn id`, 'TOOL_RESULT_TURN_MISMATCH')
+        }
+        const turnId = result.turnId ?? call.turnId
+        const data: ExternalToolResultData = result.isError
+          ? {
+            ...turnId === undefined ? {} : { turnId },
+            callId: result.callId,
+            name: call.name,
+            isError: true,
+            error: result.error,
+          }
+          : {
+            ...turnId === undefined ? {} : { turnId },
+            callId: result.callId,
+            name: call.name,
+            isError: false,
+            result: result.result,
+          }
+        assertExternalToolRecordSize(data, 'result')
+        append({ type: 'external/tool-result', data })
+        pending.delete(key)
+        completed.add(key)
+      })
+    },
+  }
+}
+
+/** Preserve the recorder's promise-based invalid-input failure contract. */
+function rejectedRecorderOperation(error: unknown): Promise<never> {
+  return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+}
+
+interface SeededExternalToolRecorder {
+  readonly pending: Map<string, PendingExternalToolCall>
+  readonly completed: Set<string>
+}
+
+/** Seed recorder uniqueness and pending pairs from the owning session log. */
+function seedExternalToolRecorder(events: readonly SessionEvent[]): SeededExternalToolRecorder {
+  const pending = new Map<string, PendingExternalToolCall>()
+  const completed = new Set<string>()
+  for (const event of events) {
+    if (event.type === 'external/tool-call') {
+      let call: NormalizedExternalToolCall
+      try {
+        call = normalizeExternalToolCall(event.data)
+        assertExternalToolRecordSize(event.data, 'call')
+      } catch (error) {
+        throw invalidSeededToolRecord('call', error)
+      }
       const key = String(call.callId)
       if (pending.has(key) || completed.has(key)) {
         throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} is already recorded`, 'DUPLICATE_TOOL_CALL')
       }
-      const turnId = call.turnId ?? turn.current
-      const data: ExternalToolCallData = {
-        ...turnId === undefined ? {} : { turnId },
-        callId: call.callId,
-        name: call.name,
-        arguments: call.arguments,
+      pending.set(key, call)
+      continue
+    }
+    if (event.type !== 'external/tool-result') continue
+    let result: NormalizedExternalToolResult
+    try {
+      result = normalizeExternalToolResult(event.data)
+      assertExternalToolRecordSize(event.data, 'result')
+    } catch (error) {
+      throw invalidSeededToolRecord('result', error)
+    }
+    if (result.name === undefined) throw invalidSeededToolRecord('result', new TypeError('name must be non-empty'))
+    const key = String(result.callId)
+    const call = pending.get(key)
+    if (call === undefined) {
+      if (completed.has(key)) {
+        throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} already recorded a result`, 'DUPLICATE_TOOL_RESULT')
       }
-      assertExternalToolRecordSize(data, 'call')
-      append({ type: 'external/tool-call', data })
-      pending.set(key, { ...call, ...turnId === undefined ? {} : { turnId } })
-    }),
-    recordResult: value => enqueue(() => {
-      assertExternalSessionOpen(disposal)
-      const result = normalizeExternalToolResult(value)
-      const key = String(result.callId)
-      const call = pending.get(key)
-      if (call === undefined) {
-        if (completed.has(key)) {
-          throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} already recorded a result`, 'DUPLICATE_TOOL_RESULT')
-        }
-        throw new ExternalSessionError(`no matching external tool call for ${JSON.stringify(key)}`, 'UNMATCHED_TOOL_RESULT')
-      }
-      if (result.name !== undefined && result.name !== call.name) {
-        throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} names ${JSON.stringify(result.name)} instead of ${JSON.stringify(call.name)}`, 'TOOL_RESULT_NAME_MISMATCH')
-      }
-      if (result.turnId !== undefined && call.turnId !== undefined && result.turnId !== call.turnId) {
-        throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} has a different turn id`, 'TOOL_RESULT_TURN_MISMATCH')
-      }
-      const turnId = result.turnId ?? call.turnId
-      const data: ExternalToolResultData = result.isError
-        ? {
-          ...turnId === undefined ? {} : { turnId },
-          callId: result.callId,
-          name: call.name,
-          isError: true,
-          error: result.error,
-        }
-        : {
-          ...turnId === undefined ? {} : { turnId },
-          callId: result.callId,
-          name: call.name,
-          isError: false,
-          result: result.result,
-        }
-      assertExternalToolRecordSize(data, 'result')
-      append({ type: 'external/tool-result', data })
-      pending.delete(key)
-      completed.add(key)
-    }),
+      throw new ExternalSessionError(`no matching external tool call for ${JSON.stringify(key)}`, 'UNMATCHED_TOOL_RESULT')
+    }
+    if (result.name !== call.name) {
+      throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} names ${JSON.stringify(result.name)} instead of ${JSON.stringify(call.name)}`, 'TOOL_RESULT_NAME_MISMATCH')
+    }
+    if (result.turnId !== undefined && call.turnId !== undefined && result.turnId !== call.turnId) {
+      throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} has a different turn id`, 'TOOL_RESULT_TURN_MISMATCH')
+    }
+    pending.delete(key)
+    completed.add(key)
   }
+  return { pending, completed }
+}
+
+/** Convert an invalid durable seed into a typed attachment failure. */
+function invalidSeededToolRecord(kind: 'call' | 'result', error: unknown): ExternalSessionError {
+  return new ExternalSessionError(
+    `external tool ${kind} record in the session log is invalid: ${error instanceof Error ? error.message : String(error)}`,
+    'INVALID_TOOL_RECORD',
+  )
 }
 
 /** Reject recorder writes after its owning session has started disposal. */

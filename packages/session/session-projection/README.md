@@ -27,7 +27,7 @@ Session-projection Service Definition and drive registry. It owns `ctx.sessionPr
 - **No wire vocabulary here.** The registry exposes only the change feed and the snapshot read face; carriers (api-proxy) mint their own frames (`session/projection`) and blocks from them.
 - **Optional capability.** Domain plugins register under `ctx.inject(['sessionProjections'], …)` so headless assemblies without the registry stay unaffected; carriers use `ctx.get('sessionProjections')` and omit their block/frames entirely when the registry is absent.
 - **Operational identity stays out of transcript rendering.** The external-transcript unit preserves the opaque `providerThreadId` from `external/session-started` in its replay value for host attachment, while transcript presenters render only external conversation and activity fields.
-- **External tool records stay paired in replay.** The external-transcript unit exposes each committed `external/tool-call` as a `toolCalls` node and attaches exactly one matching `external/tool-result` by branded call id, retaining either JSON result or a bounded `{ message, code? }` error. Unmatched or malformed records are ignored rather than inventing a transcript node.
+- **External tool records stay paired in replay.** The external-transcript unit exposes each committed `external/tool-call` as a `toolCalls` node and attaches exactly one matching `external/tool-result` by branded call id, retaining either JSON result or a bounded `{ message, code? }` error. Unmatched, malformed, wrong-name, duplicate, conflicting, or ambiguous records are ignored rather than inventing or reassigning a transcript node.
 
 ## Role
 

@@ -13,12 +13,15 @@
  * (registry snapshot, change feed, and persisted cache), reproducing the
  * committed exchange — messages, tool activity, permission asks/decisions,
  * compaction notices, model switches, and stop reasons — so replay and client
- * rendering never re-walk the raw log.
+ * rendering never re-walk the raw log. Malformed, mismatched, duplicate, or
+ * ambiguous tool records are ignored; a result is attached only to the one
+ * call whose id, name, and optional turn id agree.
  *
  * @module @deepseek-ai/dsh-session-projection/external-transcript
  */
 
 import { z } from 'zod'
+import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import {
   ExternalToolCallId,
@@ -241,8 +244,8 @@ const toolActivitySchema = z.object({
   detail: z.string().optional(),
 }).strict()
 const toolErrorSchema = z.object({
-  message: z.string(),
-  code: z.string().optional(),
+  message: z.string().min(1),
+  code: z.string().min(1).optional(),
 }).strict()
 const toolCallSchema = z.object({
   callId: z.string().min(1).transform(ExternalToolCallId),
@@ -320,29 +323,95 @@ function decidePermission(
   return state
 }
 
-/** Find the newest tool call with one call id, optionally constrained to a turn. */
+/** A location of one call node in the open or closed transcript. */
+interface ToolCallLocation {
+  readonly location: 'open' | 'closed'
+  readonly turnId: string
+  readonly turnIndex?: number
+  readonly callIndex: number
+}
+
+/** Whether an unknown value is a plain durable object. */
+function recordValue(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const prototype = Reflect.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+/** Validate one external tool-call payload before it enters the fold. */
+function isExternalToolCallData(value: unknown): boolean {
+  if (!recordValue(value)) return false
+  const callId = value.callId
+  const name = value.name
+  const turnId = value.turnId
+  return typeof callId === 'string' && callId.length > 0
+    && typeof name === 'string' && name.length > 0
+    && (turnId === undefined || typeof turnId === 'string' && turnId.length > 0)
+    && Object.hasOwn(value, 'arguments')
+    && snapshotJsonValue(value.arguments) !== undefined
+}
+
+/** Validate one explicit external tool error. */
+function isExternalToolError(value: unknown): value is ExternalToolError {
+  if (!recordValue(value)) return false
+  return typeof value.message === 'string' && value.message.length > 0
+    && (value.code === undefined || typeof value.code === 'string' && value.code.length > 0)
+}
+
+/** Validate one external tool-result payload and exactly one result form. */
+function isExternalToolResultData(value: unknown): value is ExternalToolResultData {
+  if (!recordValue(value)) return false
+  const callId = value.callId
+  const name = value.name
+  const turnId = value.turnId
+  const isError = value.isError
+  const hasResult = Object.hasOwn(value, 'result')
+  const hasError = Object.hasOwn(value, 'error')
+  if (typeof callId !== 'string' || callId.length === 0
+    || typeof name !== 'string' || name.length === 0
+    || (turnId !== undefined && (typeof turnId !== 'string' || turnId.length === 0))
+    || typeof isError !== 'boolean') return false
+  if (isError) return hasError && !hasResult && isExternalToolError(value.error)
+  return hasResult && !hasError && snapshotJsonValue(value.result) !== undefined
+}
+
+/** Collect every call with one id; ambiguous history must never newest-match. */
+function findToolCallLocations(state: ExternalTranscriptState, callId: ExternalToolCallId): ToolCallLocation[] {
+  const matches: ToolCallLocation[] = []
+  if (state.open !== null) {
+    for (let callIndex = 0; callIndex < state.open.toolCalls.length; callIndex += 1) {
+      if (state.open.toolCalls[callIndex]?.callId === callId) {
+        matches.push({ location: 'open', turnId: state.open.turnId, callIndex })
+      }
+    }
+  }
+  for (let turnIndex = 0; turnIndex < state.turns.length; turnIndex += 1) {
+    const turn = state.turns[turnIndex]
+    if (turn === undefined) continue
+    for (let callIndex = 0; callIndex < turn.toolCalls.length; callIndex += 1) {
+      if (turn.toolCalls[callIndex]?.callId === callId) {
+        matches.push({ location: 'closed', turnId: turn.turnId, turnIndex, callIndex })
+      }
+    }
+  }
+  return matches
+}
+
+/** Find one unambiguous call id, optionally constrained to its durable turn. */
 function findToolCall(
   state: ExternalTranscriptState,
   callId: ExternalToolCallId,
   turnId: string | undefined,
-): { readonly location: 'open' | 'closed'; readonly turnIndex?: number; readonly callIndex: number } | undefined {
-  if (state.open !== null && (turnId === undefined || state.open.turnId === turnId)) {
-    for (let index = state.open.toolCalls.length - 1; index >= 0; index -= 1) {
-      if (state.open.toolCalls[index]?.callId === callId) return { location: 'open', callIndex: index }
-    }
-  }
-  for (let turnIndex = state.turns.length - 1; turnIndex >= 0; turnIndex -= 1) {
-    const turn = state.turns[turnIndex]
-    if (turn === undefined || turnId !== undefined && turn.turnId !== turnId) continue
-    for (let callIndex = turn.toolCalls.length - 1; callIndex >= 0; callIndex -= 1) {
-      if (turn.toolCalls[callIndex]?.callId === callId) return { location: 'closed', turnIndex, callIndex }
-    }
-  }
-  return undefined
+): ToolCallLocation | undefined {
+  const matches = findToolCallLocations(state, callId)
+  if (matches.length !== 1) return undefined
+  const found = matches[0]
+  return found !== undefined && (turnId === undefined || found.turnId === turnId) ? found : undefined
 }
 
 /** Attach one committed result to its exact call node, preserving late results after turn close. */
 function applyToolResult(state: ExternalTranscriptState, data: ExternalToolResultData): ExternalTranscriptState {
+  if (!isExternalToolResultData(data)) return state
   const found = findToolCall(state, data.callId, data.turnId)
   if (found === undefined) return state
   if (found.location === 'open') {
@@ -351,6 +420,8 @@ function applyToolResult(state: ExternalTranscriptState, data: ExternalToolResul
     const toolCalls = [...open.toolCalls]
     const existing = toolCalls[found.callIndex]
     if (existing === undefined) return state
+    if (existing.name !== data.name
+      || Object.hasOwn(existing, 'result') || Object.hasOwn(existing, 'error')) return state
     if (data.isError) {
       toolCalls[found.callIndex] = { ...existing, error: data.error }
     } else {
@@ -366,6 +437,8 @@ function applyToolResult(state: ExternalTranscriptState, data: ExternalToolResul
   const toolCalls = [...turn.toolCalls]
   const existing = toolCalls[found.callIndex]
   if (existing === undefined) return state
+  if (existing.name !== data.name
+    || Object.hasOwn(existing, 'result') || Object.hasOwn(existing, 'error')) return state
   if (data.isError) {
     toolCalls[found.callIndex] = { ...existing, error: data.error }
   } else {
@@ -387,6 +460,7 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
         sessionModel: event.data.model ?? state.sessionModel,
       }
     case 'external/turn-started':
+      if (event.data.turnId.length === 0) return state
       return {
         ...state,
         open: {
@@ -426,8 +500,10 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
       }
     }
     case 'external/tool-call': {
+      if (!isExternalToolCallData(event.data)) return state
       const open = state.open
       if (open === null || event.data.turnId !== undefined && open.turnId !== event.data.turnId) return state
+      if (findToolCallLocations(state, event.data.callId).length > 0) return state
       return {
         ...state,
         open: {
@@ -476,7 +552,7 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
     }
     case 'external/turn-ended': {
       const open = state.open
-      if (open === null || open.turnId !== event.data.turnId) return state
+      if (event.data.turnId.length === 0 || open === null || open.turnId !== event.data.turnId) return state
       return {
         ...state,
         turns: [...state.turns, { ...open, stopReason: event.data.stopReason }],
@@ -506,10 +582,10 @@ function view(state: ExternalTranscriptState): ExternalTranscriptProjection {
 /**
  * The transcript-shaped recount of a session's `external/*` events, registered
  * on `ctx.sessionProjections` by a host plugin. Guards every boundary on the
- * untyped pointer keys it can be hostile to (prototype names): the fold reads
- * only its own declared events, so an unrelated or unknown event returns the
- * same state reference (zero downstream work), and the served value passes
- * {@link externalTranscriptSchema} before it leaves the registry.
+ * untyped pointer keys it can be hostile to (prototype names): malformed or
+ * ambiguous tool records never enter state, an unrelated or unknown event
+ * returns the same state reference (zero downstream work), and the served
+ * value passes {@link externalTranscriptSchema} before it leaves the registry.
  */
 export const externalTranscriptProjectionDefinition:
 ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
@@ -530,5 +606,5 @@ ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
   }),
   apply,
   view,
-  stateVersion: 3,
+  stateVersion: 4,
 }

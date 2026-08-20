@@ -654,8 +654,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['{@link ExternalSessionError} when the session is not live.'],
       },
       {
-        signature: 'async dispose(sessionId: SessionId): Promise<void>',
-        description: 'Dispose a live external session and its process tree. The bridge\'s disposal signal fires before the provider tears down.',
+        signature: 'dispose(sessionId: SessionId): Promise<void>',
+        description: 'Dispose a live external session and its process tree. The bridge\'s disposal signal fires first; the returned promise waits for any in-flight start/resume to settle before disposing the scope and provider. Concurrent callers receive the same teardown promise.',
         parameters: [{ name: 'sessionId', description: 'the live external session.' }],
         throws: ['{@link ExternalSessionError} when the session is not live.'],
       },

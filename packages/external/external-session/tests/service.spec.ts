@@ -25,6 +25,7 @@ class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory: ExternalModelDirectory
   startCount = 0
   startError: Error | undefined
+  startGate: Promise<void> | undefined
   lastStart: ExternalSessionStart | undefined
   lastBridge: ExternalBridgeContext | undefined
   readonly prompts: string[] = []
@@ -50,6 +51,7 @@ class StubProvider implements ExternalSessionProvider {
     if (this.startError !== undefined) throw this.startError
     this.lastStart = request
     this.lastBridge = bridge
+    await this.startGate
   }
 
   async resume(
@@ -213,6 +215,29 @@ describe('ExternalSessions registry', () => {
     await expect(first).rejects.toThrow('resume failed')
     await expect(second).rejects.toThrow('resume failed')
     await expect(service.prompt(sessionId, 'after failure')).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
+  })
+
+  it('waits for late startup before provider teardown and shares concurrent disposal', async () => {
+    const { service } = await setup()
+    const provider = new StubProvider('alpha', 'Alpha')
+    const gate = Promise.withResolvers<undefined>()
+    provider.startGate = gate.promise
+    service.registerProvider(provider)
+    const sessionId = SessionId('start-dispose-race')
+
+    const start = service.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    await Promise.resolve()
+    const firstDispose = service.dispose(sessionId)
+    const secondDispose = service.dispose(sessionId)
+
+    expect(provider.disposed).toEqual([])
+    expect(secondDispose).toBe(firstDispose)
+    gate.resolve(undefined)
+
+    await expect(start).rejects.toMatchObject({ code: 'SESSION_DISPOSED' })
+    await expect(firstDispose).resolves.toBeUndefined()
+    expect(provider.disposed).toEqual([sessionId])
+    await expect(service.prompt(sessionId, 'after disposal')).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
   })
 })
 
@@ -431,6 +456,66 @@ describe('ExternalSessions bridge to the session log', () => {
     })
   })
 
+  it('detaches mutable call, result, and error inputs before queueing', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(ExternalSessions)
+    const provider = new StubProvider('alpha', 'Alpha')
+    ctx.externalSessions.registerProvider(provider)
+    const sessionId = SessionId('tool-record-snapshot')
+    const session = ctx.sessions.create(sessionId)
+    await ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    const principal = provider.lastBridge?.principal
+    if (principal === undefined) throw new Error('external bridge did not provide a principal')
+
+    const callArguments = { nested: { value: 'before-call' } }
+    const call = principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('snapshot-call'),
+      name: 'read',
+      arguments: callArguments,
+    })
+    callArguments.nested.value = 'after-call'
+    await call
+
+    const resultValue = { nested: { value: 'before-result' } }
+    const result = principal.recorder.recordResult?.({
+      callId: ExternalToolCallId('snapshot-call'),
+      isError: false,
+      result: resultValue,
+    })
+    resultValue.nested.value = 'after-result'
+    await result
+
+    const errorValue = { message: 'before-error', info: { code: 'E_BEFORE' } }
+    const errorCall = principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('snapshot-error'),
+      name: 'write',
+      arguments: {},
+    })
+    await errorCall
+    const errorResult = principal.recorder.recordResult?.({
+      callId: ExternalToolCallId('snapshot-error'),
+      isError: true,
+      error: errorValue,
+    })
+    errorValue.message = 'after-error'
+    errorValue.info.code = 'E_AFTER'
+    await errorResult
+
+    expect(session.events.at(-4)?.data).toMatchObject({
+      callId: ExternalToolCallId('snapshot-call'),
+      arguments: { nested: { value: 'before-call' } },
+    })
+    expect(session.events.at(-3)?.data).toMatchObject({
+      callId: ExternalToolCallId('snapshot-call'),
+      result: { nested: { value: 'before-result' } },
+    })
+    expect(session.events.at(-1)?.data).toMatchObject({
+      callId: ExternalToolCallId('snapshot-error'),
+      error: { message: 'before-error', code: 'E_BEFORE' },
+    })
+  })
+
   it('rejects non-JSON and oversized recorder payloads, and makes errors explicit', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
@@ -520,6 +605,42 @@ describe('ExternalSessions bridge to the session log', () => {
       name: 'read',
       arguments: {},
     })).rejects.toThrow(/disposed/)
+  })
+
+  it('rejects a duplicate call id after a resume attachment', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(ExternalSessions)
+    const provider = new StubProvider('alpha', 'Alpha')
+    ctx.externalSessions.registerProvider(provider)
+    const sessionId = SessionId('tool-record-resume-duplicate')
+    ctx.sessions.create(sessionId)
+    await ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    const firstPrincipal = provider.lastBridge?.principal
+    if (firstPrincipal === undefined) throw new Error('external bridge did not provide a principal')
+    await firstPrincipal.recorder.recordCall?.({
+      callId: ExternalToolCallId('resume-duplicate'),
+      name: 'read',
+      arguments: {},
+    })
+    await firstPrincipal.recorder.recordResult?.({
+      callId: ExternalToolCallId('resume-duplicate'),
+      isError: false,
+      result: { ok: true },
+    })
+    await ctx.externalSessions.dispose(sessionId)
+
+    await ctx.externalSessions.resume(
+      { sessionId, provider: 'alpha', cwd: '/tmp' },
+      ExternalProviderThreadId('resume-thread'),
+    )
+    const secondPrincipal = provider.lastBridge?.principal
+    if (secondPrincipal === undefined) throw new Error('resume bridge did not provide a principal')
+    await expect(secondPrincipal.recorder.recordCall?.({
+      callId: ExternalToolCallId('resume-duplicate'),
+      name: 'read',
+      arguments: {},
+    })).rejects.toMatchObject({ code: 'DUPLICATE_TOOL_CALL' })
   })
 })
 

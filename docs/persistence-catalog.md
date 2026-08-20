@@ -428,7 +428,7 @@ Source: [`packages/interaction/user-approval/src/index.ts:86`](../packages/inter
 'external/compaction-noticed': ExternalCompactionNoticedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:78`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:81`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalmessage-added--log-only"></a>
 
@@ -442,7 +442,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:78`](..
 'external/message-added': ExternalMessageAddedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:52`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:55`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalmodel-switched--log-only"></a>
 
@@ -456,7 +456,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:52`](..
 'external/model-switched': ExternalModelSwitchedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:73`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:76`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalpermission-asked--log-only"></a>
 
@@ -471,7 +471,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:73`](..
 'external/permission-asked': ExternalPermissionAskedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:63`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:66`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalpermission-decided--log-only"></a>
 
@@ -485,7 +485,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:63`](..
 'external/permission-decided': ExternalPermissionDecidedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:68`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:71`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalsession-ended--log-only"></a>
 
@@ -499,7 +499,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:68`](..
 'external/session-ended': ExternalSessionEndedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:88`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:91`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalsession-started--log-only"></a>
 
@@ -515,7 +515,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:88`](..
 'external/session-started': ExternalSessionStartedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:42`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:45`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externaltool-activity--log-only"></a>
 
@@ -529,7 +529,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:42`](..
 'external/tool-activity': ExternalToolActivityData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:57`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:60`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externaltool-call--log-only"></a>
 
@@ -565,7 +565,7 @@ Source: [`packages/external/external-session/src/types.ts:163`](../packages/exte
 'external/turn-ended': ExternalTurnEndedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:83`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:86`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalturn-started--log-only"></a>
 
@@ -579,7 +579,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:83`](..
 'external/turn-started': ExternalTurnStartedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:47`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:50`](../packages/session/session-projection/src/external-transcript.ts)
 
 ### `feedback/*`
 
