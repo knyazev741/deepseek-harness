@@ -48,6 +48,11 @@
     "@deepseek-ai/dsh-user-approval": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-mcp-gateway": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@deepseek-ai/dsh-external-session": "workspace:^",
     "@deepseek-ai/dsh-mcp-gateway": "workspace:^",

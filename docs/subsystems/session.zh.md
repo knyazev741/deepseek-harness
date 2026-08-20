@@ -742,8 +742,9 @@ async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningE
 /**
  * Dispose a live external session and its process tree. The bridge's
  * disposal signal fires first; the returned promise waits for any in-flight
- * start/resume to settle before disposing the scope and provider. Concurrent
- * callers receive the same teardown promise.
+ * start/resume, provider teardown, and recorder finalization before
+ * disposing the external scope. Concurrent callers receive the same teardown
+ * promise.
  * @param sessionId - the live external session.
  * @throws {@link ExternalSessionError} when the session is not live.
  */
@@ -971,6 +972,89 @@ One transient external-agent transcript delta. The host mux projects this event 
 Types: [SessionId](core.md)
 
 Source: [`packages/external/external-session/src/index.ts:110`](../../packages/external/external-session/src/index.ts)
+
+<a id="mcp-gateway-events"></a>
+
+### `mcp-gateway/*` events
+
+<a id="mcp-gatewaycall-started--emit"></a>
+
+#### `mcp-gateway/call-started` — emit
+
+One tool call entered the gateway's recorder/execute pair.
+
+```ts cordis-catalog
+/** One tool call entered the gateway's recorder/execute pair.
+ * @mode emit
+ * @param payload - call ownership payload.
+ */
+'mcp-gateway/call-started'(payload: { route: string; callId: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:67`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewaycall-terminal--emit"></a>
+
+#### `mcp-gateway/call-terminal` — emit
+
+One gateway call committed a terminal recorder result or teardown error.
+
+```ts cordis-catalog
+/** One gateway call committed a terminal recorder result or teardown error.
+ * @mode emit
+ * @param payload - call ownership payload.
+ */
+'mcp-gateway/call-terminal'(payload: { route: string; callId: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:72`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewaylease-created--emit"></a>
+
+#### `mcp-gateway/lease-created` — emit
+
+A lease route became live and owned by one external attachment.
+
+```ts cordis-catalog
+/** A lease route became live and owned by one external attachment.
+ * @mode emit
+ * @param payload - route ownership payload.
+ */
+'mcp-gateway/lease-created'(payload: { route: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:57`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewaylease-disposed--emit"></a>
+
+#### `mcp-gateway/lease-disposed` — emit
+
+A lease route completed quiescent disposal.
+
+```ts cordis-catalog
+/** A lease route completed quiescent disposal.
+ * @mode emit
+ * @param payload - route ownership payload.
+ */
+'mcp-gateway/lease-disposed'(payload: { route: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:62`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewayteardown-complete--emit"></a>
+
+#### `mcp-gateway/teardown-complete` — emit
+
+The gateway service completed lease teardown.
+
+```ts cordis-catalog
+/** The gateway service completed lease teardown.
+ * @mode emit
+ */
+'mcp-gateway/teardown-complete'(): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:76`](../../packages/mcp/mcp-gateway/src/types.ts)
 
 <a id="session-events"></a>
 

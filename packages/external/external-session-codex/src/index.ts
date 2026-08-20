@@ -37,13 +37,14 @@ import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import { effectiveApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { MCP_BEARER_TOKEN_ENV_VAR } from '@deepseek-ai/dsh-mcp-gateway'
 import type { McpGatewayLease } from '@deepseek-ai/dsh-mcp-gateway'
 import { appServerArgv, CodexExternalSession, type CodexSessionSpec } from './run.ts'
 
 export const name = 'external-session-codex'
 export const inject = ['externalSessions', 'subprocess']
-export { MCP_BEARER_TOKEN_ENV_VAR }
+
+/** Explicit child-environment name used for the optional MCP gateway credential. */
+export const MCP_BEARER_TOKEN_ENV_VAR = 'DSH_MCP_BEARER_TOKEN'
 
 /** Default POSIX grace between subprocess termination tiers. */
 export const DEFAULT_DISPOSE_GRACE_MS = 3_000

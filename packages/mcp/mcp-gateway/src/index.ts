@@ -16,9 +16,12 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import {
   CallToolRequestSchema,
+  JSONRPCMessageSchema,
   ListToolsRequestSchema,
   isInitializeRequest,
+  SUPPORTED_PROTOCOL_VERSIONS,
 } from '@modelcontextprotocol/sdk/types.js'
+import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import type {
   ExternalToolPrincipal,
@@ -29,6 +32,7 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import {
   ExternalToolCallId,
+  MAX_EXTERNAL_TOOL_RECORD_BYTES,
   type ExternalToolCallRecord,
   type ExternalToolResultRecord,
 } from '@deepseek-ai/dsh-external-session'
@@ -49,6 +53,8 @@ export const inject = ['webServer', 'tools']
 
 /** Default request-body UTF-8 byte budget. */
 export const DEFAULT_MAX_REQUEST_BYTES = 64 * 1024
+/** Default MCP response/result UTF-8 byte budget. */
+export const DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024
 /** Default cooperative call deadline. */
 export const DEFAULT_EXECUTION_TIMEOUT_MS = 60_000
 
@@ -61,6 +67,7 @@ export const MCP_BEARER_TOKEN_ENV_VAR = 'DSH_MCP_BEARER_TOKEN'
 interface ResolvedConfig {
   readonly allowlist: ReadonlySet<string>
   readonly maxRequestBytes: number
+  readonly maxResponseBytes: number
   readonly executionTimeoutMs: number
 }
 
@@ -83,9 +90,64 @@ interface RequestSignal {
 
 /** Typed error used for malformed requests before MCP dispatch. */
 class GatewayRequestError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(readonly status: number, readonly code: number, message: string) {
     super(message)
     this.name = 'GatewayRequestError'
+  }
+}
+
+const MCP_ACCEPT_JSON = 'application/json'
+const MCP_ACCEPT_EVENT_STREAM = 'text/event-stream'
+
+/** Create one protocol-shaped error response before SDK dispatch. */
+function sendMcpError(res: ServerResponse, status: number, code: number, message: string): void {
+  if (res.headersSent) {
+    res.destroy()
+    return
+  }
+  res.writeHead(status, { 'content-type': 'application/json' })
+  res.end(JSON.stringify({ jsonrpc: '2.0', error: { code, message }, id: null }))
+}
+
+/** Send a pre-parser failure using the MCP JSON-RPC envelope. */
+function sendGatewayError(res: ServerResponse, error: GatewayRequestError): void {
+  sendMcpError(res, error.status, error.code, error.message)
+}
+
+/** Require one Streamable HTTP Accept header before reading a request body. */
+function requireAccept(req: IncomingMessage, method: 'GET' | 'POST'): void {
+  const accept = headerString(req.headers.accept)
+  const valid = method === 'GET'
+    ? accept?.includes(MCP_ACCEPT_EVENT_STREAM) === true
+    : accept?.includes(MCP_ACCEPT_JSON) === true && accept.includes(MCP_ACCEPT_EVENT_STREAM)
+  if (!valid) {
+    throw new GatewayRequestError(
+      406,
+      -32000,
+      method === 'GET'
+        ? 'Not Acceptable: Client must accept text/event-stream'
+        : 'Not Acceptable: Client must accept both application/json and text/event-stream',
+    )
+  }
+}
+
+/** Require the JSON content type before reading a POST body. */
+function requireJsonContentType(req: IncomingMessage): void {
+  const contentType = headerString(req.headers['content-type'])
+  if (contentType === undefined || !contentType.toLowerCase().includes('application/json')) {
+    throw new GatewayRequestError(415, -32000, 'Unsupported Media Type: Content-Type must be application/json')
+  }
+}
+
+/** Reject an explicitly unsupported protocol version after initialization detection. */
+function requireSupportedProtocolVersion(req: IncomingMessage): void {
+  const version = headerString(req.headers['mcp-protocol-version'])
+  if (version !== undefined && !SUPPORTED_PROTOCOL_VERSIONS.includes(version)) {
+    throw new GatewayRequestError(
+      400,
+      -32000,
+      `Bad Request: Unsupported protocol version: ${version} (supported versions: ${SUPPORTED_PROTOCOL_VERSIONS.join(', ')})`,
+    )
   }
 }
 
@@ -104,6 +166,10 @@ function resolveConfig(config: Config): ResolvedConfig {
   if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes <= 0) {
     throw new Error('mcp-gateway: maxRequestBytes must be a positive safe integer')
   }
+  const maxResponseBytes = config.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES
+  if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes <= 0 || maxResponseBytes > MAX_EXTERNAL_TOOL_RECORD_BYTES) {
+    throw new Error(`mcp-gateway: maxResponseBytes must be a positive safe integer no greater than ${MAX_EXTERNAL_TOOL_RECORD_BYTES}`)
+  }
   const executionTimeoutMs = config.executionTimeoutMs ?? DEFAULT_EXECUTION_TIMEOUT_MS
   if (!Number.isSafeInteger(executionTimeoutMs) || executionTimeoutMs <= 0 || executionTimeoutMs > MAX_TIMER_DELAY_MS) {
     throw new Error(`mcp-gateway: executionTimeoutMs must be a positive safe integer no greater than ${MAX_TIMER_DELAY_MS}`)
@@ -111,6 +177,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   return Object.freeze({
     allowlist: names,
     maxRequestBytes,
+    maxResponseBytes,
     executionTimeoutMs,
   })
 }
@@ -168,16 +235,12 @@ async function readJsonBody(
   timeoutMs: number,
   signal: AbortSignal,
 ): Promise<unknown> {
-  const contentType = req.headers['content-type']
-  if (typeof contentType !== 'string' || !/^application\/json(?:;\s*charset=utf-8)?$/iu.test(contentType)) {
-    throw new GatewayRequestError(415, 'content type must be application/json')
-  }
   const lengthHeader = req.headers['content-length']
   if (lengthHeader !== undefined) {
-    if (!/^\d+$/u.test(lengthHeader)) throw new GatewayRequestError(400, 'invalid content length')
+    if (!/^\d+$/u.test(lengthHeader)) throw new GatewayRequestError(400, -32000, 'invalid content length')
     const declared = Number(lengthHeader)
     if (!Number.isSafeInteger(declared) || declared > maxBytes) {
-      throw new GatewayRequestError(413, 'request body is too large')
+      throw new GatewayRequestError(413, -32000, 'request body is too large')
     }
   }
   const chunks: Buffer[] = []
@@ -197,27 +260,30 @@ async function readJsonBody(
       resolve(Buffer.concat(chunks, bytes))
     }
     req.on('data', (chunk: Buffer | string) => {
+      if (settled) return
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
       bytes += buffer.byteLength
       if (bytes > maxBytes) {
-        req.destroy()
-        fail(new GatewayRequestError(413, 'request body is too large'))
+        // Keep consuming the request so the server can send a deterministic
+        // JSON-RPC response instead of turning chunked overflow into a reset.
+        req.resume()
+        fail(new GatewayRequestError(413, -32000, 'request body is too large'))
         return
       }
       chunks.push(buffer)
     })
     req.once('end', finish)
-    req.once('aborted', () => { fail(new GatewayRequestError(408, 'request body was aborted')) })
+    req.once('aborted', () => { fail(new GatewayRequestError(408, -32000, 'request body was aborted')) })
     req.once('error', (error) => { fail(error instanceof Error ? error : new Error(String(error))) })
     onAbort = (): void => {
-      req.destroy()
-      fail(new GatewayRequestError(408, 'request body was aborted'))
+      req.resume()
+      fail(new GatewayRequestError(408, -32000, 'request body was aborted'))
     }
     if (signal.aborted) onAbort()
     else signal.addEventListener('abort', onAbort, { once: true })
     timer = setTimeout(() => {
-      req.destroy()
-      fail(new GatewayRequestError(408, 'request body timed out'))
+      req.resume()
+      fail(new GatewayRequestError(408, -32000, 'request body timed out'))
     }, timeoutMs)
     timer.unref()
   })
@@ -227,11 +293,11 @@ async function readJsonBody(
     try {
       return JSON.parse(text) as unknown
     } catch {
-      throw new GatewayRequestError(400, 'request body is not one JSON value')
+      throw new GatewayRequestError(400, -32700, 'Parse error: Invalid JSON')
     }
   } catch (error: unknown) {
     if (error instanceof GatewayRequestError) throw error
-    throw new GatewayRequestError(400, 'request body could not be read')
+    throw new GatewayRequestError(400, -32700, 'Parse error: Invalid JSON')
   } finally {
     if (timer !== undefined) clearTimeout(timer)
     if (onAbort !== undefined) signal.removeEventListener('abort', onAbort)
@@ -264,37 +330,68 @@ function requestSignal(parent: AbortSignal, lease: AbortSignal, timeoutMs: numbe
   return { signal: controller.signal, dispose }
 }
 
-/** Map Harness content to the MCP content vocabulary without forwarding host-only refs. */
+const REDACTED = '[REDACTED]'
+const PATH_REDACTION = '[PATH REDACTED]'
+const RESPONSE_LIMIT_MESSAGE = 'tool result exceeded the configured response limit'
+
+/** Redact bearer/secret fields and local paths before they leave the process. */
+function redactText(value: string): string {
+  return value
+    .replace(/\bBearer\s+\S+/giu, `Bearer ${REDACTED}`)
+    .replace(/\b(api[_-]?key|access[_-]?token|auth(?:orization)?|password|secret|token)\s*[:=]\s*(["']?)[^\s,"'}]+\2/giu, `$1=${REDACTED}`)
+    .replace(/(?:\/Users\/|\/home\/|\/private\/|[A-Za-z]:\\)[^\s"'`<>]+/gu, PATH_REDACTION)
+}
+
+/** Detach a JSON-compatible value while redacting strings and limiting depth. */
+function sanitizeJsonValue(value: unknown, depth = 0): unknown {
+  if (typeof value === 'string') return redactText(value)
+  if (value === null || typeof value === 'boolean' || typeof value === 'number') return value
+  if (depth >= 12) return '[nested value omitted]'
+  if (Array.isArray(value)) return value.slice(0, 256).map(item => sanitizeJsonValue(item, depth + 1))
+  if (typeof value === 'object') {
+    const output: Record<string, unknown> = {}
+    for (const [key, item] of Object.entries(value as Record<string, unknown>).slice(0, 256)) {
+      output[key] = sanitizeJsonValue(item, depth + 1)
+    }
+    return output
+  }
+  return REDACTED
+}
+
+/** Serialize a value without allowing output diagnostics to throw. */
+function safeJson(value: unknown): string {
+  try {
+    const encoded = JSON.stringify(value)
+    return encoded
+  } catch {
+    return JSON.stringify(REDACTED)
+  }
+}
+
+/** Map Harness content to bounded MCP text blocks without host-only refs. */
 function mcpContent(blocks: readonly ContentBlock[]): CallToolResult['content'] {
   return blocks.map((block): CallToolResult['content'][number] => {
     switch (block.type) {
       case 'text':
-        return { type: 'text', text: block.text }
-      case 'image':
-        return {
-          type: 'text',
-          text: '[image result is stored by the Harness attachment service]',
-        }
       case 'reasoning':
-        return { type: 'text', text: block.text }
+        return { type: 'text', text: redactText(block.text) }
+      case 'image':
+        return { type: 'text', text: '[image result is stored by the Harness attachment service]' }
       case 'tool-call':
       case 'tool-result':
-        return { type: 'text', text: JSON.stringify(block) }
+        return { type: 'text', text: safeJson(sanitizeJsonValue(block)) }
       default:
-        return { type: 'text', text: JSON.stringify(block) }
+        return { type: 'text', text: safeJson(sanitizeJsonValue(block)) }
     }
   })
 }
 
-/** Convert one completed Harness tool result to an MCP result. */
+/** Convert one completed Harness tool result to a redacted MCP result. */
 function mcpResult(result: ToolExecutionResult): CallToolResult {
   if (result.isError) {
-    return {
-      content: mcpContent(result.content),
-      isError: true,
-    }
+    return { content: mcpContent(result.content), isError: true }
   }
-  const value = result.value
+  const value = sanitizeJsonValue(result.value)
   const structuredContent = value !== null && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : undefined
@@ -306,12 +403,53 @@ function mcpResult(result: ToolExecutionResult): CallToolResult {
 
 /** Build one bounded recorder error for an unexpected executor throw. */
 function thrownResult(error: unknown): ToolExecutionResult {
-  const message = error instanceof Error ? error.message : String(error)
+  let message: string
+  try {
+    message = error instanceof Error ? error.message : String(error)
+  } catch {
+    message = 'unprintable thrown value'
+  }
+  message = redactText(message)
   return {
     isError: true,
     error: { message },
     content: [{ type: 'text', text: `Error: ${message}` }],
   }
+}
+
+/** Redact a result before both durable recording and MCP projection. */
+function sanitizeToolResult(result: ToolExecutionResult): ToolExecutionResult {
+  if (result.isError) {
+    const error = sanitizeJsonValue(result.error) as ToolExecutionResult['error']
+    return { ...result, error } as ToolExecutionResult
+  }
+  return {
+    ...result,
+    value: sanitizeJsonValue(result.value) as typeof result.value,
+  }
+}
+
+/** Enforce one response budget and return a deterministic terminal failure if needed. */
+function boundToolResult(result: ToolExecutionResult, maxResponseBytes: number): ToolExecutionResult {
+  const sanitized = sanitizeToolResult(result)
+  if (Buffer.byteLength(safeJson(mcpResult(sanitized)), 'utf8') <= maxResponseBytes) return sanitized
+  return {
+    isError: true,
+    error: { message: RESPONSE_LIMIT_MESSAGE },
+    content: [{ type: 'text', text: RESPONSE_LIMIT_MESSAGE }],
+  }
+}
+
+/** Build the one durable result record corresponding to a terminal outcome. */
+function externalResultRecord(callId: ExternalToolCallId, name: string, result: ToolExecutionResult): ExternalToolResultRecord {
+  return result.isError
+    ? { callId, name, isError: true, error: result.error }
+    : { callId, name, isError: false, result: result.value }
+}
+
+/** Keep the recorder's independent durable-event limit fail-closed. */
+function fitsExternalResultRecord(record: ExternalToolResultRecord): boolean {
+  return Buffer.byteLength(safeJson(record), 'utf8') <= MAX_EXTERNAL_TOOL_RECORD_BYTES
 }
 
 /** Return an MCP JSON-RPC request id as a stable call correlation suffix. */
@@ -335,8 +473,9 @@ class GatewayLease implements McpGatewayLease {
     private readonly principal: ExternalToolPrincipal,
     private readonly entries: ReadonlyMap<string, ToolEntry>,
     private readonly maxRequestBytes: number,
+    private readonly maxResponseBytes: number,
     private readonly executionTimeoutMs: number,
-    path: string,
+    private readonly path: string,
     private readonly releaseRoute: () => void,
     signal: AbortSignal,
   ) {
@@ -352,14 +491,14 @@ class GatewayLease implements McpGatewayLease {
 
   /** Handle one authenticated Streamable HTTP request. */
   async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (this.disposed) {
-      sendError(res, 404, 'MCP endpoint is unavailable')
-      return
-    }
     // Authentication is intentionally the first operation: no method,
     // content-type, body, or MCP parser runs for an unauthenticated request.
     if (!validBearer(headerString(req.headers.authorization), this.bearerToken)) {
       sendError(res, 401, 'authorization required')
+      return
+    }
+    if (this.disposed) {
+      sendMcpError(res, 404, -32000, 'MCP endpoint is unavailable')
       return
     }
     // Start the operation in a microtask before tracking it.  This closes the
@@ -372,10 +511,10 @@ class GatewayLease implements McpGatewayLease {
       await operation
     } catch (error: unknown) {
       if (error instanceof GatewayRequestError) {
-        sendError(res, error.status, error.message)
+        sendGatewayError(res, error)
         return
       }
-      sendError(res, 400, 'MCP request could not be handled')
+      sendMcpError(res, 400, -32603, 'MCP request could not be handled')
     } finally {
       this.active.delete(operation)
     }
@@ -406,45 +545,56 @@ class GatewayLease implements McpGatewayLease {
       await connection.server.close().catch(() => {})
       await connection.transport.close().catch(() => {})
     }
+    this.ctx.emit('mcp-gateway/lease-disposed', { route: this.path })
   }
 
   private async handleAuthenticated(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const sessionId = headerString(req.headers['mcp-session-id'])
-    if (sessionId !== undefined && !this.connections.has(sessionId)) {
-      sendError(res, 404, 'MCP session is not owned by this endpoint')
-      return
-    }
     switch (req.method) {
       case 'POST': {
+        requireAccept(req, 'POST')
+        requireJsonContentType(req)
         const body = await readJsonBody(req, this.maxRequestBytes, this.executionTimeoutMs, this.controller.signal)
-        if (!isPlainRecord(body)) throw new GatewayRequestError(400, 'MCP request must be a JSON object')
-        if (sessionId === undefined && !isInitializeRequest(body)) {
-          throw new GatewayRequestError(400, 'MCP initialization is required before a session request')
+        const messages = parseJsonRpcMessages(body)
+        const initialization = messages.some(isInitializeRequest)
+        if (!initialization && sessionId === undefined) {
+          throw new GatewayRequestError(400, -32000, 'Bad Request: Mcp-Session-Id header is required')
         }
-        const connection = sessionId === undefined
-          ? await this.createConnection()
-          : this.connections.get(sessionId)
-        if (connection === undefined) throw new GatewayRequestError(404, 'MCP session is not owned by this endpoint')
-        if (this.disposed) throw new GatewayRequestError(404, 'MCP endpoint is unavailable')
+        if (sessionId !== undefined && !this.connections.has(sessionId)) {
+          throw new GatewayRequestError(404, -32001, 'Session not found')
+        }
+        if (!initialization) requireSupportedProtocolVersion(req)
+        const connection = sessionId === undefined ? await this.createConnection() : this.connections.get(sessionId)
+        if (connection === undefined) throw new GatewayRequestError(404, -32001, 'Session not found')
+        if (this.disposed) throw new GatewayRequestError(404, -32000, 'MCP endpoint is unavailable')
         await connection.transport.handleRequest(req, res, body)
         return
       }
-      case 'GET':
-      case 'DELETE': {
-        if (sessionId === undefined) throw new GatewayRequestError(400, 'MCP session id is required')
+      case 'GET': {
+        requireAccept(req, 'GET')
+        if (sessionId === undefined) throw new GatewayRequestError(400, -32000, 'MCP session id is required')
         const connection = this.connections.get(sessionId)
-        if (connection === undefined) throw new GatewayRequestError(404, 'MCP session is not owned by this endpoint')
+        if (connection === undefined) throw new GatewayRequestError(404, -32001, 'Session not found')
+        requireSupportedProtocolVersion(req)
+        await connection.transport.handleRequest(req, res)
+        return
+      }
+      case 'DELETE': {
+        if (sessionId === undefined) throw new GatewayRequestError(400, -32000, 'MCP session id is required')
+        const connection = this.connections.get(sessionId)
+        if (connection === undefined) throw new GatewayRequestError(404, -32001, 'Session not found')
+        requireSupportedProtocolVersion(req)
         await connection.transport.handleRequest(req, res)
         return
       }
       default:
         res.setHeader('allow', 'GET, POST, DELETE')
-        sendError(res, 405, 'MCP method is not supported')
+        sendMcpError(res, 405, -32000, 'Method not allowed.')
     }
   }
 
   private async createConnection(): Promise<McpConnection> {
-    if (this.disposed) throw new GatewayRequestError(404, 'MCP endpoint is unavailable')
+    if (this.disposed) throw new GatewayRequestError(404, -32000, 'MCP endpoint is unavailable')
     const connectionRef: { value?: McpConnection } = {}
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
@@ -497,17 +647,18 @@ class GatewayLease implements McpGatewayLease {
   ): Promise<CallToolResult> {
     const name = request.params.name
     const entry = this.entries.get(name)
-    if (entry === undefined) throw new Error(`unknown or unlisted MCP tool ${JSON.stringify(name)}`)
+    if (entry === undefined) throw new Error('MCP tool is unavailable')
     const current = this.ctx.tools.get(name, this.principal)
-    if (current !== entry.definition) throw new Error(`MCP tool ${JSON.stringify(name)} is no longer available`)
+    if (current !== entry.definition) throw new Error('MCP tool is unavailable')
     const callId = ExternalToolCallId(callIdFor(extra.requestId))
     const args = request.params.arguments ?? {}
     const callRecord: ExternalToolCallRecord = { callId, name, arguments: args }
     const recorder = this.principal.recorder
     if (recorder.recordCall === undefined || recorder.recordResult === undefined) {
-      throw new Error('external tool recorder is unavailable')
+      throw new Error('MCP tool recorder is unavailable')
     }
     await recorder.recordCall(callRecord)
+    this.ctx.emit('mcp-gateway/call-started', { route: this.path, callId: String(callId) })
     let result: ToolExecutionResult
     const requestSignalState = requestSignal(extra.signal, this.controller.signal, this.executionTimeoutMs)
     try {
@@ -523,11 +674,39 @@ class GatewayLease implements McpGatewayLease {
     } finally {
       requestSignalState.dispose()
     }
-    const resultRecord: ExternalToolResultRecord = result.isError
-      ? { callId, name, isError: true, error: result.error }
-      : { callId, name, isError: false, result: result.value }
-    await recorder.recordResult(resultRecord)
-    return mcpResult(result)
+    let terminal: ToolExecutionResult
+    try {
+      terminal = boundToolResult(result, this.maxResponseBytes)
+    } catch {
+      // A malformed tool projection (for example a cyclic runtime value) is
+      // still one bounded terminal error, never an unpaired committed call.
+      terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
+    }
+    let resultRecord = externalResultRecord(callId, name, terminal)
+    if (!fitsExternalResultRecord(resultRecord)) {
+      terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
+      resultRecord = externalResultRecord(callId, name, terminal)
+    }
+    try {
+      try {
+        await recorder.recordResult(resultRecord)
+      } catch {
+        // A recorder can reject an oversized candidate before committing it.
+        // Retry exactly once with a fixed bounded error so every accepted call
+        // still has one terminal durable result.
+        terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
+        resultRecord = externalResultRecord(callId, name, terminal)
+        try {
+          await recorder.recordResult(resultRecord)
+        } catch {
+          // Session teardown may have closed the recorder after the call was
+          // accepted. The external-session finalizer owns that final result.
+        }
+      }
+      return mcpResult(terminal)
+    } finally {
+      this.ctx.emit('mcp-gateway/call-terminal', { route: this.path, callId: String(callId) })
+    }
   }
 }
 
@@ -536,11 +715,16 @@ function headerString(value: string | string[] | undefined): string | undefined 
   return typeof value === 'string' ? value : undefined
 }
 
-/** Runtime plain-object check at the parsed JSON boundary. */
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
-  const prototype = Reflect.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
+/** Validate JSON-RPC envelopes before routing by session or protocol version. */
+function parseJsonRpcMessages(value: unknown): readonly JSONRPCMessage[] {
+  const values = Array.isArray(value) ? value : [value]
+  const messages: JSONRPCMessage[] = []
+  for (const message of values) {
+    const parsed = JSONRPCMessageSchema.safeParse(message)
+    if (!parsed.success) throw new GatewayRequestError(400, -32700, 'Parse error: Invalid JSON-RPC message')
+    messages.push(parsed.data)
+  }
+  return messages
 }
 
 /** Gateway service/provider registered in the host Cordis composition. */
@@ -550,6 +734,7 @@ export class McpGateway extends Service implements McpGatewayService {
   static Config: z<Config> = z.object({
     allowlist: z.array(z.string()).default([]),
     maxRequestBytes: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MAX_REQUEST_BYTES),
+    maxResponseBytes: z.number().step(1).min(1).max(MAX_EXTERNAL_TOOL_RECORD_BYTES).default(DEFAULT_MAX_RESPONSE_BYTES),
     executionTimeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_EXECUTION_TIMEOUT_MS),
   }) as unknown as z<Config>
 
@@ -566,6 +751,7 @@ export class McpGateway extends Service implements McpGatewayService {
     ctx.effect(() => async () => {
       const leases = [...this.leases]
       await Promise.allSettled(leases.map(lease => lease[Symbol.asyncDispose]()))
+      this.ctx.emit('mcp-gateway/teardown-complete')
     }, 'mcpGateway.leases')
   }
 
@@ -601,6 +787,7 @@ export class McpGateway extends Service implements McpGatewayService {
       request.principal,
       entries,
       this.config.maxRequestBytes,
+      this.config.maxResponseBytes,
       this.config.executionTimeoutMs,
       path,
       releaseRoute,
@@ -615,6 +802,7 @@ export class McpGateway extends Service implements McpGatewayService {
         handler: (req, res) => lease.handle(req, res),
       }
       disposer = this.ctx.webServer.register(route)
+      this.ctx.emit('mcp-gateway/lease-created', { route: path })
     } catch (error) {
       this.routes.delete(path)
       await lease[Symbol.asyncDispose]().catch(() => {})

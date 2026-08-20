@@ -4,7 +4,7 @@
  * (see responses-fixture.ts). No real API key or network is used.
  */
 
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
@@ -16,6 +16,7 @@ import {
 import * as ExternalCodexInvariant from '@deepseek-ai/dsh-external-session-codex/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { startCodexHarness, type CodexTestHarness } from './harness.ts'
+import { codexStateRoot } from '../src/index.ts'
 
 const command = process.platform === 'win32'
   ? 'cmd /c type nul > approval-side-effect'
@@ -330,6 +331,57 @@ describe('external-session-codex persistent turns', () => {
       expect(agentMessageTexts(harness)).toEqual([first, second])
       expect(responseInputTexts(harness.fixture.requests[1]!.body)).toContain(first)
     } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('composes the real registry with a gateway, rotates lease credentials on resume, and serializes teardown', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'complete', text: 'GATEWAY_FIRST' },
+      { kind: 'complete', text: 'GATEWAY_SECOND' },
+    ], { gateway: true })
+    const order: string[] = []
+    const stopLease = harness.ctx.on('mcp-gateway/lease-disposed', () => { order.push('lease') })
+    try {
+      const rolloutRoot = join(codexStateRoot(harness.codexHome, String(harness.sessionId)), 'sessions')
+      mkdirSync(rolloutRoot, { recursive: true })
+      writeFileSync(join(rolloutRoot, 'rollout.jsonl'), 'preserve-this-rollout\n')
+
+      await Promise.all([harness.start(), harness.start()])
+      await harness.waitCount('external/session-started', 1)
+      const firstConfig = readFileSync(join(codexStateRoot(harness.codexHome, String(harness.sessionId)), 'config.toml'), 'utf8')
+      const firstUrl = firstConfig.match(/^url = "([^"]+)"$/mu)?.[1]
+      const firstToken = harness.spawnSpecs[0]?.env?.DSH_MCP_BEARER_TOKEN
+      expect(firstUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\//u)
+      expect(firstToken).toBeTypeOf('string')
+      expect(firstConfig).toContain('model_provider = "fixture"')
+
+      const started = harness.recorded.events.find(event => event.type === 'external/session-started')
+      const providerThreadId = (started?.data as { providerThreadId?: unknown } | undefined)?.providerThreadId
+      if (typeof providerThreadId !== 'string') throw new Error('gateway fixture did not record provider thread id')
+      await harness.provider.prompt(harness.sessionId, 'gateway first prompt')
+      await harness.waitTurns(1)
+
+      const child = harness.handles[0]
+      if (child === undefined) throw new Error('gateway fixture did not spawn a child')
+      void child.done.then(() => { order.push('child') })
+      await harness.disposeAttachment()
+      expect(order.slice(0, 2)).toEqual(['lease', 'child'])
+
+      await harness.resume(ExternalProviderThreadId(providerThreadId))
+      const secondConfig = readFileSync(join(codexStateRoot(harness.codexHome, String(harness.sessionId)), 'config.toml'), 'utf8')
+      const secondUrl = secondConfig.match(/^url = "([^"]+)"$/mu)?.[1]
+      const secondToken = harness.spawnSpecs[1]?.env?.DSH_MCP_BEARER_TOKEN
+      expect(secondUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\//u)
+      expect(secondUrl).not.toBe(firstUrl)
+      expect(secondToken).toBeTypeOf('string')
+      expect(secondToken).not.toBe(firstToken)
+      expect(secondConfig).toContain('model_provider = "fixture"')
+      expect(readFileSync(join(rolloutRoot, 'rollout.jsonl'), 'utf8')).toBe('preserve-this-rollout\n')
+      await harness.provider.prompt(harness.sessionId, 'gateway second prompt')
+      await harness.waitTurns(2)
+    } finally {
+      stopLease()
       await harness.close()
     }
   }, 60_000)

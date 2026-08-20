@@ -34,11 +34,12 @@
 |---|---:|---|
 | `allowlist` | `[]` | 允许外部暴露的固定工具名称；定义还必须用 `externalEligibility: 'allow'` 显式 opt-in。 |
 | `maxRequestBytes` | `65536` | 单个 JSON 请求体的最大 UTF-8 字节数。 |
+| `maxResponseBytes` | `65536` | 单个脱敏 MCP 结果的最大 UTF-8 字节数；超限结果会变成一个有界错误，并保持在 external recorder 的限制内。 |
 | `executionTimeoutMs` | `60000` | 读取请求体和协作式工具调用的截止时间；lease 处置会中止同一信号。 |
 
 ## 生命周期
 
-lease disposer 会移除路由、中止进行中的调用、等待请求处理器并关闭有状态 MCP transport。外部 Codex provider 会在拆除子进程前等待该 disposer。恢复 attachment 会在私有 Codex home 中写入新的端点和 token，同时保留已有 rollout 文件。
+lease disposer 会移除路由、中止进行中的调用、等待请求处理器并关闭有状态 MCP transport。external-session recorder 会在其 scope 关闭前，为未完成调用写入一个有界的取消结果。外部 Codex provider 会在拆除子进程前等待这个静默完成的 lease。恢复 attachment 会在私有 Codex home 中写入新的端点和 token，同时保留已有 rollout 文件。
 
 token 只通过 `bearer_token_env_var` 指定的显式环境变量传递给 Codex；它不会写入 `config.toml`、URL、argv、session 事件、日志或快照。本包不配置客户端路由或 Web opt-in bundle；这些属于后续任务。
 

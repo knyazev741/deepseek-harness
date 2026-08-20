@@ -668,7 +668,7 @@ export interface Config {
 
 Depends on: [`ReasoningEffort`](../packages/external/external-session/src/index.ts)
 
-Source: [`packages/external/external-session-codex/src/index.ts:55`](../packages/external/external-session-codex/src/index.ts)
+Source: [`packages/external/external-session-codex/src/index.ts:56`](../packages/external/external-session-codex/src/index.ts)
 
 <a id="deepseek-aidsh-fs-local"></a>
 
@@ -1379,6 +1379,8 @@ export interface Config {
   readonly allowlist?: readonly string[]
   /** Maximum UTF-8 request body size, including every JSON byte. */
   readonly maxRequestBytes?: number
+  /** Maximum UTF-8 size of one MCP tool result. */
+  readonly maxResponseBytes?: number
   /** Maximum cooperative wall-clock duration for one tool call. */
   readonly executionTimeoutMs?: number
 }

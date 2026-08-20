@@ -14,6 +14,10 @@ import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import ExternalSessions from '@deepseek-ai/dsh-external-session'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime from '@deepseek-ai/dsh-tools'
+import WebServer from '@deepseek-ai/dsh-host-webserver'
+import McpGateway from '@deepseek-ai/dsh-mcp-gateway'
 import type {
   ExternalBridgeContext,
   ExternalPermissionDecision,
@@ -65,6 +69,8 @@ export interface CodexTestHarness {
   start(model?: string): Promise<void>
   /** Attach the session on the recorded bridge (provider.resume). */
   resume(providerThreadId: ExternalProviderThreadId): Promise<void>
+  /** Dispose only the external attachment while retaining the host context. */
+  disposeAttachment(): Promise<void>
   /** Wait until at least `count` events of `type` have been recorded. */
   waitCount(type: string, count: number, timeoutMs?: number): Promise<void>
   /** Wait until the recorded deltas mention `needle`. */
@@ -141,6 +147,7 @@ function poll(predicate: () => boolean, describe: string, timeoutMs: number): Pr
  */
 export async function startCodexHarness(
   script: readonly ResponsesBehavior[],
+  options: { readonly gateway?: boolean } = {},
 ): Promise<CodexTestHarness> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-external-codex-'))
   const workspace = join(root, 'workspace')
@@ -184,6 +191,12 @@ export async function startCodexHarness(
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(ExternalSessions)
+  if (options.gateway === true) {
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
+    await ctx.plugin(McpGateway, { allowlist: ['allowed'] })
+  }
   await ctx.plugin(LocalSubprocessRuntime)
   const confinedPolicies: SandboxPolicy[] = []
   class TestSandboxProvider extends SandboxProvider {
@@ -209,7 +222,12 @@ export async function startCodexHarness(
     return handle
   })
 
-  await ctx.plugin(codex, { env, stateRoot: codexHome, disposeGraceMs: 2_000 })
+  await ctx.plugin(codex, {
+    env,
+    stateRoot: codexHome,
+    disposeGraceMs: 2_000,
+    ...options.gateway === true ? { mcpTools: ['allowed'] } : {},
+  })
   const provider = ctx.externalSessions.getProvider('codex')
   if (provider === undefined) {
     throw new Error('codex provider did not register')
@@ -218,6 +236,28 @@ export async function startCodexHarness(
   const recorded: CodexRecorded = { events: [], deltas: [], permissionAsks: [] }
   const { bridge, setAnswer, holdAnswer, releaseAnswer } = makeBridge(recorded)
   ctx.sessions.create(sessionId, { meta: { cwd: workspace, mode: 'codex' } })
+  const stopSessionEvents = options.gateway === true
+    ? ctx.on('session/event', (session, event) => {
+      if (session.id === sessionId) recorded.events.push({ type: event.type, data: event.data })
+    })
+    : undefined
+  const stopDeltas = options.gateway === true
+    ? ctx.on('external/session-delta', ({ sessionId: eventSessionId, turnId, delta }) => {
+      if (eventSessionId === sessionId) recorded.deltas.push({ turnId: String(turnId), delta })
+    })
+    : undefined
+  if (options.gateway === true) {
+    ctx.externalSessions.registerPermissionChannel((permissionSessionId, ask) =>
+      bridge.requestPermission(permissionSessionId, ask))
+  }
+  const request = (model?: string) => ({
+    sessionId,
+    provider: 'codex' as const,
+    cwd: workspace,
+    ...(model === undefined ? {} : { model }),
+    sandbox: 'read-only' as const,
+    approvalPolicy: 'ask' as const,
+  })
 
   const harness: CodexTestHarness = {
     ctx,
@@ -233,21 +273,15 @@ export async function startCodexHarness(
     setPermissionAnswer: setAnswer,
     holdPermission: holdAnswer,
     releasePermission: releaseAnswer,
-    start: model => provider.start({
-      sessionId,
-      provider: 'codex',
-      cwd: workspace,
-      ...(model === undefined ? {} : { model }),
-      sandbox: 'read-only',
-      approvalPolicy: 'ask',
-    }, bridge),
-    resume: providerThreadId => provider.resume({
-      sessionId,
-      provider: 'codex',
-      cwd: workspace,
-      sandbox: 'read-only',
-      approvalPolicy: 'ask',
-    }, bridge, providerThreadId),
+    start: model => options.gateway === true
+      ? ctx.externalSessions.start(request(model))
+      : provider.start(request(model), bridge),
+    resume: providerThreadId => options.gateway === true
+      ? ctx.externalSessions.resume(request(), providerThreadId)
+      : provider.resume(request(), bridge, providerThreadId),
+    disposeAttachment: () => options.gateway === true
+      ? ctx.externalSessions.dispose(sessionId)
+      : provider.dispose(sessionId),
     waitCount: (type, count, timeoutMs = 120_000) => poll(
       () => recorded.events.filter(event => event.type === type).length >= count,
       `${count}x ${type} (saw ${recorded.events.filter(e => e.type === type).length})`,
@@ -264,12 +298,14 @@ export async function startCodexHarness(
       timeoutMs,
     ),
     close: async () => {
-      await provider.dispose(sessionId).catch(() => {})
+      await (options.gateway === true ? ctx.externalSessions.dispose(sessionId) : provider.dispose(sessionId)).catch(() => {})
       for (const handle of handles) {
         if (handle.pid > 0) handle.terminate()
         await handle.done.catch(() => {})
       }
       await ctx.fiber.dispose().catch(() => {})
+      stopSessionEvents?.()
+      stopDeltas?.()
       await fixture.close().catch(() => {})
       await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     },

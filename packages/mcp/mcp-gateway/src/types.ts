@@ -37,6 +37,8 @@ export interface Config {
   readonly allowlist?: readonly string[]
   /** Maximum UTF-8 request body size, including every JSON byte. */
   readonly maxRequestBytes?: number
+  /** Maximum UTF-8 size of one MCP tool result. */
+  readonly maxResponseBytes?: number
   /** Maximum cooperative wall-clock duration for one tool call. */
   readonly executionTimeoutMs?: number
 }
@@ -45,6 +47,33 @@ export interface Config {
 declare module '@deepseek-ai/cordis' {
   interface Context {
     mcpGateway: McpGatewayService
+  }
+
+  interface Events {
+    /** A lease route became live and owned by one external attachment.
+     * @mode emit
+     * @param payload - route ownership payload.
+     */
+    'mcp-gateway/lease-created'(payload: { route: string }): void
+    /** A lease route completed quiescent disposal.
+     * @mode emit
+     * @param payload - route ownership payload.
+     */
+    'mcp-gateway/lease-disposed'(payload: { route: string }): void
+    /** One tool call entered the gateway's recorder/execute pair.
+     * @mode emit
+     * @param payload - call ownership payload.
+     */
+    'mcp-gateway/call-started'(payload: { route: string; callId: string }): void
+    /** One gateway call committed a terminal recorder result or teardown error.
+     * @mode emit
+     * @param payload - call ownership payload.
+     */
+    'mcp-gateway/call-terminal'(payload: { route: string; callId: string }): void
+    /** The gateway service completed lease teardown.
+     * @mode emit
+     */
+    'mcp-gateway/teardown-complete'(): void
   }
 }
 

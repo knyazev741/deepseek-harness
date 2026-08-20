@@ -264,7 +264,8 @@ export interface ExternalSessionEvent<T extends SessionEventType = SessionEventT
  * a host answerer is registered. A live session with a SessionStore also
  * receives an `ExternalToolPrincipal` whose recorder synchronously detaches
  * caller-owned values at API entry, commits one bounded `external/tool-call`
- * followed by one matching `external/tool-result`, and seeds call-id
+ * followed by one matching `external/tool-result`, finalizes pending calls
+ * with a bounded disposal error before scope close, and seeds call-id
  * uniqueness from the session log.
  */
 export interface ExternalBridgeContext {

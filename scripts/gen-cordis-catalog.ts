@@ -178,6 +178,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'llm': 'llm-streaming.md',
   'session': 'session.md',
   'external': 'session.md',
+  'mcp-gateway': 'session.md',
   'settings': 'settings.md',
   'skills': 'skills.md',
   'subagent': 'subagent.md',

@@ -344,8 +344,14 @@ describe('external-session-codex config validation', () => {
     const ctx = new Context()
     await ctx.plugin(ExternalSessions)
     expect(() => { apply(ctx, fullConfig()) }).not.toThrow()
+    expect(ctx.get('mcpGateway')).toBeUndefined()
     expect(ctx.externalSessions.getProvider('codex')?.provider).toBe('codex')
     expect(ctx.externalSessions.getProvider('codex')?.modelDirectory).toBe('provider')
     await ctx.fiber.dispose()
+  })
+
+  it('published provider code loads without a runtime MCP gateway import', async () => {
+    const emitted = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
+    expect(emitted).not.toContain('@deepseek-ai/dsh-mcp-gateway')
   })
 })

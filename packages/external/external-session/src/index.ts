@@ -135,6 +135,8 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   private attachments = new Map<SessionId, { promise: Promise<void>; token: object }>()
   /** In-flight disposals shared by concurrent callers until provider teardown settles. */
   private teardowns = new Map<SessionId, Promise<void>>()
+  /** Recorder finalizers retained until the provider and gateway are quiescent. */
+  private recorderFinalizers = new Map<SessionId, () => Promise<void>>()
   /** The registered permission answerer, or undefined while the channel is unwired. */
   private permissionAnswerer: ExternalPermissionAnswerer | undefined
 
@@ -315,10 +317,12 @@ export class ExternalSessions extends Service implements ExternalSessionsService
           this.sessions.delete(request.sessionId)
           this.disposals.delete(request.sessionId)
           controller.abort()
-          await this.disposeScope(request.sessionId)
           await provider.dispose(request.sessionId).catch(() => {})
+          await this.finalizeRecorder(request.sessionId)
+          await this.disposeScope(request.sessionId)
         } else {
           controller.abort()
+          await this.finalizeRecorder(request.sessionId)
           await this.disposeScope(request.sessionId)
         }
         deferred.reject(error)
@@ -386,8 +390,9 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   /**
    * Dispose a live external session and its process tree. The bridge's
    * disposal signal fires first; the returned promise waits for any in-flight
-   * start/resume to settle before disposing the scope and provider. Concurrent
-   * callers receive the same teardown promise.
+   * start/resume, provider teardown, and recorder finalization before
+   * disposing the external scope. Concurrent callers receive the same teardown
+   * promise.
    * @param sessionId - the live external session.
    * @throws {@link ExternalSessionError} when the session is not live.
    */
@@ -418,9 +423,13 @@ export class ExternalSessions extends Service implements ExternalSessionsService
       // non-cooperative, so teardown must wait before disposing that provider.
       await attachment?.catch(() => {})
       try {
-        await this.disposeScope(sessionId)
-      } finally {
         await provider.dispose(sessionId)
+      } finally {
+        try {
+          await this.finalizeRecorder(sessionId)
+        } finally {
+          await this.disposeScope(sessionId)
+        }
       }
     })()
     this.teardowns.set(sessionId, teardown)
@@ -475,11 +484,16 @@ export class ExternalSessions extends Service implements ExternalSessionsService
         appendSessionEvent(session, event)
       }, (scope) => {
         this.scopes.set(sessionId, scope)
+      }, (finalize) => {
+        this.recorderFinalizers.set(sessionId, finalize)
       }, session.events)
     return {
       ...principal === undefined ? {} : { principal },
       appendEvent: (eventSessionId, event) => {
-        if (eventSessionId !== sessionId || controller.signal.aborted) return
+        // The provider's terminal session-ended event is part of teardown and
+        // must remain durable after the cancellation signal fires. Other
+        // provider events are live-only once disposal has begun.
+        if (eventSessionId !== sessionId || (controller.signal.aborted && (event.type as string) !== 'external/session-ended')) return
         const target = this.ctx.get('sessions')?.get(eventSessionId)
         if (target === undefined) return
         appendSessionEvent(target, event)
@@ -518,6 +532,14 @@ export class ExternalSessions extends Service implements ExternalSessionsService
     if (scope === undefined) return
     this.scopes.delete(sessionId)
     await scope.dispose()
+  }
+
+  /** Await the recorder's terminalization barrier before releasing its scope. */
+  private async finalizeRecorder(sessionId: SessionId): Promise<void> {
+    const finalize = this.recorderFinalizers.get(sessionId)
+    if (finalize === undefined) return
+    this.recorderFinalizers.delete(sessionId)
+    await finalize()
   }
 }
 
@@ -579,6 +601,7 @@ async function createExternalPrincipal(
   turn: ExternalTurnRef,
   append: (event: ExternalSessionEvent) => void,
   retainScope: (scope: Scope) => void,
+  retainFinalizer: (finalize: () => Promise<void>) => void,
   events: readonly SessionEvent[],
 ): Promise<ExternalToolPrincipal> {
   const principal = {
@@ -591,7 +614,9 @@ async function createExternalPrincipal(
   const scope = createScope(root, principal)
   try {
     principal.ctx = scope.ctx
-    principal.recorder = createExternalToolRecorder(disposal, turn, append, events)
+    const recorder = createExternalToolRecorder(disposal, turn, append, events)
+    principal.recorder = recorder
+    retainFinalizer(recorder.finalize)
     retainScope(scope)
     return principal
   } catch (error) {
@@ -611,11 +636,14 @@ function createExternalToolRecorder(
   turn: ExternalTurnRef,
   append: (event: ExternalSessionEvent) => void,
   events: readonly SessionEvent[],
-): ToolExecutionRecorder & { readonly signal: AbortSignal } {
+): ToolExecutionRecorder & { readonly signal: AbortSignal; readonly finalize: () => Promise<void> } {
   const seeded = seedExternalToolRecorder(events)
   const pending = seeded.pending
   const completed = seeded.completed
+  const recorderController = new AbortController()
   let tail = Promise.resolve()
+  let finalization: Promise<void> | undefined
+  let closing = false
 
   const enqueue = <T>(operation: () => T | PromiseLike<T>): Promise<T> => {
     const result = tail.then(operation)
@@ -636,6 +664,7 @@ function createExternalToolRecorder(
       }
       return enqueue(() => {
         assertExternalSessionOpen(disposal)
+        if (closing) throw new ExternalSessionError('external session recorder is closing', 'SESSION_DISPOSED')
         const key = String(call.callId)
         if (pending.has(key) || completed.has(key)) {
           throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} is already recorded`, 'DUPLICATE_TOOL_CALL')
@@ -662,7 +691,7 @@ function createExternalToolRecorder(
         return rejectedRecorderOperation(error)
       }
       return enqueue(() => {
-        assertExternalSessionOpen(disposal)
+        assertRecorderOpen(recorderController.signal)
         const key = String(result.callId)
         const call = pending.get(key)
         if (call === undefined) {
@@ -698,6 +727,27 @@ function createExternalToolRecorder(
         pending.delete(key)
         completed.add(key)
       })
+    },
+    finalize: (): Promise<void> => {
+      if (finalization !== undefined) return finalization
+      closing = true
+      finalization = enqueue(() => {
+        for (const [key, call] of pending) {
+          const data: ExternalToolResultData = {
+            ...call.turnId === undefined ? {} : { turnId: call.turnId },
+            callId: call.callId,
+            name: call.name,
+            isError: true,
+            error: { message: 'external session was disposed', code: 'SESSION_DISPOSED' },
+          }
+          assertExternalToolRecordSize(data, 'result')
+          append({ type: 'external/tool-result', data })
+          pending.delete(key)
+          completed.add(key)
+        }
+        recorderController.abort(new ExternalSessionError('external session recorder finalized', 'SESSION_DISPOSED'))
+      })
+      return finalization
     },
   }
 }
@@ -772,6 +822,11 @@ function invalidSeededToolRecord(kind: 'call' | 'result', error: unknown): Exter
 /** Reject recorder writes after its owning session has started disposal. */
 function assertExternalSessionOpen(signal: AbortSignal): void {
   if (signal.aborted) throw new ExternalSessionError('external session has been disposed', 'SESSION_DISPOSED')
+}
+
+/** Reject terminal recorder writes only after the finalizer has committed pending calls. */
+function assertRecorderOpen(signal: AbortSignal): void {
+  if (signal.aborted) throw new ExternalSessionError('external session recorder is closed', 'SESSION_DISPOSED')
 }
 
 /** Require a plain object at the unknown recorder boundary. */

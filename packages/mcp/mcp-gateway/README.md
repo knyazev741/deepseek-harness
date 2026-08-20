@@ -34,11 +34,12 @@ Requests accept only `GET`, `POST`, and `DELETE` at the stateful MCP endpoint. J
 |---|---:|---|
 | `allowlist` | `[]` | Fixed tool names eligible for external exposure; each definition must also opt in with `externalEligibility: 'allow'`. |
 | `maxRequestBytes` | `65536` | Maximum UTF-8 bytes in one JSON request body. |
+| `maxResponseBytes` | `65536` | Maximum UTF-8 bytes in one redacted MCP result; oversized results become one bounded error and are kept within the external recorder limit. |
 | `executionTimeoutMs` | `60000` | Body-read and cooperative tool-call deadline. Lease disposal aborts the same signal. |
 
 ## Lifecycle
 
-The lease disposer removes the route, aborts in-flight calls, waits for request handlers, and closes stateful MCP transports. The external Codex provider awaits this disposer before tearing down its child process. A resumed attachment writes a fresh endpoint and token to the private Codex home while retaining the existing rollout files.
+The lease disposer removes the route, aborts in-flight calls, waits for request handlers, and closes stateful MCP transports. The external-session recorder finalizes pending calls with one bounded cancellation result before its scope closes. The external Codex provider awaits this quiescent lease before tearing down its child process. A resumed attachment writes a fresh endpoint and token to the private Codex home while retaining the existing rollout files.
 
 The token is passed to Codex only through the explicit environment variable named by `bearer_token_env_var`; it is never written to `config.toml`, the URL, argv, session events, logs, or snapshots. This package does not configure client routing or a Web opt-in bundle; those belong to later tasks.
 
