@@ -54,6 +54,16 @@ jobs:
           echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
           echo "Upstream commits not yet in this fork: $BEHIND"
 
+      - name: Setup pnpm (for lockfile regeneration)
+        if: steps.check.outputs.behind != '0'
+        uses: pnpm/action-setup@v4
+        # No explicit version: the repo's package.json `packageManager` field
+        # selects the version (pnpm@11.7.0).
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.behind != '0'
+        with:
+          node-version: 22
+
       - name: Rebuild the sync branch (conflicts resolve in our favor)
         if: steps.check.outputs.behind != '0'
         run: |
@@ -111,6 +121,15 @@ jobs:
             # The merge auto-committed (no conflicts); the exclusion needs
             # its own commit.
             git commit -m "chore(sync): keep fork-owned workflow files"
+          fi
+          # The hunk-level -X ours merge can leave pnpm-lock.yaml with
+          # duplicated YAML keys (ERR_PNPM_BROKEN_LOCKFILE), which would
+          # fail the review gates' frozen install. Regenerate the lockfile
+          # from the merged workspace so the sync PR carries a valid one.
+          pnpm install --no-frozen-lockfile --lockfile-only
+          if ! git diff --quiet -- pnpm-lock.yaml; then
+            git add pnpm-lock.yaml
+            git commit -m "chore(sync): regenerate pnpm-lock.yaml for the merged workspace"
           fi
           # Never push a half-merged or corrupted result: upstream is ahead
           # of the fork (behind != 0), so the merge result MUST differ from
