@@ -17,10 +17,13 @@ export const inject = ['invariants']
 type ApprovalTransition =
   | { kind: 'asked'; id: ApprovalRequestId }
   | { kind: 'decided'; id: ApprovalRequestId }
+  | { kind: 'external-asked'; id: ApprovalRequestId; principalId: string; sessionId: string; callId: string }
+  | { kind: 'external-decided'; id: ApprovalRequestId; principalId: string; sessionId: string; callId: string }
 
 interface ApprovalTrace {
   openTurn: number | null
   pending: Set<ApprovalRequestId>
+  externalPending: Map<ApprovalRequestId, { principalId: string; sessionId: string; callId: string }>
 }
 
 /** Validate one approval event against committed unmatched questions. */
@@ -46,13 +49,69 @@ function validateApprovalEvent(
   if (event.type === 'approval/policy' && !APPROVAL_POLICIES.includes(event.data.policy)) {
     fail(`approval/policy carries unknown policy ${JSON.stringify(event.data.policy)}`)
   }
+  if (event.type === 'external/approval-asked') {
+    if (event.data.id.length === 0) fail('external/approval-asked id must be non-empty')
+    if (event.data.toolName.length === 0) fail('external/approval-asked toolName must be non-empty')
+    if (event.data.principalId.length === 0) fail('external/approval-asked principalId must be non-empty')
+    if (event.data.sessionId.length === 0) fail('external/approval-asked sessionId must be non-empty')
+    if (event.data.callId.length === 0) fail('external/approval-asked callId must be non-empty')
+    if (trace.externalPending.has(event.data.id)) {
+      fail(`external/approval-asked repeated open id ${JSON.stringify(event.data.id)}`)
+    }
+    return {
+      kind: 'external-asked',
+      id: event.data.id,
+      principalId: event.data.principalId,
+      sessionId: event.data.sessionId,
+      callId: event.data.callId,
+    }
+  }
+  if (event.type === 'external/approval-decided') {
+    if (event.data.id.length === 0) fail('external/approval-decided id must be non-empty')
+    const pending = trace.externalPending.get(event.data.id)
+    if (pending === undefined) {
+      fail(`external/approval-decided has no matching external/approval-asked for id ${JSON.stringify(event.data.id)}`)
+      return undefined
+    }
+    if (pending.principalId !== event.data.principalId
+      || pending.sessionId !== event.data.sessionId
+      || pending.callId !== event.data.callId) {
+      fail('external/approval-decided does not match external/approval-asked principal/session/call identity')
+    }
+    if (!APPROVAL_OUTCOMES.includes(event.data.outcome)) {
+      fail(`external/approval-decided carries unknown outcome ${JSON.stringify(event.data.outcome)}`)
+    }
+    return {
+      kind: 'external-decided',
+      id: event.data.id,
+      principalId: event.data.principalId,
+      sessionId: event.data.sessionId,
+      callId: event.data.callId,
+    }
+  }
   return undefined
 }
 
 /** Apply one accepted approval-pair transition. */
 function applyApprovalTransition(pending: Set<ApprovalRequestId>, transition: ApprovalTransition): void {
   if (transition.kind === 'asked') pending.add(transition.id)
-  else pending.delete(transition.id)
+  else if (transition.kind === 'decided') pending.delete(transition.id)
+}
+
+/** Apply one accepted external approval transition to its identity bracket. */
+function applyExternalTransition(
+  pending: Map<ApprovalRequestId, { principalId: string; sessionId: string; callId: string }>,
+  transition: ApprovalTransition,
+): void {
+  if (transition.kind === 'external-asked') {
+    pending.set(transition.id, {
+      principalId: transition.principalId,
+      sessionId: transition.sessionId,
+      callId: transition.callId,
+    })
+  } else if (transition.kind === 'external-decided') {
+    pending.delete(transition.id)
+  }
 }
 
 /** Install audit pairing and closed-vocabulary checks. */
@@ -62,13 +121,16 @@ const install: InvariantInstaller = Object.assign((ctx: Context, fail: Invariant
   const traces = new WeakMap<Session, ApprovalTrace>()
   const staged = new WeakMap<SessionEvent, { session: Session; transition: ApprovalTransition }>()
   const seed = (session: Session): ApprovalTrace => {
-    const trace: ApprovalTrace = { openTurn: null, pending: new Set() }
+    const trace: ApprovalTrace = { openTurn: null, pending: new Set(), externalPending: new Map() }
     traces.set(session, trace)
     for (const event of session.events) {
       if (event.type === 'turn/start') trace.openTurn = event.data.turn
       else if (event.type === 'turn/end') trace.openTurn = null
       const transition = validateApprovalEvent(trace, event, fail)
-      if (transition !== undefined) applyApprovalTransition(trace.pending, transition)
+      if (transition !== undefined) {
+        applyApprovalTransition(trace.pending, transition)
+        applyExternalTransition(trace.externalPending, transition)
+      }
     }
     return trace
   }
@@ -86,12 +148,14 @@ const install: InvariantInstaller = Object.assign((ctx: Context, fail: Invariant
       trace.openTurn = null
       return
     }
-    if (event.type !== 'approval/asked' && event.type !== 'approval/decided') return
+    if (event.type !== 'approval/asked' && event.type !== 'approval/decided'
+      && event.type !== 'external/approval-asked' && event.type !== 'external/approval-decided') return
     const candidate = staged.get(event)
     /* v8 ignore next -- internal/dispatch stages every package-owned pair event */
     if (candidate === undefined || candidate.session !== session) return fail('approval audit event published without pre-commit validation')
     staged.delete(event)
     applyApprovalTransition(trace.pending, candidate.transition)
+    applyExternalTransition(trace.externalPending, candidate.transition)
   }, { global: true })
   ctx.on('internal/dispatch', (_mode, eventName, args) => {
     if (eventName !== 'session/event') return

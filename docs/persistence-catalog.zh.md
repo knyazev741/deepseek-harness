@@ -162,7 +162,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 类型：[CallId](subsystems/core.md)
 
-来源：[`packages/interaction/user-approval/src/index.ts:44`](../packages/interaction/user-approval/src/index.ts)
+来源：[`packages/interaction/user-approval/src/index.ts:52`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="approvaldecided--log-only"></a>
 
@@ -180,7 +180,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-来源：[`packages/interaction/user-approval/src/index.ts:55`](../packages/interaction/user-approval/src/index.ts)
+来源：[`packages/interaction/user-approval/src/index.ts:63`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="approvalpolicy--log-only"></a>
 
@@ -202,7 +202,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-来源：[`packages/interaction/user-approval/src/index.ts:67`](../packages/interaction/user-approval/src/index.ts)
+来源：[`packages/interaction/user-approval/src/index.ts:75`](../packages/interaction/user-approval/src/index.ts)
 
 ### `assistant/*`
 
@@ -393,6 +393,31 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 ### `external/*`
 
+<a id="externalapproval-asked--log-only"></a>
+
+#### `external/approval-asked` — log-only
+
+```ts persistence-catalog
+/**
+ * An external principal asked for one tool decision. The bracket is
+ * independent of native turns and carries principal/session/call identity.
+ */
+'external/approval-asked': ExternalApprovalAskedData
+```
+
+来源：[`packages/interaction/user-approval/src/index.ts:84`](../packages/interaction/user-approval/src/index.ts)
+
+<a id="externalapproval-decided--log-only"></a>
+
+#### `external/approval-decided` — log-only
+
+```ts persistence-catalog
+/** One external approval outcome, paired by the complete identity tuple. */
+'external/approval-decided': ExternalApprovalDecidedData
+```
+
+来源：[`packages/interaction/user-approval/src/index.ts:86`](../packages/interaction/user-approval/src/index.ts)
+
 <a id="externalcompaction-noticed--log-only"></a>
 
 #### `external/compaction-noticed` — log-only
@@ -405,7 +430,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/compaction-noticed': ExternalCompactionNoticedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:76`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:78`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalmessage-added--log-only"></a>
 
@@ -419,7 +444,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/message-added': ExternalMessageAddedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:50`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:52`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalmodel-switched--log-only"></a>
 
@@ -433,7 +458,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/model-switched': ExternalModelSwitchedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:71`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:73`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalpermission-asked--log-only"></a>
 
@@ -448,7 +473,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/permission-asked': ExternalPermissionAskedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:61`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:63`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalpermission-decided--log-only"></a>
 
@@ -462,7 +487,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/permission-decided': ExternalPermissionDecidedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:66`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:68`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalsession-ended--log-only"></a>
 
@@ -476,7 +501,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/session-ended': ExternalSessionEndedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:86`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:88`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalsession-started--log-only"></a>
 
@@ -492,7 +517,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/session-started': ExternalSessionStartedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:40`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:42`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externaltool-activity--log-only"></a>
 
@@ -506,7 +531,29 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/tool-activity': ExternalToolActivityData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:55`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:57`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externaltool-call--log-only"></a>
+
+#### `external/tool-call` — log-only
+
+```ts persistence-catalog
+/** One committed external tool call; paired with exactly one result by `callId`. */
+'external/tool-call': ExternalToolCallData
+```
+
+来源：[`packages/external/external-session/src/types.ts:161`](../packages/external/external-session/src/types.ts)
+
+<a id="externaltool-result--log-only"></a>
+
+#### `external/tool-result` — log-only
+
+```ts persistence-catalog
+/** One committed external tool result; paired with the preceding call by `callId`. */
+'external/tool-result': ExternalToolResultData
+```
+
+来源：[`packages/external/external-session/src/types.ts:163`](../packages/external/external-session/src/types.ts)
 
 <a id="externalturn-ended--log-only"></a>
 
@@ -520,7 +567,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/turn-ended': ExternalTurnEndedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:81`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:83`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalturn-started--log-only"></a>
 
@@ -534,7 +581,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'external/turn-started': ExternalTurnStartedData
 ```
 
-来源：[`packages/session/session-projection/src/external-transcript.ts:45`](../packages/session/session-projection/src/external-transcript.ts)
+来源：[`packages/session/session-projection/src/external-transcript.ts:47`](../packages/session/session-projection/src/external-transcript.ts)
 
 ### `feedback/*`
 

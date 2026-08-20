@@ -28,7 +28,7 @@ Codex 提供方把实时会话的 sandbox 与 approval fold 合并到每次 exte
 
 Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全部为 `ignorable: true`（读取时未知 `external/*` 不会破坏 replay）。实时 frame 增量通过 frame channel 传递，不持久化（`streamDelta` 永不写日志）。只提交以下单元：
 
-`external/session-started`（包含不透明的提供方线程身份）、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
+`external/session-started`（包含不透明的提供方线程身份）、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/tool-call`、`external/tool-result`、`external/approval-asked`、`external/approval-decided`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
 
 `/compact` 与 `/model` 按 session mode 路由：压缩调用提供方原生 compact 并记录 notice；模型切换调用 `setModel` 并记录切换。外部 mode 中未知 slash command 作为 prompt 文本传递。
 
@@ -42,10 +42,10 @@ Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全�
 
 ## Phase 1 vs the approval seam
 
-Phase 1 通过 ask-user interaction channel 让人类回答每一个子权限询问（外部会话没有打开的 DSH turn）。由 agent 驱动的外部会话——作为 subagent child 授权并通过 `ctx.approval` 记录审计对——属于后续阶段；两条路径的审计语义不得分叉，后续路径会取代而不是另建一条路径。
+外部路径现在使用带 external principal 与 branded 工具调用 id 的 `ctx.approval.requestExternal()`。它会记录成对的 `external/approval-asked` 与 `external/approval-decided` 事件，不会伪造原生 Agent 或轮次。缺少应答者、dispose、abort、格式错误的决定或元组不匹配都会故障关闭；两条记录必须使用完全相同的 principal、session 与 call id。ask-user 权限 bridge 仍是独立的、由宿主拥有的提供方权限询问路径。
 
 ## Consequences
 
-用户可以在 GUI 中打开由外部 agent 驱动的会话：流式轮次显示在同一 conversation UI，并从持久日志 replay；mode picker 列出带各提供方模型目录的 mode；模型切换驱动子进程；渲染出的权限询问在故障关闭的关闭/失败路径上门控子进程；子进程在 Harness sandbox 下运行，并在会话关闭时回收进程树。Phase 1 完成规范说明的验收项 1–4；验收项 5（agent 发起的授权与 `ctx.approval` 审计对）仍属上述后续阶段。
+用户可以在 GUI 中打开由外部 agent 驱动的会话：流式轮次显示在同一 conversation UI，并从持久日志 replay；mode picker 列出带各提供方模型目录的 mode；模型切换驱动子进程；渲染出的权限询问在故障关闭的关闭/失败路径上门控子进程；子进程在 Harness sandbox 下运行，并在会话关闭时回收进程树。Phase 1 现在完成规范说明的验收项 1–5；loader 组合、浏览器与面向用户的快照验收证据仍延后到 Task 9。
 
-External 事件仅写日志且为 `ignorable: true`，因此 replay 在 reload 后仍正确，读取未知 `external/*` 不会破坏它；model-visible ⟺ logged 规则成立，因为没有外部内容进入父会话的 model 请求，也没有 parent-context effect。流式增量不持久化。固定的 Codex fixture 防止 wire 漂移。Phase 1 ask-user 通道与后续 `ctx.approval` 路径的审计语义必须保持一致，后续路径取代而不是分叉。
+External 事件仅写日志且为 `ignorable: true`，因此 replay 在 reload 后仍正确，读取未知 `external/*` 不会破坏它；model-visible ⟺ logged 规则成立，因为没有外部内容进入父会话的 model 请求，也没有 parent-context effect。流式增量不持久化。固定的 Codex fixture 防止 wire 漂移。外部工具调用与结果按 branded call id 严格成对提交，每对记录限制为有界 JSON，并投影到 external transcript；它们不会进入父 agent 的 model context。外部审批审计对同样只写日志，不是原生轮次或 Agent 状态。

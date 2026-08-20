@@ -8,6 +8,9 @@ import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ApprovalService, { ApprovalOutcome, ApprovalRequest, effectiveApprovalPolicy, setApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
+import { ExternalToolCallId } from '@deepseek-ai/dsh-external-session'
+import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
 
 /**
  * A minimal Agent stand-in — the service only reaches `agent.session.append`
@@ -37,6 +40,18 @@ async function mounted(): Promise<Context> {
 
 function requestOf(agent: Agent, overrides: Partial<ApprovalRequest> = {}): ApprovalRequest {
   return { agent, toolName: 'echo', ...overrides }
+}
+
+/** A real Session-backed external principal, without a native Agent or turn. */
+function externalPrincipal(ctx: Context, session: Session, disposal?: AbortSignal): ExternalToolPrincipal {
+  return {
+    kind: 'external',
+    id: ExternalToolPrincipalId(`principal-${String(session.id)}`),
+    session,
+    ctx,
+    recorder: {},
+    ...disposal === undefined ? {} : { disposal },
+  }
 }
 
 describe('ApprovalService.request', () => {
@@ -510,5 +525,111 @@ describe('approval policy (the approval/policy fold)', () => {
     expect(await contextFor()).toBeDefined()
     await fiber.dispose()
     expect(await contextFor()).toBeUndefined()
+  })
+})
+
+describe('ApprovalService.requestExternal', () => {
+  it('applies the effective session policy without requiring a native turn', async () => {
+    const ctx = await mounted()
+    const session = Session.create(SessionId('external-never'))
+    setApprovalPolicy(session, 'never')
+    const principal = externalPrincipal(ctx, session)
+    const callId = ExternalToolCallId('external-call-1')
+    const answer = vi.fn<() => Promise<ApprovalOutcome>>()
+    ctx.on('approval/request-external', () => {
+      void answer()
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+
+    await expect(ctx.approval.requestExternal({ principal, toolName: 'bash', callId }))
+      .resolves.toBe('rejected')
+    expect(answer).not.toHaveBeenCalled()
+    expect(session.events.map(event => event.type)).toEqual([
+      'approval/policy',
+      'external/approval-asked',
+      'external/approval-decided',
+    ])
+    expect(session.events.some(event => event.type === 'turn/start')).toBe(false)
+  })
+
+  it('routes an external request through the principal scope and pairs its audit', async () => {
+    const ctx = await mounted()
+    const session = Session.create(SessionId('external-scope'))
+    const principal = externalPrincipal(ctx, session)
+    const scope = createScope(ctx, principal)
+    ;(principal as { ctx: Context }).ctx = scope.ctx
+    let received: unknown
+    scope.ctx.on('approval/request-external', (request, next) => {
+      received = request
+      return next()
+    })
+    ctx.on('approval/request-external', () => Promise.resolve<ApprovalOutcome>('allowed-once'))
+
+    const request = {
+      principal,
+      toolName: 'read',
+      callId: ExternalToolCallId('external-call-2'),
+      reason: 'read workspace file',
+    }
+    await expect(ctx.approval.requestExternal(request)).resolves.toBe('allowed-once')
+    expect(received).toBe(request)
+    expect(session.events.map(event => event.type)).toEqual([
+      'external/approval-asked',
+      'external/approval-decided',
+    ])
+    expect(session.events.at(0)?.data).toMatchObject({
+      principalId: principal.id,
+      sessionId: session.id,
+      callId: request.callId,
+      toolName: 'read',
+      reason: 'read workspace file',
+    })
+    expect(session.events.at(1)?.data).toMatchObject({
+      principalId: principal.id,
+      sessionId: session.id,
+      callId: request.callId,
+      outcome: 'allowed-once',
+    })
+    await scope.dispose()
+  })
+
+  it.each([
+    ['rejected', 'rejected'],
+    ['cancelled', 'cancelled'],
+    ['unavailable', 'unavailable'],
+  ] as const)('fails closed for external %s', async (answer, expected) => {
+    const ctx = await mounted()
+    const session = Session.create(SessionId(`external-${answer}`))
+    const principal = externalPrincipal(ctx, session)
+    if (answer !== 'unavailable') {
+      ctx.on('approval/request-external', () => Promise.resolve<ApprovalOutcome>(answer))
+    }
+    await expect(ctx.approval.requestExternal({
+      principal,
+      toolName: 'bash',
+      callId: ExternalToolCallId(`external-${answer}`),
+    })).resolves.toBe(expected)
+    expect(session.events.at(-1)?.data).toMatchObject({ outcome: expected })
+  })
+
+  it('cancels when the external principal is disposed and discards a late answer', async () => {
+    const ctx = await mounted()
+    const session = Session.create(SessionId('external-disposed'))
+    const disposal = new AbortController()
+    const principal = externalPrincipal(ctx, session, disposal.signal)
+    let settleLate: ((outcome: ApprovalOutcome) => void) | undefined
+    ctx.on('approval/request-external', () => new Promise<ApprovalOutcome>((resolve) => { settleLate = resolve }))
+
+    const pending = ctx.approval.requestExternal({
+      principal,
+      toolName: 'bash',
+      callId: ExternalToolCallId('external-disposed-call'),
+    })
+    disposal.abort()
+    await expect(pending).resolves.toBe('cancelled')
+    settleLate?.('allowed-once')
+    await Promise.resolve()
+    expect(session.events.filter(event => event.type === 'external/approval-decided')).toHaveLength(1)
+    expect(session.events.at(-1)?.data).toMatchObject({ outcome: 'cancelled' })
   })
 })

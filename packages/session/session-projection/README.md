@@ -27,6 +27,7 @@ Session-projection Service Definition and drive registry. It owns `ctx.sessionPr
 - **No wire vocabulary here.** The registry exposes only the change feed and the snapshot read face; carriers (api-proxy) mint their own frames (`session/projection`) and blocks from them.
 - **Optional capability.** Domain plugins register under `ctx.inject(['sessionProjections'], …)` so headless assemblies without the registry stay unaffected; carriers use `ctx.get('sessionProjections')` and omit their block/frames entirely when the registry is absent.
 - **Operational identity stays out of transcript rendering.** The external-transcript unit preserves the opaque `providerThreadId` from `external/session-started` in its replay value for host attachment, while transcript presenters render only external conversation and activity fields.
+- **External tool records stay paired in replay.** The external-transcript unit exposes each committed `external/tool-call` as a `toolCalls` node and attaches exactly one matching `external/tool-result` by branded call id, retaining either JSON result or a bounded `{ message, code? }` error. Unmatched or malformed records are ignored rather than inventing a transcript node.
 
 ## Role
 
@@ -47,3 +48,4 @@ None; projections never assemble or send provider requests.
 - **Eager drive touches every unit per event** — cheap by construction (whole-value rule, same-reference gate), but a hot path would justify per-unit event-type prefilters, addable without contract change.
 - **Registry cells live in memory only** — a restart rebuilds by folding the log on first touch; compositions that mount `dsh-session-projection-cache` seed that fold from persisted rows instead.
 - **Synchronous unit discipline is only partially mechanical** — the boundary `schema.parse` rejects a Promise-returning `view`, but an `apply` that blocks or reads torn non-session state is a review concern; the invariant companion documents why no runtime check exists.
+- **External tool nodes are replay data, not model context** — calls and results are projected for the external-session UI and remain outside parent-agent prompts and tool schemas.

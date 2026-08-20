@@ -21,10 +21,12 @@
 import { z } from 'zod'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import {
+  ExternalToolCallId,
   ExternalProviderThreadId,
   parseExternalProviderThreadId,
   type ExternalProviderThreadId as ExternalProviderThreadIdValue,
 } from '@deepseek-ai/dsh-external-session'
+import type { ExternalToolError, ExternalToolResultData } from '@deepseek-ai/dsh-external-session'
 // Type-only import: erased at runtime, so the index → external-transcript value
 // edge stays acyclic even though external-transcript names index's type.
 import type { ProjectionDefinition } from './index.ts'
@@ -161,6 +163,19 @@ export interface ExternalTranscriptToolActivity {
   readonly title: string
   readonly detail?: string
 }
+/** One paired external tool call and committed result in a transcript turn. */
+export interface ExternalTranscriptToolCall {
+  /** Opaque call/result pairing identity. */
+  readonly callId: ExternalToolCallId
+  /** Registered Harness tool name. */
+  readonly name: string
+  /** Detached JSON arguments presented to the tool. */
+  readonly arguments: import('@deepseek-ai/dsh-session').JsonValue
+  /** Detached JSON result for a successful call. */
+  readonly result?: import('@deepseek-ai/dsh-session').JsonValue
+  /** Explicit failure facts for a failed call. */
+  readonly error?: ExternalToolError
+}
 /** One permission ask in a transcript turn; `outcome` fills when decided. */
 export interface ExternalTranscriptPermission {
   readonly askId: string
@@ -173,6 +188,7 @@ export interface ExternalTranscriptTurn {
   readonly turnId: string
   readonly messages: readonly ExternalTranscriptMessage[]
   readonly toolActivities: readonly ExternalTranscriptToolActivity[]
+  readonly toolCalls: readonly ExternalTranscriptToolCall[]
   readonly permissions: readonly ExternalTranscriptPermission[]
   readonly compactionNotices: readonly string[]
   readonly modelSwitches: readonly string[]
@@ -224,6 +240,17 @@ const toolActivitySchema = z.object({
   title: z.string(),
   detail: z.string().optional(),
 }).strict()
+const toolErrorSchema = z.object({
+  message: z.string(),
+  code: z.string().optional(),
+}).strict()
+const toolCallSchema = z.object({
+  callId: z.string().min(1).transform(ExternalToolCallId),
+  name: z.string().min(1),
+  arguments: z.json(),
+  result: z.json().optional(),
+  error: toolErrorSchema.optional(),
+}).strict()
 const permissionSchema = z.object({
   askId: z.string(),
   title: z.string(),
@@ -234,6 +261,7 @@ const turnSchema = z.object({
   turnId: z.string(),
   messages: z.array(messageSchema),
   toolActivities: z.array(toolActivitySchema),
+  toolCalls: z.array(toolCallSchema),
   permissions: z.array(permissionSchema),
   compactionNotices: z.array(z.string()),
   modelSwitches: z.array(z.string()),
@@ -292,6 +320,61 @@ function decidePermission(
   return state
 }
 
+/** Find the newest tool call with one call id, optionally constrained to a turn. */
+function findToolCall(
+  state: ExternalTranscriptState,
+  callId: ExternalToolCallId,
+  turnId: string | undefined,
+): { readonly location: 'open' | 'closed'; readonly turnIndex?: number; readonly callIndex: number } | undefined {
+  if (state.open !== null && (turnId === undefined || state.open.turnId === turnId)) {
+    for (let index = state.open.toolCalls.length - 1; index >= 0; index -= 1) {
+      if (state.open.toolCalls[index]?.callId === callId) return { location: 'open', callIndex: index }
+    }
+  }
+  for (let turnIndex = state.turns.length - 1; turnIndex >= 0; turnIndex -= 1) {
+    const turn = state.turns[turnIndex]
+    if (turn === undefined || turnId !== undefined && turn.turnId !== turnId) continue
+    for (let callIndex = turn.toolCalls.length - 1; callIndex >= 0; callIndex -= 1) {
+      if (turn.toolCalls[callIndex]?.callId === callId) return { location: 'closed', turnIndex, callIndex }
+    }
+  }
+  return undefined
+}
+
+/** Attach one committed result to its exact call node, preserving late results after turn close. */
+function applyToolResult(state: ExternalTranscriptState, data: ExternalToolResultData): ExternalTranscriptState {
+  const found = findToolCall(state, data.callId, data.turnId)
+  if (found === undefined) return state
+  if (found.location === 'open') {
+    const open = state.open
+    if (open === null) return state
+    const toolCalls = [...open.toolCalls]
+    const existing = toolCalls[found.callIndex]
+    if (existing === undefined) return state
+    if (data.isError) {
+      toolCalls[found.callIndex] = { ...existing, error: data.error }
+    } else {
+      toolCalls[found.callIndex] = { ...existing, result: data.result }
+    }
+    return { ...state, open: { ...open, toolCalls } }
+  }
+  const turnIndex = found.turnIndex
+  if (turnIndex === undefined) return state
+  const turn = state.turns[turnIndex]
+  if (turn === undefined) return state
+  const turns = [...state.turns]
+  const toolCalls = [...turn.toolCalls]
+  const existing = toolCalls[found.callIndex]
+  if (existing === undefined) return state
+  if (data.isError) {
+    toolCalls[found.callIndex] = { ...existing, error: data.error }
+  } else {
+    toolCalls[found.callIndex] = { ...existing, result: data.result }
+  }
+  turns[turnIndex] = { ...turn, toolCalls }
+  return { ...state, turns }
+}
+
 /** Pure fold: `state` + one committed event → next state; unrelated events return the same reference (the Object.is gate). */
 function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTranscriptState {
   switch (event.type) {
@@ -310,6 +393,7 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
           turnId: event.data.turnId,
           messages: [],
           toolActivities: [],
+          toolCalls: [],
           permissions: [],
           compactionNotices: [],
           modelSwitches: [],
@@ -341,6 +425,26 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
         },
       }
     }
+    case 'external/tool-call': {
+      const open = state.open
+      if (open === null || event.data.turnId !== undefined && open.turnId !== event.data.turnId) return state
+      return {
+        ...state,
+        open: {
+          ...open,
+          toolCalls: [
+            ...open.toolCalls,
+            {
+              callId: event.data.callId,
+              name: event.data.name,
+              arguments: event.data.arguments,
+            },
+          ],
+        },
+      }
+    }
+    case 'external/tool-result':
+      return applyToolResult(state, event.data)
     case 'external/permission-asked': {
       const open = state.open
       if (open === null) return state
@@ -426,5 +530,5 @@ ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
   }),
   apply,
   view,
-  stateVersion: 2,
+  stateVersion: 3,
 }

@@ -15,10 +15,17 @@
  * @module @deepseek-ai/dsh-external-session
  */
 
+import { randomUUID } from 'node:crypto'
 import { Context, Service } from '@deepseek-ai/cordis'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionId } from '@deepseek-ai/dsh-session'
-import { ExternalTurnId } from './types.ts'
+import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
+import type { JsonValue, Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import { createScope } from '@deepseek-ai/dsh-scope'
+import type { Scope } from '@deepseek-ai/dsh-scope'
+import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
+import type { ExternalToolPrincipal, ToolExecutionRecorder } from '@deepseek-ai/dsh-tools'
+import { ExternalToolCallId as brandExternalToolCallId, ExternalTurnId } from './types.ts'
+import type { ExternalToolCallId as ExternalToolCallIdValue } from './types.ts'
 import type {
   ExternalAgentDescriptor,
   ExternalBridgeContext,
@@ -32,10 +39,14 @@ import type {
   ExternalSessionStart,
   ReasoningEffort,
   ExternalSessionsService,
+  ExternalToolCallData,
+  ExternalToolError,
+  ExternalToolResultData,
 } from './types.ts'
 
 export { ExternalTurnId } from './types.ts'
 export { ExternalProviderThreadId, parseExternalProviderThreadId } from './types.ts'
+export { ExternalToolCallId } from './types.ts'
 export type {
   ExternalAgentDescriptor,
   ExternalBridgeContext,
@@ -52,7 +63,15 @@ export type {
   ExternalSessionStart,
   ExternalSessionStartRequest,
   ExternalSessionsService,
+  ExternalToolCallData,
+  ExternalToolCallRecord,
+  ExternalToolError,
+  ExternalToolResultData,
+  ExternalToolResultRecord,
 } from './types.ts'
+
+/** Maximum UTF-8 bytes retained by one external tool call or result event. */
+export const MAX_EXTERNAL_TOOL_RECORD_BYTES = 64 * 1024
 
 /** Typed failure for the external-session seam. */
 export class ExternalSessionError extends HarnessError {
@@ -110,6 +129,8 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   private sessions = new Map<SessionId, string>()
   /** Per-session disposal signals aborted on {@link dispose}. */
   private disposals = new Map<SessionId, AbortController>()
+  /** Per-session external scopes disposed before the provider process. */
+  private scopes = new Map<SessionId, Scope>()
   /** In-flight start/resume operations shared by concurrent attach callers. */
   private attachments = new Map<SessionId, { promise: Promise<void>; token: object }>()
   /** The registered permission answerer, or undefined while the channel is unwired. */
@@ -273,9 +294,11 @@ export class ExternalSessions extends Service implements ExternalSessionsService
           this.sessions.delete(request.sessionId)
           this.disposals.delete(request.sessionId)
           controller.abort()
+          await this.disposeScope(request.sessionId)
           await provider.dispose(request.sessionId).catch(() => {})
         } else {
           controller.abort()
+          await this.disposeScope(request.sessionId)
         }
         deferred.reject(error)
       } finally {
@@ -351,7 +374,11 @@ export class ExternalSessions extends Service implements ExternalSessionsService
     const controller = this.disposals.get(sessionId)
     this.disposals.delete(sessionId)
     controller?.abort()
-    await provider.dispose(sessionId)
+    try {
+      await this.disposeScope(sessionId)
+    } finally {
+      await provider.dispose(sessionId)
+    }
   }
 
   /** Look up a provider for dispatch or fail loud. */
@@ -390,11 +417,27 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    * @returns the bridge handed to the provider at start.
    */
   private createBridge(sessionId: SessionId, provider: string, controller: AbortController): ExternalBridgeContext {
-    return {
-      appendEvent: (sessionId, event) => {
-        const session = this.ctx.get('sessions')?.get(sessionId)
-        if (session === undefined) return
+    const turn = { current: undefined as string | undefined }
+    const session = this.ctx.get('sessions')?.get(sessionId)
+    const principal = session === undefined
+      ? undefined
+      : createExternalPrincipal(this.ctx, session, controller.signal, turn, (event) => {
         appendSessionEvent(session, event)
+      }, (scope) => {
+        this.scopes.set(sessionId, scope)
+      })
+    return {
+      ...principal === undefined ? {} : { principal },
+      appendEvent: (eventSessionId, event) => {
+        if (eventSessionId !== sessionId || controller.signal.aborted) return
+        const target = this.ctx.get('sessions')?.get(eventSessionId)
+        if (target === undefined) return
+        appendSessionEvent(target, event)
+        const eventType = event.type as string
+        const eventData = event.data as unknown as { readonly turnId?: string }
+        if (eventType === 'external/turn-started') turn.current = eventData.turnId
+        else if (eventType === 'external/turn-ended' && turn.current === eventData.turnId) turn.current = undefined
+        else if (eventType === 'external/session-ended') turn.current = undefined
       },
       requestPermission: async (sessionId, ask): Promise<ExternalPermissionDecision> => {
         const answerer = this.permissionAnswerer
@@ -418,6 +461,14 @@ export class ExternalSessions extends Service implements ExternalSessionsService
       disposal: controller.signal,
     }
   }
+
+  /** Dispose the scope owned by one external session, if one was created. */
+  private async disposeScope(sessionId: SessionId): Promise<void> {
+    const scope = this.scopes.get(sessionId)
+    if (scope === undefined) return
+    this.scopes.delete(sessionId)
+    await scope.dispose()
+  }
 }
 
 /** Project a provider onto its public descriptor fields. */
@@ -436,8 +487,259 @@ function descriptorOf(provider: ExternalSessionProvider): ExternalAgentDescripto
  * @param session - the live session to append to.
  * @param event - the event fragment to record.
  */
-function appendSessionEvent(session: Session, event: ExternalSessionEvent): void {
-  session.append(event.type, event.data)
+function appendSessionEvent(session: Session, event: ExternalSessionEvent): SessionEvent {
+  return session.append(event.type, event.data)
+}
+
+interface ExternalTurnRef {
+  current: string | undefined
+}
+
+interface NormalizedExternalToolCall {
+  callId: ExternalToolCallIdValue
+  name: string
+  arguments: JsonValue
+  turnId?: string
+}
+
+type NormalizedExternalToolResult = {
+  callId: ExternalToolCallIdValue
+  name?: string
+  isError: false
+  result: JsonValue
+  turnId?: string
+} | {
+  callId: ExternalToolCallIdValue
+  name?: string
+  isError: true
+  error: ExternalToolError
+  turnId?: string
+}
+
+type PendingExternalToolCall = NormalizedExternalToolCall
+
+/** Build the external principal and its durable call/result recorder. */
+function createExternalPrincipal(
+  root: Context,
+  session: Session,
+  disposal: AbortSignal,
+  turn: ExternalTurnRef,
+  append: (event: ExternalSessionEvent) => void,
+  retainScope: (scope: Scope) => void,
+): ExternalToolPrincipal {
+  const principal = {
+    kind: 'external' as const,
+    id: ExternalToolPrincipalId(randomUUID()),
+    session,
+    ctx: root,
+    recorder: undefined as unknown as ToolExecutionRecorder,
+  }
+  const scope = createScope(root, principal)
+  principal.ctx = scope.ctx
+  principal.recorder = createExternalToolRecorder(disposal, turn, append)
+  retainScope(scope)
+  return principal
+}
+
+/** Recorder state is serialized so concurrent gateway calls retain call/result order. */
+function createExternalToolRecorder(
+  disposal: AbortSignal,
+  turn: ExternalTurnRef,
+  append: (event: ExternalSessionEvent) => void,
+): ToolExecutionRecorder & { readonly signal: AbortSignal } {
+  const pending = new Map<string, PendingExternalToolCall>()
+  const completed = new Set<string>()
+  let tail = Promise.resolve()
+
+  const enqueue = <T>(operation: () => T | PromiseLike<T>): Promise<T> => {
+    const result = tail.then(operation)
+    tail = result.then(() => undefined, () => undefined)
+    return result
+  }
+
+  return {
+    signal: disposal,
+    recordCall: value => enqueue(() => {
+      assertExternalSessionOpen(disposal)
+      const call = normalizeExternalToolCall(value)
+      const key = String(call.callId)
+      if (pending.has(key) || completed.has(key)) {
+        throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} is already recorded`, 'DUPLICATE_TOOL_CALL')
+      }
+      const turnId = call.turnId ?? turn.current
+      const data: ExternalToolCallData = {
+        ...turnId === undefined ? {} : { turnId },
+        callId: call.callId,
+        name: call.name,
+        arguments: call.arguments,
+      }
+      assertExternalToolRecordSize(data, 'call')
+      append({ type: 'external/tool-call', data })
+      pending.set(key, { ...call, ...turnId === undefined ? {} : { turnId } })
+    }),
+    recordResult: value => enqueue(() => {
+      assertExternalSessionOpen(disposal)
+      const result = normalizeExternalToolResult(value)
+      const key = String(result.callId)
+      const call = pending.get(key)
+      if (call === undefined) {
+        if (completed.has(key)) {
+          throw new ExternalSessionError(`external tool call ${JSON.stringify(key)} already recorded a result`, 'DUPLICATE_TOOL_RESULT')
+        }
+        throw new ExternalSessionError(`no matching external tool call for ${JSON.stringify(key)}`, 'UNMATCHED_TOOL_RESULT')
+      }
+      if (result.name !== undefined && result.name !== call.name) {
+        throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} names ${JSON.stringify(result.name)} instead of ${JSON.stringify(call.name)}`, 'TOOL_RESULT_NAME_MISMATCH')
+      }
+      if (result.turnId !== undefined && call.turnId !== undefined && result.turnId !== call.turnId) {
+        throw new ExternalSessionError(`external tool result ${JSON.stringify(key)} has a different turn id`, 'TOOL_RESULT_TURN_MISMATCH')
+      }
+      const turnId = result.turnId ?? call.turnId
+      const data: ExternalToolResultData = result.isError
+        ? {
+          ...turnId === undefined ? {} : { turnId },
+          callId: result.callId,
+          name: call.name,
+          isError: true,
+          error: result.error,
+        }
+        : {
+          ...turnId === undefined ? {} : { turnId },
+          callId: result.callId,
+          name: call.name,
+          isError: false,
+          result: result.result,
+        }
+      assertExternalToolRecordSize(data, 'result')
+      append({ type: 'external/tool-result', data })
+      pending.delete(key)
+      completed.add(key)
+    }),
+  }
+}
+
+/** Reject recorder writes after its owning session has started disposal. */
+function assertExternalSessionOpen(signal: AbortSignal): void {
+  if (signal.aborted) throw new ExternalSessionError('external session has been disposed', 'SESSION_DISPOSED')
+}
+
+/** Require a plain object at the unknown recorder boundary. */
+function recordObject(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError(`external tool ${label} record must be a plain object`)
+  }
+  const prototype = Reflect.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError(`external tool ${label} record must be a plain object`)
+  }
+  return value as Record<string, unknown>
+}
+
+/** Read a required non-empty string from an unknown record. */
+function requiredString(record: Record<string, unknown>, key: string, label: string): string {
+  const value = record[key]
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`external tool ${label} ${key} must be a non-empty string`)
+  }
+  return value
+}
+
+/** Read an optional non-empty string from an unknown record. */
+function optionalString(record: Record<string, unknown>, key: string, label: string): string | undefined {
+  const value = record[key]
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`external tool ${label} ${key} must be a non-empty string when provided`)
+  }
+  return value
+}
+
+/** Snapshot one gateway value at the recorder's JSON boundary. */
+function requiredJsonValue(value: unknown, label: string): JsonValue {
+  const snapshot = snapshotJsonValue(value)
+  if (snapshot === undefined) {
+    throw new TypeError(`external tool ${label} must be JSON-serializable`)
+  }
+  return snapshot as JsonValue
+}
+
+/** Normalize one unknown call record into its durable fields. */
+function normalizeExternalToolCall(value: unknown): NormalizedExternalToolCall {
+  const record = recordObject(value, 'call')
+  const callId = brandExternalToolCallId(requiredString(record, 'callId', 'call'))
+  const name = requiredString(record, 'name', 'call')
+  const turnId = optionalString(record, 'turnId', 'call')
+  return {
+    callId,
+    name,
+    arguments: requiredJsonValue(record.arguments, 'call arguments'),
+    ...turnId === undefined ? {} : { turnId },
+  }
+}
+
+/** Normalize an error value into explicit bounded error facts. */
+function normalizeExternalToolError(value: unknown): ExternalToolError {
+  if (value instanceof Error) {
+    const message = value.message.length > 0 ? value.message : value.name
+    const code = typeof (value as Error & { code?: unknown }).code === 'string'
+      ? (value as Error & { code: string }).code
+      : undefined
+    return { message, ...code === undefined ? {} : { code } }
+  }
+  if (typeof value === 'string' && value.length > 0) return { message: value }
+  const record = recordObject(value, 'result error')
+  const message = requiredString(record, 'message', 'result error')
+  const directCode = record.code
+  const info = record.info
+  const infoCode = typeof info === 'object' && info !== null && !Array.isArray(info)
+    ? (info as Record<string, unknown>).code
+    : undefined
+  const code = typeof directCode === 'string' ? directCode : typeof infoCode === 'string' ? infoCode : undefined
+  return { message, ...code === undefined ? {} : { code } }
+}
+
+/** Normalize one unknown result record into its durable fields. */
+function normalizeExternalToolResult(value: unknown): NormalizedExternalToolResult {
+  const record = recordObject(value, 'result')
+  const callId = brandExternalToolCallId(requiredString(record, 'callId', 'result'))
+  const name = optionalString(record, 'name', 'result')
+  const turnId = optionalString(record, 'turnId', 'result')
+  const hasResult = Object.hasOwn(record, 'result')
+  const hasValue = Object.hasOwn(record, 'value')
+  const hasError = Object.hasOwn(record, 'error') && record.error !== undefined
+  if (hasResult && hasValue) throw new TypeError('external tool result cannot include both result and value')
+  const isError = record.isError
+  if (isError !== undefined && typeof isError !== 'boolean') {
+    throw new TypeError('external tool result isError must be boolean')
+  }
+  const failed = isError ?? hasError
+  if (failed) {
+    if (hasResult || hasValue) throw new TypeError('external tool error result cannot include a value')
+    if (!hasError) throw new TypeError('external tool error result must include an explicit error')
+    return {
+      callId,
+      ...name === undefined ? {} : { name },
+      isError: true,
+      error: normalizeExternalToolError(record.error),
+      ...turnId === undefined ? {} : { turnId },
+    }
+  }
+  if (!hasResult && !hasValue) throw new TypeError('external tool success result must include result or value')
+  return {
+    callId,
+    ...name === undefined ? {} : { name },
+    isError: false,
+    result: requiredJsonValue(hasResult ? record.result : record.value, 'result value'),
+    ...turnId === undefined ? {} : { turnId },
+  }
+}
+
+/** Enforce the complete durable data record's UTF-8 byte limit. */
+function assertExternalToolRecordSize(data: ExternalToolCallData | ExternalToolResultData, kind: 'call' | 'result'): void {
+  const encoded = JSON.stringify(data)
+  if (Buffer.byteLength(encoded, 'utf8') > MAX_EXTERNAL_TOOL_RECORD_BYTES) {
+    throw new ExternalSessionError(`external tool ${kind} record is too large`, 'TOOL_RECORD_TOO_LARGE')
+  }
 }
 
 export default ExternalSessions

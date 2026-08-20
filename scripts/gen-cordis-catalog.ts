@@ -280,6 +280,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   ApprovalOutcome: 'approval.md',
   ApprovalPolicy: 'approval.md',
   ApprovalRequest: 'approval.md',
+  ExternalApprovalRequest: 'approval.md',
   ApprovalService: 'approval.md',
   ImageAttachmentRef: 'attachment.md',
   SaveImageAttachment: 'attachment.md',

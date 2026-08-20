@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import ExternalSessions, {
+  ExternalToolCallId,
   ExternalProviderThreadId,
   parseExternalProviderThreadId,
   ExternalTurnId,
@@ -384,6 +385,141 @@ describe('ExternalSessions bridge to the session log', () => {
     await service.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
     // No SessionStore is mounted, so the append targets no live session and is dropped.
     expect(() => { provider.lastBridge!.appendEvent(sessionId, { type: 'turn/start', data: { turn: 1 } }) }).not.toThrow()
+  })
+
+  it('records one bounded external tool call before its matching result', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(ExternalSessions)
+    const provider = new StubProvider('alpha', 'Alpha')
+    ctx.externalSessions.registerProvider(provider)
+    const sessionId = SessionId('tool-records')
+    const session = ctx.sessions.create(sessionId)
+    await ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    const principal = provider.lastBridge?.principal
+    if (principal === undefined) throw new Error('external bridge did not provide a principal')
+    provider.lastBridge?.appendEvent(sessionId, { type: 'external/turn-started', data: { turnId: 'turn-1' } })
+
+    await principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('call-1'),
+      name: 'read',
+      arguments: { path: 'README.md' },
+    })
+    await principal.recorder.recordResult?.({
+      callId: ExternalToolCallId('call-1'),
+      isError: false,
+      result: { text: 'hello' },
+    })
+
+    expect(session.events.map(event => event.type)).toEqual([
+      'external/turn-started',
+      'external/tool-call',
+      'external/tool-result',
+    ])
+    expect(session.events[1]?.data).toMatchObject({
+      turnId: 'turn-1',
+      callId: ExternalToolCallId('call-1'),
+      name: 'read',
+      arguments: { path: 'README.md' },
+    })
+    expect(session.events[2]?.data).toMatchObject({
+      turnId: 'turn-1',
+      callId: ExternalToolCallId('call-1'),
+      name: 'read',
+      isError: false,
+      result: { text: 'hello' },
+    })
+  })
+
+  it('rejects non-JSON and oversized recorder payloads, and makes errors explicit', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(ExternalSessions)
+    const provider = new StubProvider('alpha', 'Alpha')
+    ctx.externalSessions.registerProvider(provider)
+    const sessionId = SessionId('tool-record-bounds')
+    ctx.sessions.create(sessionId)
+    await ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    const principal = provider.lastBridge?.principal
+    if (principal === undefined) throw new Error('external bridge did not provide a principal')
+
+    await expect(principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('bad-json'),
+      name: 'read',
+      arguments: { value: BigInt(1) },
+    })).rejects.toThrow(/JSON-serializable/)
+    await expect(principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('too-large'),
+      name: 'read',
+      arguments: { value: 'x'.repeat(200_000) },
+    })).rejects.toThrow(/too large/)
+
+    await principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('call-error'),
+      name: 'write',
+      arguments: {},
+    })
+    await principal.recorder.recordResult?.({
+      callId: ExternalToolCallId('call-error'),
+      isError: true,
+      error: { message: 'permission denied', code: 'EACCES' },
+    })
+    const event = ctx.sessions.get(sessionId)?.events.at(-1)
+    expect(event?.type).toBe('external/tool-result')
+    expect(event?.data).toMatchObject({
+      callId: ExternalToolCallId('call-error'),
+      isError: true,
+      error: { message: 'permission denied', code: 'EACCES' },
+    })
+  })
+
+  it('rejects an unmatched result and aborts recorder operations on disposal', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(ExternalSessions)
+    const provider = new StubProvider('alpha', 'Alpha')
+    ctx.externalSessions.registerProvider(provider)
+    const sessionId = SessionId('tool-record-dispose')
+    ctx.sessions.create(sessionId)
+    await ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    const principal = provider.lastBridge?.principal
+    if (principal === undefined) throw new Error('external bridge did not provide a principal')
+
+    await expect(principal.recorder.recordResult?.({
+      callId: ExternalToolCallId('missing'),
+      isError: true,
+      error: { message: 'missing call' },
+    })).rejects.toThrow(/no matching external tool call/)
+
+    await principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      arguments: {},
+    })
+    await expect(principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      arguments: {},
+    })).rejects.toThrow(/already recorded/)
+    await principal.recorder.recordResult?.({
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      isError: false,
+      value: { ok: true },
+    })
+    await expect(principal.recorder.recordResult?.({
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      isError: false,
+      value: { ok: true },
+    })).rejects.toThrow(/already recorded/)
+
+    await ctx.externalSessions.dispose(sessionId)
+    await expect(principal.recorder.recordCall?.({
+      callId: ExternalToolCallId('after-dispose'),
+      name: 'read',
+      arguments: {},
+    })).rejects.toThrow(/disposed/)
   })
 })
 

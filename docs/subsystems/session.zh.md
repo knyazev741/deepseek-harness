@@ -750,7 +750,7 @@ async dispose(sessionId: SessionId): Promise<void>
 
 Types: [SessionId](core.md)
 
-Source: [`packages/external/external-session/src/index.ts:106`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:125`](../../packages/external/external-session/src/index.ts)
 
 <a id="ctxsessions--sessionstore"></a>
 
@@ -907,7 +907,7 @@ A provider became resolvable in the registry.
 'external/provider-added'(descriptor: ExternalAgentDescriptor): void
 ```
 
-Source: [`packages/external/external-session/src/index.ts:76`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:95`](../../packages/external/external-session/src/index.ts)
 
 <a id="externalprovider-removed--emit"></a>
 
@@ -925,7 +925,7 @@ A provider left the registry. Live sessions it already started remain owner-held
 'external/provider-removed'(provider: string): void
 ```
 
-Source: [`packages/external/external-session/src/index.ts:83`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:102`](../../packages/external/external-session/src/index.ts)
 
 <a id="externalsession-bridgeerror--emit"></a>
 
@@ -968,7 +968,7 @@ One transient external-agent transcript delta. The host mux projects this event 
 
 Types: [SessionId](core.md)
 
-Source: [`packages/external/external-session/src/index.ts:91`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:110`](../../packages/external/external-session/src/index.ts)
 
 <a id="session-events"></a>
 

@@ -37,6 +37,7 @@ export type {
   ExternalTranscriptTurn,
   ExternalTranscriptMessage,
   ExternalTranscriptToolActivity,
+  ExternalTranscriptToolCall,
   ExternalTranscriptPermission,
   ExternalTurnStopReason,
   ExternalPermissionOutcome,

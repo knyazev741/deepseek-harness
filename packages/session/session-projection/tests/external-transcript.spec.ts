@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import { ExternalProviderThreadId } from '@deepseek-ai/dsh-external-session'
+import { ExternalProviderThreadId, ExternalToolCallId } from '@deepseek-ai/dsh-external-session'
 import SessionProjectionRegistry, {
   externalTranscriptProjectionDefinition,
 } from '@deepseek-ai/dsh-session-projection'
@@ -130,6 +130,7 @@ describe('external/* event vocabulary', () => {
           turnId: 't1',
           messages: [],
           toolActivities: [],
+          toolCalls: [],
           permissions: [],
           compactionNotices: [],
           modelSwitches: [],
@@ -159,6 +160,7 @@ describe('external/* event vocabulary', () => {
             { kind: 'call', title: 'grep' },
             { kind: 'result', title: 'grep', detail: '1 match' },
           ],
+          toolCalls: [],
           permissions: [
             { askId: 'p1', title: 'Allow run?', options: ['allow', 'deny'], outcome: 'allowed' },
           ],
@@ -210,11 +212,83 @@ describe('external/* event vocabulary', () => {
           turnId: 't1',
           messages: [{ role: 'agent', text: 'before unrelated' }],
           toolActivities: [],
+          toolCalls: [],
           permissions: [],
           compactionNotices: [],
           modelSwitches: [],
         },
       ],
+    })
+  })
+
+  it('pairs durable external tool call/result events into replayable tool nodes', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-tools'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-tools' })
+    session.append('external/tool-call', {
+      turnId: 'turn-tools',
+      callId: ExternalToolCallId('call-tools'),
+      name: 'read',
+      arguments: { path: 'README.md' },
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-tools',
+      callId: ExternalToolCallId('call-tools'),
+      name: 'read',
+      isError: false,
+      result: { text: 'hello' },
+    })
+
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      turns: [{
+        turnId: 'turn-tools',
+        toolCalls: [{
+          callId: ExternalToolCallId('call-tools'),
+          name: 'read',
+          arguments: { path: 'README.md' },
+          result: { text: 'hello' },
+        }],
+      }],
+    })
+  })
+
+  it('replays an explicit external tool error on the paired node', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-tool-error'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-error' })
+    session.append('external/tool-call', {
+      turnId: 'turn-error',
+      callId: ExternalToolCallId('call-error-node'),
+      name: 'write',
+      arguments: { path: 'README.md', text: 'nope' },
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-error',
+      callId: ExternalToolCallId('call-error-node'),
+      name: 'write',
+      isError: true,
+      error: { message: 'permission denied', code: 'EACCES' },
+    })
+
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      turns: [{
+        toolCalls: [{
+          callId: ExternalToolCallId('call-error-node'),
+          name: 'write',
+          arguments: { path: 'README.md', text: 'nope' },
+          error: { message: 'permission denied', code: 'EACCES' },
+        }],
+      }],
     })
   })
 })

@@ -18,7 +18,8 @@ import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import type { SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/dsh-session'
+import type { JsonValue, SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/dsh-session'
+import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
 
 /** Model reasoning level accepted by an external provider's stable wire. */
 export type ReasoningEffort = ReasoningEffortId
@@ -56,6 +57,18 @@ export function ExternalProviderThreadId(id: string): ExternalProviderThreadId {
   return id as ExternalProviderThreadId
 }
 
+/** Identifies one external tool call across its durable call/result pair. */
+export type ExternalToolCallId = Branded<'ExternalToolCallId'>
+
+/**
+ * Brand an external tool call id at the gateway/recorder boundary.
+ * @param id - the raw provider or gateway call id.
+ * @returns the same string carrying the external-call brand.
+ */
+export function ExternalToolCallId(id: string): ExternalToolCallId {
+  return id as ExternalToolCallId
+}
+
 /**
  * Parse a durable or wire value as a non-empty provider thread id.
  * @param value - an unknown value read from a durable event or provider wire.
@@ -63,6 +76,92 @@ export function ExternalProviderThreadId(id: string): ExternalProviderThreadId {
  */
 export function parseExternalProviderThreadId(value: unknown): ExternalProviderThreadId | undefined {
   return typeof value === 'string' && value.length > 0 ? ExternalProviderThreadId(value) : undefined
+}
+
+/** Explicit, bounded error facts retained by an external tool-result event. */
+export interface ExternalToolError {
+  /** Stable human-readable diagnostic. */
+  readonly message: string
+  /** Optional stable provider/tool error code. */
+  readonly code?: string
+}
+
+/** Durable external tool-call event data. */
+export interface ExternalToolCallData {
+  /** Current external turn, when the call was made during one. */
+  readonly turnId?: string
+  /** Pairing identity shared with the matching result event. */
+  readonly callId: ExternalToolCallId
+  /** Registered Harness tool name. */
+  readonly name: string
+  /** Detached, lossless JSON arguments. */
+  readonly arguments: JsonValue
+}
+
+/** Durable external tool-result event data. */
+export type ExternalToolResultData =
+  | {
+    /** Current external turn, when the call was made during one. */
+    readonly turnId?: string
+    /** Pairing identity from the preceding call event. */
+    readonly callId: ExternalToolCallId
+    /** Tool name copied from the paired call. */
+    readonly name: string
+    readonly isError: false
+    /** Detached, bounded JSON result for a successful execution. */
+    readonly result: JsonValue
+    readonly error?: never
+  }
+  | {
+    /** Current external turn, when the call was made during one. */
+    readonly turnId?: string
+    /** Pairing identity from the preceding call event. */
+    readonly callId: ExternalToolCallId
+    /** Tool name copied from the paired call. */
+    readonly name: string
+    readonly isError: true
+    readonly result?: never
+    /** Explicit bounded error facts for a failed execution. */
+    readonly error: ExternalToolError
+  }
+
+/** Recorder input accepted from an external gateway at the call commit point. */
+export interface ExternalToolCallRecord {
+  /** Pairing identity for the call and result. */
+  readonly callId: ExternalToolCallId
+  /** Registered Harness tool name. */
+  readonly name: string
+  /** Arguments before the lossless JSON snapshot. */
+  readonly arguments: unknown
+  /** Optional provider turn override; the bridge derives one when omitted. */
+  readonly turnId?: string
+}
+
+/** Recorder input accepted from an external gateway at the result commit point. */
+export interface ExternalToolResultRecord {
+  /** Pairing identity from the call record. */
+  readonly callId: ExternalToolCallId
+  /** Optional name, checked against the paired call when present. */
+  readonly name?: string
+  /** Whether the result represents a failed tool execution. */
+  readonly isError?: boolean
+  /** Successful result before the lossless JSON snapshot. */
+  readonly result?: unknown
+  /** Alias accepted for a canonical tools-pipeline result value. */
+  readonly value?: unknown
+  /** Error facts or an Error object from the pipeline. */
+  readonly error?: unknown
+  /** Optional provider turn override; the bridge uses the call's turn by default. */
+  readonly turnId?: string
+}
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /** One committed external tool call; paired with exactly one result by `callId`. */
+    'external/tool-call': ExternalToolCallData
+    /** One committed external tool result; paired with the preceding call by `callId`. */
+    'external/tool-result': ExternalToolResultData
+  }
 }
 
 /**
@@ -162,9 +261,17 @@ export interface ExternalSessionEvent<T extends SessionEventType = SessionEventT
  * {@link ExternalBridgeContext.streamDelta} on the live path and are never
  * logged. The service emits a typed `external/session-delta` event for the
  * host mux; the permission channel remains host-owned and fails closed until
- * a host answerer is registered.
+ * a host answerer is registered. A live session with a SessionStore also
+ * receives an `ExternalToolPrincipal` whose recorder commits one bounded
+ * `external/tool-call` followed by one matching `external/tool-result`.
  */
 export interface ExternalBridgeContext {
+  /**
+   * Session-scoped external execution identity. It is absent only when the
+   * registry is used without a live SessionStore; such a bridge cannot invoke
+   * Harness tools and remains valid for transcript-only providers.
+   */
+  readonly principal?: ExternalToolPrincipal
   /**
    * Append one log-only session event to the live session. The event is a
    * writer-side fragment (type plus payload); the session stamps sequencing and

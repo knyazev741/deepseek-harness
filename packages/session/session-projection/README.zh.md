@@ -27,6 +27,7 @@
 - **本层没有协议词汇。** 注册表只暴露变更流与快照读取面；载体（api-proxy）据此自铸各自的帧（`session/projection`）与块。
 - **可选能力。** 领域插件在 `ctx.inject(['sessionProjections'], …)` 下注册，因此不带注册表的 headless 组装完全不受影响；载体使用 `ctx.get('sessionProjections')`，注册表缺席时完全省略自己的块与帧。
 - **运行身份不进入转写渲染。** external-transcript 单元在回放值中保留 `external/session-started` 的不透明 `providerThreadId` 供宿主挂接，但转写呈现器只渲染外部对话与活动字段。
+- **外部工具记录在回放中保持配对。** external-transcript 单元把每个已提交的 `external/tool-call` 暴露为 `toolCalls` 节点，并按 branded call id 将恰好一个匹配的 `external/tool-result` 附加到它，保留 JSON 结果或有界的 `{ message, code? }` 错误。未匹配或格式错误的记录会被忽略，不会凭空创建转写节点。
 
 ## 职责
 
@@ -47,3 +48,4 @@
 - **主动驱动（eager drive）逐事件触达每个单元**——按构造开销很低（全量值规则、同引用闸门），但若出现热点路径，可加按单元的事件类型预过滤，约定不变。
 - **注册表 cell 只活在内存里**——重启后首次触达时靠折叠日志重建；挂载了 `dsh-session-projection-cache` 的组合改由持久行播种该折叠。
 - **单元同步纪律只有部分可机械把关**——边界 `schema.parse` 能拒绝返回 Promise 的 `view`，但阻塞的 `apply`、或读取撕裂的非会话状态的 `apply`，只能靠评审把关；invariant 配套项记载了为何不存在运行时检查。
+- **外部工具节点是回放数据，不是模型上下文**——调用和结果只供 external-session UI 的投影使用，不会进入父 agent 的提示词或工具 schema。

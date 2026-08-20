@@ -24,6 +24,12 @@
       "path": "../../core/session"
     },
     {
+      "path": "../../core/scope"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
       "path": "../../interaction/user-approval"
     },
     {

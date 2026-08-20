@@ -340,6 +340,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['when no turn is open or either audit event fails before the session append commit point.'],
       },
       {
+        signature: 'async requestExternal(req: ExternalApprovalRequest): Promise<ApprovalOutcome>',
+        description: 'Ask the composed answerers to decide one external-principal tool call. This path deliberately does not require or create a native Agent and does not require an open native turn: the explicit `external/approval-*` pair carries the principal, session, and call identities needed for replay. Effective session policy is applied before the external waterfall. The request and the principal\'s disposal signal both cancel the question; a missing, throwing, or non-conforming answerer fails closed to `unavailable`, and any audit append failure rejects instead of returning an unlogged decision.',
+        parameters: [{ name: 'req', description: 'the external principal, tool identity, call id, reason, and signal.' }],
+        returns: 'the closed outcome; only `allowed-once` grants this call.',
+        throws: ['when the request is malformed or an audit append fails before commit.'],
+      },
+      {
         signature: 'overrideOf(session: Session): ApprovalPolicy | undefined',
         description: 'Read the session override without applying the configured default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
@@ -2376,6 +2383,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'req', description: 'the pending decision (agent, tool identity, reason, signal).' }],
   },
   {
+    name: 'approval/request-external',
+    mode: 'waterfall',
+    signature: '\'approval/request-external\'(this: Scoped<ApprovalService>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>',
+    summary: 'Ask composed answerers for an external principal\'s tool decision.',
+    description: 'Ask composed answerers for an external principal\'s tool decision. The principal is the scope key; listeners must return an outcome or call `next()` to delegate, and failures resolve to `unavailable`.',
+    parameters: [{ name: 'req', description: 'the external principal, tool, call id, reason, and signal.' }],
+  },
+  {
     name: 'commands/change',
     mode: 'emit',
     signature: '\'commands/change\'(): void',
@@ -2793,7 +2808,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ApprovalService',
-    declaration: 'export class ApprovalService extends Service {\n    static Config: z<Config>;\n    constructor(ctx: Context, public config: Config);\n    setPolicy(agent: Agent, policy: ApprovalPolicy): void;\n    async request(req: ApprovalRequest): Promise<ApprovalOutcome>;\n    overrideOf(session: Session): ApprovalPolicy | undefined;\n}',
+    declaration: 'export class ApprovalService extends Service {\n    static Config: z<Config>;\n    constructor(ctx: Context, public config: Config);\n    setPolicy(agent: Agent, policy: ApprovalPolicy): void;\n    async request(req: ApprovalRequest): Promise<ApprovalOutcome>;\n    async requestExternal(req: ExternalApprovalRequest): Promise<ApprovalOutcome>;\n    overrideOf(session: Session): ApprovalPolicy | undefined;\n}',
   },
   {
     name: 'AskUserQuestionAnswer',
@@ -3164,8 +3179,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ExternalAgentDescriptor {\n    readonly provider: string;\n    readonly label: string;\n    readonly modelDirectory: ExternalModelDirectory;\n}',
   },
   {
+    name: 'ExternalApprovalPrincipal',
+    declaration: 'export interface ExternalApprovalPrincipal {\n    readonly kind: \'external\';\n    readonly id: ExternalToolPrincipalId;\n    readonly session: Session;\n    readonly ctx: Context;\n    readonly recorder: ExternalApprovalRecorder;\n    readonly disposal?: AbortSignal;\n}',
+  },
+  {
+    name: 'ExternalApprovalRecorder',
+    declaration: 'export interface ExternalApprovalRecorder {\n    readonly signal?: AbortSignal;\n    readonly recordCall?: (call: unknown) => void | Promise<void>;\n    readonly recordResult?: (result: unknown) => void | Promise<void>;\n}',
+  },
+  {
+    name: 'ExternalApprovalRequest',
+    declaration: 'export interface ExternalApprovalRequest {\n    readonly principal: ExternalApprovalPrincipal;\n    readonly toolName: string;\n    readonly callId: ExternalToolCallId;\n    readonly reason?: string;\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
     name: 'ExternalBridgeContext',
-    declaration: 'export interface ExternalBridgeContext {\n    appendEvent(sessionId: SessionId, event: ExternalSessionEvent): void;\n    requestPermission(sessionId: SessionId, ask: ExternalPermissionAsk): Promise<ExternalPermissionDecision>;\n    streamDelta(sessionId: SessionId, turnId: ExternalTurnId, delta: string): void;\n    readonly disposal: AbortSignal;\n}',
+    declaration: 'export interface ExternalBridgeContext {\n    readonly principal?: ExternalToolPrincipal;\n    appendEvent(sessionId: SessionId, event: ExternalSessionEvent): void;\n    requestPermission(sessionId: SessionId, ask: ExternalPermissionAsk): Promise<ExternalPermissionDecision>;\n    streamDelta(sessionId: SessionId, turnId: ExternalTurnId, delta: string): void;\n    readonly disposal: AbortSignal;\n}',
   },
   {
     name: 'ExternalModelInfo',

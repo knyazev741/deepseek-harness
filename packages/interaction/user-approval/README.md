@@ -6,6 +6,8 @@ Channel-neutral one-shot approval seam. `ctx.approval.request(req)` returns `all
 
 Each request must belong to an open agent turn. The service appends a paired `approval/asked` and `approval/decided` audit record, while the model sees only the resulting logged tool outcome. An aborted request resolves `cancelled`; an audit append that fails before commit rejects rather than returning an unlogged decision.
 
+External providers use `ctx.approval.requestExternal(req)` with an external principal and branded tool-call id. It appends paired `external/approval-asked` and `external/approval-decided` records without fabricating a native Agent or turn. A missing answerer, disposed principal, aborted request, or malformed decision fails closed as `unavailable`/`cancelled`; the exact principal, session, and call id must match on both records.
+
 Answerers are `approval/request` waterfall listeners. Return an outcome to answer for an owned agent or call `next()` to delegate. Agent-scoped listeners receive only that agent's requests; compose one terminal answerer per deployment because sibling listener order is not a policy priority mechanism. The ACP automation bridge supplies one-shot machine decisions for sessions it owns.
 
 `ApprovalPolicy` is `'ask'` or `'never'`. The effective value is the last `approval/policy` event, falling back to config; `setApprovalPolicy()` is the write path. `'never'` rejects before interactive dispatch. Both policies contribute their complete current meaning to the cache-safe runtime-context snapshot.
@@ -60,3 +62,4 @@ Append-only; newly visible content follows the reusable request prefix and does 
 - **Only one-shot grants exist** — the outcome vocabulary has `allowed-once` but no `allow-always`, remembered rule, revocation, or grant store; session policy is only `ask` / `never`.
 - **The request carries no tool arguments** — an answerer sees the tool name, reason, and optional call id; the ACP machine channel requires a call id and delegates requests without one.
 - **No built-in answerer** — headless or incompletely composed deployments resolve `unavailable` and fail closed; the service itself never prompts a human.
+- **External approvals are one-shot and audit-paired** — the external path records only the bounded principal/session/call metadata needed for replay; it does not create native turn state or retain a grant.
