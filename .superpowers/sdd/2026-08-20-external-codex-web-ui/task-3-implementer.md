@@ -2,53 +2,53 @@
 
 Status: implemented
 
-Commit: 830347e3517d682bfc4976b03149e204cedb6571
+Implementation commit: `62b22b16f27ac70eb218ffa4d0e4bc0ecb38fc9d`
+
+Report-only commit: follows the implementation commit so this report can record its exact implementation SHA.
 
 ## RED
 
-Before production changes, the focused test command was:
-
-```text
-pnpm exec vitest run packages/session/session-projection/tests/external-transcript.spec.ts packages/external/external-session/tests/service.spec.ts packages/external/external-session-bridge/tests/driver.spec.ts --reporter=verbose
-```
-
-The new tests failed as intended: `service.resume is not a function`, the projection did not retain `providerThreadId`, and the cold bridge resume test could not materialize the persisted session. This established the missing contract and lifecycle behavior before implementation.
+- I-1 added external `session.models` provider-catalog and catalog-failure tests. Before the fix, the route read native `ctx.llm` rows instead of the external provider.
+- I-2 added a keyless restart test that writes through the actual JSONL persistence owner, disposes the first Loader composition, creates a fresh Loader composition over the same root, proves list/history are process-free, then spies on `prepare`/`enter`/`announce` and the first live command. The first RED run exposed that JSONL headers dropped durable external `mode`; the header codec now carries `mode` and `model`.
+- I-3 added the branded `ExternalProviderThreadId` constructor/parser test. The pre-fix contracts accepted an unbranded `string` through the durable event, projection, bridge, host, registry, and Codex provider.
+- I-4 ran the owning persistence catalog generator. Before regeneration, the generated catalog and `KNOWN_SESSION_EVENT_TYPES` rejected replay of the external event family.
+- M-1 added a real keyless Codex negative test using a syntactically valid but unknown thread id. It asserts rejection, route rollback, no replacement start, and a readable durable log.
 
 ## GREEN
 
-The implementation now:
-
-- records the opaque provider thread id only after successful `thread/start`, preserves it in replay projection state, and leaves it out of transcript turns;
-- exposes distinct provider and registry `resume` APIs, with no start fallback;
-- deduplicates concurrent start/resume attachment, publishes the in-flight promise before provider work, and rolls back routes, disposal signals, and provider ownership on rejection;
-- resumes cold sessions through `SessionPersistence.prepare`, `SessionStore.enter`, and `SessionStore.announce`, with process-free history/list reads and one bridge/service resume;
-- routes external prompt, command, model, model-list, and cancel actions through the cold attachment gate;
-- preserves Task 2 child settlement, generation, quiescence, and same-provider respawn behavior.
+- A successful Codex `thread/start` now returns a branded opaque id and only then appends `external/session-started`; explicit resume accepts only that branded id and never falls back to start.
+- Durable replay and projection retain the provider id for host attachment while transcript turns and renderable transcript content never include it. Durable and wire parsing/branding occurs at the untyped boundary.
+- External `session.models` calls the selected provider's `listModels` and returns only that provider's catalog, or a typed provider failure without native rows.
+- Cold external actions inspect/list/history without attachment. The first live action shares one in-flight attach promise, materializes through `SessionPersistence.prepare`, `SessionStore.enter`, and `SessionStore.announce`, and performs exactly one provider resume. Failed attachment removes the route, aborts the bridge, disposes provider ownership, and leaves the durable log readable.
+- Task 2 process settlement, generation, quiescence, and same-provider respawn behavior remain covered by the existing Codex suite.
 
 Focused green evidence:
 
 ```text
-pnpm exec vitest run packages/session/session-projection/tests/external-transcript.spec.ts packages/external/external-session/tests/service.spec.ts packages/external/external-session-bridge/tests/driver.spec.ts packages/host/apiproxy/tests/api-proxy-external-command.spec.ts packages/host/apiproxy/tests/api-proxy-mode.spec.ts --reporter=verbose
-5 files passed, 44 tests passed
+pnpm exec vitest run packages/session/session-persistence-jsonl/tests/jsonl.spec.ts packages/session/session-persistence-jsonl/tests/zstd.spec.ts --reporter=verbose
+2 files passed, 232 tests passed
 
-pnpm exec vitest run packages/external/external-session-codex/tests/external-session-codex.spec.ts packages/external/external-session-codex/tests/unit.spec.ts --reporter=verbose
-2 files passed, 35 tests passed
-```
+pnpm exec vitest run packages/session/session-projection/tests/external-transcript.spec.ts packages/external/external-session/tests/service.spec.ts packages/external/external-session-bridge/tests/driver.spec.ts packages/external/external-session-bridge/tests/loader-composition.spec.ts packages/host/apiproxy/tests/api-proxy-external-command.spec.ts packages/host/apiproxy/tests/api-proxy-mode.spec.ts --reporter=dot
+6 files passed, 51 tests passed
 
-The real Codex fixture test starts one durable thread, disposes the provider session, explicitly resumes the captured id, verifies only one `external/session-started`, and proves the second turn sees the first turn's history.
+pnpm exec vitest run packages/external/external-session-codex/tests/external-session-codex.spec.ts packages/external/external-session-codex/tests/unit.spec.ts --reporter=dot
+2 files passed, 36 tests passed
 
-Typecheck evidence:
+pnpm exec tsc -b packages/external/external-session/tsconfig.json packages/session/session-projection/tsconfig.json packages/external/external-session-codex/tsconfig.json packages/external/external-session-bridge/tsconfig.json packages/host/apiproxy/tsconfig.json packages/session/session-persistence-jsonl/tsconfig.json --pretty false
+passed
 
-```text
-pnpm exec tsc -b packages/session/session-projection/tsconfig.json packages/external/external-session/tsconfig.json packages/external/external-session-codex/tsconfig.json packages/external/external-session-bridge/tsconfig.json packages/host/apiproxy/tsconfig.json --pretty false
+pnpm run verify-persistence-catalog
+catalog and packages/core/session/src/known-event-types.ts are up to date
 ```
 
 ## Documentation
 
-Updated English/Chinese README pairs and pairing hashes for external-session, external-session-bridge, external-session-codex, host-apiproxy, and session-projection. Updated the implemented Phase 1 Agent Note in both languages. `verify-translation-pairing` passed for all six edited pairs; Agent Note classification/format, relative links, document references, and budgets also passed. The repository-wide markdown-wrap gate still reports a pre-existing hard-wrapped paragraph in `.agents/notes/proposed/feature/2026-08-18-external-interactive-agent-sessions.md`.
+Updated the session subsystem and persistence catalog in English and Chinese, including generated `docs/persistence-catalog.md` and `packages/core/session/src/known-event-types.ts`. Paired README/JSDoc changes cover external-session, external-session-codex, session-persistence, session-persistence-jsonl, session-projection, and the implemented Phase 1 Agent Note, with updated i18n records. The JSONL README documents durable external `mode`/`model` header fields and the external-session README documents branded opaque thread identities.
 
-## Risks and follow-up
+`verify-doc-budgets`, Agent Note format/classification, and relative markdown-link checks pass. Full `verify-translation-pairing` remains blocked by the repository's existing out-of-scope design/spec bilingual counterparts, proposed-note drift, `docs/config-catalog.md`, `packages/README.md`, and `packages/external/README*` drift. `verify-md-wrap` reports the pre-existing hard-wrapped paragraph in `.agents/notes/proposed/feature/2026-08-18-external-interactive-agent-sessions.md`; no new wrap was introduced here. `verify-type-equiv` retains the pre-existing `SessionHeader`/`CreateSessionOptions` drift in `docs/subsystems/persistence.md`.
 
-- The provider thread id is intentionally opaque and remains a plain durable string because the Task 3 public event and resume contracts specify that field; providers remain authoritative for unknown-id rejection.
-- External prompt input is text-only for this task; image/queue UI behavior remains an explicit later-phase limitation.
+## Risks and scope
+
+- Provider thread ids remain opaque provider-owned strings at runtime; the public seam, durable event, projection, host, bridge, registry, and provider use `ExternalProviderThreadId`, with parser/constructor use at durable or trusted-wire boundaries.
+- Unknown provider ids remain provider-authoritative: Codex rejects them and the registry removes the failed route without creating a replacement thread.
 - Live delta muxing, MCP, bundle composition, and browser acceptance remain outside Task 3.
