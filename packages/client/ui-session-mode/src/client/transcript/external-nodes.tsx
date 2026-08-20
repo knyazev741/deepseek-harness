@@ -10,7 +10,8 @@
  */
 
 import { memo } from 'react'
-import type { ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ChatLiveSlotProps, ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import css from './transcript.module.css'
 
 /** Outcome copy keyed by the durable decision. */
@@ -27,6 +28,18 @@ export const ExternalMessageRow = memo(function ExternalMessageRow({ node }: Cha
     <div className={css.messageRow} data-role={data.role}>
       <span className={css.kicker}>{data.role === 'user' ? '你' : '智能体'}</span>
       <span className={css.body}>{data.text}</span>
+    </div>
+  )
+})
+
+/** One transient external-agent Markdown seat; the runtime removes it on commit. */
+export const ExternalLiveSeat = memo(function ExternalLiveSeat({ useSession, t }: Pick<ChatLiveSlotProps, 'useSession' | 't'>) {
+  const live = useSession(snapshot => snapshot.externalLive)
+  if (live === null || live === undefined) return null
+  return (
+    <div className={css.liveRow} data-testid="external-live-seat" data-turn-id={live.turnId}>
+      <span className={css.kicker}>{t('chat.externalLive.agent')}</span>
+      <MarkdownText text={live.text} streaming />
     </div>
   )
 })

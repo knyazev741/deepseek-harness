@@ -27,6 +27,7 @@ import { ProjectionValueStore } from './projection-store.ts'
 import type { ProjectionsBaseline } from './projection-store.ts'
 import { resolvedClientTimeZone } from '../time-zone.ts'
 import { SessionQueueMirror } from './queue-mirror.ts'
+import { ExternalLiveAccumulator } from './external-live.ts'
 
 /** Messages requested per history page. */
 export const PAGE_MESSAGES = 50
@@ -83,6 +84,8 @@ export class Session implements SessionFace {
   private pendingCache: { rev: number; value: PendingInteraction[] } | null = null
   /** Authoritative stream-only inbox snapshot; pending work never hits history. */
   private readonly queueMirror = new SessionQueueMirror()
+  /** Transient external-agent output; reset at every connection/subscription generation. */
+  private readonly externalLive = new ExternalLiveAccumulator()
   /** Session-owned business Context engine over the contiguous raw window. */
   private readonly conversation: ConversationNodeAssembler
   private running = false
@@ -419,6 +422,7 @@ export class Session implements SessionFace {
     // already, and the host never resends it. The mirror re-baselines on the
     // session/subscribed frame instead (same stream as the queue snapshot
     // that follows it, so ordering is guaranteed).
+    this.resetExternalLive()
     if (this.openState === 'cold') return // never opened: no window to rebuild (doOpen flips to 'loading' synchronously, so cold implies no in-flight open)
     this.openGeneration++
     this.openPromise = null
@@ -470,6 +474,10 @@ export class Session implements SessionFace {
         this.acceptLiveEvent(frame.event, frame.view)
         return
       }
+      case 'external/delta': {
+        this.acceptExternalDelta(frame.turnId, frame.delta)
+        return
+      }
       case 'session/queue': {
         this.queueMirror.replace(frame.items)
         this.notifier.markDirty()
@@ -477,6 +485,7 @@ export class Session implements SessionFace {
       }
       case 'session/subscribed': {
         this.subscribedLastSeq = frame.lastSeq
+        this.resetExternalLive()
         // New mux-generation baseline: the host pushes this session's queue
         // snapshot AFTER the subscribed frame on the same stream, so the
         // stale mirror clears here — race-free against onConnected/resync
@@ -574,6 +583,7 @@ export class Session implements SessionFace {
   /** host/session-removed relay: flag the snapshot (instance survives — resident-instance rule). */
   handleRemoved(): void {
     this.removed = true
+    this.resetExternalLive()
     this.notifier.markDirty()
   }
 
@@ -583,7 +593,13 @@ export class Session implements SessionFace {
    */
   handleAgentError(message: string): void {
     this.lastAgentError = message
+    this.resetExternalLive()
     this.notifier.markDirty()
+  }
+
+  /** Clear transient external output after the connection or session dies. */
+  clearExternalLive(): void {
+    this.resetExternalLive()
   }
 
   /** No-op because session instances remain resident. */
@@ -666,14 +682,15 @@ export class Session implements SessionFace {
 
   /** Seq-guarded append shared by stitching and the open-state live path. */
   private appendLive(event: SessionEvent, view?: ToolEventView): ConversationPublication {
+    const externalChanged = this.retireExternalLive(event)
     const tailSeq = this.windowTailSeq()
-    if (tailSeq !== null && event.seq <= tailSeq) return 'none' // replay overlap, drop
+    if (tailSeq !== null && event.seq <= tailSeq) return externalChanged ? 'immediate' : 'none' // replay overlap, drop
     this.events.push(event)
     this.views.push(view)
     if (event.type === 'turn/start') this.firstPromptPendingTurn = false
     const queueChanged = this.queueMirror.acceptDurable(event)
     const publication = this.conversation.append({ event, view })
-    return queueChanged ? 'immediate' : publication
+    return externalChanged || queueChanged ? 'immediate' : publication
   }
 
   /** Land a live session/event (open/repair in flight -> buffer; overlapping seq -> drop;
@@ -694,6 +711,38 @@ export class Session implements SessionFace {
       return
     }
     this.scheduleConversation(this.appendLive(event, view))
+  }
+
+  /** Accept one transient external delta only for an open, healthy session. */
+  private acceptExternalDelta(turnId: string, delta: string): void {
+    if (this.openState !== 'open' || this.removed || this.lastAgentError !== null) return
+    if (this.externalLive.push(turnId, delta)) this.notifier.markFrameDirty()
+  }
+
+  /** Retire transient output when its durable message/turn boundary arrives. */
+  private retireExternalLive(event: SessionEvent): boolean {
+    const type = (event as unknown as { type: string }).type
+    switch (type) {
+      case 'external/message-added': {
+        const data = (event as unknown as { data: { role?: string; turnId: string } }).data
+        if (data.role !== 'agent') return false
+        return this.externalLive.commit(data.turnId)
+      }
+      case 'external/turn-ended': {
+        const turnId = (event as unknown as { data: { turnId: string } }).data.turnId
+        return this.externalLive.commit(turnId)
+      }
+      case 'external/session-ended':
+        return this.externalLive.clear()
+      default:
+        return false
+    }
+  }
+
+  /** Reset the live accumulator and publish a lifecycle edge when needed. */
+  private resetExternalLive(): void {
+    if (!this.externalLive.clear()) return
+    this.notifier.markDirty()
   }
 
   /** Route assembler cadence into the Session's existing microtask/RAF notifier. */
@@ -742,6 +791,7 @@ export class Session implements SessionFace {
       turnTimings: legacy.turnTimings,
       turnEnds: legacy.turnEnds,
       partial: legacy.partial,
+      externalLive: this.externalLive.snapshot(),
       runningCalls: legacy.runningCalls,
       pending: this.pendingCache.value,
       queue: this.queueMirror.snapshot(),

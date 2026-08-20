@@ -160,8 +160,9 @@ export interface ExternalSessionEvent<T extends SessionEventType = SessionEventT
  * through {@link ExternalBridgeContext.appendEvent} enter the durable session
  * log (log-only, `ignorable: true`); deltas ride
  * {@link ExternalBridgeContext.streamDelta} on the live path and are never
- * logged. The permission channel and the live delta sink are wired by host
- * packages in later phases; until then the defaults fail closed.
+ * logged. The service emits a typed `external/session-delta` event for the
+ * host mux; the permission channel remains host-owned and fails closed until
+ * a host answerer is registered.
  */
 export interface ExternalBridgeContext {
   /**

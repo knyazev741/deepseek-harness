@@ -81,6 +81,18 @@ declare module '@deepseek-ai/cordis' {
      * @mode emit
      */
     'external/provider-removed'(provider: string): void
+    /**
+     * One transient external-agent transcript delta. The host mux projects
+     * this event to subscribed clients; it is intentionally not a
+     * {@link SessionEvent} and never enters the durable session log.
+     * @param payload - the session, provider turn, and incremental text.
+     * @mode emit
+     */
+    'external/session-delta'(payload: {
+      sessionId: SessionId
+      turnId: ExternalTurnId
+      delta: string
+    }): void
   }
 }
 
@@ -367,8 +379,8 @@ export class ExternalSessions extends Service implements ExternalSessionsService
 
   /**
    * Build the live bridge for one session. `appendEvent` writes only when there
-   * is a live session in the session store; permission and delta wiring are
-   * host responsibilities filled in later phases.
+   * is a live session in the session store; permission remains host-owned, and
+   * deltas leave through the typed Cordis event without depending on the mux.
    * @param controller - the disposal controller for this session.
    * @returns the bridge handed to the provider at start.
    */
@@ -391,8 +403,10 @@ export class ExternalSessions extends Service implements ExternalSessionsService
         }
         return answerer(sessionId, ask)
       },
-      streamDelta: (_sid, _turnId, _delta) => {
-        // Live-only: deltas ride the host frame channel and are never durable.
+      streamDelta: (sessionId, turnId, delta) => {
+        // Live-only: the host mux projects this event; no Session.append call
+        // is made, so reconnects backfill committed history only.
+        this.ctx.emit('external/session-delta', { sessionId, turnId, delta })
       },
       disposal: controller.signal,
     }

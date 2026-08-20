@@ -11,7 +11,8 @@ import { registerExternalTranscriptNodes, registerExternalTranscriptRenderers } 
 
 interface RegisterMeta {
   name: string
-  key: string
+  key?: string
+  id?: string
   locale: string
 }
 
@@ -31,13 +32,15 @@ describe('external transcript registration', () => {
     ])
   })
 
-  it('registers all five rows into the chat-node slot by kind', () => {
+  it('registers five durable rows and one transient live seat', () => {
     const metas: RegisterMeta[] = []
+    const liveMetas: RegisterMeta[] = []
+    let activeSlot: string | undefined
     const ctx = {
       conversationEvents: { register: vi.fn() },
       slots: {
-        inject: (_slot: string, cb: () => unknown) => { cb() },
-        register: (meta: RegisterMeta) => { metas.push(meta) },
+        inject: (slot: string, cb: () => unknown) => { activeSlot = slot; cb(); activeSlot = undefined },
+        register: (meta: RegisterMeta) => { (activeSlot === 'conversation.chat.live' ? liveMetas : metas).push(meta) },
       },
     } as never
     registerExternalTranscriptRenderers(ctx)
@@ -49,5 +52,8 @@ describe('external transcript registration', () => {
       expect(meta.name).toBe('conversation.chat.node')
       expect(meta.locale).toBe('conversation')
     }
+    expect(liveMetas).toHaveLength(1)
+    expect(liveMetas[0]?.name).toBe('conversation.chat.live')
+    expect(liveMetas[0]?.id).toBe('external-live')
   })
 })

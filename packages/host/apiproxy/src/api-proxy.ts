@@ -1370,6 +1370,14 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     })
   })
 
+  // External providers emit transient transcript deltas through their own
+  // Service Definition event. The gateway projects that event to every open
+  // mux queue; queues are created only for subscribed clients, and no session
+  // append occurs on this path.
+  ctx.on('external/session-delta', ({ sessionId, turnId, delta }) => {
+    broadcast({ type: 'external/delta', sessionId, turnId, delta })
+  })
+
   // The cache supplies recency and a monotonic non-blank hint. A cached
   // `blank: true` remains only a prefix fact and is verified on the cold path.
   ctx.inject(['sessionProjections'], (projectionCtx) => {

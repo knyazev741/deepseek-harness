@@ -6,6 +6,8 @@
 
 模式感知的创建决策（在持久化头部上打上 `mode` 标记，并对外部模式创建*不带*原生 Agent 的会话）位于会话创建网关 [`dsh-host-apiproxy`](../../host/apiproxy/README.md)。本插件只对已经打上标记的会话作出反应，因此它可随 external-session 家族挂载到任何组合中。
 
+实时转写增量通过 external-session 服务的类型化 `external/session-delta` 事件离开提供方。API 网关会把这个临时事件投影为 `external/delta` mux 帧并发送给已打开的 mux 订阅；本驱动不会追加合成会话事件，因此重连后无法重建丢失的 partial。
+
 ## 生命周期
 
 加载插件即在其 fiber 存活期内注册投影并向两个生命周期事件作出反应：
@@ -25,5 +27,5 @@
 
 ## 已知限制与暂缓事项
 
-- **实时帧 delta 路由属于客户端阶段**——提供方 bridge 的 `streamDelta` 由 `external-session` 服务所有，此处未接入帧通道；实时增量 delta 及其 UI 座位属于后续（客户端）阶段。
+- **实时 partial 刻意不持久化**——宿主帧与客户端 live seat 会在断开、重连、替换订阅、会话失败及提交时清除；历史只会补回已提交的外部消息。
 - **冷会话按操作挂接**——宿主 API 只在 prompt、command、模型选择、compact 或 interrupt 等实时操作需要时，prepare、enter 并 announce 持久化外部会话；list 与 history 保持无进程。

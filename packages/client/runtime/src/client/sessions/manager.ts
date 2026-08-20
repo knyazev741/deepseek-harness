@@ -913,6 +913,7 @@ export class SessionManager {
       if (kept.length === 0) this.pendingBuffers.delete(sessionId)
       else this.pendingBuffers.set(sessionId, kept)
     }
+    for (const session of this.sessions.values()) session.clearExternalLive()
   }
 
   /** After each connection generation: refresh the session baseline and rebuild opened windows. */

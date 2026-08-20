@@ -216,6 +216,27 @@ describe('ExternalSessions registry', () => {
 })
 
 describe('ExternalSessions dispatch', () => {
+  it('emits streamDelta as a typed live event without appending a durable session event', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const { service } = await (async () => {
+      await ctx.plugin(ExternalSessions)
+      return { service: ctx.externalSessions }
+    })()
+    const provider = new StubProvider('alpha', 'Alpha')
+    service.registerProvider(provider)
+    const sessionId = SessionId('delta-session')
+    const session = ctx.sessions.create(sessionId)
+    const seen: unknown[] = []
+    ctx.on('external/session-delta', (payload) => { seen.push(payload) })
+
+    await service.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    provider.lastBridge!.streamDelta(sessionId, ExternalTurnId('turn-1'), 'partial')
+
+    expect(seen).toEqual([{ sessionId, turnId: ExternalTurnId('turn-1'), delta: 'partial' }])
+    expect(session.events).toEqual([])
+  })
+
   it('hands the bridge at start and dispatches prompt/interrupt/compact/setModel/dispose to the owning provider', async () => {
     const { service } = await setup()
     const provider = new StubProvider('alpha', 'Alpha')

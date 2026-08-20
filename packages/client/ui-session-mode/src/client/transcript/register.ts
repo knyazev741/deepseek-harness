@@ -3,7 +3,8 @@
  *
  * The Definitions ride `ctx.conversationEvents` (a runtime-provided service
  * ui-conversation consumes too); the renderers key `conversation.chat.node` by
- * the merged Chat renderer kind. Both are effect-scoped and HMR safe.
+ * the merged Chat renderer kind and add one transient live seat. Both
+ * registrations are effect-scoped and HMR safe.
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -16,6 +17,7 @@ import {
 } from './external-transcript.ts'
 import {
   ExternalCompactionRow,
+  ExternalLiveSeat,
   ExternalMessageRow,
   ExternalModelRow,
   ExternalPermissionRow,
@@ -33,6 +35,8 @@ export function registerExternalTranscriptNodes(ctx: Context): void {
 
 /** Register the external transcript chat row renderers. */
 export function registerExternalTranscriptRenderers(ctx: Context): void {
+  ctx.slots.inject('conversation.chat.live', () => ctx.slots.register(
+    { name: 'conversation.chat.live', id: 'external-live', locale: 'conversation' }, ExternalLiveSeat))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(
     { name: 'conversation.chat.node', key: 'external-message', locale: 'conversation' }, ExternalMessageRow))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register(

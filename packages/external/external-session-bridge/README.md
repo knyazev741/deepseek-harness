@@ -6,6 +6,8 @@ Host-plane bridge driver for external interactive agent sessions ([`external-ses
 
 The mode-aware creation decision (stamp `mode` on the durable header and create the session *without* a native Agent for an external mode) lives in the session-create gateway, [`dsh-host-apiproxy`](../../host/apiproxy/README.md). This plugin only reacts to already-stamped sessions, so it composes wherever the external-session family is mounted.
 
+Live transcript deltas leave the provider through the external-session service's typed `external/session-delta` event. The API gateway projects that transient event to open mux subscriptions as `external/delta`; this driver does not append a synthetic session event and therefore cannot reconstruct a lost partial after reconnect.
+
 ## Lifecycle
 
 Loading the plugin registers the transcript projection and reacts to two lifecycle events for the lifetime of its fibre:
@@ -25,5 +27,5 @@ None; the driver appends nothing to any request prefix.
 
 ## Known Limitations and Deferred Work
 
-- **Live-frame delta routing is a client phase** — the provider bridge's `streamDelta` is owned by the `external-session` service and is not wired to the frame channel here; live incremental deltas and their UI seats are later (client) phases.
+- **Live partials are intentionally non-durable** — the host frame and client live seat clear on disconnect, reconnect, subscription replacement, session failure, and commit; history backfills only committed external messages.
 - **Cold attachment is action-driven** — the host API prepares, enters, and announces a persisted external session only for a live operation such as prompt, command, model selection, compact, or interrupt; listing and history remain process-free.
