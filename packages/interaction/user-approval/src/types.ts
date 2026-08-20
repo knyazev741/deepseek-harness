@@ -6,7 +6,7 @@
  */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { JsonValue, SessionId } from '@deepseek-ai/dsh-session'
+import type { JsonValue, SessionId } from '@deepseek-ai/dsh-session/types'
 
 /**
  * Pairs one `approval/asked` audit event with its `approval/decided`.

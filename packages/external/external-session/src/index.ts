@@ -253,13 +253,22 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   /**
    * Start or resume one provider attachment while retaining rollback ownership.
    * The attachment remains registered until the provider promise settles so a
-   * concurrent disposal can share the same quiescence barrier.
+   * concurrent disposal can share the same quiescence barrier. A new
+   * generation waits behind any prior scope/provider teardown for this id.
    */
   private attach(
     request: ExternalSessionStartRequest,
     operation: 'start' | 'resume',
     providerThreadId?: ExternalProviderThreadId,
   ): Promise<void> {
+    const teardown = this.teardowns.get(request.sessionId)
+    if (teardown !== undefined) {
+      // A new generation may not claim the session id until the previous
+      // scope and provider have both quiesced. The teardown cleanup callback
+      // is registered before this continuation, so the retry sees no stale
+      // gate after successful settlement; a rejection stays fail-loud.
+      return teardown.then(() => this.attach(request, operation, providerThreadId))
+    }
     const pending = this.attachments.get(request.sessionId)
     if (pending !== undefined) return pending.promise
     const provider = this.expectProvider(request.provider)
@@ -282,7 +291,7 @@ export class ExternalSessions extends Service implements ExternalSessionsService
     this.attachments.set(request.sessionId, { promise: deferred.promise, token })
     void (async () => {
       try {
-        const bridge = this.createBridge(request.sessionId, request.provider, controller)
+        const bridge = await this.createBridge(request.sessionId, request.provider, controller)
         if (operation === 'start') await provider.start(resolved, bridge)
         else if (providerThreadId === undefined) {
           throw new ExternalSessionError(
@@ -455,14 +464,14 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    * @param sessionId - the session owned by this bridge.
    * @param provider - the provider route owned by this bridge.
    * @param controller - the disposal controller for this session generation.
-   * @returns the bridge handed to the provider at start.
+   * @returns a promise for the bridge handed to the provider at start.
    */
-  private createBridge(sessionId: SessionId, provider: string, controller: AbortController): ExternalBridgeContext {
+  private async createBridge(sessionId: SessionId, provider: string, controller: AbortController): Promise<ExternalBridgeContext> {
     const turn = { current: undefined as string | undefined }
     const session = this.ctx.get('sessions')?.get(sessionId)
     const principal = session === undefined
       ? undefined
-      : createExternalPrincipal(this.ctx, session, controller.signal, turn, (event) => {
+      : await createExternalPrincipal(this.ctx, session, controller.signal, turn, (event) => {
         appendSessionEvent(session, event)
       }, (scope) => {
         this.scopes.set(sessionId, scope)
@@ -559,8 +568,11 @@ type NormalizedExternalToolResult = {
 
 type PendingExternalToolCall = NormalizedExternalToolCall
 
-/** Build the external principal and its durable call/result recorder. */
-function createExternalPrincipal(
+/**
+ * Build the external principal and its durable call/result recorder. A seed
+ * validation failure disposes the newly created scope before propagating.
+ */
+async function createExternalPrincipal(
   root: Context,
   session: Session,
   disposal: AbortSignal,
@@ -568,7 +580,7 @@ function createExternalPrincipal(
   append: (event: ExternalSessionEvent) => void,
   retainScope: (scope: Scope) => void,
   events: readonly SessionEvent[],
-): ExternalToolPrincipal {
+): Promise<ExternalToolPrincipal> {
   const principal = {
     kind: 'external' as const,
     id: ExternalToolPrincipalId(randomUUID()),
@@ -577,10 +589,15 @@ function createExternalPrincipal(
     recorder: undefined as unknown as ToolExecutionRecorder,
   }
   const scope = createScope(root, principal)
-  principal.ctx = scope.ctx
-  principal.recorder = createExternalToolRecorder(disposal, turn, append, events)
-  retainScope(scope)
-  return principal
+  try {
+    principal.ctx = scope.ctx
+    principal.recorder = createExternalToolRecorder(disposal, turn, append, events)
+    retainScope(scope)
+    return principal
+  } catch (error) {
+    await scope.dispose()
+    throw error
+  }
 }
 
 /**

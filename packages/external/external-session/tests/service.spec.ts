@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import ExternalSessions, {
   ExternalToolCallId,
   ExternalProviderThreadId,
@@ -33,6 +34,8 @@ class StubProvider implements ExternalSessionProvider {
   readonly compacted: SessionId[] = []
   readonly switched: { sessionId: SessionId; model: string }[] = []
   readonly disposed: SessionId[] = []
+  disposeGate: Promise<void> | undefined
+  readonly disposeEntered = Promise.withResolvers<undefined>()
   readonly resumed: Array<{ sessionId: SessionId; providerThreadId: ExternalProviderThreadId }> = []
   resumeError: Error | undefined
   resumeGate: Promise<void> | undefined
@@ -89,6 +92,8 @@ class StubProvider implements ExternalSessionProvider {
 
   async dispose(sessionId: SessionId): Promise<void> {
     this.disposed.push(sessionId)
+    this.disposeEntered.resolve(undefined)
+    await this.disposeGate
   }
 }
 
@@ -238,6 +243,66 @@ describe('ExternalSessions registry', () => {
     await expect(firstDispose).resolves.toBeUndefined()
     expect(provider.disposed).toEqual([sessionId])
     await expect(service.prompt(sessionId, 'after disposal')).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
+  })
+
+  it('waits for prior provider teardown before resuming and disposes each generation once', async () => {
+    const { service } = await setup()
+    const provider = new StubProvider('alpha', 'Alpha')
+    const teardownGate = Promise.withResolvers<undefined>()
+    provider.disposeGate = teardownGate.promise
+    service.registerProvider(provider)
+    const sessionId = SessionId('teardown-then-resume')
+    const request = { sessionId, provider: 'alpha', cwd: '/tmp' }
+
+    await service.start(request)
+    const firstDispose = service.dispose(sessionId)
+    const resume = service.resume(request, ExternalProviderThreadId('provider-thread'))
+    await provider.disposeEntered.promise
+
+    expect(provider.resumed).toEqual([])
+    expect(provider.disposed).toEqual([sessionId])
+
+    teardownGate.resolve(undefined)
+    await expect(firstDispose).resolves.toBeUndefined()
+    await expect(resume).resolves.toBeUndefined()
+    expect(provider.resumed).toEqual([{ sessionId, providerThreadId: ExternalProviderThreadId('provider-thread') }])
+
+    const nextTeardownGate = Promise.withResolvers<undefined>()
+    provider.disposeGate = nextTeardownGate.promise
+    const secondDispose = service.dispose(sessionId)
+    expect(secondDispose).not.toBe(firstDispose)
+    nextTeardownGate.resolve(undefined)
+    await expect(secondDispose).resolves.toBeUndefined()
+    expect(provider.disposed).toEqual([sessionId, sessionId])
+  })
+
+  it('disposes a scope when durable recorder seeding rejects before retention', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(ExternalSessions)
+    const provider = new StubProvider('alpha', 'Alpha')
+    ctx.externalSessions.registerProvider(provider)
+    const sessionId = SessionId('invalid-seeded-recorder')
+    const invalidCall = {
+      type: 'external/tool-call',
+      seq: 0,
+      time: 1,
+      data: {
+        callId: ExternalToolCallId('seed-call'),
+        name: '',
+        arguments: {},
+      },
+    } as SessionEvent<'external/tool-call'>
+    ctx.sessions.create(sessionId, { seed: [invalidCall] })
+    const ownerContext = (ctx.externalSessions as unknown as { readonly ctx: Context }).ctx
+    const effectsBeforeAttach = ownerContext.fiber.getEffects().length
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await expect(ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' }))
+        .rejects.toMatchObject({ code: 'INVALID_TOOL_RECORD' })
+    }
+
+    expect(ownerContext.fiber.getEffects()).toHaveLength(effectsBeforeAttach)
   })
 })
 
