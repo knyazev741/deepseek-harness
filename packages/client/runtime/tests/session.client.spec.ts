@@ -350,6 +350,25 @@ describe('live event path', () => {
     expect(session.getSnapshot().externalLive).toBeNull()
   })
 
+  it('does not resurrect live text after the external session ends', async () => {
+    const { session } = await opened([])
+    session.handleMuxEnvelope('delta' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-ended'), delta: 'partial',
+    })
+    session.handleMuxEnvelope('ended' as never, {
+      type: 'session/event', sessionId: SID,
+      event: {
+        type: 'external/session-ended', seq: 0, time: 1,
+        data: { stopReason: 'completed' },
+      } as never,
+    })
+    session.handleMuxEnvelope('late' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-ended'), delta: 'late',
+    })
+
+    expect(session.getSnapshot().externalLive).toBeNull()
+  })
+
   it('clears external live text when a session error or removal arrives', async () => {
     const { session } = await opened([])
     session.handleMuxEnvelope('d' as never, {

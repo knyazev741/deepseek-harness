@@ -255,7 +255,7 @@ export class ExternalSessions extends Service implements ExternalSessionsService
     this.attachments.set(request.sessionId, { promise: deferred.promise, token })
     void (async () => {
       try {
-        const bridge = this.createBridge(controller)
+        const bridge = this.createBridge(request.sessionId, request.provider, controller)
         if (operation === 'start') await provider.start(resolved, bridge)
         else if (providerThreadId === undefined) {
           throw new ExternalSessionError(
@@ -381,10 +381,14 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    * Build the live bridge for one session. `appendEvent` writes only when there
    * is a live session in the session store; permission remains host-owned, and
    * deltas leave through the typed Cordis event without depending on the mux.
-   * @param controller - the disposal controller for this session.
+   * A bridge can outlive provider teardown, so deltas also require the same
+   * session route and disposal generation that created the bridge.
+   * @param sessionId - the session owned by this bridge.
+   * @param provider - the provider route owned by this bridge.
+   * @param controller - the disposal controller for this session generation.
    * @returns the bridge handed to the provider at start.
    */
-  private createBridge(controller: AbortController): ExternalBridgeContext {
+  private createBridge(sessionId: SessionId, provider: string, controller: AbortController): ExternalBridgeContext {
     return {
       appendEvent: (sessionId, event) => {
         const session = this.ctx.get('sessions')?.get(sessionId)
@@ -403,10 +407,12 @@ export class ExternalSessions extends Service implements ExternalSessionsService
         }
         return answerer(sessionId, ask)
       },
-      streamDelta: (sessionId, turnId, delta) => {
+      streamDelta: (streamSessionId, turnId, delta) => {
+        if (streamSessionId !== sessionId || controller.signal.aborted) return
+        if (this.sessions.get(streamSessionId) !== provider || this.disposals.get(streamSessionId) !== controller) return
         // Live-only: the host mux projects this event; no Session.append call
         // is made, so reconnects backfill committed history only.
-        this.ctx.emit('external/session-delta', { sessionId, turnId, delta })
+        this.ctx.emit('external/session-delta', { sessionId: streamSessionId, turnId, delta })
       },
       disposal: controller.signal,
     }

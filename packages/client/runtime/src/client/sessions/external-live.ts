@@ -18,13 +18,14 @@ export type ExternalLivePartial = ExternalLiveMessage
 
 /**
  * Accumulates transient external deltas without making them durable.
- * Instances belong to one client Session and are reset at connection and
- * subscription-generation boundaries.
+ * Instances belong to one client Session. A terminal session event closes the
+ * current generation; connection and subscription resets open a new one.
  */
 export class ExternalLiveAccumulator {
   private readonly turns = new Map<string, string>()
   private readonly retired = new Set<string>()
   private activeTurnId: string | undefined
+  private closed = false
 
   /**
    * Append one ordered delta.
@@ -33,7 +34,7 @@ export class ExternalLiveAccumulator {
    * @returns whether the visible partial changed.
    */
   push(turnId: string, delta: string): boolean {
-    if (this.retired.has(turnId) || delta.length === 0) return false
+    if (this.closed || this.retired.has(turnId) || delta.length === 0) return false
     this.turns.set(turnId, (this.turns.get(turnId) ?? '') + delta)
     this.activeTurnId = turnId
     return true
@@ -70,11 +71,26 @@ export class ExternalLiveAccumulator {
     return changed
   }
 
+  /**
+   * Close the current session generation and reject late stream deltas.
+   * @returns whether the accumulator changed.
+   */
+  close(): boolean {
+    const changed = !this.closed
+      || this.turns.size > 0
+      || this.activeTurnId !== undefined
+      || this.retired.size > 0
+    this.reset()
+    this.closed = true
+    return changed
+  }
+
   /** Reset all partials and retired-turn guards for a new connection generation. */
   reset(): void {
     this.turns.clear()
     this.retired.clear()
     this.activeTurnId = undefined
+    this.closed = false
   }
 
   /**

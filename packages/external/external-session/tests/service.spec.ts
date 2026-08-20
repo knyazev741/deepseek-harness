@@ -237,6 +237,26 @@ describe('ExternalSessions dispatch', () => {
     expect(session.events).toEqual([])
   })
 
+  it('drops a late streamDelta after the external session route is disposed', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(ExternalSessions)
+    const provider = new StubProvider('alpha', 'Alpha')
+    ctx.externalSessions.registerProvider(provider)
+    const sessionId = SessionId('delta-disposed-session')
+    ctx.sessions.create(sessionId)
+    const seen: unknown[] = []
+    ctx.on('external/session-delta', (payload) => { seen.push(payload) })
+
+    await ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+    const bridge = provider.lastBridge!
+    bridge.streamDelta(sessionId, ExternalTurnId('turn-1'), 'before dispose')
+    await ctx.externalSessions.dispose(sessionId)
+    bridge.streamDelta(sessionId, ExternalTurnId('turn-1'), 'after dispose')
+
+    expect(seen).toEqual([{ sessionId, turnId: ExternalTurnId('turn-1'), delta: 'before dispose' }])
+  })
+
   it('hands the bridge at start and dispatches prompt/interrupt/compact/setModel/dispose to the owning provider', async () => {
     const { service } = await setup()
     const provider = new StubProvider('alpha', 'Alpha')

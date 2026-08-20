@@ -27,7 +27,7 @@
 }
 
 .liveRow {
-  border-inline-start: 2px solid var(--dsw-accent, #4ade80);
+  border-inline-start: 2px solid var(--dsw-alias-state-success-primary);
 }
 
 .detail {

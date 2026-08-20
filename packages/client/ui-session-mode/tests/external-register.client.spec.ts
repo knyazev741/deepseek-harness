@@ -7,6 +7,8 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
+import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { registerExternalTranscriptNodes, registerExternalTranscriptRenderers } from '../src/client/transcript/register.ts'
 
 interface RegisterMeta {
@@ -55,5 +57,41 @@ describe('external transcript registration', () => {
     expect(liveMetas).toHaveLength(1)
     expect(liveMetas[0]?.name).toBe('conversation.chat.live')
     expect(liveMetas[0]?.id).toBe('external-live')
+  })
+
+  it('disposes and reinstalls the live seat across declaration replacement', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SlotRegistry).await()
+    const slots = ctx.slots
+    slots.register({
+      name: 'root', children: { conversation: { kind: 'single', scope: 'root' } },
+    } as never, () => null)
+    let disposeConversation = slots.register({
+      name: 'conversation',
+      children: { 'conversation.chat.live': { kind: 'list', scope: 'session' } },
+    } as never, () => null)
+
+    const rendererFiber = ctx.plugin({
+      name: 'external-transcript-renderers',
+      inject: ['slots'],
+      apply: registerExternalTranscriptRenderers,
+    })
+    await rendererFiber.await()
+    expect(slots.entries('conversation.chat.live').map(entry => entry.options.id)).toEqual(['external-live'])
+
+    disposeConversation()
+    await Promise.resolve()
+    expect(slots.entries('conversation.chat.live')).toHaveLength(0)
+
+    disposeConversation = slots.register({
+      name: 'conversation',
+      children: { 'conversation.chat.live': { kind: 'list', scope: 'session' } },
+    } as never, () => null)
+    await Promise.resolve()
+    expect(slots.entries('conversation.chat.live').map(entry => entry.options.id)).toEqual(['external-live'])
+
+    await rendererFiber.dispose()
+    expect(slots.entries('conversation.chat.live')).toHaveLength(0)
+    disposeConversation()
   })
 })

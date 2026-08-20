@@ -27,7 +27,9 @@ export const ExternalMessageRow = memo(function ExternalMessageRow({ node }: Cha
   return (
     <div className={css.messageRow} data-role={data.role}>
       <span className={css.kicker}>{data.role === 'user' ? '你' : '智能体'}</span>
-      <span className={css.body}>{data.text}</span>
+      {data.role === 'agent'
+        ? <MarkdownText text={data.text} />
+        : <span className={css.body}>{data.text}</span>}
     </div>
   )
 })
@@ -37,7 +39,13 @@ export const ExternalLiveSeat = memo(function ExternalLiveSeat({ useSession, t }
   const live = useSession(snapshot => snapshot.externalLive)
   if (live === null || live === undefined) return null
   return (
-    <div className={css.liveRow} data-testid="external-live-seat" data-turn-id={live.turnId}>
+    <div
+      className={css.liveRow}
+      role="status"
+      aria-live="polite"
+      data-testid="external-live-seat"
+      data-turn-id={live.turnId}
+    >
       <span className={css.kicker}>{t('chat.externalLive.agent')}</span>
       <MarkdownText text={live.text} streaming />
     </div>
