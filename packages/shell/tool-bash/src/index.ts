@@ -242,6 +242,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   ctx.tools.register(defineTool({
     name: 'bash',
+    externalEligibility: 'allow',
     description: bashDescription(backgroundEnabled, escalationModes),
     parameters: {
       command: { type: 'string', required: true, description: 'The bash command to execute.' },

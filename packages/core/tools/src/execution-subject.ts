@@ -43,6 +43,16 @@ export interface ExternalToolPrincipal {
   readonly recorder: ToolExecutionRecorder
 }
 
+/**
+ * Whether a value is the external-principal scope key used by this seam.
+ * @param value - the candidate scope key.
+ * @returns whether the candidate carries the external-principal discriminant.
+ */
+export function isExternalToolPrincipal(value: unknown): value is ExternalToolPrincipal {
+  return typeof value === 'object' && value !== null
+    && (value as { readonly kind?: unknown }).kind === 'external'
+}
+
 /** One identity that can own a tool execution. */
 export type ToolExecutionSubject = Agent | ExternalToolPrincipal
 
@@ -52,7 +62,8 @@ export type ToolExecutionSubject = Agent | ExternalToolPrincipal
  * is either a native Agent or an external principal, never both.
  */
 export type ToolExecutionIdentity =
-  | { readonly agent?: Agent; readonly principal?: never }
+  | { readonly agent?: never; readonly principal?: never }
+  | { readonly agent: Agent; readonly principal?: never }
   | { readonly agent?: never; readonly principal: ExternalToolPrincipal }
 
 /** The structural identity fields used by subject helpers. */

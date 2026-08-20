@@ -332,6 +332,7 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    * Switch a live external session to a listed model.
    * @param sessionId - the live external session.
    * @param model - the model id to switch to.
+   * @param reasoningEffort - the optional provider reasoning-effort selection.
    * @throws {@link ExternalSessionError} when the session is not live.
    */
   async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void> {

@@ -3,11 +3,13 @@ import type { Context } from '@deepseek-ai/cordis'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type {
+  ExternalToolPrincipal,
   ToolDispatchExecution,
   ToolExecution,
   ToolExecutionInput,
   ToolRunContext,
 } from '@deepseek-ai/dsh-tools'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 
 function inputAndExecutionContracts(
   input: ToolExecutionInput,
@@ -37,6 +39,32 @@ function inputAndExecutionContracts(
   run.signal = undefined
 }
 void inputAndExecutionContracts
+
+function identityXorContracts(
+  nativeAgent: Agent,
+  externalPrincipal: ExternalToolPrincipal,
+): void {
+  const common = {
+    callId: CallId('identity'),
+    name: 'probe',
+    arguments: {},
+    signal: new AbortController().signal,
+  }
+  const anonymous: ToolExecutionInput = common
+  const native: ToolExecutionInput = { ...common, agent: nativeAgent }
+  const external: ToolExecutionInput = { ...common, principal: externalPrincipal }
+  void anonymous
+  void native
+  void external
+
+  // @ts-expect-error -- the native-agent state excludes an external principal.
+  const nativeAndExternal: ToolExecutionInput = { ...common, agent: nativeAgent, principal: externalPrincipal }
+  // @ts-expect-error -- the external-principal state excludes a native agent.
+  const externalAndNative: ToolExecutionInput = { ...common, principal: externalPrincipal, agent: nativeAgent }
+  void nativeAndExternal
+  void externalAndNative
+}
+void identityXorContracts
 
 function observerContracts(ctx: Context): void {
   ctx.on('tools/pre-execute', (exec, next) => {

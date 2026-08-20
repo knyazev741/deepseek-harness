@@ -32,6 +32,10 @@ Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全�
 
 `/compact` 与 `/model` 按 session mode 路由：压缩调用提供方原生 compact 并记录 notice；模型切换调用 `setModel` 并记录切换。外部 mode 中未知 slash command 作为 prompt 文本传递。
 
+### 外部工具所有权
+
+实时外部会话提供带品牌化 id、session、作用域 context 与 recorder 的 `ExternalToolPrincipal`。已交付的 shell 与 filesystem 前台定义显式选择该身份，并从外部 session 派生 cwd、环境、观察和结果作用域，无需创建原生 Agent。后台 shell job 仍要求原生 Agent 所有权；ask-user、schedule、workflow、Cordis 自修改、terminal/jobs 与 subagent 工具定义对外部 principal 默认拒绝。Phase 1 权限 bridge 仍是由宿主拥有的 ask-user 路径，而不是外部工具 eligibility 授权。
+
 ## Alternatives considered
 
 设计替代项及其否决理由记录在[外部交互式 agent 会话规范说明](../../proposed/feature/2026-08-18-external-interactive-agent-sessions.md)中：PTY terminal adapter 没有结构化 stream、日志投影与 policy inheritance；原地扩展一次性 subagent 提供方会违反其单一最终文本约定；一个通用 wire 无法表达 ACP 的 Codex thread resume 与 Claude Code `canUseTool` 细节；依赖社区 adapter pack 会把权限、sandbox 与 MCP 决策留在 Harness 之外。Phase 1 按计划先交付 Codex dialect；ACP 是 Phase 2 wire。

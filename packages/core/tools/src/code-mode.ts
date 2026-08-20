@@ -13,7 +13,7 @@ import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
 import { defineTool, parameterSchemaSpecToJsonSchema } from './schema.ts'
 import { TOOL_RUNTIME_SCHEDULER } from './index.ts'
-import type { CodeDispatchLog, ToolDefinition, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
+import type { CodeDispatchLog, ToolDefinition, ToolExecutionInput, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
 import { executionScope } from './execution-subject.ts'
 import type {} from './types.ts'
 
@@ -471,18 +471,22 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
         const normalized = jsonNormalizeArgs(rawArgs)
         const n = ++dispatches
         const subCallId = CallId(`${String(exec.callId)}:code:${n}`)
-        const input = {
+        const baseInput = {
           callId: subCallId,
           rootCallId: exec.rootCallId,
           name,
           arguments: normalized.dispatched,
-          ...exec.agent ? { agent: exec.agent } : {},
-          ...exec.principal ? { principal: exec.principal } : {},
           parent: exec.token,
           signal: runController.signal,
         }
+        const input: ToolExecutionInput = exec.agent !== undefined
+          ? { ...baseInput, agent: exec.agent }
+          : exec.principal !== undefined
+            ? { ...baseInput, principal: exec.principal }
+            : baseInput
         type DispatchOutcome = { isError: true; message: string } | { isError: false; value: JsonValue }
         const scheduler = registry[TOOL_RUNTIME_SCHEDULER]
+        const principal = exec.principal
         const outcome = await new Promise<DispatchOutcome>((resolve, reject) => {
           // Set by the dispatch stage (or start() for a pre-settled result): what commit() finalizes in submission order.
           let parked:
@@ -505,7 +509,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
               // locator; the program's value and model-visible result are
               // untouched.
               const logged = await shapeDispatchLog({
-                exec, agent, ...exec.principal !== undefined ? { principal: exec.principal } : {}, subCallId, name, isError: result.isError,
+                exec, agent, ...principal !== undefined ? { principal } : {}, subCallId, name, isError: result.isError,
                 // The registry deep-froze this projection at result
                 // finalization; append snapshots the final copy again, so
                 // the log stays detached.

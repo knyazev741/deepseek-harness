@@ -150,13 +150,17 @@ describe('ToolRuntime.executionMode', () => {
     const { scope, principal } = await mintExternalScope(ctx, 'external-mode')
     scope.ctx.tools.register(defineContentToolFixture({
       name: 'external-safe',
+      externalEligibility: 'allow',
       description: 'external scoped tool',
       parameters: {},
       isConcurrencySafe: () => true,
       async execute() { return [] },
     }))
     expect(ctx.tools.executionMode({
-      ...exec('external-safe', {}),
+      signal: testToolSignal,
+      callId: CallId('external-safe'),
+      name: 'external-safe',
+      arguments: {},
       principal,
     })).toEqual({ kind: 'parallel' })
   })

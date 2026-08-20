@@ -8,7 +8,7 @@
 
 ## `ToolDefinition` — 一个已注册的工具
 
-由一个 `ToolSchema`（面向模型的字段）、必需的规范输出声明、`execute` 函数、仅供宿主使用的调度器元数据、可选的最终内容回调和可选 UI 展示函数组成。注册表持有这些定义，循环通过它们分派调用。注册表的 `schemas()` 通过显式允许列表构建面向模型的 `ToolSchema[]`；`output`/`execute`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`presentCall`/`presentResult` 绝不能泄漏到模型请求中。
+由一个 `ToolSchema`（面向模型的字段）、必需的规范输出声明、`execute` 函数、仅供宿主使用的调度器和 external eligibility 元数据、可选的最终内容回调和可选 UI 展示函数组成。注册表持有这些定义，循环通过它们分派调用。注册表的 `schemas()` 通过显式允许列表构建面向模型的 `ToolSchema[]`；`output`/`execute`/`externalEligibility`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`presentCall`/`presentResult` 绝不能泄漏到模型请求中。external eligibility 是定义级别的显式 opt-in：对于 `ExternalToolPrincipal`，省略即默认拒绝。
 
 ```ts type-equiv
 /** Tool-owned canonical output contract used after the body returns a JSON value. */
@@ -27,6 +27,12 @@ interface ToolOutputDefinition {
 interface ToolDefinition extends ToolSchema {
   /** Mandatory canonical output declaration. */
   readonly output: ToolOutputDefinition
+  /**
+   * External-principal capability opt-in. Omission is default-deny: only a
+   * definition explicitly marked `allow` is visible to an external caller.
+   * This metadata is host-only and never appears in {@link ToolSchema}.
+   */
+  readonly externalEligibility?: 'allow'
   /**
    * Run one accepted call and return only its canonical lossless-JSON value.
    * Async work must observe or forward `exec.signal` and settle only after its
@@ -172,6 +178,11 @@ interface ToolRestriction {
 注册表接受原生 `Agent` 或 `ExternalToolPrincipal`，并拒绝同时提供两种身份。外部 principal 携带不透明 id、`Session`、作用域 `Context` 与 recorder，因此外部 driver 无需注册原生 agent 即可进入同一套查找、限制、guard、取消、waterfall、验证和结果流水线。共享辅助函数派生执行作用域、session、context 以及仅原生 agent 可用的路径。shell 与 filesystem 消费方使用共享 session 身份；原生专属的 approval 与 jobs 消费方会故障关闭。
 
 ```ts type-equiv
+/** Opaque identity assigned to one external tool caller. */
+type ExternalToolPrincipalId = Branded<'ExternalToolPrincipalId'>
+```
+
+```ts type-equiv
 /**
  * Durable external tool-call recorder owned by the external-session consumer.
  * The tools runtime carries this capability through the execution identity but
@@ -196,11 +207,11 @@ interface ExternalToolPrincipal {
 }
 ```
 
-外部 principal 是执行身份，而不是绕过权限的捷径：作用域查找与限制仍决定可见性，guard 与 waterfall 仍会运行，输出／结果验证仍由注册表负责。首批 external allowlist 属于后续 MCP 工作；需要原生 turn、approval 路由、terminal/jobs 或编排的工具仍会被排除。
+外部 principal 是执行身份，而不是绕过权限的捷径：作用域查找与限制仍决定可见性，guard 与 waterfall 仍会运行，输出／结果验证仍由注册表负责。External eligibility 是定义级别的显式 opt-in；省略即默认拒绝，因此只有已适配的 shell 与 filesystem 前台定义对该 principal 可见。原生 agent 专属的后台 job 仍不可用，ask-user、schedule、workflow、Cordis 自修改、terminal/jobs 和 subagent 定义仍默认拒绝。后续可配置的 allowlist 必须与这一安全底线取交集。
 
 ## 执行：可扩展的 waterfall（瀑布式事件）加单调策略
 
-`ctx.tools.execute()` 接受由调用方拥有且包含必需 readonly `signal`、并且最多提供一种执行身份的 `ToolExecutionInput`；无身份的诊断调用仍受支持，而原生 `Agent` 与 `ExternalToolPrincipal` 不能同时提供。它将解析后的 JSON 参数一次性物化为流水线拥有的 `ToolExecution`，然后让调用依次经过 `tools/pre-execute`（可重排的 allow/deny/ask waterfall）→ 已注册的单调 guard → `tools/execute`（环绕分派包装层）→ `tools/post-execute`（检查/替换结果）→ 可选且由定义拥有的 `finalizeContent` → `tools/result`（不可变的权威结果）。只有 `tools/execute` 视图可以替换必需的 signal。最终产出为 `ToolExecutionResult`。
+`ctx.tools.execute()` 接受调用方拥有且包含必需 readonly `signal` 的 `ToolExecutionInput`，其身份状态恰好是三者之一：匿名、原生 `Agent` 或 `ExternalToolPrincipal`；原生 `Agent` 与 `ExternalToolPrincipal` 不能同时提供。它将解析后的 JSON 参数一次性物化为流水线拥有的 `ToolExecution`，然后让调用依次经过 `tools/pre-execute`（可重排的 allow/deny/ask waterfall）→ 已注册的单调 guard → `tools/execute`（环绕分派包装层）→ `tools/post-execute`（检查/替换结果）→ 可选且由定义拥有的 `finalizeContent` → `tools/result`（不可变的权威结果）。只有 `tools/execute` 视图可以替换必需的 signal。最终产出为 `ToolExecutionResult`。
 
 ```ts type-equiv
 /** Opaque call identity that permits correlation without exposing mutable execution state. */
@@ -211,11 +222,11 @@ type ToolExecutionToken = symbol & { readonly [toolExecutionTokenBrand]: true }
 /**
  * Caller-supplied description of one tool call. {@link ToolRuntime.execute}
  * adds the registry-owned token to form a pipeline {@link ToolExecution};
- * callers do not choose that token. Runtime validation rejects both
- * `agent` and `principal` together; the optional fields preserve existing
- * agent-less diagnostic calls and source-compatible native call sites.
+ * callers do not choose that token. The identity union admits exactly one of
+ * anonymous, native-agent, or external-principal execution; runtime validation
+ * repeats the XOR check for JavaScript callers and forged same-process values.
  */
-interface ToolExecutionInput {
+type ToolExecutionInput = {
   readonly callId: CallId
   /**
    * Root model-requested call owning this execution tree. Callers omit it for
@@ -225,10 +236,6 @@ interface ToolExecutionInput {
   readonly name: string
   /** Losslessly JSON-serializable parsed arguments (tools validate their own schema). */
   readonly arguments: unknown
-  /** The native agent on whose behalf the call runs. */
-  readonly agent?: Agent
-  /** The external caller on whose behalf the call runs. */
-  readonly principal?: ExternalToolPrincipal
   /**
    * Opaque token of the enclosing transport execution, when one exists. Code
    * Mode sets this on SDK sub-dispatches so commit-style observers can wait for
@@ -241,7 +248,7 @@ interface ToolExecutionInput {
   readonly parent?: ToolExecutionToken
   /** Required caller-owned cancellation for this invocation. */
   readonly signal: AbortSignal
-}
+} & import('./execution-subject.ts').ToolExecutionIdentity
 ```
 
 工具函数体接收运行时扩展。`deferContext()` 把上下文附着到本次执行自己的结果上——既是组合工具转运嵌套分派上下文的通道，也可供叶子工具铸造插件来源指令——而不会在外层调用尚未结束时注入这些上下文。
@@ -255,7 +262,7 @@ interface ToolExecutionInput {
  * plugin-sourced instruction; the loop appends it only after the
  * `tool/result`.
  */
-interface ToolRunContext extends ToolExecution {
+type ToolRunContext = ToolExecution & {
   /**
    * Defer one context — typically a nested-dispatch context ferried by a
    * composite tool, or a fresh plugin-sourced instruction — until this tool's
@@ -325,7 +332,7 @@ interface CodeDispatchLog {
  * readonly. The registry freezes the complete object before `tools/result`
  * observers run.
  */
-interface ToolExecution extends ToolExecutionInput {
+type ToolExecution = ToolExecutionInput & {
   /** Root model-requested call, resolved for every root and nested execution. */
   readonly rootCallId: CallId
   /** Registry-assigned identity shared with nested calls only as their opaque `parent` token. */
@@ -339,7 +346,7 @@ interface ToolExecution extends ToolExecutionInput {
  * may replace the signal for its delegated lifetime, but it cannot remove it.
  * The registry fuses every replacement with the captured caller signal.
  */
-interface ToolDispatchExecution extends Omit<ToolExecution, 'signal'> {
+type ToolDispatchExecution = DistributiveOmit<ToolExecution, 'signal'> & {
   /** Cancellation signal visible to the next wrapper or tool body. */
   signal: AbortSignal
 }
@@ -608,7 +615,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:787`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:833`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 
@@ -633,7 +640,7 @@ A tool was registered or unregistered, or a scoped restriction changed (the avai
 'tools/change'(): void
 ```
 
-Source: [`packages/core/tools/src/index.ts:207`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:242`](../../packages/core/tools/src/index.ts)
 
 <a id="toolscode-dispatch-log--waterfall"></a>
 
@@ -660,7 +667,7 @@ Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` su
 
 Types: [ContentBlock](llm-streaming.md) · [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:189`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:224`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsexecute--waterfall"></a>
 
@@ -684,7 +691,7 @@ Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a nor
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:163`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:198`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspost-execute--waterfall"></a>
 
@@ -709,7 +716,7 @@ Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:175`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:210`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspre-execute--waterfall"></a>
 
@@ -732,7 +739,7 @@ Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approv
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:152`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:187`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsresult--emit"></a>
 
@@ -753,5 +760,5 @@ Observe the frozen, lossless-JSON final outcome. Listener failures are contained
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:197`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:232`](../../packages/core/tools/src/index.ts)
 <!-- END GENERATED cordis-surface -->

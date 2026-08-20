@@ -4,7 +4,7 @@ import type { Events } from '@deepseek-ai/cordis'
 import { bindScopeParent, createScope } from '@deepseek-ai/dsh-scope'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { ExternalToolPrincipalId, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { ExternalToolPrincipalId, isExternalToolPrincipal, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
 import type { ExternalToolPrincipal, PreToolDecision, ToolDefinition, ToolExecution, ToolExecutionInput, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 
@@ -66,18 +66,49 @@ async function mintExternalScope(ctx: Context, name: string): Promise<{ scope: S
 }
 
 async function run(ctx: Context, name: string, identity?: Agent | ExternalToolPrincipal): Promise<string> {
-  const result = await ctx.tools.execute({
+  const base = {
     signal: testToolSignal,
     callId: CallId('c1'),
     name,
     arguments: {},
-    ...identity?.kind === 'external' ? { principal: identity } : identity ? { agent: identity } : {},
-  })
+  }
+  const input: ToolExecutionInput = identity === undefined
+    ? base
+    : isExternalToolPrincipal(identity)
+      ? { ...base, principal: identity }
+      : { ...base, agent: identity }
+  const result = await ctx.tools.execute(input)
   const first = result.content[0]
   return first?.type === 'text' ? first.text : JSON.stringify(result.content)
 }
 
 describe('scoped tool registration', () => {
+  it('keeps the external eligibility floor default-deny for excluded tool categories', async () => {
+    const ctx = await mount()
+    const { principal } = await mintExternalScope(ctx, 'eligibility')
+    const excluded = [
+      ['ask-user', ['ask_user_question']],
+      ['schedule', ['schedule_create']],
+      ['workflow', ['workflow']],
+      ['Cordis self-modification', ['cordis_run']],
+      ['terminal/jobs', ['terminal_open', 'job_output']],
+      ['subagent', ['subagent']],
+    ] as const
+    for (const [, names] of excluded) {
+      for (const name of names) ctx.tools.register(tool(name))
+    }
+    ctx.tools.register({ ...tool('bash'), externalEligibility: 'allow' })
+
+    expect(ctx.tools.get('bash', principal)).toBeDefined()
+    expect(ctx.tools.schemas(principal).map(schema => schema.name)).toEqual(['bash'])
+    for (const [category, names] of excluded) {
+      for (const name of names) {
+        expect(ctx.tools.get(name, principal), category).toBeUndefined()
+        await expect(run(ctx, name, principal), category).resolves.toBe(`Error: unknown tool "${name}"`)
+      }
+    }
+  })
+
   it('keeps final-result observers synchronous', () => {
     type ToolResultListener = Events['tools/result']
     type AsyncToolResultListener = () => Promise<void>
@@ -289,6 +320,7 @@ describe('scoped execution dispatch', () => {
     let bodyCalls = 0
     ctx.tools.register({
       ...tool('global'),
+      externalEligibility: 'allow',
       output: {
         schema: { type: 'string' },
         render: (_args, value) => [{ type: 'text', text: value as string }],
@@ -296,6 +328,7 @@ describe('scoped execution dispatch', () => {
     })
     scope.ctx.tools.register({
       ...tool('local', 'external-local'),
+      externalEligibility: 'allow',
       execute: () => {
         bodyCalls += 1
         return Promise.resolve('external-local')
@@ -367,6 +400,7 @@ describe('scoped execution dispatch', () => {
     const results: string[] = []
     scope.ctx.tools.register({
       ...tool('cancel'),
+      externalEligibility: 'allow',
       execute: async (_args, exec) => {
         entered.resolve(undefined)
         await release.promise
@@ -399,6 +433,7 @@ describe('scoped execution dispatch', () => {
     const { scope, principal } = await mintExternalScope(ctx, 'validation')
     scope.ctx.tools.register({
       ...tool('invalid'),
+      externalEligibility: 'allow',
       execute: () => Promise.resolve(42 as unknown as string),
     })
     const seen: string[] = []

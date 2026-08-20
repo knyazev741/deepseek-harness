@@ -8,7 +8,7 @@ Source: [`packages/core/tools/src/index.ts`](../../packages/core/tools/src/index
 
 ## `ToolDefinition` — a registered tool
 
-A `ToolSchema` (the model-facing fields) plus a mandatory canonical output declaration, the `execute` function, host-only scheduler metadata, an optional final-content callback, and optional UI presenters. The registry holds these; the loop dispatches calls through them. The registry's `schemas()` builds the model-facing `ToolSchema[]` by an explicit allowlist — `output`/`execute`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`presentCall`/`presentResult` must never leak into a model request.
+A `ToolSchema` (the model-facing fields) plus a mandatory canonical output declaration, the `execute` function, host-only scheduler and external-eligibility metadata, an optional final-content callback, and optional UI presenters. The registry holds these; the loop dispatches calls through them. The registry's `schemas()` builds the model-facing `ToolSchema[]` by an explicit allowlist — `output`/`execute`/`externalEligibility`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`presentCall`/`presentResult` must never leak into a model request. External eligibility is definition-level opt-in: omission is default-deny for an `ExternalToolPrincipal`.
 
 ```ts type-equiv
 /** Tool-owned canonical output contract used after the body returns a JSON value. */
@@ -27,6 +27,12 @@ interface ToolOutputDefinition {
 interface ToolDefinition extends ToolSchema {
   /** Mandatory canonical output declaration. */
   readonly output: ToolOutputDefinition
+  /**
+   * External-principal capability opt-in. Omission is default-deny: only a
+   * definition explicitly marked `allow` is visible to an external caller.
+   * This metadata is host-only and never appears in {@link ToolSchema}.
+   */
+  readonly externalEligibility?: 'allow'
   /**
    * Run one accepted call and return only its canonical lossless-JSON value.
    * Async work must observe or forward `exec.signal` and settle only after its
@@ -172,6 +178,11 @@ interface ToolRestriction {
 The registry accepts either a native `Agent` or an `ExternalToolPrincipal`; it rejects both identities together. An external principal carries its opaque id, `Session`, scoped `Context`, and recorder, so an external driver enters the same lookup, restriction, guard, cancellation, waterfall, validation, and result pipeline without registering a native agent. Shared helpers derive the execution scope, session, context, and native-agent-only paths. Shell and filesystem consumers use the shared session identity; native-only approval and jobs consumers fail closed.
 
 ```ts type-equiv
+/** Opaque identity assigned to one external tool caller. */
+type ExternalToolPrincipalId = Branded<'ExternalToolPrincipalId'>
+```
+
+```ts type-equiv
 /**
  * Durable external tool-call recorder owned by the external-session consumer.
  * The tools runtime carries this capability through the execution identity but
@@ -196,11 +207,11 @@ interface ExternalToolPrincipal {
 }
 ```
 
-The external principal is an execution identity, not an authority shortcut: scoped lookup and restrictions still determine visibility, guards and waterfalls still run, and output/result validation remains registry-owned. The initial external allowlist is a later MCP concern; tools requiring native turns, approval routing, terminal/jobs, or orchestration remain excluded.
+The external principal is an execution identity, not an authority shortcut: scoped lookup and restrictions still determine visibility, guards and waterfalls still run, and output/result validation remains registry-owned. External eligibility is an explicit definition-level opt-in; omission is default-deny, so only adapted shell and filesystem foreground definitions are visible to this principal. Native-agent-only background jobs remain unavailable, and ask-user, schedule, workflow, Cordis self-modification, terminal/jobs, and subagent definitions remain default-denied. A later configurable allowlist must intersect this safety floor.
 
 ## Execution: extensible waterfalls plus monotonic policy
 
-`ctx.tools.execute()` accepts a caller-owned `ToolExecutionInput` with a required readonly `signal` and at most one execution identity; agent-less diagnostic calls remain supported, while a native `Agent` and an `ExternalToolPrincipal` cannot be supplied together. It materializes its parsed JSON arguments once into a pipeline-owned `ToolExecution`, and runs that call through `tools/pre-execute` (the reorderable allow/deny/ask waterfall) → registered monotonic guards → `tools/execute` (around-dispatch wrappers) → `tools/post-execute` (inspect/replace the result) → optional definition-owned `finalizeContent` → `tools/result` (the immutable authoritative outcome). Only the `tools/execute` view may replace the required signal. The outcome is a `ToolExecutionResult`.
+`ctx.tools.execute()` accepts a caller-owned `ToolExecutionInput` with a required readonly `signal` and exactly one of three identity states: anonymous, native `Agent`, or `ExternalToolPrincipal`; a native `Agent` and an `ExternalToolPrincipal` cannot be supplied together. It materializes its parsed JSON arguments once into a pipeline-owned `ToolExecution`, and runs that call through `tools/pre-execute` (the reorderable allow/deny/ask waterfall) → registered monotonic guards → `tools/execute` (around-dispatch wrappers) → `tools/post-execute` (inspect/replace the result) → optional definition-owned `finalizeContent` → `tools/result` (the immutable authoritative outcome). Only the `tools/execute` view may replace the required signal. The outcome is a `ToolExecutionResult`.
 
 ```ts type-equiv
 /** Opaque call identity that permits correlation without exposing mutable execution state. */
@@ -211,11 +222,11 @@ type ToolExecutionToken = symbol & { readonly [toolExecutionTokenBrand]: true }
 /**
  * Caller-supplied description of one tool call. {@link ToolRuntime.execute}
  * adds the registry-owned token to form a pipeline {@link ToolExecution};
- * callers do not choose that token. Runtime validation rejects both
- * `agent` and `principal` together; the optional fields preserve existing
- * agent-less diagnostic calls and source-compatible native call sites.
+ * callers do not choose that token. The identity union admits exactly one of
+ * anonymous, native-agent, or external-principal execution; runtime validation
+ * repeats the XOR check for JavaScript callers and forged same-process values.
  */
-interface ToolExecutionInput {
+type ToolExecutionInput = {
   readonly callId: CallId
   /**
    * Root model-requested call owning this execution tree. Callers omit it for
@@ -225,10 +236,6 @@ interface ToolExecutionInput {
   readonly name: string
   /** Losslessly JSON-serializable parsed arguments (tools validate their own schema). */
   readonly arguments: unknown
-  /** The native agent on whose behalf the call runs. */
-  readonly agent?: Agent
-  /** The external caller on whose behalf the call runs. */
-  readonly principal?: ExternalToolPrincipal
   /**
    * Opaque token of the enclosing transport execution, when one exists. Code
    * Mode sets this on SDK sub-dispatches so commit-style observers can wait for
@@ -241,7 +248,7 @@ interface ToolExecutionInput {
   readonly parent?: ToolExecutionToken
   /** Required caller-owned cancellation for this invocation. */
   readonly signal: AbortSignal
-}
+} & import('./execution-subject.ts').ToolExecutionIdentity
 ```
 
 A tool body receives the runtime extension. `deferContext()` attaches context to the execution's own result — the composite-tool nested-dispatch channel, also usable by a leaf tool minting a plugin-sourced instruction — without injecting inside the still-open outer call.
@@ -255,7 +262,7 @@ A tool body receives the runtime extension. `deferContext()` attaches context to
  * plugin-sourced instruction; the loop appends it only after the
  * `tool/result`.
  */
-interface ToolRunContext extends ToolExecution {
+type ToolRunContext = ToolExecution & {
   /**
    * Defer one context — typically a nested-dispatch context ferried by a
    * composite tool, or a fresh plugin-sourced instruction — until this tool's
@@ -325,7 +332,7 @@ interface CodeDispatchLog {
  * readonly. The registry freezes the complete object before `tools/result`
  * observers run.
  */
-interface ToolExecution extends ToolExecutionInput {
+type ToolExecution = ToolExecutionInput & {
   /** Root model-requested call, resolved for every root and nested execution. */
   readonly rootCallId: CallId
   /** Registry-assigned identity shared with nested calls only as their opaque `parent` token. */
@@ -339,7 +346,7 @@ interface ToolExecution extends ToolExecutionInput {
  * may replace the signal for its delegated lifetime, but it cannot remove it.
  * The registry fuses every replacement with the captured caller signal.
  */
-interface ToolDispatchExecution extends Omit<ToolExecution, 'signal'> {
+type ToolDispatchExecution = DistributiveOmit<ToolExecution, 'signal'> & {
   /** Cancellation signal visible to the next wrapper or tool body. */
   signal: AbortSignal
 }
@@ -608,7 +615,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:787`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:833`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 
@@ -633,7 +640,7 @@ A tool was registered or unregistered, or a scoped restriction changed (the avai
 'tools/change'(): void
 ```
 
-Source: [`packages/core/tools/src/index.ts:207`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:242`](../../packages/core/tools/src/index.ts)
 
 <a id="toolscode-dispatch-log--waterfall"></a>
 
@@ -660,7 +667,7 @@ Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` su
 
 Types: [ContentBlock](llm-streaming.md) · [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:189`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:224`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsexecute--waterfall"></a>
 
@@ -684,7 +691,7 @@ Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a nor
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:163`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:198`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspost-execute--waterfall"></a>
 
@@ -709,7 +716,7 @@ Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:175`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:210`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspre-execute--waterfall"></a>
 
@@ -732,7 +739,7 @@ Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approv
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:152`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:187`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsresult--emit"></a>
 
@@ -753,5 +760,5 @@ Observe the frozen, lossless-JSON final outcome. Listener failures are contained
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:197`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:232`](../../packages/core/tools/src/index.ts)
 <!-- END GENERATED cordis-surface -->

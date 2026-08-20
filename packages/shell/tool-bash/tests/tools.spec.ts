@@ -10,7 +10,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { ExternalToolPrincipalId, TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
+import type { ExternalToolPrincipal, ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
@@ -77,14 +77,18 @@ function registerFakeAgent(ctx: Context, sessionId: string, inject: (...args: un
 }
 let callCounter = 0
 function call(ctx: Context, name: string, args: unknown, agent?: Agent, principal?: ExternalToolPrincipal) {
-  return ctx.tools.execute({
+  const base = {
     signal: testToolSignal,
     callId: CallId(`call-${++callCounter}`),
     name,
     arguments: args,
-    ...agent ? { agent } : {},
-    ...principal ? { principal } : {},
-  })
+  }
+  if (agent !== undefined && principal !== undefined) {
+    return ctx.tools.execute({ ...base, agent, principal } as ToolExecutionInput)
+  }
+  if (agent !== undefined) return ctx.tools.execute({ ...base, agent })
+  if (principal !== undefined) return ctx.tools.execute({ ...base, principal })
+  return ctx.tools.execute(base)
 }
 
 function externalPrincipal(cwd?: string): ExternalToolPrincipal {

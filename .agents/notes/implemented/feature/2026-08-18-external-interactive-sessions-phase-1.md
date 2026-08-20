@@ -32,6 +32,10 @@ The driver appends log-only events via `SessionEventMap` declaration merging, al
 
 `/compact` and `/model` route per-session-mode: compaction calls the provider's native compact and records the notice; model switching calls `setModel` and records the switch. Unknown slash commands in external mode pass through as prompt text.
 
+### External tool ownership
+
+A live external session supplies an `ExternalToolPrincipal` with its branded id, session, scoped context, and recorder. The shipped shell and filesystem foreground definitions opt into that identity and derive cwd, environment, observation, and result scope from the external session without creating a native Agent. Native Agent ownership remains required for background shell jobs; ask-user, schedule, workflow, Cordis self-modification, terminal/jobs, and subagent tool definitions are default-denied to external principals. The Phase 1 permission bridge remains the host-owned ask-user path, not an external tool eligibility grant.
+
 ## Alternatives considered
 
 The design alternatives and their rejections are argued in the proposed [external interactive agent sessions](../../proposed/feature/2026-08-18-external-interactive-agent-sessions.md) note: a PTY terminal adapter (no structured stream, no log projection, no policy inheritance), extending the one-shot subagent providers in place (their contract is one final text), one generic wire for everything (ACP loses Codex thread resume and Claude Code `canUseTool` specifics), and depending on community adapter packs for the whole job (permission, sandbox, and MCP decisions stay harness-owned). Phase 1 shipped the Codex dialect first per the plan's sequencing note; ACP is the Phase 2 wire.

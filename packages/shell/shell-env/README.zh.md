@@ -17,7 +17,7 @@
 
 ## Managed environment
 
-每次前台与后台模型 shell 调用都会收到一份新收集的受信任 `DSH_*` 环境。`DSH_HOME` 是由 [`@deepseek-ai/dsh-home-paths`](../../util/home-paths/README.md) 解析的 Harness 主目录绝对路径（`dshHome` 配置，然后环境变量 `$DSH_HOME`，然后 `~/.dsh`），`DSH_SHELL=1` 标识受管理的子进程。带 agent（智能体）的调用额外收到 `DSH_SESSION_ID=agent.session.header.id`；当活动的持久化 seam 定位到 JSONL 工件时，它们还会收到 `DSH_SESSION_JSONL=<绝对目标路径>`。JSONL 路径只是位置提示：首次 flush 之前它可能不存在，也不一定包含当前缓冲中的轮次，并且它不是授权凭据。
+每次前台与后台模型 shell 调用都会收到一份新收集的受信任 `DSH_*` 环境。`DSH_HOME` 是由 [`@deepseek-ai/dsh-home-paths`](../../util/home-paths/README.md) 解析的 Harness 主目录绝对路径（`dshHome` 配置，然后环境变量 `$DSH_HOME`，然后 `~/.dsh`），`DSH_SHELL=1` 标识受管理的子进程。原生 Agent 和 ExternalToolPrincipal 调用会从执行身份的 session 额外收到 `DSH_SESSION_ID`；无 agent 的调用不包含它。当活动的持久化 seam 定位到 JSONL 工件时，它们还会收到 `DSH_SESSION_JSONL=<绝对目标路径>`。JSONL 路径只是位置提示：首次 flush 之前它可能不存在，也不一定包含当前缓冲中的轮次，并且它不是授权凭据。
 
 `ctx.shellEnv` 负责收集。其他插件可以注册一个受 effect 作用域约束的 contributor，带有稳定名称、已声明的键/描述以及 `resolve(execution: ToolExecution)`；重复所有权与未声明的运行时键会响亮失败，而 `list()` 只枚举声明、不执行 provider。Harness 内置键保留 `DSH_HOME`、`DSH_SHELL` 与 `DSH_SESSION_ID`；本插件的持久化翻译器通过读取与后端无关的 `sessionPersistence.locate()` seam 拥有 `DSH_SESSION_JSONL`。
 
@@ -31,7 +31,9 @@ export function apply(ctx: Context): void {
   ctx.shellEnv.register({
     name: 'deployment-region',
     variables: { DSH_DEPLOYMENT_REGION: { description: 'Current deployment region.' } },
-    resolve: execution => execution.agent === undefined ? {} : { DSH_DEPLOYMENT_REGION: 'cn-north' },
+    resolve: execution => execution.agent === undefined && execution.principal === undefined
+      ? {}
+      : { DSH_DEPLOYMENT_REGION: 'cn-north' },
   })
 }
 ```

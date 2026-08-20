@@ -5,6 +5,7 @@ import { CallId } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
 import type { ExternalToolPrincipal, ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import * as ToolsInvariant from '@deepseek-ai/dsh-tools/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 
@@ -18,7 +19,12 @@ async function setup(): Promise<Context> {
   return ctx
 }
 
-const execution = (overrides: Partial<ToolExecution> = {}): ToolExecution => ({
+type ExecutionOverrides = Omit<Partial<ToolExecution>, 'agent' | 'principal'> & {
+  agent?: Agent
+  principal?: ExternalToolPrincipal
+}
+
+const execution = (overrides: ExecutionOverrides = {}): ToolExecution => ({
   token: Symbol('tool') as ToolExecutionToken,
   callId: CallId('call-1'),
   name: 'echo',
@@ -26,7 +32,7 @@ const execution = (overrides: Partial<ToolExecution> = {}): ToolExecution => ({
   ...overrides,
   signal: overrides.signal ?? testToolSignal,
   rootCallId: overrides.rootCallId ?? overrides.callId ?? CallId('call-1'),
-})
+}) as ToolExecution
 
 const outcome = (): ToolExecutionResult => Object.freeze({
   content: Object.freeze([{ type: 'text' as const, text: 'ok' }]) as never,
@@ -100,7 +106,7 @@ describe('tool-pipeline invariants', () => {
 
   it('rejects a final snapshot carrying both native and external identities', async () => {
     const ctx = await setup()
-    const agent = { id: SessionId('native-invariant') } as ToolExecution['agent']
+    const agent = { id: SessionId('native-invariant') } as Agent
     const exec = Object.freeze(execution({ agent, principal: externalPrincipal() }))
     expect(() => emitResult(ctx, exec, outcome())).toThrow(/exactly one.*agent.*principal/i)
   })

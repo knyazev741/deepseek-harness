@@ -310,6 +310,7 @@ export function applyGlobTool(ctx: Context, caps: GlobToolCaps): void {
     : `a larger result returns the first ${caps.maxResults} paths in modification-time order`
   const tool = defineTool({
     name: 'glob',
+    externalEligibility: 'allow',
     description: 'Find files whose paths match a glob pattern. Returns matching file paths — never directories — '
       + 'including hidden and ignored files (VCS metadata directories are excluded). '
       + `Up to ${caps.maxResults} paths come back in modification-time order; ${overCapDescription}, `

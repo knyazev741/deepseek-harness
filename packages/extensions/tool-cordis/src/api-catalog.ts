@@ -569,6 +569,92 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'externalSessions',
+    summary: 'Named-provider registry plus dispatch for live external sessions.',
+    description: 'Named-provider registry plus dispatch for live external sessions. registerProvider is effect-scoped and HMR safe; removing a provider blocks new starts but does not revoke live sessions already handed to their holders. Opaque session ids are routed to their owning provider through sessions.',
+    methods: [
+      {
+        signature: 'registerProvider(provider: ExternalSessionProvider): () => void',
+        description: 'Register a provider under its registry name. Registration is effect-scoped and HMR safe; removing a provider blocks new starts but does not revoke live sessions already returned to their holders.',
+        parameters: [{ name: 'provider', description: 'the trusted provider implementation.' }],
+        returns: 'the exact Cordis effect disposer.',
+      },
+      {
+        signature: 'registerPermissionChannel(answerer: ExternalPermissionAnswerer): () => void',
+        description: 'Register the permission answerer that every per-session bridge\'s ExternalBridgeContext.requestPermission consults. Registration is effect-scoped and HMR safe, mirroring registerProvider: at most one channel is active, and disposing it restores the fail-closed default.',
+        parameters: [{ name: 'answerer', description: 'answers an external session\'s permission asks on behalf of the human.' }],
+        returns: 'the exact Cordis effect disposer.',
+      },
+      {
+        signature: 'getProvider(name: string): ExternalSessionProvider | undefined',
+        description: 'Look up a provider by its registry name.',
+        parameters: [{ name: 'name', description: 'the registry/mode name.' }],
+        returns: 'the provider, or undefined when absent.',
+      },
+      {
+        signature: 'list(): string[]',
+        description: 'List registered provider names in insertion order.',
+        parameters: [],
+        returns: 'the registered names.',
+      },
+      {
+        signature: 'listAgents(): ExternalAgentDescriptor[]',
+        description: 'List registered agents\' descriptors.',
+        parameters: [],
+        returns: 'the descriptors in insertion order.',
+      },
+      {
+        signature: 'async start(request: ExternalSessionStartRequest): Promise<void>',
+        description: 'Begin a live external session on the named provider, handing it a bridge. Records the session-to-provider route before awaiting the provider so a later prompt/interrupt/setModel/dispose resolves during startup, then removes the route when startup rejects.',
+        parameters: [{ name: 'request', description: 'the start request with a pre-reserved session id.' }],
+        throws: ['{@link ExternalSessionError} for an unknown provider or a session id that is already live.'],
+      },
+      {
+        signature: 'async resume(request: ExternalSessionStartRequest, providerThreadId: ExternalProviderThreadId): Promise<void>',
+        description: 'Attach a persisted external session to its provider-owned thread. Resume is a distinct operation: providers must reject a missing or unknown id and never create a replacement thread.',
+        parameters: [{ name: 'request', description: 'the resolved session identity and policy values.' }, { name: 'providerThreadId', description: 'the branded provider thread id from the durable log.' }],
+      },
+      {
+        signature: 'async prompt(sessionId: SessionId, text: string): Promise<{ turnId: ExternalTurnId }>',
+        description: 'Submit one prompt to a live external session.',
+        parameters: [{ name: 'sessionId', description: 'the live external session.' }, { name: 'text', description: 'the user text to deliver.' }],
+        returns: 'the provider-issued turn id.',
+        throws: ['{@link ExternalSessionError} when the session is not live.'],
+      },
+      {
+        signature: 'interrupt(sessionId: SessionId): void',
+        description: 'Stop the current turn of a live external session.',
+        parameters: [{ name: 'sessionId', description: 'the live external session.' }],
+        throws: ['{@link ExternalSessionError} when the session is not live.'],
+      },
+      {
+        signature: 'async compact(sessionId: SessionId): Promise<void>',
+        description: 'Compact a live external session through its provider\'s native mechanism; the provider records `external/compaction-noticed` on the bridge.',
+        parameters: [{ name: 'sessionId', description: 'the live external session.' }],
+        throws: ['{@link ExternalSessionError} when the session is not live or the provider\'s native compact rejects.'],
+      },
+      {
+        signature: 'async listModels(provider: string): Promise<ExternalModelInfo[]>',
+        description: 'List the models a provider can switch to.',
+        parameters: [{ name: 'provider', description: 'the registered provider name.' }],
+        returns: 'the disclosed models.',
+        throws: ['{@link ExternalSessionError} for an unknown provider.'],
+      },
+      {
+        signature: 'async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>',
+        description: 'Switch a live external session to a listed model.',
+        parameters: [{ name: 'sessionId', description: 'the live external session.' }, { name: 'model', description: 'the model id to switch to.' }, { name: 'reasoningEffort', description: 'the optional provider reasoning-effort selection.' }],
+        throws: ['{@link ExternalSessionError} when the session is not live.'],
+      },
+      {
+        signature: 'async dispose(sessionId: SessionId): Promise<void>',
+        description: 'Dispose a live external session and its process tree. The bridge\'s disposal signal fires before the provider tears down.',
+        parameters: [{ name: 'sessionId', description: 'the live external session.' }],
+        throws: ['{@link ExternalSessionError} when the session is not live.'],
+      },
+    ],
+  },
+  {
     key: 'fs',
     summary: 'Abstract filesystem provider.',
     description: 'Abstract filesystem provider. Targets must preserve identity across aliases; reads expose regular UTF-8 text or typed errors, listings are stable and content-free, and mutations are atomic. Optional guards add stale protection without changing the unguarded provider contract.',
@@ -1897,44 +1983,44 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     methods: [
       {
         signature: 'presentAs(mode: ToolPresentationMode): () => void',
-        description: 'Present the calling scope\'s tools in `mode` instead of the deployment default. Nearest scope on the chain wins, so a preset\'s standing declaration covers every agent joined under it.\n\nScoped only, and one declaration per scope: this is how an agent preset composes Code Mode agents beside native ones in the same process, and a process-global override would be the `mode` config field instead.',
-        parameters: [{ name: 'mode', description: 'the presentation the covered agents\' models see.' }],
+        description: 'Present the calling scope\'s tools in `mode` instead of the deployment default. Nearest scope on the chain wins, so a standing declaration covers every caller joined under it.\n\nScoped only, and one declaration per scope: this composes Code Mode callers beside native ones in the same process, and a process-global override would be the `mode` config field instead.',
+        parameters: [{ name: 'mode', description: 'the presentation the covered callers\' models see.' }],
         returns: 'the exact disposer that restores the deployment default.',
       },
       {
         signature: 'register(definition: ToolDefinition): () => void',
-        description: 'Register globally or in the calling agent scope. Scoped tools shadow globals; duplicates within one layer and the reserved `run_code` name fail.',
+        description: 'Register globally or in the calling scope. Scoped tools shadow globals; duplicates within one layer and the reserved `run_code` name fail.',
         parameters: [{ name: 'definition', description: 'tool schema, execution, and optional finalization/presentation callbacks.' }],
         returns: 'the exact disposer that unregisters the tool.',
       },
       {
         signature: 'restrict(filter: ToolRestriction): () => void',
-        description: 'Restrict global tools for the calling agent scope. Empty filters, unknown names, scope-local names, and reserved transport names fail. Restrictions intersect; scoped registrations remain visible.',
+        description: 'Restrict global tools for the calling scope. Empty filters, unknown names, scope-local names, and reserved transport names fail. Restrictions intersect; scoped registrations remain visible.',
         parameters: [{ name: 'filter', description: 'global-tool mask: `allow` (keep only) and/or `deny` (remove).' }],
         returns: 'the exact disposer that lifts this restriction.',
       },
       {
         signature: 'guard(guard: ToolGuard): () => void',
-        description: 'Register a monotonic guard after the extensible `tools/pre-execute` waterfall. A plain-context guard applies globally; one registered through `agent.ctx` applies only to that agent. Any matching guard may deny by returning a reason, while no guard can force-allow a call another guard denied. The exact effect disposer is returned for ordered ownership and HMR cleanup.',
+        description: 'Register a monotonic guard after the extensible `tools/pre-execute` waterfall. A plain-context guard applies globally; one registered through a scoped context applies only to that caller. Any matching guard may deny by returning a reason, while no guard can force-allow a call another guard denied. The exact effect disposer is returned for ordered ownership and HMR cleanup.',
         parameters: [{ name: 'guard', description: 'synchronous check; a returned string denies the execution.' }],
         returns: 'the exact disposer that unregisters the guard.',
       },
       {
         signature: 'get(name: string, scope?: ScopeKey): ToolDefinition | undefined',
-        description: 'Look up a tool as one scope sees it (scoped shadows global; a restricted-away global reads as absent). Presenters pass the calling agent so the rendered card matches the definition that actually executed.',
-        parameters: [{ name: 'name', description: 'the tool name as registered.' }, { name: 'scope', description: 'the viewing scope (the agent); omitted = the global view.' }],
+        description: 'Look up a tool as one scope sees it (scoped shadows global; a restricted-away global reads as absent). Presenters pass the calling scope so the rendered card matches the definition that actually executed.',
+        parameters: [{ name: 'name', description: 'the tool name as registered.' }, { name: 'scope', description: 'the viewing scope; omitted = the global view.' }],
         returns: 'the definition the scope resolves, or undefined when none is visible.',
       },
       {
         signature: 'schemas(scope?: ScopeKey): ToolSchema[]',
         description: 'Project visible definitions onto the allowlisted model-facing schema fields, excluding execution and presentation callbacks.',
-        parameters: [{ name: 'scope', description: 'the viewing scope (the agent); omitted = the global view.' }],
+        parameters: [{ name: 'scope', description: 'the viewing scope; omitted = the global view.' }],
         returns: 'one deep-cloned schema per visible tool.',
       },
       {
         signature: 'executionMode(exec: ToolExecutionInput): ToolExecutionMode',
         description: 'Classify a pending call through the caller\'s visible tool definition. Only an exact `true` is parallel; unknown, hidden, undeclared, invalid, or throwing classifiers are exclusive.',
-        parameters: [{ name: 'exec', description: 'call name, parsed arguments, and optional agent scope.' }],
+        parameters: [{ name: 'exec', description: 'call name, parsed arguments, and optional execution scope.' }],
         returns: 'the fail-closed scheduling mode.',
       },
       {
@@ -2152,6 +2238,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'resolution after durability.',
       },
       {
+        signature: 'setSessionPinned(sessionId: SessionId, pinned: boolean): Promise<void>',
+        description: 'Pin or unpin one session durably, appending on pin and removing on unpin (each idempotent). The session must exist (live or in session persistence) to pin; workspace accounting is irrelevant.',
+        parameters: [{ name: 'sessionId', description: 'The session to pin or unpin.' }, { name: 'pinned', description: '`true` pins, `false` unpins.' }],
+        returns: 'resolution after durability.',
+      },
+      {
         signature: 'async resolveByPath(path: string): Promise<Workspace | undefined>',
         description: 'Resolve by canonical directory path without creating or mutating a workspace. A missing path rejects during `realpath`; an existing unowned directory returns `undefined`.',
         parameters: [{ name: 'path', description: 'Existing directory path in any spelling.' }],
@@ -2356,6 +2448,38 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'change', description: 'domain, table (`\'\'` for global), key (`\'\'` for global), operation discriminant, and on `put` the new snapshot.' }],
   },
   {
+    name: 'external/provider-added',
+    mode: 'emit',
+    signature: '\'external/provider-added\'(descriptor: ExternalAgentDescriptor): void',
+    summary: 'A provider became resolvable in the registry.',
+    description: 'A provider became resolvable in the registry.',
+    parameters: [{ name: 'descriptor', description: 'the registered provider\'s descriptor.' }],
+  },
+  {
+    name: 'external/provider-removed',
+    mode: 'emit',
+    signature: '\'external/provider-removed\'(provider: string): void',
+    summary: 'A provider left the registry.',
+    description: 'A provider left the registry. Live sessions it already started remain owner-held; new starts under that provider fail loud.',
+    parameters: [{ name: 'provider', description: 'the provider name that no longer resolves.' }],
+  },
+  {
+    name: 'external/session-bridge/error',
+    mode: 'emit',
+    signature: '\'external/session-bridge/error\'(payload: { sessionId: SessionId provider: string error: unknown }): void',
+    summary: 'An external provider\'s `start` rejected for a session already published in an external mode, so no live external process is running.',
+    description: 'An external provider\'s `start` rejected for a session already published in an external mode, so no live external process is running. A later phase decides the durable/UI surface; here it is the loud host signal that the create-time mode choice did not come up.',
+    parameters: [{ name: 'payload', description: 'the session, its chosen provider, and the rejection reason.' }],
+  },
+  {
+    name: 'external/session-delta',
+    mode: 'emit',
+    signature: '\'external/session-delta\'(payload: { sessionId: SessionId turnId: ExternalTurnId delta: string }): void',
+    summary: 'One transient external-agent transcript delta.',
+    description: 'One transient external-agent transcript delta. The host mux projects this event to subscribed clients; it is intentionally not a SessionEvent and never enters the durable session log.',
+    parameters: [{ name: 'payload', description: 'the session, provider turn, and incremental text.' }],
+  },
+  {
     name: 'fs/edit-intent',
     mode: 'waterfall',
     signature: '\'fs/edit-intent\'(target: FsTarget, actor: object | undefined, next: () => { version: FsVersion } | undefined | Promise<{ version: FsVersion } | undefined>): Promise<{ version: FsVersion } | undefined>',
@@ -2520,7 +2644,7 @@ export const EVENT_API: readonly EventApiEntry[] = [
     mode: 'emit',
     signature: '\'tools/change\'(): void',
     summary: 'A tool was registered or unregistered, or a scoped restriction changed (the available tool set changed — possibly for one scope only).',
-    description: 'A tool was registered or unregistered, or a scoped restriction changed (the available tool set changed — possibly for one scope only). An UNFILTERED registry-subject notification, deliberately not scope-filtered dispatch: a global change concerns every agent\'s next assembly, so a scoped listener subscribing here sees every change, not just its own scope\'s.',
+    description: 'A tool was registered or unregistered, or a scoped restriction changed (the available tool set changed — possibly for one scope only). An UNFILTERED registry-subject notification, deliberately not scope-filtered dispatch: a global change concerns every caller\'s next assembly, so a scoped listener subscribing here sees every change, not just its own scope\'s.',
     parameters: [],
   },
   {
@@ -2528,7 +2652,7 @@ export const EVENT_API: readonly EventApiEntry[] = [
     mode: 'waterfall',
     signature: '\'tools/code-dispatch-log\'(this: Scoped<ToolRuntime>, dispatch: CodeDispatchLog, next: () => Promise<ContentBlock[]>): Promise<ContentBlock[]>',
     summary: 'Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` sub-dispatch outcome before the bridge appends its `tool/code-dispatch` event.',
-    description: 'Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` sub-dispatch outcome before the bridge appends its `tool/code-dispatch` event. `next()` keeps the content unchanged; a listener may return replacement blocks (e.g. the spill policy\'s preview + locator for an oversized text result). Only the logged copy is affected — the program already received the complete value, and the model sees neither. A throwing listener is contained: the bridge falls back to logging the original settled content. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent\'s dispatches.',
+    description: 'Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` sub-dispatch outcome before the bridge appends its `tool/code-dispatch` event. `next()` keeps the content unchanged; a listener may return replacement blocks (e.g. the spill policy\'s preview + locator for an oversized text result). Only the logged copy is affected — the program already received the complete value, and the model sees neither. A throwing listener is contained: the bridge falls back to logging the original settled content. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller\'s dispatches.',
     parameters: [{ name: 'dispatch', description: 'the parent execution, sub-call identity, and the settled content to log.' }],
   },
   {
@@ -2536,31 +2660,31 @@ export const EVENT_API: readonly EventApiEntry[] = [
     mode: 'waterfall',
     signature: '\'tools/execute\'(this: Scoped<ToolRuntime>, exec: ToolDispatchExecution, next: () => Promise<ToolExecutionResult>): Promise<ToolExecutionResult>',
     summary: 'Around-dispatch waterfall for timeout, retry, or metrics.',
-    description: 'Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a normalized result; wrappers may change only `exec.signal`, while call identity remains immutable. The registry re-fuses the original caller signal before the body, so replacement cannot detach caller cancellation; wrappers must still restore their signal and reach quiescence. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent\'s calls.',
-    parameters: [{ name: 'exec', description: 'the allowed call about to dispatch (name, parsed arguments, caller agent, signal).' }],
+    description: 'Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a normalized result; wrappers may change only `exec.signal`, while call identity remains immutable. The registry re-fuses the original caller signal before the body, so replacement cannot detach caller cancellation; wrappers must still restore their signal and reach quiescence. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller\'s calls.',
+    parameters: [{ name: 'exec', description: 'the allowed call about to dispatch (name, parsed arguments, caller identity, signal).' }],
   },
   {
     name: 'tools/post-execute',
     mode: 'waterfall',
     signature: '\'tools/post-execute\'(this: Scoped<ToolRuntime>, exec: ToolExecution, result: Readonly<ToolExecutionResult>, next: () => Promise<PostToolDecision>): Promise<PostToolDecision>',
     summary: 'Accept, replace, enrich, or block a normalized dispatch result.',
-    description: 'Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts it unchanged; thrown tools still reach this waterfall as errors. Async listeners must observe `exec.signal`; after they settle, caller cancellation replaces only a successful accepted outcome with the code selected by whether the tool body was invoked. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent\'s calls.',
-    parameters: [{ name: 'exec', description: 'the call that just ran (name, parsed arguments, caller agent).' }, { name: 'result', description: 'the dispatch outcome a listener may accept, replace, or block.' }],
+    description: 'Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts it unchanged; thrown tools still reach this waterfall as errors. Async listeners must observe `exec.signal`; after they settle, caller cancellation replaces only a successful accepted outcome with the code selected by whether the tool body was invoked. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller\'s calls.',
+    parameters: [{ name: 'exec', description: 'the call that just ran (name, parsed arguments, caller identity).' }, { name: 'result', description: 'the dispatch outcome a listener may accept, replace, or block.' }],
   },
   {
     name: 'tools/pre-execute',
     mode: 'waterfall',
     signature: '\'tools/pre-execute\'(this: Scoped<ToolRuntime>, exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision>',
     summary: 'Allow, deny, or ask before dispatch.',
-    description: 'Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approval support turns `ask` into denial. Async gates must observe `exec.signal`; the registry rechecks cancellation after they settle but never abandons their promise. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent\'s calls.',
-    parameters: [{ name: 'exec', description: 'the pending call (name, parsed arguments, caller agent).' }],
+    description: 'Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approval support turns `ask` into denial. Async gates must observe `exec.signal`; the registry rechecks cancellation after they settle but never abandons their promise. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller\'s calls.',
+    parameters: [{ name: 'exec', description: 'the pending call (name, parsed arguments, caller identity).' }],
   },
   {
     name: 'tools/result',
     mode: 'emit',
     signature: '\'tools/result\'(this: Scoped<ToolRuntime>, exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): undefined',
     summary: 'Observe the frozen, lossless-JSON final outcome.',
-    description: 'Observe the frozen, lossless-JSON final outcome. Listener failures are contained. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by `exec.agent`.',
+    description: 'Observe the frozen, lossless-JSON final outcome. Listener failures are contained. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by the execution identity (`agent` or `principal`).',
     parameters: [{ name: 'exec', description: 'the execution object that traversed the pipeline.' }, { name: 'result', description: 'a deep-frozen snapshot of the final returned result.' }],
   },
   {
@@ -2761,7 +2885,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CodeDispatchLog',
-    declaration: 'export interface CodeDispatchLog {\n    readonly exec: ToolExecution;\n    readonly agent?: Agent;\n    readonly subCallId: CallId;\n    readonly name: string;\n    readonly isError: boolean;\n    readonly content: ContentBlock[];\n}',
+    declaration: 'export interface CodeDispatchLog {\n    readonly exec: ToolExecution;\n    readonly agent?: Agent;\n    readonly principal?: ExternalToolPrincipal;\n    readonly subCallId: CallId;\n    readonly name: string;\n    readonly isError: boolean;\n    readonly content: ContentBlock[];\n}',
   },
   {
     name: 'CodeJsonValue',
@@ -2905,7 +3029,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CreateAgentOptions',
-    declaration: 'export interface CreateAgentOptions {\n    readonly sessionId: SessionId;\n    readonly meta?: {\n        readonly cwd?: string;\n        readonly parentSession?: SessionId;\n        readonly seedLength?: number;\n        readonly origin?: \'subagent\';\n        readonly delegationDepth?: number;\n        readonly agentPreset?: string;\n    };\n    readonly seed?: readonly SessionEvent[];\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
+    declaration: 'export interface CreateAgentOptions {\n    readonly sessionId: SessionId;\n    readonly meta?: {\n        readonly cwd?: string;\n        readonly parentSession?: SessionId;\n        readonly seedLength?: number;\n        readonly origin?: \'subagent\' | \'github-actions\';\n        readonly delegationDepth?: number;\n        readonly agentPreset?: string;\n    };\n    readonly seed?: readonly SessionEvent[];\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
   {
     name: 'CreateGoalRequest',
@@ -2917,7 +3041,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CreateSessionOptions',
-    declaration: 'export interface CreateSessionOptions {\n    readonly seed?: readonly SessionEvent[];\n    readonly meta?: {\n        readonly cwd?: string;\n        readonly parentSession?: SessionId;\n        readonly createdAt?: number;\n        readonly seedLength?: number;\n        readonly origin?: \'subagent\';\n        readonly delegationDepth?: number;\n        readonly agentPreset?: string;\n    };\n}',
+    declaration: 'export interface CreateSessionOptions {\n    readonly seed?: readonly SessionEvent[];\n    readonly meta?: {\n        readonly cwd?: string;\n        readonly parentSession?: SessionId;\n        readonly createdAt?: number;\n        readonly seedLength?: number;\n        readonly origin?: \'subagent\' | \'github-actions\';\n        readonly delegationDepth?: number;\n        readonly agentPreset?: string;\n        readonly mode?: string;\n        readonly model?: string;\n    };\n}',
   },
   {
     name: 'CredentialInfo',
@@ -3034,6 +3158,58 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
+  },
+  {
+    name: 'ExternalAgentDescriptor',
+    declaration: 'export interface ExternalAgentDescriptor {\n    readonly provider: string;\n    readonly label: string;\n    readonly modelDirectory: ExternalModelDirectory;\n}',
+  },
+  {
+    name: 'ExternalBridgeContext',
+    declaration: 'export interface ExternalBridgeContext {\n    appendEvent(sessionId: SessionId, event: ExternalSessionEvent): void;\n    requestPermission(sessionId: SessionId, ask: ExternalPermissionAsk): Promise<ExternalPermissionDecision>;\n    streamDelta(sessionId: SessionId, turnId: ExternalTurnId, delta: string): void;\n    readonly disposal: AbortSignal;\n}',
+  },
+  {
+    name: 'ExternalModelInfo',
+    declaration: 'export interface ExternalModelInfo {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
+  },
+  {
+    name: 'ExternalPermissionAnswerer',
+    declaration: 'export type ExternalPermissionAnswerer = (sessionId: SessionId, ask: ExternalPermissionAsk) => Promise<ExternalPermissionDecision>;',
+  },
+  {
+    name: 'ExternalPermissionAsk',
+    declaration: 'export interface ExternalPermissionAsk {\n    readonly askId: string;\n    readonly title: string;\n    readonly options: readonly string[];\n}',
+  },
+  {
+    name: 'ExternalPermissionDecision',
+    declaration: 'export type ExternalPermissionDecision = \'allowed\' | \'rejected\' | \'cancelled\';',
+  },
+  {
+    name: 'ExternalProviderThreadId',
+    declaration: 'export type ExternalProviderThreadId = Branded<\'ExternalProviderThreadId\'>;',
+  },
+  {
+    name: 'ExternalSessionEvent',
+    declaration: 'export interface ExternalSessionEvent<T extends SessionEventType = SessionEventType> {\n    type: T;\n    data: SessionEventMap[T];\n}',
+  },
+  {
+    name: 'ExternalSessionProvider',
+    declaration: 'export interface ExternalSessionProvider extends ExternalAgentDescriptor {\n    start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void>;\n    resume(request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void>;\n    prompt(sessionId: SessionId, text: string): Promise<{\n        turnId: ExternalTurnId;\n    }>;\n    interrupt(sessionId: SessionId): void;\n    compact(sessionId: SessionId): Promise<void>;\n    listModels(): Promise<ExternalModelInfo[]>;\n    setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>;\n    dispose(sessionId: SessionId): Promise<void>;\n}',
+  },
+  {
+    name: 'ExternalSessionStart',
+    declaration: 'export interface ExternalSessionStart {\n    readonly sessionId: SessionId;\n    readonly provider: string;\n    readonly cwd: string;\n    readonly model?: string;\n    readonly reasoningEffort?: ReasoningEffort;\n    readonly sandbox: SandboxMode;\n    readonly approvalPolicy: ApprovalPolicy;\n}',
+  },
+  {
+    name: 'ExternalSessionStartRequest',
+    declaration: 'export type ExternalSessionStartRequest = Omit<ExternalSessionStart, \'sandbox\' | \'approvalPolicy\'> & {\n    readonly sandbox?: SandboxMode;\n    readonly approvalPolicy?: ApprovalPolicy;\n};',
+  },
+  {
+    name: 'ExternalToolPrincipal',
+    declaration: 'export interface ExternalToolPrincipal {\n    readonly kind: \'external\';\n    readonly id: ExternalToolPrincipalId;\n    readonly session: Session;\n    readonly ctx: Context;\n    readonly recorder: ToolExecutionRecorder;\n}',
+  },
+  {
+    name: 'ExternalTurnId',
+    declaration: 'export type ExternalTurnId = Branded<\'ExternalTurnId\'>;',
   },
   {
     name: 'FileDiff',
@@ -3576,6 +3752,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ReasoningBlock {\n    type: \'reasoning\';\n    text: string;\n}',
   },
   {
+    name: 'ReasoningEffort',
+    declaration: 'export type ReasoningEffort = ReasoningEffortId;',
+  },
+  {
     name: 'ReasoningEffortId',
     declaration: 'export type ReasoningEffortId = Branded<\'ReasoningEffortId\'>;',
   },
@@ -3645,7 +3825,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RpcErrorDetailsMap',
-    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'agent-preset-read-only\': {\n        agentPreset: string;\n        reason: string;\n    };\n    \'agent-preset-locked\': {\n        sessionId: SessionId;\n        agentPreset: string;\n    };\n    \'agent-preset-conflict\': {\n        sessionId: SessionId;\n        requestedPreset: string;\n        existingPreset?: string;\n    };\n    \'agent-preset-not-found\': {\n        agentPreset: string;\n      /* …truncated — full shape in source */',
+    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'unknown-mode\': {\n        mode: string;\n    };\n    \'invalid-mode\': {\n        sessionId: SessionId;\n    };\n    \'external-session\': {\n        sessionId: SessionId;\n        mode: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'agent-preset-read-only\': {\n        agentPreset: string;\n        reason: string;\n    };\n    \'agent-preset-locked\': {\n        sessionId: SessionId;\n        agentPreset: string;\n    };\n    \' /* …truncated — full shape in source */',
   },
   {
     name: 'RpcId',
@@ -3805,7 +3985,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionHeader',
-    declaration: 'export interface SessionHeader {\n    readonly version: number;\n    readonly id: SessionId;\n    readonly createdAt: number;\n    readonly cwd?: string;\n    readonly parentSession?: SessionId;\n    readonly seedLength?: number;\n    readonly origin?: \'subagent\';\n    readonly delegationDepth?: number;\n    readonly agentPreset?: string;\n}',
+    declaration: 'export interface SessionHeader {\n    readonly version: number;\n    readonly id: SessionId;\n    readonly createdAt: number;\n    readonly cwd?: string;\n    readonly parentSession?: SessionId;\n    readonly seedLength?: number;\n    readonly origin?: \'subagent\' | \'github-actions\';\n    readonly delegationDepth?: number;\n    readonly agentPreset?: string;\n    readonly mode?: string;\n    readonly model?: string;\n}',
   },
   {
     name: 'SessionId',
@@ -4361,11 +4541,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolDefinition',
-    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
+    declaration: 'export interface ToolDefinition extends ToolSchema {\n    readonly output: ToolOutputDefinition;\n    readonly externalEligibility?: \'allow\';\n    execute(args: unknown, exec: ToolRunContext): Promise<unknown>;\n    finalizeContent?(exec: Readonly<ToolExecution>, result: Readonly<ToolExecutionResult>): ContentBlock[] | undefined;\n    timeoutMs?: number;\n    isConcurrencySafe?(args: unknown): boolean;\n    presentCall?(args: unknown): ToolCallView | undefined;\n    presentResult?(args: unknown, result: ToolResult): ToolResultView | undefined;\n}',
   },
   {
     name: 'ToolDispatchExecution',
-    declaration: 'export interface ToolDispatchExecution extends Omit<ToolExecution, \'signal\'> {\n    signal: AbortSignal;\n}',
+    declaration: 'export type ToolDispatchExecution = DistributiveOmit<ToolExecution, \'signal\'> & {\n    signal: AbortSignal;\n};',
   },
   {
     name: 'ToolErrorInfo',
@@ -4373,19 +4553,27 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolExecution',
-    declaration: 'export interface ToolExecution extends ToolExecutionInput {\n    readonly rootCallId: CallId;\n    readonly token: ToolExecutionToken;\n}',
+    declaration: 'export type ToolExecution = ToolExecutionInput & {\n    readonly rootCallId: CallId;\n    readonly token: ToolExecutionToken;\n};',
   },
   {
     name: 'ToolExecutionFailure',
     declaration: 'export interface ToolExecutionFailure {\n    readonly isError: true;\n    readonly error: ToolFailure;\n    readonly value?: never;\n    readonly content: ContentBlock[];\n    readonly meta?: JsonValue;\n    readonly additionalContexts?: UserMessage[];\n    readonly concludesTurn?: never;\n}',
   },
   {
+    name: 'ToolExecutionIdentity',
+    declaration: 'export type ToolExecutionIdentity = {\n    readonly agent?: never;\n    readonly principal?: never;\n} | {\n    readonly agent: Agent;\n    readonly principal?: never;\n} | {\n    readonly agent?: never;\n    readonly principal: ExternalToolPrincipal;\n};',
+  },
+  {
     name: 'ToolExecutionInput',
-    declaration: 'export interface ToolExecutionInput {\n    readonly callId: CallId;\n    readonly rootCallId?: CallId;\n    readonly name: string;\n    readonly arguments: unknown;\n    readonly agent?: Agent;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n}',
+    declaration: 'export type ToolExecutionInput = {\n    readonly callId: CallId;\n    readonly rootCallId?: CallId;\n    readonly name: string;\n    readonly arguments: unknown;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n} & import(\'./execution-subject.ts\').ToolExecutionIdentity;',
   },
   {
     name: 'ToolExecutionMode',
     declaration: 'export type ToolExecutionMode = {\n    kind: \'parallel\';\n} | {\n    kind: \'exclusive\';\n};',
+  },
+  {
+    name: 'ToolExecutionRecorder',
+    declaration: 'export interface ToolExecutionRecorder {\n    readonly recordCall?: (call: unknown) => void | Promise<void>;\n    readonly recordResult?: (result: unknown) => void | Promise<void>;\n}',
   },
   {
     name: 'ToolExecutionResult',
@@ -4445,7 +4633,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolRunContext',
-    declaration: 'export interface ToolRunContext extends ToolExecution {\n    deferContext(context: UserMessage): void;\n    concludeTurn(): void;\n}',
+    declaration: 'export type ToolRunContext = ToolExecution & {\n    deferContext(context: UserMessage): void;\n    concludeTurn(): void;\n};',
   },
   {
     name: 'ToolRuntime',

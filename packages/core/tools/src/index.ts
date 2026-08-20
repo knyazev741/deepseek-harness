@@ -30,6 +30,7 @@ import {
   executionAgent,
   executionScope,
   ExternalToolPrincipalId as brandExternalToolPrincipalId,
+  isExternalToolPrincipal,
 } from './execution-subject.ts'
 import type {
   ExternalToolPrincipal,
@@ -42,6 +43,7 @@ export {
   executionScope,
   executionSession,
   executionSubject,
+  isExternalToolPrincipal,
 } from './execution-subject.ts'
 /**
  * Brand one external caller id at the trusted composition boundary.
@@ -256,6 +258,12 @@ export interface ToolDefinition extends ToolSchema {
   /** Mandatory canonical output declaration. */
   readonly output: ToolOutputDefinition
   /**
+   * External-principal capability opt-in. Omission is default-deny: only a
+   * definition explicitly marked `allow` is visible to an external caller.
+   * This metadata is host-only and never appears in {@link ToolSchema}.
+   */
+  readonly externalEligibility?: 'allow'
+  /**
    * Run one accepted call and return only its canonical lossless-JSON value.
    * Async work must observe or forward `exec.signal` and settle only after its
    * owned work reaches quiescence. The registry preserves caller cancellation
@@ -342,11 +350,11 @@ export type ToolExecutionToken = symbol & { readonly [toolExecutionTokenBrand]: 
 /**
  * Caller-supplied description of one tool call. {@link ToolRuntime.execute}
  * adds the registry-owned token to form a pipeline {@link ToolExecution};
- * callers do not choose that token. Runtime validation rejects both
- * `agent` and `principal` together; the optional fields preserve existing
- * agent-less diagnostic calls and source-compatible native call sites.
+ * callers do not choose that token. The identity union admits exactly one of
+ * anonymous, native-agent, or external-principal execution; runtime validation
+ * repeats the XOR check for JavaScript callers and forged same-process values.
  */
-export interface ToolExecutionInput {
+export type ToolExecutionInput = {
   readonly callId: CallId
   /**
    * Root model-requested call owning this execution tree. Callers omit it for
@@ -356,10 +364,6 @@ export interface ToolExecutionInput {
   readonly name: string
   /** Losslessly JSON-serializable parsed arguments (tools validate their own schema). */
   readonly arguments: unknown
-  /** The native agent on whose behalf the call runs. */
-  readonly agent?: Agent
-  /** The external caller on whose behalf the call runs. */
-  readonly principal?: ExternalToolPrincipal
   /**
    * Opaque token of the enclosing transport execution, when one exists. Code
    * Mode sets this on SDK sub-dispatches so commit-style observers can wait for
@@ -372,7 +376,7 @@ export interface ToolExecutionInput {
   readonly parent?: ToolExecutionToken
   /** Required caller-owned cancellation for this invocation. */
   readonly signal: AbortSignal
-}
+} & import('./execution-subject.ts').ToolExecutionIdentity
 
 /**
  * Scheduling mode for one pending call. `parallel` may overlap with siblings;
@@ -415,19 +419,21 @@ export interface CodeDispatchLog {
  * readonly. The registry freezes the complete object before `tools/result`
  * observers run.
  */
-export interface ToolExecution extends ToolExecutionInput {
+export type ToolExecution = ToolExecutionInput & {
   /** Root model-requested call, resolved for every root and nested execution. */
   readonly rootCallId: CallId
   /** Registry-assigned identity shared with nested calls only as their opaque `parent` token. */
   readonly token: ToolExecutionToken
 }
 
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
+
 /**
  * Around-dispatch view of a {@link ToolExecution}. A `tools/execute` wrapper
  * may replace the signal for its delegated lifetime, but it cannot remove it.
  * The registry fuses every replacement with the captured caller signal.
  */
-export interface ToolDispatchExecution extends Omit<ToolExecution, 'signal'> {
+export type ToolDispatchExecution = DistributiveOmit<ToolExecution, 'signal'> & {
   /** Cancellation signal visible to the next wrapper or tool body. */
   signal: AbortSignal
 }
@@ -440,7 +446,7 @@ export interface ToolDispatchExecution extends Omit<ToolExecution, 'signal'> {
  * plugin-sourced instruction; the loop appends it only after the
  * `tool/result`.
  */
-export interface ToolRunContext extends ToolExecution {
+export type ToolRunContext = ToolExecution & {
   /**
    * Defer one context — typically a nested-dispatch context ferried by a
    * composite tool, or a fresh plugin-sourced instruction — until this tool's
@@ -460,7 +466,8 @@ export interface ToolRunContext extends ToolExecution {
 }
 
 /** Registry-owned live execution object; public pipeline views stay readonly. */
-type MutableToolRunContext = Omit<ToolRunContext, 'signal'> & { signal: AbortSignal }
+/** Internal mutable carrier after the entry-point XOR check has run. */
+type MutableToolRunContext = DistributiveOmit<ToolRunContext, 'signal'> & { signal: AbortSignal }
 
 /**
  * Scheduler-only result after ordered pre-execute and guards. A `post-result`
@@ -1229,6 +1236,11 @@ export class ToolRuntime extends Service {
     if (this.modeFor(scope) !== 'native') {
       visible.set(RUN_CODE_NAME, this.requireCodeTransport())
     }
+    if (isExternalToolPrincipal(scope)) {
+      for (const [name, definition] of visible) {
+        if (definition.externalEligibility !== 'allow') visible.delete(name)
+      }
+    }
     return { visible, knownNames, restrictableNames }
   }
 
@@ -1431,6 +1443,7 @@ export class ToolRuntime extends Service {
       callId,
       rootCallId,
       name,
+      arguments: undefined,
       signal,
       ...agent !== undefined ? { agent } : {},
       ...principal !== undefined ? { principal } : {},
@@ -1441,7 +1454,7 @@ export class ToolRuntime extends Service {
       concludeTurn(): void {
         concludingExecutions.add(this as unknown as ToolExecution)
       },
-    }
+    } as MutableToolRunContext
     // Capture the finalizer BEFORE argument materialization: the
     // `finalizeContent` contract snapshots the callback when the call starts,
     // and an arguments getter can replace or clear the registered callback
