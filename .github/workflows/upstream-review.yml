@@ -45,8 +45,10 @@ jobs:
 
       - name: Install dependencies
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # No explicit version: the repo's package.json `packageManager`
+        # field (pnpm@11.7.0) selects the version; passing `version` here
+        # makes pnpm/action-setup fail with "Multiple versions of pnpm
+        # specified".
       - uses: actions/setup-node@v4
         with:
           node-version: 22
