@@ -26,6 +26,39 @@ import type { CodeSdkLanguage } from './code-mode.ts'
 import { renderToolsSdk } from './ts-types.ts'
 import type { ToolSdkSchema } from './ts-types.ts'
 import { renderToolsSdkPy } from './py-types.ts'
+import {
+  executionAgent,
+  executionScope,
+  ExternalToolPrincipalId as brandExternalToolPrincipalId,
+} from './execution-subject.ts'
+import type {
+  ExternalToolPrincipal,
+  ExternalToolPrincipalId as ExternalToolPrincipalIdBrand,
+} from './execution-subject.ts'
+
+export {
+  executionAgent,
+  executionContext,
+  executionScope,
+  executionSession,
+  executionSubject,
+} from './execution-subject.ts'
+/**
+ * Brand one external caller id at the trusted composition boundary.
+ * @param id - the caller-supplied opaque id.
+ * @returns the same string carrying the external-principal brand.
+ */
+export const ExternalToolPrincipalId = brandExternalToolPrincipalId
+export type {
+  ExternalToolPrincipal,
+  ToolExecutionIdentity,
+  ToolExecutionIdentityFields,
+  ToolExecutionRecorder,
+  ToolExecutionSubject,
+} from './execution-subject.ts'
+
+/** Opaque id type paired with the {@link ExternalToolPrincipalId} brander. */
+export type ExternalToolPrincipalId = ExternalToolPrincipalIdBrand
 
 /**
  * Language → SDK-section renderer. The registry looks up the loaded
@@ -145,8 +178,8 @@ declare module '@deepseek-ai/cordis' {
      * approval support turns `ask` into denial. Async gates must observe
      * `exec.signal`; the registry rechecks cancellation after they settle but
      * never abandons their promise.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
-     * @param exec - the pending call (name, parsed arguments, caller agent).
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
+     * @param exec - the pending call (name, parsed arguments, caller identity).
      * @mode waterfall
      */
     'tools/pre-execute'(this: Scoped<ToolRuntime>, exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision>
@@ -156,8 +189,8 @@ declare module '@deepseek-ai/cordis' {
      * identity remains immutable. The registry re-fuses the original caller
      * signal before the body, so replacement cannot detach caller cancellation;
      * wrappers must still restore their signal and reach quiescence.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
-     * @param exec - the allowed call about to dispatch (name, parsed arguments, caller agent, signal).
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
+     * @param exec - the allowed call about to dispatch (name, parsed arguments, caller identity, signal).
      * @mode waterfall
      */
     'tools/execute'(this: Scoped<ToolRuntime>, exec: ToolDispatchExecution, next: () => Promise<ToolExecutionResult>): Promise<ToolExecutionResult>
@@ -167,8 +200,8 @@ declare module '@deepseek-ai/cordis' {
      * listeners must observe `exec.signal`; after they settle, caller
      * cancellation replaces only a successful accepted outcome with the code
      * selected by whether the tool body was invoked.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
-     * @param exec - the call that just ran (name, parsed arguments, caller agent).
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
+     * @param exec - the call that just ran (name, parsed arguments, caller identity).
      * @param result - the dispatch outcome a listener may accept, replace, or block.
      * @mode waterfall
      */
@@ -182,14 +215,14 @@ declare module '@deepseek-ai/cordis' {
      * logged copy is affected — the program already received the complete
      * value, and the model sees neither. A throwing listener is contained:
      * the bridge falls back to logging the original settled content.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's dispatches.
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's dispatches.
      * @param dispatch - the parent execution, sub-call identity, and the settled content to log.
      * @mode waterfall
      */
     'tools/code-dispatch-log'(this: Scoped<ToolRuntime>, dispatch: CodeDispatchLog, next: () => Promise<ContentBlock[]>): Promise<ContentBlock[]>
     /**
      * Observe the frozen, lossless-JSON final outcome. Listener failures are contained.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by `exec.agent`.
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by the execution identity (`agent` or `principal`).
      * @param exec - the execution object that traversed the pipeline.
      * @param result - a deep-frozen snapshot of the final returned result.
      * @mode emit
@@ -199,7 +232,7 @@ declare module '@deepseek-ai/cordis' {
      * A tool was registered or unregistered, or a scoped restriction changed
      * (the available tool set changed — possibly for one scope only). An
      * UNFILTERED registry-subject notification, deliberately not scope-filtered
-     * dispatch: a global change concerns every agent's next assembly, so a
+     * dispatch: a global change concerns every caller's next assembly, so a
      * scoped listener subscribing here sees every change, not just its own
      * scope's.
      * @mode emit
@@ -309,7 +342,9 @@ export type ToolExecutionToken = symbol & { readonly [toolExecutionTokenBrand]: 
 /**
  * Caller-supplied description of one tool call. {@link ToolRuntime.execute}
  * adds the registry-owned token to form a pipeline {@link ToolExecution};
- * callers do not choose that token.
+ * callers do not choose that token. Runtime validation rejects both
+ * `agent` and `principal` together; the optional fields preserve existing
+ * agent-less diagnostic calls and source-compatible native call sites.
  */
 export interface ToolExecutionInput {
   readonly callId: CallId
@@ -321,8 +356,10 @@ export interface ToolExecutionInput {
   readonly name: string
   /** Losslessly JSON-serializable parsed arguments (tools validate their own schema). */
   readonly arguments: unknown
-  /** The agent on whose behalf the call runs (set by the agent loop). */
+  /** The native agent on whose behalf the call runs. */
   readonly agent?: Agent
+  /** The external caller on whose behalf the call runs. */
+  readonly principal?: ExternalToolPrincipal
   /**
    * Opaque token of the enclosing transport execution, when one exists. Code
    * Mode sets this on SDK sub-dispatches so commit-style observers can wait for
@@ -357,8 +394,10 @@ export type ToolExecutionMode =
 export interface CodeDispatchLog {
   /** The outer `run_code` execution. */
   readonly exec: ToolExecution
-  /** The calling agent (the scope routing key and the spill owner), when the outer call has one. */
+  /** The calling native Agent, when the outer call has one. */
   readonly agent?: Agent
+  /** The calling external principal, when the outer call has one. */
+  readonly principal?: ExternalToolPrincipal
   /** Deterministic sub-call id (`<parent>:code:<n>`). */
   readonly subCallId: CallId
   /** The dispatched sub-tool name. */
@@ -934,13 +973,13 @@ export class ToolRuntime extends Service {
 
   /**
    * Present the calling scope's tools in `mode` instead of the deployment
-   * default. Nearest scope on the chain wins, so a preset's standing
-   * declaration covers every agent joined under it.
+   * default. Nearest scope on the chain wins, so a standing declaration covers
+   * every caller joined under it.
    *
-   * Scoped only, and one declaration per scope: this is how an agent preset
-   * composes Code Mode agents beside native ones in the same process, and a
+   * Scoped only, and one declaration per scope: this composes Code Mode callers
+   * beside native ones in the same process, and a
    * process-global override would be the `mode` config field instead.
-   * @param mode - the presentation the covered agents' models see.
+   * @param mode - the presentation the covered callers' models see.
    * @returns the exact disposer that restores the deployment default.
    */
   presentAs(mode: ToolPresentationMode): () => void {
@@ -1029,7 +1068,7 @@ export class ToolRuntime extends Service {
   }
 
   /**
-   * Register globally or in the calling agent scope. Scoped tools shadow
+   * Register globally or in the calling scope. Scoped tools shadow
    * globals; duplicates within one layer and the reserved `run_code` name fail.
    * @param definition - tool schema, execution, and optional finalization/presentation callbacks.
    * @returns the exact disposer that unregisters the tool.
@@ -1062,7 +1101,7 @@ export class ToolRuntime extends Service {
   }
 
   /**
-   * Restrict global tools for the calling agent scope. Empty filters, unknown
+   * Restrict global tools for the calling scope. Empty filters, unknown
    * names, scope-local names, and reserved transport names fail. Restrictions
    * intersect; scoped registrations remain visible.
    * @param filter - global-tool mask: `allow` (keep only) and/or `deny` (remove).
@@ -1100,7 +1139,7 @@ export class ToolRuntime extends Service {
   /**
    * Register a monotonic guard after the extensible `tools/pre-execute`
    * waterfall. A plain-context guard applies globally; one registered through
-   * `agent.ctx` applies only to that agent. Any matching guard may deny by
+   * a scoped context applies only to that caller. Any matching guard may deny by
    * returning a reason, while no guard can force-allow a call another guard
    * denied. The exact effect disposer is returned for ordered ownership and
    * HMR cleanup.
@@ -1119,8 +1158,9 @@ export class ToolRuntime extends Service {
   private guardReason(exec: ToolExecution): string | undefined {
     const globalReason = this.layers.global.guardReason(exec)
     if (globalReason !== undefined) return globalReason
-    if (exec.agent === undefined) return undefined
-    for (const layer of this.layers.chainLayers(exec.agent)) {
+    const scope = executionScope(exec)
+    if (scope === undefined) return undefined
+    for (const layer of this.layers.chainLayers(scope)) {
       const reason = layer.guardReason(exec)
       if (reason !== undefined) return reason
     }
@@ -1195,10 +1235,10 @@ export class ToolRuntime extends Service {
   /**
    * Look up a tool as one scope sees it (scoped
    * shadows global; a restricted-away global reads as absent). Presenters pass
-   * the calling agent so the rendered card matches the definition that
+   * the calling scope so the rendered card matches the definition that
    * actually executed.
    * @param name - the tool name as registered.
-   * @param scope - the viewing scope (the agent); omitted = the global view.
+   * @param scope - the viewing scope; omitted = the global view.
    * @returns the definition the scope resolves, or undefined when none is visible.
    */
   get(name: string, scope?: ScopeKey): ToolDefinition | undefined {
@@ -1214,7 +1254,7 @@ export class ToolRuntime extends Service {
    * it bound) may call any visible tool. Denial surfaces as `UNKNOWN_TOOL`
    * through the executor, matching an absent definition.
    * @param name - the tool name as registered.
-   * @param scope - the viewing scope (the agent); omitted = the global view.
+   * @param scope - the viewing scope; omitted = the global view.
    * @param nested - whether the call is a transport sub-dispatch, not a model-direct call.
    * @returns the definition that may run, or undefined when the call must be rejected.
    */
@@ -1228,7 +1268,7 @@ export class ToolRuntime extends Service {
   /**
    * Project visible definitions onto the allowlisted model-facing schema fields,
    * excluding execution and presentation callbacks.
-   * @param scope - the viewing scope (the agent); omitted = the global view.
+   * @param scope - the viewing scope; omitted = the global view.
    * @returns one deep-cloned schema per visible tool.
    */
   schemas(scope?: ScopeKey): ToolSchema[] {
@@ -1270,11 +1310,11 @@ export class ToolRuntime extends Service {
    * Classify a pending call through the caller's visible tool definition. Only
    * an exact `true` is parallel; unknown, hidden, undeclared, invalid, or
    * throwing classifiers are exclusive.
-   * @param exec - call name, parsed arguments, and optional agent scope.
+   * @param exec - call name, parsed arguments, and optional execution scope.
    * @returns the fail-closed scheduling mode.
    */
   executionMode(exec: ToolExecutionInput): ToolExecutionMode {
-    const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+    const tool = this.resolveExecution(exec.name, executionScope(exec), exec.parent !== undefined)
     if (!tool?.isConcurrencySafe) return { kind: 'exclusive' }
     try {
       const concurrencySafe: unknown = tool.isConcurrencySafe(exec.arguments)
@@ -1296,7 +1336,7 @@ export class ToolRuntime extends Service {
   private async shapeDispatchLog(dispatch: CodeDispatchLog): Promise<ContentBlock[]> {
     try {
       return await this.ctx.waterfall(
-        scopeTarget(this, dispatch.agent), 'tools/code-dispatch-log', dispatch,
+        scopeTarget(this, executionScope(dispatch.exec)), 'tools/code-dispatch-log', dispatch,
         () => Promise.resolve(dispatch.content),
       )
     } catch (error: unknown) {
@@ -1362,12 +1402,16 @@ export class ToolRuntime extends Service {
   }
 
   private createExecution(exec: ToolExecutionInput): ScheduledToolPreparation | { kind: 'ready'; exec: MutableToolRunContext } {
+    const agent = exec.agent
+    const principal = exec.principal
+    if (agent !== undefined && principal !== undefined) {
+      throw new TypeError('tool execution must provide exactly one of agent or principal')
+    }
     const deferredContexts: UserMessage[] = []
     const token = createExecutionToken()
     const callId = exec.callId
     const rootCallId = exec.rootCallId ?? callId
     const name = exec.name
-    const agent = exec.agent
     const parent = exec.parent
     const signal = exec.signal
     // Distinguish a mode-collapsed call (visible in the scope, denied only by
@@ -1377,8 +1421,10 @@ export class ToolRuntime extends Service {
     // observe — or worse, approve — a call that can only fail. An unknown tool
     // keeps the historical dispatch-stage `UNKNOWN_TOOL` path so policy
     // listeners still see every name that reaches the registry.
-    const visible = this.get(name, agent)
-    const collapsed = visible !== undefined && this.collapses(name, agent, parent !== undefined)
+    const identity = agent !== undefined ? { agent } : principal !== undefined ? { principal } : {}
+    const scope = executionScope(identity)
+    const visible = this.get(name, scope)
+    const collapsed = visible !== undefined && this.collapses(name, scope, parent !== undefined)
     const concludingExecutions = this.concludingExecutions
     const base = {
       token,
@@ -1387,6 +1433,7 @@ export class ToolRuntime extends Service {
       name,
       signal,
       ...agent !== undefined ? { agent } : {},
+      ...principal !== undefined ? { principal } : {},
       ...parent !== undefined ? { parent } : {},
       deferContext(context: UserMessage): void {
         deferredContexts.push(context)
@@ -1471,7 +1518,7 @@ export class ToolRuntime extends Service {
       return next({ kind: 'final-result', exec, result: toolAbortedBeforeDispatchResult() })
     }
     try {
-      const carrier = scopeTarget(this, exec.agent)
+      const carrier = scopeTarget(this, executionScope(exec))
       const gate = await this.ctx.waterfall(
         carrier, 'tools/pre-execute', exec,
         () => Promise.resolve<PreToolDecision>({ kind: 'allow' }),
@@ -1543,7 +1590,7 @@ export class ToolRuntime extends Service {
     }
     exec.signal = signal
     try {
-      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+      const tool = this.resolveExecution(exec.name, executionScope(exec), exec.parent !== undefined)
       if (!tool) throw new ToolNotFoundError(exec.name)
       state.bodyInvoked = true
       const returned = await tool.execute(exec.arguments, exec)
@@ -1569,7 +1616,7 @@ export class ToolRuntime extends Service {
   private async dispatchScheduledExecution(exec: ToolRunContext): Promise<ScheduledToolDispatch> {
     try {
       const mutableExec = exec as MutableToolRunContext
-      const carrier = scopeTarget(this, exec.agent)
+      const carrier = scopeTarget(this, executionScope(exec))
       const result = await this.ctx.waterfall(
         carrier, 'tools/execute', mutableExec,
         () => this.dispatchToolBody(mutableExec),
@@ -1663,7 +1710,7 @@ export class ToolRuntime extends Service {
       this.ctx.logger.warn(`tool "${toolName}" (${callId}): tools/result observer failed: ${errorMessage(error)}`)
     }
     const callbacks = this.ctx.events.dispatch('emit', [
-      scopeTarget(this, exec.agent), 'tools/result', exec, result,
+      scopeTarget(this, executionScope(exec)), 'tools/result', exec, result,
     ])
     for (const callback of callbacks) {
       try {
@@ -1697,14 +1744,15 @@ export class ToolRuntime extends Service {
         approvalCancelled: false,
       }
     }
-    if (exec.agent === undefined) {
+    const agent = executionAgent(exec)
+    if (agent === undefined) {
       return {
         decision: { kind: 'deny', reason: `tool "${exec.name}" requires approval, but the call has no agent to route it through` },
         approvalCancelled: false,
       }
     }
     const outcome = await approval.request({
-      agent: exec.agent,
+      agent,
       toolName: exec.name,
       callId: exec.callId,
       ...ask.reason !== undefined ? { reason: ask.reason } : {},
@@ -1741,7 +1789,7 @@ export class ToolRuntime extends Service {
    */
   private async postExecute(exec: ToolExecution, result: ToolExecutionResult): Promise<ToolExecutionResult> {
     const decision = await this.ctx.waterfall(
-      scopeTarget(this, exec.agent), 'tools/post-execute', exec, result,
+      scopeTarget(this, executionScope(exec)), 'tools/post-execute', exec, result,
       () => Promise.resolve<PostToolDecision>({ kind: 'accept' }),
     )
     const decisionContexts = decision.additionalContexts ?? []
@@ -1765,7 +1813,7 @@ export class ToolRuntime extends Service {
       if (result.isError) {
         throw new TypeError('tools/post-execute cannot replace the value of a failed result')
       }
-      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+      const tool = this.resolveExecution(exec.name, executionScope(exec), exec.parent !== undefined)
       if (tool === undefined) throw new ToolNotFoundError(exec.name)
       const replaced = this.createSuccessResult(exec, tool, decision.value)
       return this.markCanonical(exec, {
@@ -1834,7 +1882,7 @@ export class ToolRuntime extends Service {
         ...result.additionalContexts !== undefined ? { additionalContexts: result.additionalContexts } : {},
       })
     }
-    const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+    const tool = this.resolveExecution(exec.name, executionScope(exec), exec.parent !== undefined)
     if (tool === undefined) throw new ToolNotFoundError(exec.name)
     const normalized = this.createSuccessResult(exec, tool, result.value)
     return this.markCanonical(exec, {

@@ -692,6 +692,16 @@
     },
     {
       "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolExecutionRecorder",
+      "source": "packages/core/tools/src/execution-subject.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
+      "symbol": "ExternalToolPrincipal",
+      "source": "packages/core/tools/src/execution-subject.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
       "symbol": "ValueSchemaSpec",
       "source": "packages/core/tools/src/schema.ts"
     },

@@ -22,10 +22,9 @@
 import { isAbsolute, resolve as resolvePath } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { defineTool, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
+import { defineTool, executionAgent, executionSession, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, TerminalCallView, ToolExecution, ToolResult, ToolResultView } from '@deepseek-ai/dsh-tools'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-shell-env'
@@ -148,8 +147,8 @@ function pwshDescription(backgroundEnabled: boolean, escalationModes: readonly S
  * Resolve an explicit workdir first, making a relative one session-workspace-relative;
  * otherwise use the session header cwd and leave executor defaulting as the fallback.
  */
-function resolveWorkdir(modelWorkdir: string | undefined, exec: { agent?: Agent }): string | undefined {
-  const headerCwd = exec.agent?.session.header.cwd
+function resolveWorkdir(modelWorkdir: string | undefined, exec: Pick<ToolExecution, 'agent' | 'principal'>): string | undefined {
+  const headerCwd = executionSession(exec)?.header.cwd
   if (modelWorkdir === undefined) return headerCwd
   if (headerCwd !== undefined && !isAbsolute(modelWorkdir)) {
     return resolvePath(headerCwd, modelWorkdir)
@@ -203,8 +202,10 @@ export function apply(ctx: Context, config: Config = {}): void {
   }
   /* jscpd:ignore-end */
   /** Resolve the complete standing policy for this call when a confining executor is mounted. */
-  const resolveSandboxPolicy = (exec: ToolExecution): SandboxExecutionPolicy | undefined =>
-    sandboxPolicy?.resolve(exec.agent === undefined ? {} : { session: exec.agent.session })
+  const resolveSandboxPolicy = (exec: ToolExecution): SandboxExecutionPolicy | undefined => {
+    const session = executionSession(exec)
+    return sandboxPolicy?.resolve(session === undefined ? {} : { session })
+  }
 
   /* jscpd:ignore-start -- deliberate mirror of dsh-tool-bash's escalation resolver (pwsh-tool-and-executor Agent Note). */
   /**
@@ -233,7 +234,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       { requestedMode: mode, justification, effectiveMode, subject: 'command' },
       {
         approver: ctx.get('approval'),
-        agent: exec.agent,
+        agent: executionAgent(exec),
         callId: exec.callId,
         toolName: 'pwsh',
         signal: exec.signal,
@@ -378,11 +379,15 @@ export function apply(ctx: Context, config: Config = {}): void {
           error.name = 'AbortError'
           throw error
         }
+        if (exec.principal !== undefined) {
+          throw new Error('background execution requires a native agent')
+        }
+        const owner = executionAgent(exec)
         // Task preflight finishes before the starter can spawn a process.
         const id = jobs.start({
           kind: 'pwsh',
           label: args.command,
-          ...exec.agent ? { owner: exec.agent } : {},
+          ...owner !== undefined ? { owner } : {},
           run: () => {
             const proc = ctx.shell.start(ctx.shell.resolve(request))
             return {

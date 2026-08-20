@@ -14,6 +14,7 @@ import type { JsonValue } from '@deepseek-ai/dsh-session'
 import { defineTool, parameterSchemaSpecToJsonSchema } from './schema.ts'
 import { TOOL_RUNTIME_SCHEDULER } from './index.ts'
 import type { CodeDispatchLog, ToolDefinition, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
+import { executionScope } from './execution-subject.ts'
 import type {} from './types.ts'
 
 /** The model-facing name of the Code Mode tool. */
@@ -476,6 +477,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
           name,
           arguments: normalized.dispatched,
           ...exec.agent ? { agent: exec.agent } : {},
+          ...exec.principal ? { principal: exec.principal } : {},
           parent: exec.token,
           signal: runController.signal,
         }
@@ -503,7 +505,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
               // locator; the program's value and model-visible result are
               // untouched.
               const logged = await shapeDispatchLog({
-                exec, agent, subCallId, name, isError: result.isError,
+                exec, agent, ...exec.principal !== undefined ? { principal: exec.principal } : {}, subCallId, name, isError: result.isError,
                 // The registry deep-froze this projection at result
                 // finalization; append snapshots the final copy again, so
                 // the log stays detached.
@@ -611,7 +613,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       // restricted globals vanish) — the same view the SDK section declared,
       // so a program can bind exactly what its prompt promised; sub-dispatch
       // re-resolves per call through the same view (exec.agent threads down).
-      for (const schema of registry.schemas(exec.agent)) {
+      for (const schema of registry.schemas(executionScope(exec))) {
         if (schema.name === RUN_CODE_NAME) continue
         Object.defineProperty(functions, schema.name, { enumerable: true, value: binding(schema.name) })
       }

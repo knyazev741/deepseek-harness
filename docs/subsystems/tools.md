@@ -167,9 +167,40 @@ interface ToolRestriction {
 }
 ```
 
+## External execution identities
+
+The registry accepts either a native `Agent` or an `ExternalToolPrincipal`; it rejects both identities together. An external principal carries its opaque id, `Session`, scoped `Context`, and recorder, so an external driver enters the same lookup, restriction, guard, cancellation, waterfall, validation, and result pipeline without registering a native agent. Shared helpers derive the execution scope, session, context, and native-agent-only paths. Shell and filesystem consumers use the shared session identity; native-only approval and jobs consumers fail closed.
+
+```ts type-equiv
+/**
+ * Durable external tool-call recorder owned by the external-session consumer.
+ * The tools runtime carries this capability through the execution identity but
+ * does not call it; the external approval/recording layer owns its commit order.
+ */
+interface ToolExecutionRecorder {
+  /** Record one external call at its owning pipeline commit point. */
+  readonly recordCall?: (call: unknown) => void | Promise<void>
+  /** Record one external result at its owning pipeline commit point. */
+  readonly recordResult?: (result: unknown) => void | Promise<void>
+}
+```
+
+```ts type-equiv
+/** An external caller that has no native Agent lifecycle or native turn. */
+interface ExternalToolPrincipal {
+  readonly kind: 'external'
+  readonly id: ExternalToolPrincipalId
+  readonly session: Session
+  readonly ctx: Context
+  readonly recorder: ToolExecutionRecorder
+}
+```
+
+The external principal is an execution identity, not an authority shortcut: scoped lookup and restrictions still determine visibility, guards and waterfalls still run, and output/result validation remains registry-owned. The initial external allowlist is a later MCP concern; tools requiring native turns, approval routing, terminal/jobs, or orchestration remain excluded.
+
 ## Execution: extensible waterfalls plus monotonic policy
 
-`ctx.tools.execute()` accepts a caller-owned `ToolExecutionInput` with a required readonly `signal`, materializes its parsed JSON arguments once into a pipeline-owned `ToolExecution`, and runs that call through `tools/pre-execute` (the reorderable allow/deny/ask waterfall) → registered monotonic guards → `tools/execute` (around-dispatch wrappers) → `tools/post-execute` (inspect/replace the result) → optional definition-owned `finalizeContent` → `tools/result` (the immutable authoritative outcome). Only the `tools/execute` view may replace the required signal. The outcome is a `ToolExecutionResult`.
+`ctx.tools.execute()` accepts a caller-owned `ToolExecutionInput` with a required readonly `signal` and at most one execution identity; agent-less diagnostic calls remain supported, while a native `Agent` and an `ExternalToolPrincipal` cannot be supplied together. It materializes its parsed JSON arguments once into a pipeline-owned `ToolExecution`, and runs that call through `tools/pre-execute` (the reorderable allow/deny/ask waterfall) → registered monotonic guards → `tools/execute` (around-dispatch wrappers) → `tools/post-execute` (inspect/replace the result) → optional definition-owned `finalizeContent` → `tools/result` (the immutable authoritative outcome). Only the `tools/execute` view may replace the required signal. The outcome is a `ToolExecutionResult`.
 
 ```ts type-equiv
 /** Opaque call identity that permits correlation without exposing mutable execution state. */
@@ -180,7 +211,9 @@ type ToolExecutionToken = symbol & { readonly [toolExecutionTokenBrand]: true }
 /**
  * Caller-supplied description of one tool call. {@link ToolRuntime.execute}
  * adds the registry-owned token to form a pipeline {@link ToolExecution};
- * callers do not choose that token.
+ * callers do not choose that token. Runtime validation rejects both
+ * `agent` and `principal` together; the optional fields preserve existing
+ * agent-less diagnostic calls and source-compatible native call sites.
  */
 interface ToolExecutionInput {
   readonly callId: CallId
@@ -192,8 +225,10 @@ interface ToolExecutionInput {
   readonly name: string
   /** Losslessly JSON-serializable parsed arguments (tools validate their own schema). */
   readonly arguments: unknown
-  /** The agent on whose behalf the call runs (set by the agent loop). */
+  /** The native agent on whose behalf the call runs. */
   readonly agent?: Agent
+  /** The external caller on whose behalf the call runs. */
+  readonly principal?: ExternalToolPrincipal
   /**
    * Opaque token of the enclosing transport execution, when one exists. Code
    * Mode sets this on SDK sub-dispatches so commit-style observers can wait for
@@ -267,8 +302,10 @@ Code Mode's bridge additionally exposes each settled sub-dispatch to the `tools/
 interface CodeDispatchLog {
   /** The outer `run_code` execution. */
   readonly exec: ToolExecution
-  /** The calling agent (the scope routing key and the spill owner), when the outer call has one. */
+  /** The calling native Agent, when the outer call has one. */
   readonly agent?: Agent
+  /** The calling external principal, when the outer call has one. */
+  readonly principal?: ExternalToolPrincipal
   /** Deterministic sub-call id (`<parent>:code:<n>`). */
   readonly subCallId: CallId
   /** The dispatched sub-tool name. */
@@ -484,19 +521,19 @@ Tool registry and execution pipeline. Scoped registrations shadow globals; one v
 ```ts cordis-catalog
 /**
  * Present the calling scope's tools in `mode` instead of the deployment
- * default. Nearest scope on the chain wins, so a preset's standing
- * declaration covers every agent joined under it.
+ * default. Nearest scope on the chain wins, so a standing declaration covers
+ * every caller joined under it.
  *
- * Scoped only, and one declaration per scope: this is how an agent preset
- * composes Code Mode agents beside native ones in the same process, and a
+ * Scoped only, and one declaration per scope: this composes Code Mode callers
+ * beside native ones in the same process, and a
  * process-global override would be the `mode` config field instead.
- * @param mode - the presentation the covered agents' models see.
+ * @param mode - the presentation the covered callers' models see.
  * @returns the exact disposer that restores the deployment default.
  */
 presentAs(mode: ToolPresentationMode): () => void
 
 /**
- * Register globally or in the calling agent scope. Scoped tools shadow
+ * Register globally or in the calling scope. Scoped tools shadow
  * globals; duplicates within one layer and the reserved `run_code` name fail.
  * @param definition - tool schema, execution, and optional finalization/presentation callbacks.
  * @returns the exact disposer that unregisters the tool.
@@ -504,7 +541,7 @@ presentAs(mode: ToolPresentationMode): () => void
 register(definition: ToolDefinition): () => void
 
 /**
- * Restrict global tools for the calling agent scope. Empty filters, unknown
+ * Restrict global tools for the calling scope. Empty filters, unknown
  * names, scope-local names, and reserved transport names fail. Restrictions
  * intersect; scoped registrations remain visible.
  * @param filter - global-tool mask: `allow` (keep only) and/or `deny` (remove).
@@ -515,7 +552,7 @@ restrict(filter: ToolRestriction): () => void
 /**
  * Register a monotonic guard after the extensible `tools/pre-execute`
  * waterfall. A plain-context guard applies globally; one registered through
- * `agent.ctx` applies only to that agent. Any matching guard may deny by
+ * a scoped context applies only to that caller. Any matching guard may deny by
  * returning a reason, while no guard can force-allow a call another guard
  * denied. The exact effect disposer is returned for ordered ownership and
  * HMR cleanup.
@@ -527,10 +564,10 @@ guard(guard: ToolGuard): () => void
 /**
  * Look up a tool as one scope sees it (scoped
  * shadows global; a restricted-away global reads as absent). Presenters pass
- * the calling agent so the rendered card matches the definition that
+ * the calling scope so the rendered card matches the definition that
  * actually executed.
  * @param name - the tool name as registered.
- * @param scope - the viewing scope (the agent); omitted = the global view.
+ * @param scope - the viewing scope; omitted = the global view.
  * @returns the definition the scope resolves, or undefined when none is visible.
  */
 get(name: string, scope?: ScopeKey): ToolDefinition | undefined
@@ -538,7 +575,7 @@ get(name: string, scope?: ScopeKey): ToolDefinition | undefined
 /**
  * Project visible definitions onto the allowlisted model-facing schema fields,
  * excluding execution and presentation callbacks.
- * @param scope - the viewing scope (the agent); omitted = the global view.
+ * @param scope - the viewing scope; omitted = the global view.
  * @returns one deep-cloned schema per visible tool.
  */
 schemas(scope?: ScopeKey): ToolSchema[]
@@ -547,7 +584,7 @@ schemas(scope?: ScopeKey): ToolSchema[]
  * Classify a pending call through the caller's visible tool definition. Only
  * an exact `true` is parallel; unknown, hidden, undeclared, invalid, or
  * throwing classifiers are exclusive.
- * @param exec - call name, parsed arguments, and optional agent scope.
+ * @param exec - call name, parsed arguments, and optional execution scope.
  * @returns the fail-closed scheduling mode.
  */
 executionMode(exec: ToolExecutionInput): ToolExecutionMode
@@ -581,14 +618,14 @@ Source: [`packages/core/tools/src/index.ts:787`](../../packages/core/tools/src/i
 
 #### `tools/change` — emit
 
-A tool was registered or unregistered, or a scoped restriction changed (the available tool set changed — possibly for one scope only). An UNFILTERED registry-subject notification, deliberately not scope-filtered dispatch: a global change concerns every agent's next assembly, so a scoped listener subscribing here sees every change, not just its own scope's.
+A tool was registered or unregistered, or a scoped restriction changed (the available tool set changed — possibly for one scope only). An UNFILTERED registry-subject notification, deliberately not scope-filtered dispatch: a global change concerns every caller's next assembly, so a scoped listener subscribing here sees every change, not just its own scope's.
 
 ```ts cordis-catalog
 /**
  * A tool was registered or unregistered, or a scoped restriction changed
  * (the available tool set changed — possibly for one scope only). An
  * UNFILTERED registry-subject notification, deliberately not scope-filtered
- * dispatch: a global change concerns every agent's next assembly, so a
+ * dispatch: a global change concerns every caller's next assembly, so a
  * scoped listener subscribing here sees every change, not just its own
  * scope's.
  * @mode emit
@@ -602,7 +639,7 @@ Source: [`packages/core/tools/src/index.ts:207`](../../packages/core/tools/src/i
 
 #### `tools/code-dispatch-log` — waterfall
 
-Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` sub-dispatch outcome before the bridge appends its `tool/code-dispatch` event. `next()` keeps the content unchanged; a listener may return replacement blocks (e.g. the spill policy's preview + locator for an oversized text result). Only the logged copy is affected — the program already received the complete value, and the model sees neither. A throwing listener is contained: the bridge falls back to logging the original settled content. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's dispatches.
+Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` sub-dispatch outcome before the bridge appends its `tool/code-dispatch` event. `next()` keeps the content unchanged; a listener may return replacement blocks (e.g. the spill policy's preview + locator for an oversized text result). Only the logged copy is affected — the program already received the complete value, and the model sees neither. A throwing listener is contained: the bridge falls back to logging the original settled content. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's dispatches.
 
 ```ts cordis-catalog
 /**
@@ -614,7 +651,7 @@ Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` su
  * logged copy is affected — the program already received the complete
  * value, and the model sees neither. A throwing listener is contained:
  * the bridge falls back to logging the original settled content.
- * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's dispatches.
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's dispatches.
  * @param dispatch - the parent execution, sub-call identity, and the settled content to log.
  * @mode waterfall
  */
@@ -629,7 +666,7 @@ Source: [`packages/core/tools/src/index.ts:189`](../../packages/core/tools/src/i
 
 #### `tools/execute` — waterfall
 
-Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a normalized result; wrappers may change only `exec.signal`, while call identity remains immutable. The registry re-fuses the original caller signal before the body, so replacement cannot detach caller cancellation; wrappers must still restore their signal and reach quiescence. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
+Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a normalized result; wrappers may change only `exec.signal`, while call identity remains immutable. The registry re-fuses the original caller signal before the body, so replacement cannot detach caller cancellation; wrappers must still restore their signal and reach quiescence. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
 
 ```ts cordis-catalog
 /**
@@ -638,8 +675,8 @@ Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a nor
  * identity remains immutable. The registry re-fuses the original caller
  * signal before the body, so replacement cannot detach caller cancellation;
  * wrappers must still restore their signal and reach quiescence.
- * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
- * @param exec - the allowed call about to dispatch (name, parsed arguments, caller agent, signal).
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
+ * @param exec - the allowed call about to dispatch (name, parsed arguments, caller identity, signal).
  * @mode waterfall
  */
 'tools/execute'(this: Scoped<ToolRuntime>, exec: ToolDispatchExecution, next: () => Promise<ToolExecutionResult>): Promise<ToolExecutionResult>
@@ -653,7 +690,7 @@ Source: [`packages/core/tools/src/index.ts:163`](../../packages/core/tools/src/i
 
 #### `tools/post-execute` — waterfall
 
-Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts it unchanged; thrown tools still reach this waterfall as errors. Async listeners must observe `exec.signal`; after they settle, caller cancellation replaces only a successful accepted outcome with the code selected by whether the tool body was invoked. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
+Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts it unchanged; thrown tools still reach this waterfall as errors. Async listeners must observe `exec.signal`; after they settle, caller cancellation replaces only a successful accepted outcome with the code selected by whether the tool body was invoked. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
 
 ```ts cordis-catalog
 /**
@@ -662,8 +699,8 @@ Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts
  * listeners must observe `exec.signal`; after they settle, caller
  * cancellation replaces only a successful accepted outcome with the code
  * selected by whether the tool body was invoked.
- * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
- * @param exec - the call that just ran (name, parsed arguments, caller agent).
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
+ * @param exec - the call that just ran (name, parsed arguments, caller identity).
  * @param result - the dispatch outcome a listener may accept, replace, or block.
  * @mode waterfall
  */
@@ -678,7 +715,7 @@ Source: [`packages/core/tools/src/index.ts:175`](../../packages/core/tools/src/i
 
 #### `tools/pre-execute` — waterfall
 
-Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approval support turns `ask` into denial. Async gates must observe `exec.signal`; the registry rechecks cancellation after they settle but never abandons their promise. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
+Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approval support turns `ask` into denial. Async gates must observe `exec.signal`; the registry rechecks cancellation after they settle but never abandons their promise. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
 
 ```ts cordis-catalog
 /**
@@ -686,8 +723,8 @@ Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approv
  * approval support turns `ask` into denial. Async gates must observe
  * `exec.signal`; the registry rechecks cancellation after they settle but
  * never abandons their promise.
- * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent's calls.
- * @param exec - the pending call (name, parsed arguments, caller agent).
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): subject-scoped listeners receive only that caller's calls.
+ * @param exec - the pending call (name, parsed arguments, caller identity).
  * @mode waterfall
  */
 'tools/pre-execute'(this: Scoped<ToolRuntime>, exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision>
@@ -701,12 +738,12 @@ Source: [`packages/core/tools/src/index.ts:152`](../../packages/core/tools/src/i
 
 #### `tools/result` — emit
 
-Observe the frozen, lossless-JSON final outcome. Listener failures are contained. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by `exec.agent`.
+Observe the frozen, lossless-JSON final outcome. Listener failures are contained. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by the execution identity (`agent` or `principal`).
 
 ```ts cordis-catalog
 /**
  * Observe the frozen, lossless-JSON final outcome. Listener failures are contained.
- * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by `exec.agent`.
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by the execution identity (`agent` or `principal`).
  * @param exec - the execution object that traversed the pipeline.
  * @param result - a deep-frozen snapshot of the final returned result.
  * @mode emit

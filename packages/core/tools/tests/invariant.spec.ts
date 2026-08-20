@@ -3,7 +3,8 @@ import { Context } from '@deepseek-ai/cordis'
 import { scopeTarget } from '@deepseek-ai/dsh-scope'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import type { ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
+import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
+import type { ExternalToolPrincipal, ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
 import * as ToolsInvariant from '@deepseek-ai/dsh-tools/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 
@@ -31,6 +32,14 @@ const outcome = (): ToolExecutionResult => Object.freeze({
   content: Object.freeze([{ type: 'text' as const, text: 'ok' }]) as never,
   isError: false,
   value: null,
+})
+
+const externalPrincipal = (): ExternalToolPrincipal => ({
+  kind: 'external',
+  id: ExternalToolPrincipalId('invariant-external'),
+  session: Session.create(SessionId('invariant-external-session')),
+  ctx: new Context(),
+  recorder: {},
 })
 
 function emitResult(ctx: Context, exec: ToolExecution, result: ToolExecutionResult): void {
@@ -87,6 +96,13 @@ describe('tool-pipeline invariants', () => {
 
     const anonymous = Object.freeze(execution({ name: '' }))
     expect(() => { emitResult(ctx, anonymous, outcome()) }).toThrow(/non-empty name and callId/)
+  })
+
+  it('rejects a final snapshot carrying both native and external identities', async () => {
+    const ctx = await setup()
+    const agent = { id: SessionId('native-invariant') } as ToolExecution['agent']
+    const exec = Object.freeze(execution({ agent, principal: externalPrincipal() }))
+    expect(() => emitResult(ctx, exec, outcome())).toThrow(/exactly one.*agent.*principal/i)
   })
 
   it('requires code-dispatch records to be turn-enclosed', async () => {

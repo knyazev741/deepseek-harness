@@ -20,6 +20,9 @@ function validateResult(
   result: Readonly<ToolExecutionResult>,
   fail: InvariantFailure,
 ): void {
+  if (exec.agent !== undefined && exec.principal !== undefined) {
+    fail('tools/result execution must provide exactly one of agent or principal')
+  }
   if (!Object.isFrozen(exec)) fail('tools/result execution must be frozen before publication')
   if (!Object.isFrozen(result) || !Object.isFrozen(result.content)) {
     fail('tools/result outcome and content must be frozen before publication')

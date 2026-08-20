@@ -11,10 +11,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
-import { defineTool, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
+import { defineTool, executionAgent, executionSession, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, TerminalCallView, ToolExecution, ToolResult, ToolResultView } from '@deepseek-ai/dsh-tools'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-user-approval'
@@ -143,10 +142,10 @@ function presentBashResult(args: unknown, result: ToolResult): ToolResultView | 
  */
 function resolveWorkdir(
   modelWorkdir: string | undefined,
-  exec: { agent?: Agent },
+  exec: Pick<ToolExecution, 'agent' | 'principal'>,
   policyWorkspaceRoot?: string,
 ): string | undefined {
-  const headerCwd = exec.agent?.session.header.cwd
+  const headerCwd = executionSession(exec)?.header.cwd
   const sessionCwd = policyWorkspaceRoot ?? (headerCwd === undefined ? undefined : canonicalPath(headerCwd))
   if (modelWorkdir === undefined) return sessionCwd
   if (sessionCwd !== undefined && !isAbsolute(modelWorkdir)) {
@@ -196,8 +195,10 @@ export function apply(ctx: Context, config: Config = {}): void {
     throw new Error('tool-bash: the mounted bash executor confines but ctx.sandboxPolicy is missing')
   }
   /** Resolve the complete standing policy for this call when a confining executor is mounted. */
-  const resolveSandboxPolicy = (exec: ToolExecution): SandboxExecutionPolicy | undefined =>
-    sandboxPolicy?.resolve(exec.agent === undefined ? {} : { session: exec.agent.session })
+  const resolveSandboxPolicy = (exec: ToolExecution): SandboxExecutionPolicy | undefined => {
+    const session = executionSession(exec)
+    return sandboxPolicy?.resolve(session === undefined ? {} : { session })
+  }
 
   /**
    * Resolve a sandbox-escalation request through `ctx.approval` BEFORE
@@ -224,7 +225,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       { requestedMode: mode, justification, effectiveMode, subject: 'command' },
       {
         approver: ctx.get('approval'),
-        agent: exec.agent,
+        agent: executionAgent(exec),
         callId: exec.callId,
         toolName: 'bash',
         signal: exec.signal,
@@ -361,11 +362,15 @@ export function apply(ctx: Context, config: Config = {}): void {
           error.name = 'AbortError'
           throw error
         }
+        if (exec.principal !== undefined) {
+          throw new Error('background execution requires a native agent')
+        }
+        const owner = executionAgent(exec)
         // Task preflight finishes before the starter can spawn a process.
         const id = jobs.start({
           kind: 'bash',
           label: args.command,
-          ...exec.agent ? { owner: exec.agent } : {},
+          ...owner !== undefined ? { owner } : {},
           run: () => {
             const proc = ctx.shell.start(ctx.shell.resolve(request))
             return {

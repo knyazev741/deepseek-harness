@@ -2,14 +2,19 @@
 
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { createScope } from '@deepseek-ai/dsh-scope'
+import type { Scope } from '@deepseek-ai/dsh-scope'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, {
   defineContentToolFixture,
+  ExternalToolPrincipalId,
   type ToolDefinition,
+  type ExternalToolPrincipal,
   type ToolExecutionInput,
   type ToolExecutionMode,
 } from '@deepseek-ai/dsh-tools'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
 
 const testToolSignal = new AbortController().signal
 
@@ -18,6 +23,25 @@ async function setup() {
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   return ctx
+}
+
+async function mintExternalScope(ctx: Context, name: string): Promise<{ scope: Scope; principal: ExternalToolPrincipal }> {
+  const principal = {
+    kind: 'external' as const,
+    id: ExternalToolPrincipalId(name),
+    session: Session.create(SessionId(`session-${name}`)),
+    ctx: undefined as unknown as Context,
+    recorder: {
+      recordCall: () => undefined,
+      recordResult: () => undefined,
+    },
+  } satisfies ExternalToolPrincipal
+  let scope!: Scope
+  await ctx.plugin(Object.assign((inner: Context) => {
+    scope = createScope(inner, principal)
+    ;(principal as { ctx: Context }).ctx = scope.ctx
+  }, { inject: ['tools', 'systemPrompt'] }))
+  return { scope, principal }
 }
 
 function exec(name: string, args: unknown): ToolExecutionInput {
@@ -119,6 +143,22 @@ describe('ToolRuntime.executionMode', () => {
     })
     expect(ctx.tools.executionMode(exec('raw-safe', { anything: 1 }))).toEqual({ kind: 'parallel' })
     expect(seen).toEqual({ anything: 1 })
+  })
+
+  it('classifies a scoped external principal through the same lookup view', async () => {
+    const ctx = await setup()
+    const { scope, principal } = await mintExternalScope(ctx, 'external-mode')
+    scope.ctx.tools.register(defineContentToolFixture({
+      name: 'external-safe',
+      description: 'external scoped tool',
+      parameters: {},
+      isConcurrencySafe: () => true,
+      async execute() { return [] },
+    }))
+    expect(ctx.tools.executionMode({
+      ...exec('external-safe', {}),
+      principal,
+    })).toEqual({ kind: 'parallel' })
   })
 
   it('isConcurrencySafe never reaches the model-facing schemas() projection', async () => {
