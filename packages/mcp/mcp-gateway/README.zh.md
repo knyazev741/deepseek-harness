@@ -26,7 +26,7 @@
 
 每次调用都以给定的 `ExternalToolPrincipal` 进入 `ctx.tools.execute`。网关不会直接调用定义、创建原生 Agent、打开原生 turn 或使用 scheduler 内部接口，因此普通流水线中的 guard、approval、验证、渲染、结果观察器和外部 recorder 都会继续生效。recorder 在分发前提交一次 call，在分发后提交一次匹配的 result 或 error。
 
-在 MCP 投影或 recorder 提交之前，结构化成功值和错误值都会递归遍历。含有秘密的键和值会替换为 `[REDACTED]`；即使本地路径包含空格，也会完整移除。普通对象结构会保留。如果固定且有界的终端 fallback 无法放入 recorder envelope，lease 会在选择工具名称时拒绝该名称，因此已接受的调用不会遗留未配对的 call commit。只有持久化 result commit 成功后才会发出 terminal 事件；观察器异常会被隔离，后续监听器和终结流程仍会运行。
+在 MCP 投影或 recorder 提交之前，结构化成功值、错误值以及 call arguments 的持久化副本使用同一套递归脱敏规则。对象键会移除非 ASCII 字母数字字符并转为小写；当规范化键等于凭据标记（`apikey`、`accesstoken`、`authtoken`、`password`、`passphrase`、`secret`、`secretkey`、`token`、`credential(s)`、`privatekey`、`signingkey`、`encryptionkey`、`authorization`、`cookie`、`setcookie`、`auth` 或 `bearer`），或标记后跟已知限定词（`value`、`text`、`string`、`data`、`raw`、`bytes`、`header`、`ref`、`reference`、`env`、`environment` 或 `key`）时，该值会替换为 `[REDACTED]`。因此 `apiKeyValue`、`secretValue` 和嵌套的 `tokenValue` 都会被处理，而普通的 `key`、`tokenCount` 和 `secretary` 会保留。已知的 bearer/文本形式以及根位于 `/Users`、`/home`、`/private`、`/tmp`、`/var`、`/opt`、Windows 驱动器路径或等价 UNC 根的完整本地路径也会脱敏，包括带空格的路径。这是针对已知凭据字段的明确策略，不声称能够识别所有秘密。executor 收到原始解析参数；只有持久化给 recorder 的副本会脱敏。如果固定且有界的终端 fallback 无法放入 recorder envelope，lease 会在选择工具名称时拒绝该名称；每个调用还会在 `recordCall` 前预检完整 UTF-8 call envelope 和该 fallback，因此已接受的调用不会遗留未配对的 call commit。只有持久化 result commit 成功后才会发出 terminal 事件；观察器异常会被隔离，后续监听器和终结流程仍会运行。
 
 请求只接受有状态 MCP 端点上的 `GET`、`POST` 和 `DELETE`。JSON POST 请求体必须是 `application/json`，严格按 UTF-8 解码，只包含一个无尾随字节的 JSON 值，并遵守配置的字节和时间限制。未知路由、session、方法和工具名称都会故障关闭。
 
@@ -36,7 +36,7 @@
 |---|---:|---|
 | `allowlist` | `[]` | 允许外部暴露的固定工具名称；定义还必须用 `externalEligibility: 'allow'` 显式 opt-in。 |
 | `maxRequestBytes` | `65536` | 单个 JSON 请求体的最大 UTF-8 字节数。 |
-| `maxResponseBytes` | `65536` | 单个脱敏 MCP 结果的最大 UTF-8 字节数；超限结果会变成一个有界错误，并保持在 external recorder 的限制内。 |
+| `maxResponseBytes` | `65536` | 单个脱敏 MCP 结果的最大 UTF-8 字节数；固定 fallback 要求至少 `104` 字节。超限结果会变成一个有界错误，并保持在 external recorder 的限制内。 |
 | `executionTimeoutMs` | `60000` | 读取请求体和协作式工具调用的截止时间；lease 处置会中止同一信号。 |
 
 ## 生命周期

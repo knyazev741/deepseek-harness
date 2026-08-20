@@ -573,6 +573,7 @@ describe('authenticated MCP gateway', () => {
     const ctx = await setup({ approval: true })
     const owner = (await livePrincipal(ctx)).principal
     let fail = false
+    let observedArguments: unknown
     ctx.tools.register({
       name: 'allowed',
       description: 'structured redaction fixture',
@@ -582,18 +583,19 @@ describe('authenticated MCP gateway', () => {
         schema: { type: 'object', properties: { safe: { type: 'object' } } },
         render: () => [{ type: 'text', text: 'structured' }],
       },
-      async execute() {
+      async execute(argumentsValue) {
+        observedArguments = argumentsValue
         if (fail) {
           throw new Error(JSON.stringify({
-            apiKey: 'error-api-key',
-            nested: { password: 'error-password', token: 'error-token' },
+            apiKeyValue: 'error-api-key',
+            nested: { secretValue: 'error-password', tokenValue: 'error-token' },
             path: '/Users/knyaz/Application Support/private error.json',
           }))
         }
         return {
           safe: { answer: 42, key: 'preserve this benign key', label: 'preserve this structure' },
-          apiKey: 'success-api-key',
-          nested: { password: 'success-password', token: 'success-token' },
+          apiKeyValue: 'success-api-key',
+          nested: { secretValue: 'success-password', tokenValue: 'success-token' },
           path: '/Users/knyaz/Application Support/private success.json',
         }
       },
@@ -603,26 +605,43 @@ describe('authenticated MCP gateway', () => {
     await client.connect(new StreamableHTTPClientTransport(new URL(lease.url), {
       requestInit: { headers: { authorization: `Bearer ${lease.bearerToken}` } },
     }) as unknown as Parameters<Client['connect']>[0])
-    const success = await client.callTool({ name: 'allowed', arguments: {} })
+    const callArguments = {
+      apiKeyValue: 'call-api-key',
+      nested: { secretValue: 'call-secret', tokenValue: 'call-token' },
+      path: '/Users/knyaz/Application Support/call file.txt',
+      safe: { key: 'keep this key' },
+    }
+    const success = await client.callTool({ name: 'allowed', arguments: callArguments })
+    expect(observedArguments).toEqual(callArguments)
     const successJson = JSON.stringify(success)
     expect(successJson).toContain('preserve this structure')
     expect(successJson).toContain('preserve this benign key')
-    for (const secret of ['success-api-key', 'success-password', 'success-token', 'Application Support/private success.json']) {
+    for (const secret of [
+      'success-api-key', 'success-password', 'success-token', 'Application Support/private success.json',
+      'call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt',
+    ]) {
       expect(successJson).not.toContain(secret)
     }
-    const firstDurable = JSON.stringify(owner.session.events)
-    for (const secret of ['success-api-key', 'success-password', 'success-token', 'Application Support/private success.json']) {
+    const firstCall = owner.session.events.find(event => event.type === 'external/tool-call')
+    const firstDurable = JSON.stringify(firstCall)
+    for (const secret of ['call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt']) {
       expect(firstDurable).not.toContain(secret)
     }
 
     fail = true
-    const error = await client.callTool({ name: 'allowed', arguments: {} })
+    const error = await client.callTool({ name: 'allowed', arguments: callArguments })
     const errorJson = JSON.stringify(error)
-    for (const secret of ['error-api-key', 'error-password', 'error-token', 'Application Support/private error.json']) {
+    for (const secret of [
+      'error-api-key', 'error-password', 'error-token', 'Application Support/private error.json',
+      'call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt',
+    ]) {
       expect(errorJson).not.toContain(secret)
     }
     const durable = JSON.stringify(owner.session.events)
-    for (const secret of ['error-api-key', 'error-password', 'error-token', 'Application Support/private error.json']) {
+    for (const secret of [
+      'error-api-key', 'error-password', 'error-token', 'Application Support/private error.json',
+      'call-api-key', 'call-secret', 'call-token', 'Application Support/call file.txt',
+    ]) {
       expect(durable).not.toContain(secret)
     }
     await client.close()
@@ -654,6 +673,89 @@ describe('authenticated MCP gateway', () => {
     await client.close()
     await expect(ctx.externalSessions.dispose(owner.session.id)).resolves.toBeUndefined()
     await lease[Symbol.asyncDispose]()
+    await ctx.fiber.dispose()
+  })
+
+  it('rejects an oversized multibyte durable call before recording anything', async () => {
+    const ctx = await setup({ approval: true, maxRequestBytes: 70_000 })
+    const owner = (await livePrincipal(ctx)).principal
+    const recordCall = vi.spyOn(owner.recorder, 'recordCall')
+    ctx.tools.register({
+      name: 'allowed',
+      description: 'oversized-call fixture',
+      parameters: { type: 'object', properties: { value: { type: 'string' } } },
+      externalEligibility: 'allow',
+      output: { schema: { type: 'string' }, render: () => [{ type: 'text', text: 'never runs' }] },
+      async execute() { throw new Error('executor must not run') },
+    })
+    const lease = await ctx.mcpGateway.create({ principal: owner, tools: ['allowed'], signal: new AbortController().signal })
+    const client = new Client({ name: 'gateway-call-admission-test', version: '1.0.0' }, { capabilities: {} })
+    await client.connect(new StreamableHTTPClientTransport(new URL(lease.url), {
+      requestInit: { headers: { authorization: `Bearer ${lease.bearerToken}` } },
+    }) as unknown as Parameters<Client['connect']>[0])
+    const value = '🙂'.repeat(17_000)
+    const error: unknown = await client.callTool({ name: 'allowed', arguments: { value } })
+      .catch((reason: unknown): unknown => reason)
+    const errorText = error instanceof Error ? error.message : JSON.stringify(error) ?? ''
+    expect(errorText).toMatch(/tool call|record/i)
+    expect(errorText).not.toContain(value)
+    expect(errorText.length).toBeLessThan(1_000)
+    expect(recordCall).not.toHaveBeenCalled()
+    expect(owner.session.events.filter(event => event.type === 'external/tool-call')).toHaveLength(0)
+    expect(owner.session.events.filter(event => event.type === 'external/tool-result')).toHaveLength(0)
+    await client.close().catch(() => {})
+    await expect(lease[Symbol.asyncDispose]()).resolves.toBeUndefined()
+    await expect(ctx.externalSessions.dispose(owner.session.id)).resolves.toBeUndefined()
+    await ctx.fiber.dispose()
+  })
+
+  it('admits an exact multibyte durable call envelope and records one result', async () => {
+    const ctx = await setup({ approval: true, invariant: true, maxRequestBytes: 70_000 })
+    const owner = (await livePrincipal(ctx)).principal
+    ctx.tools.register({
+      name: 'allowed',
+      description: 'exact-call-envelope fixture',
+      parameters: { type: 'object', properties: { value: { type: 'string' } } },
+      externalEligibility: 'allow',
+      output: { schema: { type: 'string' }, render: () => [{ type: 'text', text: 'exact' }] },
+      async execute() { return 'exact' },
+    })
+    const fixedCall = {
+      callId: 'mcp-00000000-0000-0000-0000-000000000000',
+      name: 'allowed',
+      arguments: { value: '' },
+    }
+    const recordLimit = 64 * 1024
+    let value = '🙂'
+    while (Buffer.byteLength(JSON.stringify({ ...fixedCall, arguments: { value } }), 'utf8') < recordLimit) value += 'a'
+    while (Buffer.byteLength(JSON.stringify({ ...fixedCall, arguments: { value } }), 'utf8') > recordLimit) value = value.slice(0, -1)
+    expect(Buffer.byteLength(JSON.stringify({ ...fixedCall, arguments: { value } }), 'utf8')).toBe(recordLimit)
+    const lease = await ctx.mcpGateway.create({ principal: owner, tools: ['allowed'], signal: new AbortController().signal })
+    const client = new Client({ name: 'gateway-exact-call-envelope-test', version: '1.0.0' }, { capabilities: {} })
+    await client.connect(new StreamableHTTPClientTransport(new URL(lease.url), {
+      requestInit: { headers: { authorization: `Bearer ${lease.bearerToken}` } },
+    }) as unknown as Parameters<Client['connect']>[0])
+    await expect(client.callTool({ name: 'allowed', arguments: { value } })).resolves.toMatchObject({ content: [{ type: 'text', text: 'exact' }] })
+    const callEvent = owner.session.events.find(event => event.type === 'external/tool-call')
+    const resultEvent = owner.session.events.find(event => event.type === 'external/tool-result')
+    expect(callEvent).toBeDefined()
+    expect(resultEvent).toBeDefined()
+    expect(Buffer.byteLength(JSON.stringify(callEvent?.data), 'utf8')).toBe(recordLimit)
+    expect(Buffer.byteLength(JSON.stringify(resultEvent?.data), 'utf8')).toBeLessThanOrEqual(recordLimit)
+    await client.close()
+    await expect(lease[Symbol.asyncDispose]()).resolves.toBeUndefined()
+    await expect(ctx.externalSessions.dispose(owner.session.id)).resolves.toBeUndefined()
+    await ctx.fiber.dispose()
+  })
+
+  it('requires a response budget that can carry the fixed MCP fallback', async () => {
+    const fallback = {
+      content: [{ type: 'text', text: 'tool result exceeded the configured response limit' }],
+      isError: true,
+    }
+    const minimum = Buffer.byteLength(JSON.stringify(fallback), 'utf8')
+    await expect(setup({ maxResponseBytes: minimum - 1 })).rejects.toThrow(/maxResponseBytes/)
+    const ctx = await setup({ maxResponseBytes: minimum })
     await ctx.fiber.dispose()
   })
 

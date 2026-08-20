@@ -29,6 +29,7 @@ import type {
   ToolExecutionResult,
 } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import {
   ExternalToolCallId,
@@ -167,8 +168,10 @@ function resolveConfig(config: Config): ResolvedConfig {
     throw new Error('mcp-gateway: maxRequestBytes must be a positive safe integer')
   }
   const maxResponseBytes = config.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES
-  if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes <= 0 || maxResponseBytes > MAX_EXTERNAL_TOOL_RECORD_BYTES) {
-    throw new Error(`mcp-gateway: maxResponseBytes must be a positive safe integer no greater than ${MAX_EXTERNAL_TOOL_RECORD_BYTES}`)
+  if (!Number.isSafeInteger(maxResponseBytes)
+    || maxResponseBytes < MIN_MAX_RESPONSE_BYTES
+    || maxResponseBytes > MAX_EXTERNAL_TOOL_RECORD_BYTES) {
+    throw new Error(`mcp-gateway: maxResponseBytes must be a safe integer from ${MIN_MAX_RESPONSE_BYTES} through ${MAX_EXTERNAL_TOOL_RECORD_BYTES}`)
   }
   const executionTimeoutMs = config.executionTimeoutMs ?? DEFAULT_EXECUTION_TIMEOUT_MS
   if (!Number.isSafeInteger(executionTimeoutMs) || executionTimeoutMs <= 0 || executionTimeoutMs > MAX_TIMER_DELAY_MS) {
@@ -353,48 +356,79 @@ const LOCAL_PATH_PATTERN = new RegExp(
   String.raw`(?:\/(?:Users|home|private|tmp|var|opt)\/|[A-Za-z]:[\\/]|\\\\(?:Users|home|private|tmp|var|opt)\\)[^"'\x60<>\r\n]*`,
   'gu',
 )
+const SECRET_KEY_MARKERS = [
+  'apikey',
+  'accesstoken',
+  'authtoken',
+  'password',
+  'passphrase',
+  'secret',
+  'secretkey',
+  'token',
+  'credential',
+  'credentials',
+  'privatekey',
+  'signingkey',
+  'encryptionkey',
+  'authorization',
+  'cookie',
+  'setcookie',
+  'auth',
+  'bearer',
+]
+const SECRET_KEY_VALUE_SUFFIXES = ['value', 'text', 'string', 'data', 'raw', 'bytes', 'header', 'ref', 'reference', 'env', 'environment', 'key']
 
-/** Key suffixes whose values are credential-bearing rather than ordinary data. */
+/**
+ * Classify normalized credential-bearing key names conservatively.
+ * A marker must be the whole name, a suffix, or be followed by a known
+ * value-bearing qualifier such as `Value` or `Data`; ordinary names such as
+ * `key`, `tokenCount`, and `secretary` remain intact.
+ */
 function isSecretKey(key: string): boolean {
   const normalized = key.replace(/[^a-z0-9]/giu, '').toLowerCase()
-  return normalized === 'auth'
-    || normalized === 'authorization'
-    || normalized === 'bearer'
-    || normalized === 'cookie'
-    || normalized === 'setcookie'
-    || normalized.endsWith('apikey')
-    || normalized.endsWith('accesstoken')
-    || normalized.endsWith('authtoken')
-    || normalized.endsWith('password')
-    || normalized.endsWith('passphrase')
-    || normalized.endsWith('secret')
-    || normalized.endsWith('secretkey')
-    || normalized.endsWith('token')
-    || normalized.endsWith('credential')
-    || normalized.endsWith('credentials')
-    || normalized.endsWith('privatekey')
-    || normalized.endsWith('signingkey')
-    || normalized.endsWith('encryptionkey')
+  return SECRET_KEY_MARKERS.some(marker => normalized === marker
+    || normalized.endsWith(marker)
+    || SECRET_KEY_VALUE_SUFFIXES.some(suffix => normalized.includes(`${marker}${suffix}`)))
 }
 
 /** Redact bearer/secret fields and local paths before they leave the process. */
-function redactText(value: string): string {
-  return value
+function redactText(value: string, bounded = true): string {
+  const replaced = value
     .replace(/\bBearer\s+\S+/giu, `Bearer ${REDACTED}`)
     .replace(SECRET_TEXT_PATTERN, `$1${REDACTED}`)
     .replace(LOCAL_PATH_PATTERN, PATH_REDACTION)
+  try {
+    const parsed = JSON.parse(replaced) as unknown
+    if (parsed !== null && typeof parsed === 'object') return safeJson(sanitizeJsonValue(parsed, 0, bounded))
+  } catch {
+    // Plain diagnostic text is handled by the replacements above.
+  }
+  const prefixedJson = /^(Error:\s*)(\{[\s\S]*\}|\[[\s\S]*\])$/u.exec(replaced)
+  if (prefixedJson !== null) {
+    try {
+      return `${prefixedJson[1]}${safeJson(sanitizeJsonValue(JSON.parse(prefixedJson[2] as string) as unknown, 0, bounded))}`
+    } catch {
+      // Keep the bounded textual replacements when the suffix is not JSON.
+    }
+  }
+  return replaced
 }
 
-/** Detach a JSON-compatible value while redacting strings and limiting depth. */
-function sanitizeJsonValue(value: unknown, depth = 0): unknown {
-  if (typeof value === 'string') return redactText(value)
+/** Detach a JSON-compatible value while redacting strings and optional bounds. */
+function sanitizeJsonValue(value: unknown, depth = 0, bounded = true): unknown {
+  if (typeof value === 'string') return redactText(value, bounded)
   if (value === null || typeof value === 'boolean' || typeof value === 'number') return value
-  if (depth >= 12) return '[nested value omitted]'
-  if (Array.isArray(value)) return value.slice(0, 256).map(item => sanitizeJsonValue(item, depth + 1))
+  if (bounded && depth >= 12) return '[nested value omitted]'
+  if (Array.isArray(value)) {
+    const items = bounded ? value.slice(0, 256) : value
+    return items.map(item => sanitizeJsonValue(item, depth + 1, bounded))
+  }
   if (typeof value === 'object') {
     const output: Record<string, unknown> = {}
-    for (const [key, item] of Object.entries(value as Record<string, unknown>).slice(0, 256)) {
-      output[key] = isSecretKey(key) ? REDACTED : sanitizeJsonValue(item, depth + 1)
+    const allEntries = Object.entries(value as Record<string, unknown>)
+    const entries = bounded ? allEntries.slice(0, 256) : allEntries
+    for (const [key, item] of entries) {
+      output[key] = isSecretKey(key) ? REDACTED : sanitizeJsonValue(item, depth + 1, bounded)
     }
     return output
   }
@@ -480,11 +514,33 @@ function mcpResult(result: ToolExecutionResult): CallToolResult {
   }
 }
 
+/** Create the fixed MCP error used when a result exceeds the response budget. */
+function responseLimitResult(): ToolExecutionResult {
+  return {
+    isError: true,
+    error: { message: RESPONSE_LIMIT_MESSAGE },
+    content: [{ type: 'text', text: RESPONSE_LIMIT_MESSAGE }],
+  }
+}
+
+/** Minimum configured response budget that can carry the fixed MCP fallback. */
+export const MIN_MAX_RESPONSE_BYTES = Buffer.byteLength(safeJson(mcpResult(responseLimitResult())), 'utf8')
+
 /** Build one bounded recorder error for an unexpected executor throw. */
 function thrownResult(error: unknown): ToolExecutionResult {
   let message: string
   try {
-    message = error instanceof Error ? error.message : String(error)
+    const raw = error instanceof Error ? error.message : error
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw) as unknown
+        message = safeJson(sanitizeJsonValue(parsed))
+      } catch {
+        message = raw
+      }
+    } else {
+      message = safeJson(sanitizeJsonValue(raw))
+    }
   } catch {
     message = 'unprintable thrown value'
   }
@@ -512,18 +568,39 @@ function sanitizeToolResult(result: ToolExecutionResult): ToolExecutionResult {
 function boundToolResult(result: ToolExecutionResult, maxResponseBytes: number): ToolExecutionResult {
   const sanitized = sanitizeToolResult(result)
   if (Buffer.byteLength(safeJson(mcpResult(sanitized)), 'utf8') <= maxResponseBytes) return sanitized
-  return {
-    isError: true,
-    error: { message: RESPONSE_LIMIT_MESSAGE },
-    content: [{ type: 'text', text: RESPONSE_LIMIT_MESSAGE }],
-  }
+  return responseLimitResult()
 }
 
 /** Build the one durable result record corresponding to a terminal outcome. */
-function externalResultRecord(callId: ExternalToolCallId, name: string, result: ToolExecutionResult): ExternalToolResultRecord {
+function externalResultRecord(
+  callId: ExternalToolCallId,
+  name: string,
+  result: ToolExecutionResult,
+  turnId?: string,
+): ExternalToolResultRecord {
   return result.isError
-    ? { callId, name, isError: true, error: result.error }
-    : { callId, name, isError: false, result: result.value }
+    ? { ...turnId === undefined ? {} : { turnId }, callId, name, isError: true, error: result.error }
+    : { ...turnId === undefined ? {} : { turnId }, callId, name, isError: false, result: result.value }
+}
+
+/** Build the complete durable call envelope after applying the gateway policy. */
+function externalCallRecord(
+  callId: ExternalToolCallId,
+  name: string,
+  args: unknown,
+  turnId?: string,
+): ExternalToolCallRecord {
+  return {
+    ...turnId === undefined ? {} : { turnId },
+    callId,
+    name,
+    arguments: args,
+  }
+}
+
+/** Keep the recorder's independent durable-call limit fail-closed. */
+function fitsExternalCallRecord(record: ExternalToolCallRecord): boolean {
+  return Buffer.byteLength(safeJson(record), 'utf8') <= MAX_EXTERNAL_TOOL_RECORD_BYTES
 }
 
 /** Keep the recorder's independent durable-event limit fail-closed. */
@@ -534,12 +611,31 @@ function fitsExternalResultRecord(record: ExternalToolResultRecord): boolean {
 const DURABLE_FALLBACK_CALL_ID = ExternalToolCallId('mcp-00000000-0000-0000-0000-000000000000')
 
 /** Reject a tool name that cannot carry the fixed terminal error envelope. */
-function fitsDurableFallbackForName(name: string): boolean {
+function fitsDurableFallbackForName(name: string, turnId?: string): boolean {
   return fitsExternalResultRecord(externalResultRecord(
     DURABLE_FALLBACK_CALL_ID,
     name,
-    thrownResult(new Error(RESPONSE_LIMIT_MESSAGE)),
+    responseLimitResult(),
+    turnId,
   ))
+}
+
+/** Find the active external turn that the durable recorder will attach. */
+function currentExternalTurnId(events: readonly SessionEvent[]): string | undefined {
+  let turnId: string | undefined
+  for (const event of events) {
+    const type = event.type as string
+    if (type === 'external/turn-started') {
+      const value = (event.data as { readonly turnId?: unknown }).turnId
+      turnId = typeof value === 'string' && value.length > 0 ? value : undefined
+    } else if (type === 'external/turn-ended') {
+      const value = (event.data as { readonly turnId?: unknown }).turnId
+      if (typeof value !== 'string' || value === turnId) turnId = undefined
+    } else if (type === 'external/session-ended') {
+      turnId = undefined
+    }
+  }
+  return turnId
 }
 
 /** Return an MCP JSON-RPC request id as a stable call correlation suffix. */
@@ -635,7 +731,10 @@ class GatewayLease implements McpGatewayLease {
       await connection.server.close().catch(() => {})
       await connection.transport.close().catch(() => {})
     }
-    emitContained(this.ctx, 'mcp-gateway/lease-disposed', { route: this.path })
+    emitContained(this.ctx, 'mcp-gateway/lease-disposed', {
+      route: this.path,
+      sessionId: String(this.principal.session.id),
+    })
   }
 
   private async handleAuthenticated(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -742,15 +841,21 @@ class GatewayLease implements McpGatewayLease {
     if (current !== entry.definition) throw new Error('MCP tool is unavailable')
     const callId = ExternalToolCallId(callIdFor())
     const args = request.params.arguments ?? {}
-    const callRecord: ExternalToolCallRecord = { callId, name, arguments: args }
+    const turnId = currentExternalTurnId(this.principal.session.events)
+    const durableArguments = sanitizeJsonValue(args, 0, false)
+    const callRecord = externalCallRecord(callId, name, durableArguments, turnId)
     const recorder = this.principal.recorder
     if (recorder.recordCall === undefined || recorder.recordResult === undefined) {
       throw new Error('MCP tool recorder is unavailable')
+    }
+    if (!fitsExternalCallRecord(callRecord) || !fitsDurableFallbackForName(name, turnId)) {
+      throw new Error('MCP tool call cannot fit the durable recorder envelope')
     }
     await recorder.recordCall(callRecord)
     const startObserverError = emitContained(this.ctx, 'mcp-gateway/call-started', {
       route: this.path,
       callId: String(callId),
+      sessionId: String(this.principal.session.id),
     })
     let result: ToolExecutionResult
     const requestSignalState = requestSignal(extra.signal, this.controller.signal, this.executionTimeoutMs)
@@ -779,10 +884,10 @@ class GatewayLease implements McpGatewayLease {
       // still one bounded terminal error, never an unpaired committed call.
       terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
     }
-    let resultRecord = externalResultRecord(callId, name, terminal)
+    let resultRecord = externalResultRecord(callId, name, terminal, turnId)
     if (!fitsExternalResultRecord(resultRecord)) {
-      terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
-      resultRecord = externalResultRecord(callId, name, terminal)
+      terminal = responseLimitResult()
+      resultRecord = externalResultRecord(callId, name, terminal, turnId)
     }
     let durableResultCommitted = false
     try {
@@ -792,8 +897,8 @@ class GatewayLease implements McpGatewayLease {
       // A recorder can reject an oversized candidate before committing it.
       // Retry exactly once with a fixed bounded error so every accepted call
       // still has one terminal durable result.
-      terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
-      resultRecord = externalResultRecord(callId, name, terminal)
+      terminal = responseLimitResult()
+      resultRecord = externalResultRecord(callId, name, terminal, turnId)
       try {
         await recorder.recordResult(resultRecord)
         durableResultCommitted = true
@@ -803,7 +908,11 @@ class GatewayLease implements McpGatewayLease {
       }
     }
     if (durableResultCommitted) {
-      emitContained(this.ctx, 'mcp-gateway/call-terminal', { route: this.path, callId: String(callId) })
+      emitContained(this.ctx, 'mcp-gateway/call-terminal', {
+        route: this.path,
+        callId: String(callId),
+        sessionId: String(this.principal.session.id),
+      })
     }
     return mcpResult(terminal)
   }
@@ -833,7 +942,10 @@ export class McpGateway extends Service implements McpGatewayService {
   static Config: z<Config> = z.object({
     allowlist: z.array(z.string()).default([]),
     maxRequestBytes: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MAX_REQUEST_BYTES),
-    maxResponseBytes: z.number().step(1).min(1).max(MAX_EXTERNAL_TOOL_RECORD_BYTES).default(DEFAULT_MAX_RESPONSE_BYTES),
+    maxResponseBytes: z.number().step(1)
+      .min(MIN_MAX_RESPONSE_BYTES)
+      .max(MAX_EXTERNAL_TOOL_RECORD_BYTES)
+      .default(DEFAULT_MAX_RESPONSE_BYTES),
     executionTimeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_EXECUTION_TIMEOUT_MS),
   }) as unknown as z<Config>
 
@@ -904,7 +1016,10 @@ export class McpGateway extends Service implements McpGatewayService {
         handler: (req, res) => lease.handle(req, res),
       }
       disposer = this.ctx.webServer.register(route)
-      emitContained(this.ctx, 'mcp-gateway/lease-created', { route: path })
+      emitContained(this.ctx, 'mcp-gateway/lease-created', {
+        route: path,
+        sessionId: String(request.principal.session.id),
+      })
     } catch (error) {
       this.routes.delete(path)
       await lease[Symbol.asyncDispose]().catch(() => {})

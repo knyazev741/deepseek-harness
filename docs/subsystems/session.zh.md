@@ -986,9 +986,9 @@ One tool call entered the gateway's recorder/execute pair.
 ```ts cordis-catalog
 /** One tool call entered the gateway's recorder/execute pair.
  * @mode emit
- * @param payload - call ownership payload.
+ * @param payload - route, call, and owning session identifiers.
  */
-'mcp-gateway/call-started'(payload: { route: string; callId: string }): void
+'mcp-gateway/call-started'(payload: { route: string; callId: string; sessionId: string }): void
 ```
 
 Source: [`packages/mcp/mcp-gateway/src/types.ts:67`](../../packages/mcp/mcp-gateway/src/types.ts)
@@ -997,14 +997,14 @@ Source: [`packages/mcp/mcp-gateway/src/types.ts:67`](../../packages/mcp/mcp-gate
 
 #### `mcp-gateway/call-terminal` — emit
 
-One gateway call committed a terminal recorder result or teardown error.
+One gateway call committed its durable terminal recorder result.
 
 ```ts cordis-catalog
-/** One gateway call committed a terminal recorder result or teardown error.
+/** One gateway call committed its durable terminal recorder result.
  * @mode emit
- * @param payload - call ownership payload.
+ * @param payload - route, call, and owning session identifiers.
  */
-'mcp-gateway/call-terminal'(payload: { route: string; callId: string }): void
+'mcp-gateway/call-terminal'(payload: { route: string; callId: string; sessionId: string }): void
 ```
 
 Source: [`packages/mcp/mcp-gateway/src/types.ts:72`](../../packages/mcp/mcp-gateway/src/types.ts)
@@ -1018,9 +1018,9 @@ A lease route became live and owned by one external attachment.
 ```ts cordis-catalog
 /** A lease route became live and owned by one external attachment.
  * @mode emit
- * @param payload - route ownership payload.
+ * @param payload - route and owning session identifiers.
  */
-'mcp-gateway/lease-created'(payload: { route: string }): void
+'mcp-gateway/lease-created'(payload: { route: string; sessionId: string }): void
 ```
 
 Source: [`packages/mcp/mcp-gateway/src/types.ts:57`](../../packages/mcp/mcp-gateway/src/types.ts)
@@ -1034,9 +1034,9 @@ A lease route completed quiescent disposal.
 ```ts cordis-catalog
 /** A lease route completed quiescent disposal.
  * @mode emit
- * @param payload - route ownership payload.
+ * @param payload - route and owning session identifiers.
  */
-'mcp-gateway/lease-disposed'(payload: { route: string }): void
+'mcp-gateway/lease-disposed'(payload: { route: string; sessionId: string }): void
 ```
 
 Source: [`packages/mcp/mcp-gateway/src/types.ts:62`](../../packages/mcp/mcp-gateway/src/types.ts)

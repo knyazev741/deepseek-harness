@@ -1381,7 +1381,7 @@ export interface Config {
   readonly allowlist?: readonly string[]
   /** Maximum UTF-8 request body size, including every JSON byte. */
   readonly maxRequestBytes?: number
-  /** Maximum UTF-8 size of one MCP tool result. */
+  /** Maximum UTF-8 size of one MCP tool result; the fixed fallback requires a minimum budget. */
   readonly maxResponseBytes?: number
   /** Maximum cooperative wall-clock duration for one tool call. */
   readonly executionTimeoutMs?: number
