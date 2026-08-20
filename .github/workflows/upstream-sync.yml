@@ -11,6 +11,10 @@
 #   `-X ours` covers content conflicts; modify/delete + rename/delete
 #   conflicts are also resolved in the fork's favor: keep the fork's file
 #   when it still exists, keep the deletion when the fork removed it.
+# - The fork keeps its own .github/workflows/* files: upstream's workflow
+#   changes are dropped from the sync branch, because GITHUB_TOKEN (a GitHub
+#   App) cannot push workflow-file changes (the `workflows` scope is not
+#   grantable in workflow syntax) — pushing them would be rejected.
 # - Opens (or updates) a PR sync/upstream-master -> master. The companion
 #   workflow `upstream-review.yml` reviews that PR with an LLM and merges it
 #   only when the review and the sanity gates approve.
@@ -31,15 +35,6 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    # Upstream's changes often touch .github/workflows/*; pushing workflow
-    # files requires the `workflows` permission (only grantable per job),
-    # otherwise GitHub rejects the sync branch push ("refusing to allow a
-    # GitHub App to create or update workflow ... without `workflows`
-    # permission").
-    permissions:
-      contents: write
-      pull-requests: write
-      workflows: write
     steps:
       - name: Checkout fork master
         uses: actions/checkout@v4
@@ -102,8 +97,20 @@ jobs:
             done < <(git diff --name-only --diff-filter=U -z)
             rm -f .git/index.lock
           done
+          # The fork keeps its own workflow files: GITHUB_TOKEN is a GitHub
+          # App and cannot push .github/workflows/* changes (the `workflows`
+          # scope is not grantable in workflow syntax), so drop upstream's
+          # workflow-file changes from the sync branch entirely.
+          git rm -r --cached --quiet -- .github/workflows 2>/dev/null || true
+          git checkout master -- .github/workflows
           if [ -f .git/MERGE_HEAD ]; then
+            # Resolved-conflict merge: the commit below includes the
+            # workflow-file exclusion.
             git commit --no-edit || { rm -f .git/index.lock; git commit --no-edit; }
+          elif ! git diff --cached --quiet -- .github/workflows; then
+            # The merge auto-committed (no conflicts); the exclusion needs
+            # its own commit.
+            git commit -m "chore(sync): keep fork-owned workflow files"
           fi
           # Never push a half-merged or corrupted result: upstream is ahead
           # of the fork (behind != 0), so the merge result MUST differ from
