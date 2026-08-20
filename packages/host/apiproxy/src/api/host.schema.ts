@@ -17,7 +17,6 @@ export const hostDescribeValueSchema = z.object({
   provider: z.string().optional(),
   model: z.string().optional(),
   attachedSessions: z.number().int().nonnegative(),
-  home: z.string(),
   canOpenPath: z.boolean(),
 }) satisfies z.ZodType<Wire<ResponseValue<'host.describe'>>>
 

@@ -8,24 +8,14 @@ import {
 import type { InboxState } from './inbox.ts'
 import { chatNode } from './common.ts'
 
-interface ReferencedUserMessageNode extends UserMessageNode {
-  /** Labels cited by the immediately following session-reference context. */
-  readonly referenceLabels?: readonly string[]
-}
-
-interface ReferencedSteeringMessageNode extends SteeringMessageNode {
-  /** Labels cited by the immediately following session-reference context. */
-  readonly referenceLabels?: readonly string[]
-}
-
-type MessageNode = ReferencedUserMessageNode | ReferencedSteeringMessageNode | ContextMessageNode
+type MessageNode = UserMessageNode | SteeringMessageNode | ContextMessageNode
 
 declare module '@deepseek-ai/dsh-client-ui-conversation/client' {
   interface ChatNodeDataMap {
     /** Ordinary turn-opening user message. */
-    user: ReferencedUserMessageNode
+    user: UserMessageNode
     /** User message admitted into an active turn. */
-    steering: ReferencedSteeringMessageNode
+    steering: SteeringMessageNode
     /** Non-user context injected into model history. */
     context: ContextMessageNode
   }

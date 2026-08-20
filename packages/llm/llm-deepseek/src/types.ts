@@ -35,25 +35,10 @@ export interface WireSystemMessage {
   content: string
 }
 
-/** Text part inside a multimodal user message. */
-export interface WireTextContentPart {
-  type: 'text'
-  text: string
-}
-
-/** Base64 data URL part inside a multimodal user message. */
-export interface WireImageContentPart {
-  type: 'image_url'
-  image_url: { url: string }
-}
-
-/** Ordered input part accepted by a multimodal user message. */
-export type WireUserContentPart = WireTextContentPart | WireImageContentPart
-
-/** User-role message: text-only string or ordered multimodal input. */
+/** User-role message: a single string of user input. */
 export interface WireUserMessage {
   role: 'user'
-  content: string | WireUserContentPart[]
+  content: string
 }
 
 /** Tool-role message: the result of one tool call, keyed by its call id. */
@@ -79,11 +64,9 @@ export interface WireAssistantMessage {
   role: 'assistant'
   content: string | null
   /**
-   * CoT passback, present on every turn whose assistant content carried
-   * reasoning. REQUIRED on tool-call turns in thinking mode (see
-   * guides/thinking_mode.mdx § Tool Calls); DeepSeek ignores it elsewhere,
-   * while a gateway re-encoding for another vendor recovers that turn's
-   * thinking signature by hashing it.
+   * CoT passback. REQUIRED on assistant turns that carried tool calls
+   * (thinking mode); ignored on tool-call-free turns (we omit it there to
+   * save tokens). See guides/thinking_mode.mdx § Tool Calls.
    */
   reasoning_content?: string
   tool_calls?: WireToolCall[]

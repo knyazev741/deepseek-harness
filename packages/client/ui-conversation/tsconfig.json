@@ -21,7 +21,13 @@
       "path": "../ui-slots"
     },
     {
+      "path": "../ui-attachment"
+    },
+    {
       "path": "../ui-primitives"
+    },
+    {
+      "path": "../web-react"
     },
     {
       "path": "../runtime"

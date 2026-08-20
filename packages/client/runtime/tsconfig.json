@@ -18,6 +18,9 @@
       "path": "../ui-slots"
     },
     {
+      "path": "../web-react"
+    },
+    {
       "path": "../../host/apiproxy"
     },
     {

@@ -13,7 +13,6 @@ import { zh } from '../src/client/locales.ts'
 
 // Mirrors the real lookup chain (conversation namespace, then common).
 const t: AssistantMarkdownProps['t'] = makeTranslate(zh, commonZh)
-const renderMessageImages: AssistantMarkdownProps['renderMessageImages'] = () => null
 
 afterEach(cleanup)
 
@@ -32,20 +31,13 @@ describe('tails', () => {
           { kind: 'other', block: { type: 'mystery' } },
         ]}
         streaming
-        renderMessageImages={renderMessageImages}
       />,
     )
     expect(view.getByText('Think')).toBeTruthy()
     expect(view.getByText('thinking hard')).toBeTruthy()
     expect(view.getByText(/未知内容块/)).toBeTruthy()
     const stopped = render(
-      <AssistantMarkdown
-        t={t}
-        blocks={[{ kind: 'text', text: 'partial words' }]}
-        streaming={false}
-        interrupted
-        renderMessageImages={renderMessageImages}
-      />,
+      <AssistantMarkdown t={t} blocks={[{ kind: 'text', text: 'partial words' }]} streaming={false} interrupted />,
     )
     expect(stopped.getByText('已停止')).toBeTruthy()
   })
@@ -58,13 +50,10 @@ describe('tails', () => {
         t={t}
         blocks={[{ kind: 'tool-call', callId: 'c', name: 'todo_write', argsRaw: '{}' }]}
         streaming={false}
-        renderMessageImages={renderMessageImages}
       />,
     )
     expect(empty.container.firstChild).toBeNull()
-    const blank = render(
-      <AssistantMarkdown t={t} blocks={[]} streaming={false} renderMessageImages={renderMessageImages} />,
-    )
+    const blank = render(<AssistantMarkdown t={t} blocks={[]} streaming={false} />)
     expect(blank.container.firstChild).toBeNull()
   })
 

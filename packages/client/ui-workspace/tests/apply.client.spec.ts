@@ -2,10 +2,15 @@ import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
 import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
+
+// The service reads its initial locale from the browser; these specs assert
+// the shipped Chinese copy, so they state the browser they assume.
+usePinnedBrowserLanguages('zh-CN')
 
 async function bench() {
   const ctx = new Context()
@@ -31,14 +36,7 @@ async function bench() {
     create, startSession, rename, insertSessionBefore,
   } as never)
   ctx.provide('sessions', { open, clear, search, searchResultLimit: 20, binding, fork } as never)
-  ctx.provide('connection', {
-    hostDescription: { getSnapshot: () => undefined, subscribe: () => () => {} },
-  } as never)
   const locale = new LocaleRuntime(ctx)
-  // These specs assert the shipped Chinese copy. There is no jsdom `window`
-  // in this lane, so browser-language detection never runs and the locale
-  // comes from FALLBACK_LOCALE (en): state the asserted locale explicitly.
-  locale.setLocale('zh')
   ctx.provide('locale', locale)
   return {
     ctx, slots: ctx.get('slots') as SlotRegistry, locale, create, startSession, rename,
@@ -56,7 +54,7 @@ function declare(slots: SlotRegistry, ...names: HoleName[]): () => void {
 
 describe('ui-workspace apply', () => {
   it('declares the services it drives', () => {
-    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale', 'connection'])
+    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale'])
   })
 
   it('registers browser and pickers for declarations arriving before or after apply', async () => {
@@ -128,7 +126,6 @@ describe('ui-workspace apply', () => {
     const browser = (b.slots.entries('sidebar.workspaces')[0]!.inject as () => WorkspaceBrowserInjected)()
     const picker = (b.slots.entries('conversation.hero.workspace')[0]!.inject as () => WorkspacePickerInjected)()
     expect(browser.hooks.directoryFlow.getSnapshot()).toBe(false)
-    expect(browser.hooks.hostDescription.getSnapshot()).toBeUndefined()
     expect(picker.hooks.directoryFlow.getSnapshot()).toBe(false)
     // A flow occupant flips exactly its own surface, and the source notifies.
     const notified = vi.fn()
