@@ -18,7 +18,7 @@
       "path": "../runtime"
     },
     {
-      "path": "../../../vendor/schemastery"
+      "path": "../schema-form"
     },
     {
       "path": "../../api/remotes/tsconfig.client.json"

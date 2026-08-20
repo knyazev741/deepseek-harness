@@ -10,7 +10,7 @@
  * while open (query refinement) resets the existing groups to pending under
  * a new generation. Auto-close and explicit close drop the groups.
  */
-import type { InputTriggerCandidate, InputTriggerSource } from '../types.ts'
+import type { InputTriggerCandidate } from '../types.ts'
 import type { ExactMatch, MenuReduce, MenuState } from './contract.ts'
 
 /** Closed rest state with generation 0; store initializer and test seed. */
@@ -21,23 +21,11 @@ export const MENU_CLOSED: MenuState = { open: false, hit: null, generation: 0, g
  * Shell-side step before dispatching `hit` on a fresh menu open.
  *
  * @param state - Current menu state.
- * @param sources - Sources registered for the hit trigger, in menu order.
+ * @param sources - Source names registered for the hit trigger, menu order.
  * @returns State carrying the new pending roster; highlight cleared.
  */
-export function seedGroups(
-  state: MenuState,
-  sources: readonly Pick<InputTriggerSource, 'name' | 'showGroupTitle'>[],
-): MenuState {
-  return {
-    ...state,
-    groups: sources.map(source => ({
-      source: source.name,
-      ...(source.showGroupTitle === false ? { showGroupTitle: false } : {}),
-      status: 'pending',
-      items: [],
-    })),
-    highlight: null,
-  }
+export function seedGroups(state: MenuState, sources: readonly string[]): MenuState {
+  return { ...state, groups: sources.map(source => ({ source, status: 'pending', items: [] })), highlight: null }
 }
 
 /** Close, preserving the generation so in-flight settlements stay droppable. */
@@ -95,7 +83,7 @@ export const menuReduce: MenuReduce = (state, ev) => {
         open: true,
         hit: ev.hit,
         generation: state.generation + 1,
-        groups: state.groups.map(g => ({ ...g, status: 'pending', items: [] })),
+        groups: state.groups.map(g => ({ source: g.source, status: 'pending', items: [] })),
         highlight: null,
       }
     }
@@ -105,7 +93,7 @@ export const menuReduce: MenuReduce = (state, ev) => {
       if (idx < 0) return state
       const items: readonly InputTriggerCandidate[] = ev.items ?? []
       const groups = state.groups.map((g, i) =>
-        i === idx ? { ...g, status: 'ready' as const, items } : g)
+        i === idx ? { source: g.source, status: 'ready' as const, items } : g)
       if (allReadyEmpty(groups)) return closed(state)
       const highlight = validHighlight(state.highlight, groups) ?? firstHighlight(groups)
       return { ...state, groups, highlight }

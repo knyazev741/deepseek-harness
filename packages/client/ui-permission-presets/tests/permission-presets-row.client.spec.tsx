@@ -1,22 +1,11 @@
 // @vitest-environment jsdom
-import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import type { SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
-import { SettingsSchemaService } from '@deepseek-ai/dsh-client-ui-settings/src/client/schema.ts'
 import { PermissionRow, type PermissionRowProps } from '../src/client/PermissionRow.tsx'
 import { en } from '../src/client/locales.ts'
-import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { PermissionPresetSettingsController } from '../src/client/settings-store.ts'
-
-const schema = new SettingsSchemaService(new Context())
-
-/** Controller over a real mirror derived from the same fake wire. */
-function derivedController(api: { settings: object }) {
-  const wire = api as never
-  return new PermissionPresetSettingsController(new SettingsDescribeMirror(wire), wire, schema)
-}
 
 afterEach(cleanup)
 
@@ -69,11 +58,11 @@ function mount(controller: PermissionPresetSettingsController) {
 describe('PermissionRow', () => {
   it('loads the descriptor, opens the menu, and selects a new default', async () => {
     const mutate = vi.fn(() => Promise.resolve(ok(view('workspace-write', 1))))
-    const controller = derivedController({
+    const controller = new PermissionPresetSettingsController({
       settings: {
         describe: () => Promise.resolve(ok({ writable: true, hasDocument: false, namespaces: [view('read-only')] })),
         mutate,
-      },
+      } as never,
     })
     mount(controller)
     const button = await screen.findByRole('button', { name: 'Read Only' })
@@ -96,11 +85,11 @@ describe('PermissionRow', () => {
 
   it('requires explicit acknowledgement before saving Full access', async () => {
     const mutate = vi.fn(() => Promise.resolve(ok(view('danger-full-access', 1))))
-    const controller = derivedController({
+    const controller = new PermissionPresetSettingsController({
       settings: {
         describe: () => Promise.resolve(ok({ writable: true, hasDocument: false, namespaces: [view('read-only')] })),
         mutate,
-      },
+      } as never,
     })
     mount(controller)
     fireEvent.click(await screen.findByRole('button', { name: 'Read Only' }))
@@ -120,21 +109,21 @@ describe('PermissionRow', () => {
   })
 
   it('hides an unavailable namespace and disables a read-only provider', async () => {
-    const absent = derivedController({
+    const absent = new PermissionPresetSettingsController({
       settings: {
         describe: () => Promise.resolve(ok({ writable: true, hasDocument: false, namespaces: [] })),
         mutate: vi.fn(),
-      },
+      } as never,
     })
     const rendered = mount(absent)
     await waitFor(() => { expect(rendered.container.textContent).toBe('') })
     rendered.unmount()
 
-    const readonly = derivedController({
+    const readonly = new PermissionPresetSettingsController({
       settings: {
         describe: () => Promise.resolve(ok({ writable: false, hasDocument: false, namespaces: [view('read-only')] })),
         mutate: vi.fn(),
-      },
+      } as never,
     })
     mount(readonly)
     expect((await screen.findByRole('button', { name: 'Read Only' })).hasAttribute('disabled')).toBe(true)
@@ -145,7 +134,7 @@ describe('PermissionRow', () => {
       writable: boolean
       namespaces: SettingsNamespaceView[]
     }>>>()
-    const controller = derivedController({
+    const controller = new PermissionPresetSettingsController({
       settings: {
         describe: () => describe.promise,
         mutate: () => Promise.resolve({
@@ -155,7 +144,7 @@ describe('PermissionRow', () => {
             error: { code: 'settings-conflict', message: 'changed elsewhere', details: {} },
           },
         }),
-      },
+      } as never,
     })
     mount(controller)
     expect((await screen.findByRole('button', { name: 'Loading' })).hasAttribute('disabled')).toBe(true)

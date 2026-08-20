@@ -1,11 +1,8 @@
 /**
  * Host transport for the settings-namespace scope contract. The contract types
  * live in `dsh-client-runtime` (the common dependency of every feature that
- * owns a preference); this file owns the per-namespace derivation over the
- * shared {@link SettingsDescribeMirror} and the serialized write path, both of
- * which are Settings-surface concerns. Reads never touch the wire here: the
- * mirror is the one `settings.describe` reader, and every scope is a selector
- * over its snapshot.
+ * owns a preference); this file owns the wire behavior and the invalidation
+ * subscription, both of which are Settings-surface concerns.
  */
 
 import { Service } from '@deepseek-ai/cordis'
@@ -13,6 +10,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {
   ConnectionHandle, IApiClient, SettingsNamespaceView, SettingsPathOpView,
 } from '@deepseek-ai/dsh-api-remotes/client'
+import { rehydrateSchema, validateDraft } from '@deepseek-ai/dsh-client-schema-form'
 import {
   createSnapshotStore, type SettingsScope, type SettingsScopeSnapshot,
   type SettingsScopeSpec, type SnapshotStore,
@@ -24,8 +22,8 @@ import {
 // Client half declares `ctx.remote` with no generated import, and the
 // allowlist's `types` subpath is a pure-type source file, so the pair supplies
 // `$on` and its key face without dragging a build artifact in. The runtime
-// `remote` injection belongs to the providing plugin's apply, which registers
-// the mirror's invalidation subscriptions.
+// `remote` injection belongs to whoever calls bindSettingsScope: the
+// subscription is registered on the caller's own context.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/types'
 // The forwarded event's own declaration: `$on`'s key face is
@@ -33,43 +31,30 @@ import type {} from '@deepseek-ai/dsh-api-remotes/types'
 // never — the owning package's client-safe, type-only subpath supplies the
 // cordis `Events` entry (and with it the branded `SettingsNamespace`).
 import type {} from '@deepseek-ai/dsh-settings/types'
-import type { SettingsSchemaService } from './schema.ts'
-import { SettingsDescribeMirror, type SettingsDescribeFace } from './settings-mirror.ts'
-
 type SettingsFace = Pick<IApiClient, 'settings'>
 
 /**
- * One namespace's derived view over the shared describe mirror, plus that
- * namespace's serialized Host writes. Writes carry the latest known namespace
- * revision, fold their answers back into the mirror, and teardown waits for
- * the operation already crossing the wire.
+ * Serializes one namespace's Host reads and writes behind a snapshot store.
+ * Reads never block plugin activation; writes carry the latest known
+ * namespace revision and teardown waits for the operation already crossing
+ * the wire.
  */
 export class SettingsScopeController<T> implements SettingsScope<T> {
   private readonly store: SnapshotStore<SettingsScopeSnapshot<T>>
   private tail: Promise<void> = Promise.resolve()
+  private readGeneration = 0
   private writeGeneration = 0
   private disposed = false
-  private readonly unsubscribe: (() => void) | undefined
-  /**
-   * Revision answered by a superseded write still ahead of the mirror: the
-   * mirror only folds the LATEST settlement in, so a queued successor takes
-   * its fence from here first.
-   */
-  private pendingRevision: number | undefined
 
   /**
-   * @param api - settings wire face (writes only; reads ride the mirror).
+   * @param api - settings wire face.
    * @param spec - namespace identity and optional narrowing decoder.
-   * @param mirror - the shared describe mirror this scope derives from.
    * @param persistence - remote browsers remain process-local because settings RPCs are loopback-only.
-   * @param schema - settings-owned schema operations.
    */
   constructor(
     private readonly api: SettingsFace,
     private readonly spec: SettingsScopeSpec<T>,
-    private readonly mirror: SettingsDescribeMirror,
-    private readonly persistence: 'host' | 'memory',
-    private readonly schema: SettingsSchemaService,
+    private readonly persistence: 'host' | 'memory' = 'host',
   ) {
     this.store = createSnapshotStore<SettingsScopeSnapshot<T>>({
       status: persistence === 'host' ? 'loading' : 'unavailable',
@@ -80,10 +65,6 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
       writable: false,
       mode: persistence,
     })
-    if (persistence === 'host') {
-      this.unsubscribe = mirror.subscribe(() => { this.derive() })
-      this.derive()
-    }
   }
 
   /** @returns the current sync snapshot (stable reference until the next change). */
@@ -98,6 +79,15 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
    */
   subscribe(listener: () => void): () => void {
     return this.store.subscribe(listener)
+  }
+
+  /**
+   * Queue a Host refresh; a newer read or user write suppresses stale publication.
+   * @returns settlement after the queued read completes or is skipped.
+   */
+  load(): Promise<void> {
+    const generation = ++this.readGeneration
+    return this.enqueue(() => this.read(generation))
   }
 
   /**
@@ -122,9 +112,10 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
   }
 
   private write(op: SettingsPathOpView): Promise<void> {
+    this.readGeneration += 1
     const generation = ++this.writeGeneration
     return this.enqueue(async () => {
-      const revision = this.pendingRevision ?? this.getSnapshot().revision
+      const revision = this.getSnapshot().revision
       let response: Awaited<ReturnType<SettingsFace['settings']['mutate']>>
       try {
         response = await this.api.settings.mutate({
@@ -133,39 +124,25 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
           ...(revision === undefined ? {} : { expectedRevision: revision }),
         })
       } catch (_settingsWriteFailure) {
-        await this.recover(generation)
+        if (!this.disposed && generation === this.writeGeneration) await this.read(++this.readGeneration)
         return
       }
       if (!response.result.ok) {
-        await this.recover(generation)
+        if (!this.disposed && generation === this.writeGeneration) await this.read(++this.readGeneration)
         return
       }
-      if (this.disposed) return
-      if (generation === this.writeGeneration) {
-        this.pendingRevision = undefined
-        this.mirror.acceptView(response.result.value)
-      } else {
-        this.pendingRevision = response.result.value.revision
-      }
+      this.accept(response.result.value, generation === this.writeGeneration)
     })
   }
 
-  /** Reload Host state for the latest failed write; superseded failures leave recovery to it. */
-  private async recover(generation: number): Promise<void> {
-    if (this.disposed || generation !== this.writeGeneration) return
-    this.pendingRevision = undefined
-    await this.mirror.load()
-  }
-
   /**
-   * Stop queued operations, stop deriving, and wait for the current wire call
-   * to settle.
+   * Stop queued operations and wait for the current wire call to settle.
    * @returns settlement after the controller reaches quiescence.
    */
   async dispose(): Promise<void> {
     this.disposed = true
+    this.readGeneration += 1
     this.writeGeneration += 1
-    this.unsubscribe?.()
     await this.tail
   }
 
@@ -181,25 +158,36 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
     return task
   }
 
-  private derive(): void {
-    if (this.disposed) return
-    const mirrored = this.mirror.getSnapshot()
-    if (mirrored.view === undefined) return
-    const { writable } = mirrored.view
-    const view = mirrored.view.namespaces.find(candidate => candidate.ns === this.spec.namespace)
-    if (view === undefined) {
-      this.store.update((draft) => {
-        draft.status = 'unavailable'
-        draft.writable = writable
-      })
+  private async read(generation: number): Promise<void> {
+    let response: Awaited<ReturnType<SettingsFace['settings']['describe']>>
+    try {
+      response = await this.api.settings.describe({})
+    } catch (_settingsReadFailure) {
       return
     }
-    const decoded = this.decode(view)
+    if (!response.result.ok || this.disposed) return
+    const { namespaces, writable } = response.result.value
+    const view = namespaces.find(candidate => candidate.ns === this.spec.namespace)
+    const publish = generation === this.readGeneration
+    if (view === undefined) {
+      if (publish) {
+        this.store.update((draft) => {
+          draft.status = 'unavailable'
+          draft.writable = writable
+        })
+      }
+      return
+    }
+    this.accept(view, publish, writable)
+  }
+
+  private accept(view: SettingsNamespaceView, publish: boolean, writable?: boolean): void {
+    const decoded = publish ? this.decode(view) : undefined
     this.store.update((draft) => {
       draft.revision = view.revision
       draft.base = view.base
       draft.user = view.user
-      draft.writable = writable
+      if (writable !== undefined) draft.writable = writable
       if (decoded === undefined) return
       draft.status = 'ready'
       draft.value = decoded
@@ -213,7 +201,7 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
     if (typeof view.value !== 'object' || view.value === null || Array.isArray(view.value)) return undefined
     let failure: string | undefined
     try {
-      failure = this.schema.validate(this.schema.rehydrate(view.schema), view.value)
+      failure = validateDraft(rehydrateSchema(view.schema), view.value)
     } catch (_malformedSchemaEnvelope) {
       // A schema envelope this client cannot rehydrate vouches for no section;
       // the value is treated exactly like a schema-invalid one.
@@ -237,38 +225,20 @@ declare module '@deepseek-ai/cordis' {
  * (`packages/client/tsdown.client.ts`).
  */
 export class SettingsScopeBinder extends Service {
-  private readonly mirror: SettingsDescribeMirror
-  private readonly schema: SettingsSchemaService
-
   /**
    * @param ctx - the providing plugin's context.
-   * @param config - the shared describe mirror every bound scope derives from,
-   * plus the settings-owned schema operations.
    */
-  constructor(ctx: Context, config: { mirror: SettingsDescribeMirror; schema: SettingsSchemaService }) {
+  constructor(ctx: Context) {
     super(ctx, 'settingsScope')
-    this.mirror = config.mirror
-    this.schema = config.schema
   }
 
   /**
-   * The shared mirror's read/fold face for cross-namespace surfaces (schema
-   * introspection, the served-namespace directory). Per-namespace consumers
-   * use {@link bind}; both derive from the same snapshot, so they can never
-   * disagree about the document.
-   * @returns the describe face over the shared mirror.
-   */
-  describe(): SettingsDescribeFace {
-    return this.mirror
-  }
-
-  /**
-   * Bind one namespace scope on the CALLER's plugin lifecycle — the service
-   * proxy binds `this.ctx` to the caller at call time, so the scope's disposer
-   * belongs to the calling fiber. The scope derives from the shared mirror
-   * (whose invalidation subscriptions live with the providing plugin), so
-   * binding adds no wire read of its own and activation never blocks on the
-   * settings transport.
+   * Bind one namespace scope to settings and connection invalidations on the
+   * CALLER's plugin lifecycle — the service proxy binds `this.ctx` to the
+   * caller at call time, so the scope's disposer belongs to the calling fiber.
+   * Listeners exist before the initial background read starts, so activation
+   * never blocks on the settings transport. The caller injects `connection`
+   * for the transport and `remote` for the forwarded settings invalidation.
    * @param spec - domain-owned namespace contract.
    * @returns the bound scope consumed by the domain's services and rows.
    */
@@ -278,13 +248,20 @@ export class SettingsScopeBinder extends Service {
     const controller = new SettingsScopeController<T>(
       connection.api,
       spec,
-      this.mirror,
       connection.isLoopback ? 'host' : 'memory',
-      this.schema,
     )
     ctx.effect(() => {
-      void this.mirror.ensure()
+      const refresh = (namespace?: string): void => {
+        if (namespace !== undefined && namespace !== spec.namespace) return
+        void controller.load()
+      }
+      const disposers = [
+        (ctx.get('remote') as Context['remote']).$on('settings/document-updated', refresh),
+        ctx.on('connection/reset', () => { refresh() }),
+      ]
+      void controller.load()
       return async () => {
+        for (const dispose of disposers) dispose()
         await controller.dispose()
       }
     }, `ui-settings: ${spec.namespace} settings scope`)

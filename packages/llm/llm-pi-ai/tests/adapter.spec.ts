@@ -216,6 +216,7 @@ describe('PiAiAdapter provider routing', () => {
         maxImageBytes: 1,
         maxImagesPerMessage: 1,
         maxMessageImageBytes: 1,
+        maxImageDimension: 1,
         maxImagePixels: 1,
         mediaTypes: ['image/png'],
       }

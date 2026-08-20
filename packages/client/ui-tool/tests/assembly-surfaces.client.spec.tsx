@@ -68,11 +68,7 @@ const LAYOUT_CHILDREN = {
 
 async function bench(nodes: ToolResultNode[]) {
   const runtime = await SlotTestRuntime.create()
-  runtime.provide('connection', {
-    api: { settings: {} },
-    isLoopback: false,
-    hostDescription: { getSnapshot: () => undefined, subscribe: () => () => {} },
-  })
+  runtime.provide('connection', { api: { settings: {} }, isLoopback: false })
   // ui-theme's Appearance row binds a durable scope through these two.
   runtime.provide('remote', { $on: () => () => {} })
   runtime.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)

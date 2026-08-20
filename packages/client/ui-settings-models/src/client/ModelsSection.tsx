@@ -16,11 +16,10 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
 import { Button, IconPlusOutline16, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-web-react'
 import { CustomProviderCard } from './CustomProviderCard.tsx'
 import { deriveKeyRef, messageOf, protocolChoices, providerUsable } from './store.ts'
-import type { ModelsSettingsStore, ProviderRow } from './store.ts'
-import type { SettingsSchemaOperations } from './schema-operations.ts'
+import type { ModelsSettingsState, ModelsSettingsStore, ProviderRow } from './store.ts'
 import { ProviderEditor, type ProviderEditorProps } from './ProviderEditor.tsx'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
@@ -29,14 +28,10 @@ import styles from './ModelsSection.module.css'
 export interface ModelsSectionInjected {
   /** The page store (loaded on mount, refreshed on pushed invalidations). */
   controller: ModelsSettingsStore
-  hooks: {
-    /** Page snapshot bound by the UI renderer as useSnapshot. */
-    snapshot: ModelsSettingsStore['store']
-  }
+  /** uSES subscription hook bound to the store. */
+  useSnapshot: SnapshotSelectorHook<ModelsSettingsState>
   /** Wire faces the editor writes through. */
   api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>
-  /** Settings schema and immutable path callbacks. */
-  schema: SettingsSchemaOperations
   /** Section copy. */
   t: (key: keyof typeof en) => string
 }
@@ -45,9 +40,7 @@ export interface ModelsSectionInjected {
  * Props delivered by the slot outlet: the inject face spread flat (the
  * renderer erases the share boundary at the render call).
  */
-export type ModelsSectionProps = Partial<InjectFace<ModelsSectionInjected>>
-
-type ModelsSectionFace = InjectFace<ModelsSectionInjected>
+export type ModelsSectionProps = Partial<ModelsSectionInjected>
 
 /** Provider identity shared by row actions and confirmation copy. */
 export interface ProviderIdentity {
@@ -70,7 +63,7 @@ interface EditorTarget extends ProviderIdentity {
 /** Values that vary around the shared provider-editor rendering. */
 interface ProviderEditorRenderProps extends Pick<
   ProviderEditorProps,
-  'namespace' | 'schema' | 'api' | 't' | 'readOnly' | 'onClose'
+  'namespace' | 'api' | 't' | 'readOnly' | 'onClose'
 > {
   target: EditorTarget
 }
@@ -176,16 +169,13 @@ export function providerCopy(template: string, target: ProviderIdentity): string
  * @returns the section, or null while the shell has not injected yet.
  */
 export function ModelsSection(props: ModelsSectionProps): ReactNode {
-  const { controller, useSnapshot, api, schema, t } = props
-  if (
-    controller === undefined || useSnapshot === undefined || api === undefined
-    || schema === undefined || t === undefined
-  ) return null
-  return <Loaded injected={{ controller, useSnapshot, api, schema, t }} />
+  const { controller, useSnapshot, api, t } = props
+  if (controller === undefined || useSnapshot === undefined || api === undefined || t === undefined) return null
+  return <Loaded injected={{ controller, useSnapshot, api, t }} />
 }
 
-function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
-  const { controller, api, schema, t } = injected
+function Loaded({ injected }: { injected: ModelsSectionInjected }): ReactNode {
+  const { controller, api, t } = injected
   const state = injected.useSnapshot(snapshot => snapshot)
   const [editing, setEditing] = useState<EditorTarget | undefined>(undefined)
   const [adding, setAdding] = useState(false)
@@ -279,7 +269,7 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
   // Hand-declared routes live in the pi-ai namespace, which is also the only
   // one whose schema names the protocols one may speak; without it mounted
   // there is nothing to declare and the entry point stays disabled.
-  const protocols = protocolChoices(state.namespaces.get('llm-pi-ai'), schema)
+  const protocols = protocolChoices(state.namespaces.get('llm-pi-ai'))
 
   return (
     <div className={styles['section']}>
@@ -307,7 +297,6 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                 {renderProviderEditor({
                   target,
                   namespace,
-                  schema,
                   api,
                   t,
                   readOnly: !state.writable,
@@ -392,7 +381,6 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                 ? renderProviderEditor({
                   target,
                   namespace,
-                  schema,
                   api,
                   t,
                   readOnly: !state.writable,
@@ -431,7 +419,6 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                 displayName={addTarget.displayName}
                 hideTitle
                 namespace={addNamespace}
-                schema={schema}
                 settingsPath={addTarget.settingsPath}
                 api={api}
                 t={t}

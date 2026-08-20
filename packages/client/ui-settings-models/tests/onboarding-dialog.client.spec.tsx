@@ -4,13 +4,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
 import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import { DeepSeekOnboardingDialog } from '../src/client/DeepSeekOnboardingDialog.tsx'
 import type { DeepSeekOnboardingDialogProps } from '../src/client/DeepSeekOnboardingDialog.tsx'
-import { SettingsDescribeMirror } from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { ModelsSettingsStore } from '../src/client/store.ts'
 import { en } from '../src/client/locales.ts'
-import { settingsSchema } from './settings-schema.client.ts'
 
 afterEach(() => {
   cleanup()
@@ -126,7 +124,7 @@ function harness(options: {
       set,
     },
   }
-  const controller = new ModelsSettingsStore(face as never, settingsSchema, new SettingsDescribeMirror(face as never))
+  const controller = new ModelsSettingsStore(face as never)
   const openSection = vi.fn()
   const complete = vi.fn()
   const unusedHook = (() => { throw new Error('unused standard hook') }) as never
@@ -139,7 +137,6 @@ function harness(options: {
     controller,
     useModels: bindSnapshotSelector(controller.store),
     api: face as never,
-    schema: settingsSchema,
     t: key => en[key],
   }
   return {

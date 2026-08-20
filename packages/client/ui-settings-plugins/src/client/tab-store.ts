@@ -10,7 +10,7 @@
  * trace and does not count toward the empty line.
  */
 
-import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { IApiClient } from '@deepseek-ai/dsh-client-connection/client'
 import type { StoredEntry } from '@deepseek-ai/dsh-client-ui-slots'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 
@@ -42,23 +42,47 @@ export interface ConfigurablePluginsTabFace {
   }
 }
 
-/** Derives the served namespaces from the shared describe mirror and pairs them with the cards that claim them. */
+/** Reads the served namespaces and pairs them with the cards that claim them. */
 export class ConfigurablePluginsTabController {
   private readonly store = createSnapshotStore<ConfigurablePluginsTabState>({ loaded: false, namespaces: [] })
+  /** Last Host answer; kept so a slot mutation republishes without a wire read. */
+  private served: readonly string[] = []
+  private loaded = false
+  private generation = 0
   private disposed = false
-  private readonly unsubscribe: () => void
 
   /**
-   * @param describeFace - the shared mirror's describe face; its refreshes
-   * (document commits, reconnects) are what keep the served set current.
+   * @param api - settings wire face.
    * @param entries - reads the cards currently registered into the section's slot.
    */
   constructor(
-    private readonly describeFace: SettingsDescribeFace,
+    private readonly api: Pick<IApiClient, 'settings'>,
     private readonly entries: () => readonly StoredEntry[],
-  ) {
-    this.unsubscribe = describeFace.subscribe(() => { this.publish() })
-    void describeFace.ensure()
+  ) {}
+
+  /** Opaque read of {@link disposed}: control flow cannot narrow it across awaits. */
+  private isDisposed(): boolean {
+    return this.disposed
+  }
+
+  /**
+   * Re-read the served namespaces from the Host and republish.
+   * @returns settlement after the read, or immediately once disposed.
+   */
+  async load(): Promise<void> {
+    if (this.isDisposed()) return
+    const generation = ++this.generation
+    let response: Awaited<ReturnType<IApiClient['settings']['describe']>>
+    try {
+      response = await this.api.settings.describe({})
+    } catch (_settingsReadFailure) {
+      // The tab keeps the namespaces it last knew; the next invalidation
+      // or reconnect reads again.
+      return
+    }
+    if (this.isDisposed() || generation !== this.generation || !response.result.ok) return
+    this.served = response.result.value.namespaces.map(view => view.ns)
+    this.loaded = true
     this.publish()
   }
 
@@ -68,10 +92,10 @@ export class ConfigurablePluginsTabController {
     this.publish()
   }
 
-  /** Stop publishing and stop following the mirror. */
+  /** Stop publishing; an in-flight read settles without touching the store. */
   dispose(): void {
     this.disposed = true
-    this.unsubscribe()
+    this.generation += 1
   }
 
   /**
@@ -83,20 +107,17 @@ export class ConfigurablePluginsTabController {
   }
 
   private publish(): void {
-    if (this.disposed) return
-    const mirrored = this.describeFace.getSnapshot()
-    const loaded = mirrored.view !== undefined
-    const served = new Set(mirrored.view?.namespaces.map(view => view.ns) ?? [])
+    const served = new Set(this.served)
     const namespaces = this.entries().flatMap(entry =>
       entry.options.key !== undefined && served.has(entry.options.key) ? [entry.options.key] : [])
     const previous = this.store.getSnapshot()
-    // Every settings-document commit refreshes the mirror, and most commits
-    // change nothing this section shows. An observable source must keep its
-    // snapshot reference until the fact moves, or each unrelated save
-    // re-renders the whole card list (packages/client/AGENTS.md reactive rule 5).
-    if (previous.loaded === loaded
+    // Every settings-document commit re-reads, and most of them change nothing
+    // this section shows. An observable source must keep its snapshot
+    // reference until the fact moves, or each unrelated save re-renders the
+    // whole card list (packages/client/AGENTS.md reactive rule 5).
+    if (previous.loaded === this.loaded
       && previous.namespaces.length === namespaces.length
       && previous.namespaces.every((ns, index) => ns === namespaces[index])) return
-    this.store.set({ loaded, namespaces })
+    this.store.set({ loaded: this.loaded, namespaces })
   }
 }

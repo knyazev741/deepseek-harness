@@ -72,17 +72,26 @@ export function apply(ctx: ClientContext): void {
     'ui-settings-plugins: credential invalidations',
   )
 
-  // Which namespaces the Host serves comes from the shared describe mirror,
-  // whose owning plugin already refreshes it on document commits and
-  // reconnects — the tab only derives.
+  // Which namespaces the Host serves is a registration fact the wire does not
+  // announce, so the directory re-reads on the two signals that can carry a
+  // changed composition: a settings document commit and a reconnect.
   const configurable = new ConfigurablePluginsTabController(
-    ctx.settingsScope.describe(), () => ctx.slots.entries('settings.plugin.item'))
+    api, () => ctx.slots.entries('settings.plugin.item'))
   ctx.effect(() => () => { configurable.dispose() }, 'ui-settings-plugins: tab directory')
+  ctx.effect(
+    () => ctx.remote.$on('settings/document-updated', () => { void configurable.load() }),
+    'ui-settings-plugins: served-namespace invalidations',
+  )
+  ctx.effect(
+    () => ctx.on('connection/reset', () => { void configurable.load() }),
+    'ui-settings-plugins: served-namespace reconnect',
+  )
   // A card registered after the first read joins the list without a wire call.
   ctx.effect(
     () => ctx.slots.subscribe('settings.plugin.item', () => { configurable.refresh() }),
     'ui-settings-plugins: card ledger',
   )
+  void configurable.load()
 
   let tabsVersion = -1
   let tabsRevision = -1

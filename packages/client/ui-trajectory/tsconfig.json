@@ -18,6 +18,9 @@
       "path": "../ui-conversation"
     },
     {
+      "path": "../web-react"
+    },
+    {
       "path": "../runtime"
     },
     {

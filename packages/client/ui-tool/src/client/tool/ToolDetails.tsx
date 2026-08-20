@@ -9,16 +9,20 @@ import { resultText } from './models/tool-call-model.ts'
 import { webCardModel } from './models/web-card-model.ts'
 import css from './ToolDetails.module.css'
 
+/** Pure details-body inputs; framework session seats stay at the slot boundary. */
+interface ToolDetailsContentProps {
+  block: ToolDetailsProps['block']
+  cwd?: ToolDetailsProps['cwd']
+  t: ToolDetailsProps['t']
+}
+
 /**
  * Render the selected Tool call's structured output when its presentation
  * intent is known, otherwise preserve the flattened result text.
- * @param props - selected call slice, workspace root, host home, and locale seat.
+ * @param props - selected call slice, workspace root, and locale seat.
  * @returns the details output body.
  */
-export function ToolDetails({
-  block, cwd, useHostDescription, t,
-}: Pick<ToolDetailsProps, 'block' | 'cwd' | 'useHostDescription' | 't'>) {
-  const home = useHostDescription(description => description?.home)
+export function ToolDetails({ block, cwd, t }: ToolDetailsContentProps) {
   const terminal = terminalCardModel(block, cwd)
   if (terminal !== null) {
     return (
@@ -30,7 +34,7 @@ export function ToolDetails({
       </>
     )
   }
-  const read = readCardModel(block, cwd, home)
+  const read = readCardModel(block, cwd)
   if (read !== null) return <ReadBlock {...read} className={css.read} />
   const diff = diffCardModel(block)
   if (diff !== null) return <DiffBlock {...diff.card} className={css.cardBody} />

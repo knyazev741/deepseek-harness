@@ -18,6 +18,9 @@
       "path": "../runtime"
     },
     {
+      "path": "../schema-form"
+    },
+    {
       "path": "../ui-commands"
     },
     {
@@ -28,6 +31,9 @@
     },
     {
       "path": "../ui-slots"
+    },
+    {
+      "path": "../web-react"
     },
     {
       "path": "../../interaction/permission-presets"

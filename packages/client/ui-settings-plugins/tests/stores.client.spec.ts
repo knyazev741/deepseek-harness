@@ -8,9 +8,6 @@ import { stubSettingsScope, type StubSettingsScope } from '@deepseek-ai/dsh-clie
 import { CardForm, numberField, textField } from '../src/client/card-form.ts'
 import { AgentLoopCardController, type AgentLoopSettings } from '../src/client/agent-loop-card-controller.ts'
 import { BashCardController, type BashSettings } from '../src/client/bash-card-controller.ts'
-import {
-  SettingsDescribeMirror, type SettingsMirrorSnapshot,
-} from '@deepseek-ai/dsh-client-ui-settings/src/client/settings-mirror.ts'
 import { ConfigurablePluginsTabController } from '../src/client/tab-store.ts'
 import { WebSearchCardController, type WebSearchSettings } from '../src/client/web-search-card-controller.ts'
 
@@ -558,7 +555,7 @@ describe('ConfigurablePluginsTabController', () => {
         },
       },
     }))
-    return { mirror: new SettingsDescribeMirror({ settings: { describe } } as never), describe }
+    return { api: { settings: { describe } } as never, describe }
   }
 
   /** Slot ledger stand-in: one stored entry per registered card key. */
@@ -568,9 +565,9 @@ describe('ConfigurablePluginsTabController', () => {
 
   it('dispatches the served namespaces a card claims, in card registration order', async () => {
     const settings = settingsApi(['bash', 'ui-theme', 'agent-loop'])
-    const controller = new ConfigurablePluginsTabController(settings.mirror, () => ledger('agent-loop', 'bash'))
+    const controller = new ConfigurablePluginsTabController(settings.api, () => ledger('agent-loop', 'bash'))
 
-    await settings.mirror.ensure()
+    await controller.load()
 
     // ui-theme is served but claimed by no card here — another surface owns
     // it. The order is the cards', not the Host's: plugin activation can
@@ -581,9 +578,9 @@ describe('ConfigurablePluginsTabController', () => {
 
   it('never dispatches a card whose namespace this deployment does not serve', async () => {
     const settings = settingsApi(['bash'])
-    const controller = new ConfigurablePluginsTabController(settings.mirror, () => ledger('bash', 'web-search-deepseek'))
+    const controller = new ConfigurablePluginsTabController(settings.api, () => ledger('bash', 'web-search-deepseek'))
 
-    await settings.mirror.ensure()
+    await controller.load()
 
     expect(controller.inject().hooks.configurablePlugins.getSnapshot().namespaces).toEqual(['bash'])
   })
@@ -591,8 +588,8 @@ describe('ConfigurablePluginsTabController', () => {
   it('takes a card registered after the read without asking the Host again', async () => {
     const settings = settingsApi(['bash'])
     let entries = ledger()
-    const controller = new ConfigurablePluginsTabController(settings.mirror, () => entries)
-    await settings.mirror.ensure()
+    const controller = new ConfigurablePluginsTabController(settings.api, () => entries)
+    await controller.load()
     expect(controller.inject().hooks.configurablePlugins.getSnapshot().namespaces).toEqual([])
 
     entries = ledger('bash')
@@ -602,33 +599,34 @@ describe('ConfigurablePluginsTabController', () => {
     expect(settings.describe).toHaveBeenCalledOnce()
   })
 
-  it('keeps the namespaces it knew when a refresh fails', async () => {
+  it('keeps the namespaces it knew when a read fails', async () => {
     const settings = settingsApi(['bash'])
-    const controller = new ConfigurablePluginsTabController(settings.mirror, () => ledger('bash'))
-    await settings.mirror.ensure()
+    const controller = new ConfigurablePluginsTabController(settings.api, () => ledger('bash'))
+    await controller.load()
     settings.describe.mockRejectedValueOnce(new Error('offline'))
 
-    await settings.mirror.load()
+    await controller.load()
 
     expect(controller.inject().hooks.configurablePlugins.getSnapshot().namespaces).toEqual(['bash'])
   })
 
-  it('stops following the mirror once disposed, and never claims it was answered', async () => {
+  it('publishes nothing once disposed, and never claims it was answered', async () => {
     const settings = settingsApi(['bash'])
-    const controller = new ConfigurablePluginsTabController(settings.mirror, () => ledger('bash'))
+    const controller = new ConfigurablePluginsTabController(settings.api, () => ledger('bash'))
 
     controller.dispose()
-    await settings.mirror.load()
+    await controller.load()
 
     expect(controller.inject().hooks.configurablePlugins.getSnapshot())
       .toEqual({ loaded: false, namespaces: [] })
+    expect(settings.describe).not.toHaveBeenCalled()
   })
 
   it('ignores a slot-ledger change that arrives after disposal', async () => {
     const settings = settingsApi(['bash'])
     let entries = ledger()
-    const controller = new ConfigurablePluginsTabController(settings.mirror, () => entries)
-    await settings.mirror.ensure()
+    const controller = new ConfigurablePluginsTabController(settings.api, () => entries)
+    await controller.load()
 
     controller.dispose()
     entries = ledger('bash')
@@ -637,49 +635,33 @@ describe('ConfigurablePluginsTabController', () => {
     expect(controller.inject().hooks.configurablePlugins.getSnapshot().namespaces).toEqual([])
   })
 
-  it('ignores a mirror notification already queued when disposal starts', () => {
-    let notify = (): void => {}
-    let snapshot: SettingsMirrorSnapshot = {
-      status: 'ready' as const,
-      view: { writable: true, hasDocument: true, namespaces: [] },
-      error: null,
-    }
-    const describeFace = {
-      getSnapshot: () => snapshot,
-      subscribe: (listener: () => void) => {
-        notify = listener
-        return () => {}
-      },
-      ensure: () => Promise.resolve(),
-      acceptView: vi.fn(),
-    } as never
-    const controller = new ConfigurablePluginsTabController(describeFace, () => ledger('bash'))
-    expect(controller.inject().hooks.configurablePlugins.getSnapshot())
-      .toEqual({ loaded: true, namespaces: [] })
+  it('drops a read a newer one superseded', async () => {
+    // The section re-reads on every settings-document invalidation, so a slow
+    // first answer must not overwrite the newer one that already landed.
+    const settings = settingsApi(['bash'])
+    const controller = new ConfigurablePluginsTabController(settings.api, () => ledger('bash', 'agent-loop'))
+    const slow = Promise.withResolvers<unknown>()
+    settings.describe.mockReturnValueOnce(slow.promise as never)
+    const stale = controller.load()
 
-    controller.dispose()
-    snapshot = {
-      status: 'ready',
-      view: {
-        writable: true,
-        hasDocument: true,
-        namespaces: [{
-          ns: 'bash', schema: {}, value: {}, applies: 'live', secrets: [], revision: 1,
-        }],
-      },
-      error: null,
-    }
-    notify()
+    await controller.load()
+    expect(controller.inject().hooks.configurablePlugins.getSnapshot().namespaces).toEqual(['bash'])
+    slow.resolve({
+      rpcId: 's-0',
+      result: { ok: true, value: { writable: true, hasDocument: true, namespaces: [
+        { ns: 'agent-loop', schema: {}, value: {}, applies: 'live', secrets: [], revision: 0 },
+      ] } },
+    })
+    await stale
 
-    expect(controller.inject().hooks.configurablePlugins.getSnapshot())
-      .toEqual({ loaded: true, namespaces: [] })
+    expect(controller.inject().hooks.configurablePlugins.getSnapshot().namespaces).toEqual(['bash'])
   })
 
   it('reports the Host answered even when it serves nothing this tab shows', async () => {
     const settings = settingsApi(['ui-theme'])
-    const controller = new ConfigurablePluginsTabController(settings.mirror, () => ledger('bash'))
+    const controller = new ConfigurablePluginsTabController(settings.api, () => ledger('bash'))
 
-    await settings.mirror.ensure()
+    await controller.load()
 
     expect(controller.inject().hooks.configurablePlugins.getSnapshot())
       .toEqual({ loaded: true, namespaces: [] })

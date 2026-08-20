@@ -104,12 +104,7 @@ async function bench() {
       return () => { seats.delete(options.name) }
     },
   })
-  const localeRuntime = new LocaleRuntime(ctx)
-  // This spec asserts the shipped Chinese copy. There is no jsdom `window` in
-  // this lane, so browser-language detection never runs and the locale comes
-  // from FALLBACK_LOCALE (en): state the asserted locale explicitly.
-  localeRuntime.setLocale('zh')
-  ctx.provide('locale', localeRuntime)
+  ctx.provide('locale', new LocaleRuntime(ctx))
   const scopes = new Map<SessionId, Context>()
   const addressed = new Set<SessionId>()
   ctx.provide('sessions', {

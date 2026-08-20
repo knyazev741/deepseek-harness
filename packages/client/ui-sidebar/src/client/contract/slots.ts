@@ -16,17 +16,6 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /**
-     * Brand mark rendered in the expanded brand row and collapsed rail.
-     * Declared by this package's `sidebar` entry; deployments may replace
-     * the shell's fish fallback without replacing the surrounding controls.
-     */
-    'sidebar.brand.mark': { kind: 'single'; scope: 'root'; owner: SidebarBrandMarkOwnerProps }
-    /**
-     * Brand name rendered beside the expanded mark. Declared by this
-     * package's `sidebar` entry; the shell supplies a generic text fallback.
-     */
-    'sidebar.brand.name': { kind: 'single'; scope: 'root'; owner: SidebarBrandNameOwnerProps }
-    /**
      * The workspace/session browsing region: section header, search, the
      * grouped/flat session list, and every workspace dialog. Declared by this
      * package's 'sidebar' entry (declaring is claiming); ui-workspace
@@ -45,18 +34,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'sidebar.footer.action': { kind: 'list'; scope: 'root'; owner: SidebarFooterActionOwnerProps }
   }
-}
-
-/** Geometry supplied to the sidebar brand-mark occupant. */
-export interface SidebarBrandMarkOwnerProps {
-  /** Requested square edge in pixels. */
-  size: number
-}
-
-/** Empty owner share for the sidebar brand-name occupant. */
-export interface SidebarBrandNameOwnerProps {
-  /** Marker field: the occupant owns its own content and width. */
-  children?: never
 }
 
 /**
@@ -108,11 +85,5 @@ export type SidebarRootInjected = {
  */
 export type SidebarRootComponentProps =
   PropsRuntime<'sidebar'>
-  & PropsRenderSlots<
-    | 'sidebar.brand.mark'
-    | 'sidebar.brand.name'
-    | 'sidebar.workspaces'
-    | 'sidebar.settings'
-    | 'sidebar.footer.action'
-  >
+  & PropsRenderSlots<'sidebar.workspaces' | 'sidebar.settings' | 'sidebar.footer.action'>
   & SidebarRootInjected & PropsLocale<'sidebar'>

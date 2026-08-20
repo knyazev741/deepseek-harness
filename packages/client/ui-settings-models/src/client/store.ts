@@ -1,6 +1,6 @@
 /**
  * Models settings page store: one snapshot joining the configurable-provider
- * directory (`llm.providers`), the settings namespaces (shared settings mirror),
+ * directory (`llm.providers`), the settings namespaces (`settings.describe`),
  * and the referenced credentials (`credentials.describe`). The host stays the
  * single fact source — every mutation writes through the wire and the page
  * re-renders from the next describe, pushed or refetched.
@@ -11,8 +11,7 @@ import type {
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { SettingsSchemaOperations } from './schema-operations.ts'
+import { getPath, hasPath, nodeAtPath, rehydrateSchema } from '@deepseek-ai/dsh-client-schema-form'
 
 /**
  * Any route key walks a dict schema to the same profile node, so the lookup
@@ -77,28 +76,20 @@ export function deriveKeyRef(provider: string): string {
  * the choices the page offers cannot drift from the ones the adapter accepts:
  * both come from the same `Config`.
  * @param namespace - the namespace view whose schema declares the profile shape.
- * @param schema - settings schema operations.
  * @returns the protocol identifiers, or an empty list when the schema has none.
  */
-export function protocolChoices(
-  namespace: SettingsNamespaceView | undefined,
-  schema: SettingsSchemaOperations,
-): string[] {
+export function protocolChoices(namespace: SettingsNamespaceView | undefined): string[] {
   if (namespace === undefined) return []
-  const node = schema.nodeAtPath(schema.rehydrate(namespace.schema), ['providers', PROBE_ROUTE, 'api'])
+  const node = nodeAtPath(rehydrateSchema(namespace.schema), ['providers', PROBE_ROUTE, 'api'])
   const list = (node as { type?: string; list?: readonly { value?: unknown }[] } | undefined)
   if (list?.type !== 'union' || list.list === undefined) return []
   return list.list.map(entry => entry.value).filter((value): value is string => typeof value === 'string')
 }
 
 /** The credential reference a resolved profile names (its `apiKeyEnv` field). */
-function apiKeyEnvOf(
-  namespace: SettingsNamespaceView | undefined,
-  path: readonly string[],
-  schema: SettingsSchemaOperations,
-): string | undefined {
+function apiKeyEnvOf(namespace: SettingsNamespaceView | undefined, path: readonly string[]): string | undefined {
   if (namespace === undefined) return undefined
-  const profile = schema.getPath(namespace.value, path)
+  const profile = getPath(namespace.value, path)
   if (typeof profile !== 'object' || profile === null) return undefined
   const ref = (profile as { apiKeyEnv?: unknown }).apiKeyEnv
   return typeof ref === 'string' && ref.length > 0 ? ref : undefined
@@ -115,21 +106,14 @@ export class ModelsSettingsStore {
   private generation = 0
 
   /**
-   * @param api - the wire face (credentials/llm domains, and settings writes).
-   * @param describeFace - the shared mirror's describe face (namespace views and writability).
+   * @param api - the wire face (settings/credentials/llm domains).
    */
-  constructor(
-    private readonly api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>,
-    private readonly schema: SettingsSchemaOperations,
-    private readonly describeFace: SettingsDescribeFace,
-  ) {}
+  constructor(private readonly api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>) {}
 
   /**
-   * Refresh the whole page snapshot: the provider directory and the mirror's
-   * settings answer in parallel, then one batched credential describe over
-   * every referenced ref. Provider failure or absence of an initial settings
-   * answer keeps the last good rows and surfaces an error; a failed settings
-   * refresh reuses the mirror's held view.
+   * Refresh the whole page snapshot: directory and namespaces in parallel,
+   * then one batched credential describe over every referenced ref. A
+   * failure keeps the last good rows and surfaces the error.
    * @returns nothing; the snapshot carries the outcome.
    */
   async load(): Promise<void> {
@@ -137,20 +121,17 @@ export class ModelsSettingsStore {
     this.store.update((s) => { s.status = 'loading'; s.error = null })
     let providers: ConfigurableProviderView[]
     let writable: boolean
-    let views: readonly SettingsNamespaceView[]
+    let views: SettingsNamespaceView[]
     try {
-      const [providersResponse] = await Promise.all([
+      const [providersResponse, settingsResponse] = await Promise.all([
         this.api.llm.providers({}),
-        this.describeFace.ensure(),
+        this.api.settings.describe({}),
       ])
       if (!providersResponse.result.ok) throw new Error(providersResponse.result.error.message)
-      const mirrored = this.describeFace.getSnapshot()
-      if (mirrored.view === undefined) {
-        throw new Error(mirrored.error ?? 'settings are unavailable in this browser')
-      }
+      if (!settingsResponse.result.ok) throw new Error(settingsResponse.result.error.message)
       providers = providersResponse.result.value.providers
-      writable = mirrored.view.writable
-      views = mirrored.view.namespaces
+      writable = settingsResponse.result.value.writable
+      views = settingsResponse.result.value.namespaces
     } catch (error) {
       if (generation !== this.generation) return
       this.store.update((s) => {
@@ -163,16 +144,16 @@ export class ModelsSettingsStore {
     const rows: ProviderRow[] = providers.map((entry) => {
       const namespace = namespaces.get(entry.settingsNs)
       const configured = namespace !== undefined
-        && (entry.settingsPath.length === 0 || this.schema.getPath(namespace.value, entry.settingsPath) !== undefined)
+        && (entry.settingsPath.length === 0 || getPath(namespace.value, entry.settingsPath) !== undefined)
       const removable = namespace !== undefined
         && entry.settingsPath.length > 0
-        && this.schema.hasPath(namespace.user, entry.settingsPath)
-        && !this.schema.hasPath(namespace.base, entry.settingsPath)
+        && hasPath(namespace.user, entry.settingsPath)
+        && !hasPath(namespace.base, entry.settingsPath)
       return {
         entry,
         configured,
         removable,
-        apiKeyEnv: apiKeyEnvOf(namespace, entry.settingsPath, this.schema),
+        apiKeyEnv: apiKeyEnvOf(namespace, entry.settingsPath),
         credential: undefined,
       }
     })

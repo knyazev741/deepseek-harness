@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createScope, scopeTarget } from '@deepseek-ai/dsh-scope'
-import { createUserMessage, CallId, createMessage, createToolResultMessage, freezeMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, CallId, createMessage, createToolResultMessage, freezeMessage, type ToolResultMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId, TOOL_NOT_STARTED } from '@deepseek-ai/dsh-session'
 import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
 import InvariantRegistry, { InvariantError } from '@deepseek-ai/dsh-invariants'
@@ -278,7 +278,7 @@ describe('session-log invariants', () => {
           ...original.data.message.content[0],
           content: [{ type: 'text', text: 'pruned' }],
         }],
-      }),
+      } as ToolResultMessage),
     }, {
       surfaceOp: { op: 'replace', start: original.seq, end: original.seq },
       sourceEventSeqs: [original.seq],
@@ -317,7 +317,7 @@ describe('session-log invariants', () => {
           ...original.data.message.content[0],
           content: [{ type: 'text', text: 'pruned' }],
         }],
-      }),
+      } as ToolResultMessage),
     }, {
       surfaceOp: { op: 'replace', start: original.seq, end: original.seq },
       sourceEventSeqs: [original.seq],
