@@ -11,7 +11,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { AgentOptions } from '@deepseek-ai/dsh-agent'
+import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
+import { errorChain } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
 import { assertSubagentMaxDepth, settleRun } from '@deepseek-ai/dsh-subagent'
@@ -20,7 +21,7 @@ import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 
 export const name = 'tool-subagent'
-export const inject = ['tools', 'subagents', 'systemPrompt']
+export const inject = ['tools', 'subagents', 'systemPrompt', 'llm']
 
 /** Prompt order after bounded delegation policy and before child reporting. */
 const SUBAGENT_SECTION_ORDER = 116.5
@@ -198,6 +199,10 @@ async function settleForegroundRun(run: SubagentRun): Promise<ForegroundToolResu
   return execution.value
 }
 
+/** Model-facing hint appended to the tool description: per-call route override. */
+const ROUTING_WORDING
+  = ' You may pass optional `provider` and `model` to route the child to a specific model; omit them to inherit the parent\'s route.'
+
 /**
  * Model-facing wording from the provider's conversation-history descriptor
  * ({@link SubagentProvider.inheritsParentContext}).
@@ -218,7 +223,8 @@ function providerWording(inheritsConversation: boolean): { description: string; 
         + 'completed turns so far (it does not see the current in-flight turn). Use this when the subtask '
         + 'builds on this conversation\'s context — a follow-up analysis, '
         + 'a review, a continuation — without consuming this conversation\'s context for the work itself. '
-        + 'You receive its result, not its intermediate steps.',
+        + 'You receive its result, not its intermediate steps.'
+        + ROUTING_WORDING,
       promptDescription:
         'The task for the subagent. It already sees this conversation\'s completed turns, so build on them '
         + 'freely and state only what is new.',
@@ -230,7 +236,8 @@ function providerWording(inheritsConversation: boolean): { description: string; 
       + 'to offload focused, independent work — research, a scoped '
       + 'implementation, an analysis — so it does not consume this conversation\'s context. The subagent '
       + 'returns its result, not its intermediate steps. Give it a '
-      + 'complete, standalone prompt: it does not see this conversation.',
+      + 'complete, standalone prompt: it does not see this conversation.'
+      + ROUTING_WORDING,
     promptDescription:
       'The complete, self-contained task for the subagent. It does not share this '
       + 'conversation\'s context, so include everything it needs.',
@@ -263,6 +270,38 @@ function resolveDelegationRun(
     // needs the result before its next action. One-shot policy keeps its existing
     // foreground default because its background result requires Task collection.
     runInBackground: request.run_in_background ?? options.continuable,
+  }
+}
+
+/**
+ * Resolve and validate a model-requested child route at the tool boundary so an
+ * unknown provider/model pair fails the call before any child is spawned.
+ * Skipped entirely when no per-call route was requested (the fixed default owns
+ * resolution); when only one field is provided, the remaining gap is filled from
+ * the configured `agentOptions` default, then the parent route. Resolution is
+ * left to the owning adapter when either effective field is still unknown.
+ * @param ctx - plugin context exposing the `llm` route resolver (`ctx.llm`).
+ * @param config - plugin config carrying the fixed child `agentOptions` default.
+ * @param parent - the delegating parent whose route fills remaining gaps.
+ * @param args - the model's tool arguments; only `provider` and `model` are read.
+ * @param signal - the execution signal forwarded to the resolver.
+ */
+async function validateChildRoute(
+  ctx: Context,
+  config: Config,
+  parent: Agent,
+  args: { readonly provider?: string; readonly model?: string },
+  signal: AbortSignal,
+): Promise<void> {
+  const effectiveProvider = args.provider ?? config.agentOptions?.provider ?? parent.options.provider
+  const effectiveModel = args.model ?? config.agentOptions?.model ?? parent.options.model
+  if (effectiveProvider === undefined || effectiveModel === undefined) return
+  try {
+    await ctx.llm.resolveModelInfo(effectiveProvider, effectiveModel, signal)
+  } catch (error) {
+    throw new Error(
+      `subagent tool: cannot resolve route provider "${effectiveProvider}" model "${effectiveModel}": ${errorChain(error)}`,
+    )
   }
 }
 
@@ -316,6 +355,14 @@ export function apply(ctx: Context, config: Config): void {
           type: 'string',
           required: true,
           description: wording.promptDescription,
+        },
+        provider: {
+          type: 'string' as const,
+          description: 'Optional provider route for the child. Omit to inherit the parent route or the configured default.',
+        },
+        model: {
+          type: 'string' as const,
+          description: 'Optional model id for the child. Omit to inherit the parent route or the configured default.',
         },
         ...backgroundEnabled ? {
           run_in_background: {
@@ -376,11 +423,19 @@ export function apply(ctx: Context, config: Config): void {
         }
 
         const maxDepth = typeof config.maxDepth === 'number' ? config.maxDepth : undefined
+        const agentOptions = {
+          ...(config.agentOptions ?? {}),
+          ...(args.provider !== undefined ? { provider: args.provider } : {}),
+          ...(args.model !== undefined ? { model: args.model } : {}),
+        }
+        if (args.provider !== undefined || args.model !== undefined) {
+          await validateChildRoute(ctx, config, parent, args, exec.signal)
+        }
         const request = {
           label: args.description,
           prompt: [{ type: 'text', text: args.prompt }] as ContentBlock[],
           parent,
-          ...config.agentOptions !== undefined ? { agentOptions: config.agentOptions } : {},
+          ...Object.keys(agentOptions).length > 0 ? { agentOptions } : {},
           ...config.persona !== undefined ? { persona: config.persona } : {},
           ...config.toolFilter !== undefined ? { toolFilter: config.toolFilter } : {},
           ...maxDepth !== undefined ? { maxDepth } : {},

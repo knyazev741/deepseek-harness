@@ -212,4 +212,23 @@ export class TestWorkspaces implements IWorkspaces {
       draft.archivedSessionIds = [...draft.archivedSessionIds, sessionId]
     })
   }
+
+  /**
+   * Pin or unpin a session (recorded). The default mirrors the production
+   * face: the id joins or leaves the list state's pin set.
+   * @param sessionId - session to pin or unpin.
+   * @param pinned - `true` pins, `false` unpins.
+   */
+  async setSessionPinned(sessionId: SessionId, pinned: boolean): Promise<void> {
+    this.calls.push({ method: 'setSessionPinned', args: [sessionId, pinned] })
+    const stub = this.stubs.get('setSessionPinned')
+    if (stub !== undefined) {
+      await (stub(sessionId, pinned) as Promise<void>)
+      return
+    }
+    await this.update((draft) => {
+      const next = draft.pinnedSessionIds.filter(id => id !== sessionId)
+      draft.pinnedSessionIds = pinned ? [...next, sessionId] : next
+    })
+  }
 }

@@ -817,3 +817,99 @@ describe('sessions.prompt synchronous rejection', () => {
     }
   })
 })
+
+describe('sessions.updateQueue steering', () => {
+  function steeredInbox(message: ReturnType<typeof createUserMessage>, target: 'next-turn' | 'next-step') {
+    const nextTurn = target === 'next-turn' ? [message] : []
+    const nextStep = target === 'next-step' ? [message] : []
+    return {
+      nextTurn,
+      nextStep,
+      remove: vi.fn(() => { nextStep.length = 0; nextTurn.length = 0 }),
+      replace: vi.fn(),
+    }
+  }
+
+  it('delivers an idle steer of a queued next-turn message as a fresh follow-up turn', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(UserQuestionService)
+    const session = ctx.sessions.create(sid('session-idle-steer'), { meta: { cwd: '/proj' } })
+    const message = createUserMessage({ content: [{ type: 'text', text: 'push me' }], source: { kind: 'user' } })
+    const inbox = steeredInbox(message, 'next-turn')
+    const followup = vi.fn()
+    const steer = vi.fn()
+    const agent = {
+      id: session.id, session, status: 'idle', ctx, inbox, followup, steer,
+    } as unknown as Agent
+    ctx.agents.register(agent)
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+
+    const response = await api.sessions.updateQueue(request({
+      sessionId: agent.id,
+      itemId: message.id,
+      action: { kind: 'steer' },
+    }))
+
+    expect(response.result.ok).toBe(true)
+    expect(inbox.remove).toHaveBeenCalledWith(message.id)
+    expect(steer).not.toHaveBeenCalled()
+    expect(followup).toHaveBeenCalledOnce()
+    expect(followup).toHaveBeenCalledWith(message)
+  })
+
+  it('still steers a queued next-turn message into the running turn at its step boundary', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(UserQuestionService)
+    const session = ctx.sessions.create(sid('session-running-steer'), { meta: { cwd: '/proj' } })
+    const message = createUserMessage({ content: [{ type: 'text', text: 'interrupt' }], source: { kind: 'user' } })
+    const inbox = steeredInbox(message, 'next-turn')
+    const followup = vi.fn()
+    const steer = vi.fn()
+    const agent = {
+      id: session.id, session, status: 'running', ctx, inbox, followup, steer,
+    } as unknown as Agent
+    ctx.agents.register(agent)
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+
+    const response = await api.sessions.updateQueue(request({
+      sessionId: agent.id,
+      itemId: message.id,
+      action: { kind: 'steer' },
+    }))
+
+    expect(response.result.ok).toBe(true)
+    expect(inbox.remove).toHaveBeenCalledWith(message.id)
+    expect(followup).not.toHaveBeenCalled()
+    expect(steer).toHaveBeenCalledOnce()
+    expect(steer).toHaveBeenCalledWith(message)
+  })
+
+  it('rejects steering a foreign next-step id regardless of agent status', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(UserQuestionService)
+    const session = ctx.sessions.create(sid('session-foreign-steer'), { meta: { cwd: '/proj' } })
+    const message = createUserMessage({ content: [{ type: 'text', text: 'step' }], source: { kind: 'user' } })
+    const inbox = steeredInbox(message, 'next-step')
+    const agent = {
+      id: session.id, session, status: 'idle', ctx, inbox, followup: vi.fn(), steer: vi.fn(),
+    } as unknown as Agent
+    ctx.agents.register(agent)
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+
+    const response = await api.sessions.updateQueue(request({
+      sessionId: agent.id,
+      itemId: message.id,
+      action: { kind: 'steer' },
+    }))
+
+    expect(response.result.ok).toBe(false)
+    if (!response.result.ok) expect(response.result.error.code).toBe('steer-unavailable')
+    expect(inbox.remove).not.toHaveBeenCalled()
+  })
+})

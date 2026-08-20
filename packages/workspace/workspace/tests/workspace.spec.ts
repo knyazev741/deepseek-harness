@@ -140,11 +140,12 @@ function record(path: string, sessionIds: string[], createdAt = '2026-07-24T00:0
 }
 
 /**
- * Media written before archivedSessionIds existed omit the field; keeping the
- * fixtures in that shape continuously proves the schema default upgrades them.
+ * Media written before archivedSessionIds / pinnedSessionIds existed omit
+ * those fields; keeping the fixtures in that shape continuously proves the
+ * schema defaults upgrade them.
  */
-type StoredDomainState = Omit<WorkspaceDomainState, 'archivedSessionIds'>
-  & Partial<Pick<WorkspaceDomainState, 'archivedSessionIds'>>
+type StoredDomainState = Omit<WorkspaceDomainState, 'archivedSessionIds' | 'pinnedSessionIds'>
+  & Partial<Pick<WorkspaceDomainState, 'archivedSessionIds' | 'pinnedSessionIds'>>
 
 function storedPool(
   entries: Array<[string, WorkspaceRecord]>,
@@ -940,5 +941,57 @@ describe('registry-global session archive', () => {
     )
     const upgraded = await harness({ pool: legacy })
     expect(upgraded.registry.archivedSessionIds).toEqual([])
+  })
+})
+
+describe('registry-global session pin', () => {
+  it('pins durably in order, unpins idempotently, and leaves accounting untouched', async () => {
+    const dir = await makeDir('pin-home')
+    const result = await harness({ sessions: [header('a', dir, 100), header('b', dir, 200)] })
+    const workspace = result.registry.list()[0]!
+    expect(result.registry.pinnedSessionIds).toEqual([])
+
+    await result.registry.setSessionPinned(SessionId('a'), true)
+    await result.registry.setSessionPinned(SessionId('b'), true)
+    expect(result.registry.pinnedSessionIds).toEqual(['a', 'b'])
+    // Pinning is a display-set write: the workspace account keeps the id.
+    expect(workspace.sessionIds).toContain('a')
+    expect(storedState(result.pool).pinnedSessionIds).toEqual(['a', 'b'])
+    const changesAfterFirst = result.changes.filter(change => change.table === '').length
+
+    // The idempotent repeat and the unpin-absent no-op write nothing.
+    await result.registry.setSessionPinned(SessionId('a'), true)
+    await result.registry.setSessionPinned(SessionId('ghost'), false)
+    expect(result.changes.filter(change => change.table === '').length).toBe(changesAfterFirst)
+
+    await result.registry.setSessionPinned(SessionId('a'), false)
+    expect(result.registry.pinnedSessionIds).toEqual(['b'])
+  })
+
+  it('accepts unaccounted and live sessions to pin but rejects unknown ids; pins restore pin order', async () => {
+    const dir = await makeDir('pin-strays')
+    const live = await makeDir('pin-live')
+    const result = await harness({
+      sessions: [header('stray', dir, 100)],
+      liveSessions: [header('live-only', live, 200)],
+    })
+    await result.registry.setSessionPinned(SessionId('stray'), true)
+    await result.registry.setSessionPinned(SessionId('live-only'), true)
+    expect(result.registry.pinnedSessionIds).toEqual(['stray', 'live-only'])
+
+    await expect(result.registry.setSessionPinned(SessionId('ghost'), true))
+      .rejects.toThrow(/cannot archive session 'ghost'/)
+    expect(storedState(result.pool).pinnedSessionIds).toEqual(['stray', 'live-only'])
+  })
+
+  it('restores the pin set across restarts', async () => {
+    const dir = await makeDir('pin-restart')
+    const pool = new MemoryMediaPool()
+    const first = await harness({ pool, sessions: [header('s1', dir, 100)] })
+    await first.registry.setSessionPinned(SessionId('s1'), true)
+    await first.fiber.dispose()
+
+    const second = await harness({ pool, sessions: [header('s1', dir, 100)] })
+    expect(second.registry.pinnedSessionIds).toEqual(['s1'])
   })
 })

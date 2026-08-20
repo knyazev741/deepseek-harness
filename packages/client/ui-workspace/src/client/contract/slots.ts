@@ -112,6 +112,11 @@ export type WorkspaceBrowserInjected = DirectoryPickingInjected & {
   searchResultLimit: number
   /** Rename a Session (explicit user title; resolves on host acceptance). */
   renameSession: (sessionId: SessionId, title: string) => Promise<void>
+  /**
+   * Pin or unpin a Session in the registry-global set (grouping surfaces
+   * surface pinned sessions first; resolves on host durability).
+   */
+  setSessionPinned: (sessionId: SessionId, pinned: boolean) => Promise<void>
   /** Fork a Session at its last completed turn and open the child. */
   forkSession: (sessionId: SessionId) => void
   /** Rename a Host Workspace (rejects on name conflict; resolves on durability). */

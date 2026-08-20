@@ -22,6 +22,13 @@ export interface WorkspaceListState {
    * build their own transient Set.
    */
   archivedSessionIds: readonly SessionId[]
+  /**
+   * Registry-global pin set in Host pin order: grouping surfaces surface
+   * pinned sessions first (workspace groups and the ungrouped bucket) while
+   * their accounting slots remain. Plain array, same store-engine reason as
+   * `archivedSessionIds`.
+   */
+  pinnedSessionIds: readonly SessionId[]
   state: 'idle' | 'loading' | 'error'
   phase: WorkspaceListPhase
   error: RpcError | null
@@ -66,7 +73,7 @@ export class WorkspaceRuntime implements IWorkspaces {
   constructor(ctx: Context, private readonly api: IApiClient, private readonly sessions: SessionsPort) {
     this.manager = new WorkspaceManager(api)
     this.list = createSnapshotStore<WorkspaceListState>({
-      items: [], archivedSessionIds: [], state: 'idle', phase: 'pending', error: null,
+      items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'pending', error: null,
       baselinesReady: false, recentWorkspaceId: undefined,
     })
     this.manager.subscribe(() => { this.project() })
@@ -293,6 +300,16 @@ export class WorkspaceRuntime implements IWorkspaces {
   }
 
   /**
+   * Pin or unpin one session in the registry-global pin set.
+   * @param sessionId - session to pin or unpin.
+   * @param pinned - `true` pins, `false` unpins.
+   */
+  async setSessionPinned(sessionId: SessionId, pinned: boolean): Promise<void> {
+    const result = await this.manager.setSessionPinned(sessionId, pinned)
+    if (!result.ok) throw new Error(`session pin failed: ${result.error.code}: ${result.error.message}`)
+  }
+
+  /**
    * Move a session within its Workspace's manual order (DOM-insertBefore-like).
    * @param workspaceId - owning workspace.
    * @param sessionId - accounted session to move.
@@ -345,6 +362,7 @@ export class WorkspaceRuntime implements IWorkspaces {
     this.list.set({
       items: workspace.items,
       archivedSessionIds: workspace.archivedSessionIds,
+      pinnedSessionIds: workspace.pinnedSessionIds,
       state: workspace.state,
       phase: workspace.phase,
       error: workspace.error,

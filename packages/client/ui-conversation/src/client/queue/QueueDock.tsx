@@ -31,7 +31,6 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDock
 export function QueueDock({ useSession, updateQueue, notify, t }: QueueDockProps) {
   const inbox = useSession(s => s.queue)
   const queue = useMemo(() => inbox.filter(row => row.placement === 'queued'), [inbox])
-  const running = useSession(s => s.running)
   const queueMutable = useSession(s => s.subagent === null)
   const [editing, setEditing] = useState<{ id: QueueItemId; text: string } | null>(null)
   const [busy, setBusy] = useState<QueueItemId | null>(null)
@@ -183,13 +182,12 @@ export function QueueDock({ useSession, updateQueue, notify, t }: QueueDockProps
                           <IconTrashOutline16 size={14} />
                         </button>
                       </Tooltip>
-                      <Tooltip label={t('queue.steer')} side="bottom" delayMs={500} disabled={!running}>
+                      <Tooltip label={t('queue.steer')} side="bottom" delayMs={500}>
                         <button
                           type="button"
                           className={css.action}
                           aria-label={t('queue.steer')}
-                          title={running ? undefined : t('queue.steer.unavailable')}
-                          disabled={busy !== null || !running}
+                          disabled={busy !== null}
                           onClick={() => {
                             void applyAction(
                               row.id,

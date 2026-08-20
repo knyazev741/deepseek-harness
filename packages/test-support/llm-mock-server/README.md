@@ -37,7 +37,7 @@ The repository script writes JSONL to stdout: a `ready` record carries the `/v1`
 | `connection_reset` | Destroy the socket before HTTP headers |
 | `stream_disconnect` | Send SSE headers, then reset before the first event |
 | `partial_disconnect` | Send text deltas, then reset the socket |
-| `stall` | Send SSE headers and remain idle until client/server cancellation |
+| `stall` | Send SSE headers and one content delta, then remain idle until client/server cancellation |
 | `empty` | Send a valid content-less stop and `[DONE]` |
 | `empty_body` / `stream_eof` / `partial_eof` | End cleanly without the required `[DONE]` boundary |
 | `malformed_json` / `malformed_event` | Send invalid SSE JSON or an invalid provider chunk shape |

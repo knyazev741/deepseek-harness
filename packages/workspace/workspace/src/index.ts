@@ -255,6 +255,42 @@ export class WorkspaceRegistry extends Service {
   }
 
   /**
+   * The registry-global pin set, in pin order. Pinned sessions surface first
+   * within every grouping surface; each keeps its `sessionIds` slot so
+   * unpinning restores its prior position.
+   * @returns the pinned session ids in pin order.
+   */
+  get pinnedSessionIds(): readonly SessionId[] {
+    return this.requireState().pinnedSessionIds
+  }
+
+  /**
+   * Pin or unpin one session durably, appending on pin and removing on unpin
+   * (each idempotent). The session must exist (live or in session
+   * persistence) to pin; workspace accounting is irrelevant.
+   * @param sessionId - The session to pin or unpin.
+   * @param pinned - `true` pins, `false` unpins.
+   * @returns resolution after durability.
+   */
+  setSessionPinned(sessionId: SessionId, pinned: boolean): Promise<void> {
+    return this.enqueueOperation(async () => {
+      const state = this.requireState()
+      if (pinned) {
+        if (state.pinnedSessionIds.includes(sessionId)) return
+        if (!(await this.sessionKnown(sessionId))) {
+          throw new WorkspaceUnknownSessionError(sessionId)
+        }
+        await this.setState({ ...state, pinnedSessionIds: [...state.pinnedSessionIds, sessionId] })
+      } else if (state.pinnedSessionIds.includes(sessionId)) {
+        await this.setState({
+          ...state,
+          pinnedSessionIds: state.pinnedSessionIds.filter(id => id !== sessionId),
+        })
+      }
+    })
+  }
+
+  /**
    * Whether a session is live, header-indexed, or present in a fresh
    * persistence listing. Only a definite miss returns false — a failing
    * `sessionPersistence.list()` propagates so storage faults never
@@ -331,6 +367,7 @@ export class WorkspaceRegistry extends Service {
         initialized: true,
         workspaceIds: [id, ...state.workspaceIds],
         archivedSessionIds: state.archivedSessionIds,
+        pinnedSessionIds: state.pinnedSessionIds,
       })
     } catch (error) {
       this.entities.delete(id)
@@ -363,6 +400,7 @@ export class WorkspaceRegistry extends Service {
       initialized: true,
       workspaceIds: state.workspaceIds.filter(workspaceId => workspaceId !== id),
       archivedSessionIds: state.archivedSessionIds,
+      pinnedSessionIds: state.pinnedSessionIds,
     }
     await this.setState({
       ...nextState,
@@ -420,6 +458,7 @@ export class WorkspaceRegistry extends Service {
       initialized: state.initialized,
       workspaceIds: state.workspaceIds,
       archivedSessionIds: state.archivedSessionIds,
+      pinnedSessionIds: state.pinnedSessionIds,
     })
   }
 
@@ -502,9 +541,19 @@ export class WorkspaceRegistry extends Service {
       .map(([id]) => id)
 
     if (!sameIds(state.workspaceIds, workspaceIds)) {
-      await this.setState({ initialized: false, workspaceIds, archivedSessionIds: state.archivedSessionIds })
+      await this.setState({
+        initialized: false,
+        workspaceIds,
+        archivedSessionIds: state.archivedSessionIds,
+        pinnedSessionIds: state.pinnedSessionIds,
+      })
     }
-    await this.setState({ initialized: true, workspaceIds, archivedSessionIds: state.archivedSessionIds })
+    await this.setState({
+      initialized: true,
+      workspaceIds,
+      archivedSessionIds: state.archivedSessionIds,
+      pinnedSessionIds: state.pinnedSessionIds,
+    })
   }
 
   private validateStoredState(state: WorkspaceDomainState): void {

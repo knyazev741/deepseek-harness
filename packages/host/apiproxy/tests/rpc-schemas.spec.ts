@@ -27,6 +27,7 @@ import {
   workspaceInsertSessionBeforeRequestSchema, workspaceInsertSessionBeforeValueSchema,
   workspaceListRequestSchema, workspaceListValueSchema,
   workspaceRenameRequestSchema, workspaceRenameValueSchema, workspaceViewSchema,
+  workspaceSetSessionPinnedRequestSchema, workspaceSetSessionPinnedValueSchema,
 } from '../src/api/workspace.schema.ts'
 import { skillEntrySchema, skillListRequestSchema, skillListValueSchema } from '../src/api/skills.schema.ts'
 import {
@@ -358,8 +359,8 @@ describe('workspace domain schemas', () => {
     expect(workspaceViewSchema.parse(view).sessionIds).toEqual(['s1'])
     expect(() => workspaceViewSchema.parse({ ...view, sessionIds: 's1' })).toThrow()
     expect(workspaceListRequestSchema.parse({})).toEqual({})
-    expect(workspaceListValueSchema.parse({ items: [view], archivedSessionIds: ['s1'] }).items).toHaveLength(1)
-    expect(() => workspaceListValueSchema.parse({ items: [view] })).toThrow()
+    expect(workspaceListValueSchema.parse({ items: [view], archivedSessionIds: ['s1'], pinnedSessionIds: ['s2'] }).items).toHaveLength(1)
+    expect(() => workspaceListValueSchema.parse({ items: [view], archivedSessionIds: ['s1'] })).toThrow()
   })
 
   it('archiveSession request/value carry the id and the full updated set', () => {
@@ -368,6 +369,15 @@ describe('workspace domain schemas', () => {
     expect(workspaceArchiveSessionValueSchema.parse({ archivedSessionIds: ['s1', 's2'] }).archivedSessionIds)
       .toEqual(['s1', 's2'])
     expect(() => workspaceArchiveSessionValueSchema.parse({ archivedSessionIds: 's1' })).toThrow()
+  })
+
+  it('setSessionPinned request/value carry the flag and the full updated set', () => {
+    expect(workspaceSetSessionPinnedRequestSchema.parse({ sessionId: 's1', pinned: true }).pinned).toBe(true)
+    expect(workspaceSetSessionPinnedRequestSchema.parse({ sessionId: 's1', pinned: false }).pinned).toBe(false)
+    expect(() => workspaceSetSessionPinnedRequestSchema.parse({ sessionId: 's1' })).toThrow()
+    expect(workspaceSetSessionPinnedValueSchema.parse({ pinnedSessionIds: ['s1', 's2'] }).pinnedSessionIds)
+      .toEqual(['s1', 's2'])
+    expect(() => workspaceSetSessionPinnedValueSchema.parse({ pinnedSessionIds: 's1' })).toThrow()
   })
 
   it('insertSessionBefore accepts an anchored and an anchorless move', () => {

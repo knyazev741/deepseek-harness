@@ -386,7 +386,7 @@ describe('DetailsPanel Output section (search)', () => {
       subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
     })
     const workspaces = createSnapshotStore<WorkspaceListState>({
-      items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+      items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
       baselinesReady: true, recentWorkspaceId: undefined,
     })
     return render(

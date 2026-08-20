@@ -329,6 +329,16 @@ export const IconEditOutline16 = ({ size = 16, className }: IconProps) => (
   </svg>
 )
 
+/** ic_ds_pin_outline_16 — thumbtack glyph (harness-only figma extract). */
+export const IconPinOutline16 = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M8 1.25a5 5 0 0 0-5 5c0 3.4 5 8.5 5 8.5s5-5.1 5-8.5a5 5 0 0 0-5-5Zm0 2.75a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Z"
+      fill="currentColor"
+    />
+  </svg>
+)
+
 /** ic_ds_think_outline_14 */
 export const IconThinkOutline14 = ({ size = 14, className }: IconProps) => (
   <svg width={size} height={size} className={className} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">

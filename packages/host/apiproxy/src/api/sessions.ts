@@ -14,7 +14,7 @@ import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/t
 import type { RpcId, RpcRequest, RpcResponse } from './rpc.ts'
 import type { ToolEventView } from './events.ts'
 import type { WorkspaceId } from './workspace.ts'
-import type { CommandResult } from '@deepseek-ai/dsh-commands'
+import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {

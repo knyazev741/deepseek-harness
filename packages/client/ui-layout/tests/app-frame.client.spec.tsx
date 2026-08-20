@@ -77,7 +77,7 @@ function mountFrame() {
     return sel(sessionState)
   }) as never
   const workspaceState: WorkspaceListState = {
-    items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+    items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
     baselinesReady: baselinesReady.current, recentWorkspaceId: undefined,
   }
   const element = () => (

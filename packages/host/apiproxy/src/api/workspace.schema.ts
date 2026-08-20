@@ -29,6 +29,7 @@ export const workspaceListRequestSchema = z.object({}) satisfies z.ZodType<Wire<
 export const workspaceListValueSchema = z.object({
   items: z.array(workspaceViewSchema),
   archivedSessionIds: z.array(sessionIdSchema),
+  pinnedSessionIds: z.array(sessionIdSchema),
 }) satisfies z.ZodType<Wire<ResponseValue<'workspace.list'>>>
 
 /** workspace.create request payload: the existing directory to adopt. */
@@ -98,3 +99,14 @@ export const workspaceArchiveSessionRequestSchema = z.object({
 export const workspaceArchiveSessionValueSchema = z.object({
   archivedSessionIds: z.array(sessionIdSchema),
 }) satisfies z.ZodType<Wire<ResponseValue<'workspace.archiveSession'>>>
+
+/** workspace.setSessionPinned request payload. */
+export const workspaceSetSessionPinnedRequestSchema = z.object({
+  sessionId: sessionIdSchema,
+  pinned: z.boolean(),
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.setSessionPinned'>>>
+
+/** workspace.setSessionPinned response value: the full updated pin set. */
+export const workspaceSetSessionPinnedValueSchema = z.object({
+  pinnedSessionIds: z.array(sessionIdSchema),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.setSessionPinned'>>>

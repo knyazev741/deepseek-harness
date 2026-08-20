@@ -16,6 +16,7 @@ import type { ClientContext, ConversationSnapshot, SessionId } from '@deepseek-a
 import { SessionInputShell } from '../src/client/input/facade.ts'
 import type { ComposerAttachment } from '../src/client/contract/slots.ts'
 import type { DraftAttachmentId } from '../src/client/input/contract.ts'
+import type { ArbitrateKey, ArbitrateOutcome } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import { InputBar } from '../src/client/skeleton/InputBar.tsx'
 import type { InputBarProps } from '../src/client/skeleton/InputBar.tsx'
 import { zh } from '../src/client/locales.ts'
@@ -37,6 +38,9 @@ const NATIVE_SET_START = Object.getOwnPropertyDescriptor(Range.prototype, 'setSt
 const SCTX = {} as ClientContext
 const SID = 's1' as SessionId
 
+/** Stable empty lexicon for the arbitrate-only trigger stub (a fresh Map each poll would loop the renderer). */
+const EMPTY_LEXICON: ReadonlyMap<'/' | '@', readonly string[]> = new Map()
+
 function snapshotOf(overrides: Partial<ConversationSnapshot> = {}): ConversationSnapshot {
   return {
     sessionId: SID, views: EMPTY_CONVERSATION_VIEWS, chat: EMPTY_CHAT_SNAPSHOT,
@@ -55,6 +59,8 @@ interface BenchOptions {
   modelEntry?: React.ReactNode
   /** Hot text-ref lexicon (injects a minimal slash stub exposing only lexicon()). */
   lexicon?: ReadonlyMap<'/' | '@', readonly string[]>
+  /** Arbitrate verdict for the (otherwise stub) trigger controller; drives keyboard-arbitration tests. */
+  arbitrate?: (key: ArbitrateKey, composing: boolean) => ArbitrateOutcome
   permissions?: { options: { value: string; name: string; description?: string }[]; currentValue: string }
   /** The `imageLimits` projection value (absent = no attachment service). */
   imageLimits?: {
@@ -102,7 +108,6 @@ function row(id: string): ConversationSnapshot['queue'][number] {
 /** Real machine behind the bar entry: sink spy, no slash pipeline (plain text goes straight to the sink). */
 function bench(over?: BenchOptions) {
   const sink = vi.fn()
-  const lex = over?.lexicon
   const session = createSnapshotStore<ConversationSnapshot>(snapshotOf({
     running: over?.running ?? false,
     subagent: over?.subagent ?? null,
@@ -119,12 +124,16 @@ function bench(over?: BenchOptions) {
       subscribe: fn => session.subscribe(fn),
     },
     ...(over?.steerQueue !== undefined ? { steerQueue: over.steerQueue } : {}),
-    // Lexicon-only stub: adjudication untouched (undefined slash methods are
-    // never reached — these benches drive plain-draft flows only).
-    ...(lex !== undefined
+    // Lexicon- or arbitrate-only stub: adjudication untouched (undefined slash
+    // methods are never reached — these benches drive plain-draft flows only).
+    ...((over?.arbitrate !== undefined || over?.lexicon !== undefined)
       ? {
         inputTriggers: (() => ({
-          lexicon: { getSnapshot: () => lex, subscribe: () => () => {} },
+          lexicon: {
+            getSnapshot: () => over?.lexicon ?? EMPTY_LEXICON,
+            subscribe: () => () => {},
+          },
+          ...(over?.arbitrate !== undefined ? { arbitrate: over.arbitrate } : {}),
         })) as unknown as NonNullable<ShellDeps['inputTriggers']>,
       }
       : {}),
@@ -150,7 +159,7 @@ function bench(over?: BenchOptions) {
       subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
     })),
     useWorkspaces: bindSnapshotSelector(createSnapshotStore({
-      items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+      items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
       baselinesReady: true, recentWorkspaceId: undefined,
     })),
     useProjection: ((key: string, selector?: (v: unknown) => unknown) =>
@@ -613,6 +622,32 @@ describe('Enter semantics', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('menu keyboard arbitration (Tab)', () => {
+  it('passes Tab through to native focus movement while no menu is open', () => {
+    const arbitrate = vi.fn().mockReturnValue('pass')
+    const { textarea } = bench({ arbitrate: arbitrate as (key: ArbitrateKey, composing: boolean) => ArbitrateOutcome })
+    // A non-prevented keystroke lets the browser move focus (default Tab action).
+    expect(fireEvent.keyDown(textarea, { key: 'Tab' })).toBe(true)
+    expect(arbitrate).toHaveBeenCalledWith('down', false)
+  })
+
+  it('Tab / Shift+Tab cycle the open menu highlight instead of moving focus', () => {
+    const calls: { key: ArbitrateKey; composing: boolean }[] = []
+    const arbitrate = (key: ArbitrateKey, composing: boolean): ArbitrateOutcome => {
+      calls.push({ key, composing })
+      return 'consumed'
+    }
+    const { textarea } = bench({ arbitrate })
+    // A consumed arbitration preventDefaults: the native focus jump is off.
+    expect(fireEvent.keyDown(textarea, { key: 'Tab' })).toBe(false)
+    expect(fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true })).toBe(false)
+    expect(calls).toEqual([
+      { key: 'down', composing: false },
+      { key: 'up', composing: false },
+    ])
   })
 })
 

@@ -37,7 +37,7 @@ pnpm dsh --profile headless "test provider recovery"
 | `connection_reset` | 在发送 HTTP 标头前销毁 socket |
 | `stream_disconnect` | 发送 SSE 标头，然后在第一个事件前重置连接 |
 | `partial_disconnect` | 发送文本增量，然后重置 socket |
-| `stall` | 发送 SSE header，并保持空闲，直到客户端／服务器取消 |
+| `stall` | 发送 SSE header 和一个内容增量，然后保持空闲，直到客户端／服务器取消 |
 | `empty` | 发送有效的无内容 stop 和 `[DONE]` |
 | `empty_body` / `stream_eof` / `partial_eof` | 正常结束，但缺少必需的 `[DONE]` 边界 |
 | `malformed_json` / `malformed_event` | 发送无效 SSE JSON 或无效提供方分片形态 |

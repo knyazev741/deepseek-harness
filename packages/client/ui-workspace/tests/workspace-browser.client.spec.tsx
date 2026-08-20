@@ -38,8 +38,12 @@ const workspace = (id: string, sessionIds: string[], title = id): WorkspaceView 
   workspaceId: wid(id), path: `/projects/${id}`, title,
   sessionIds: sessionIds.map(sid), createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
 })
-const workspaceState = (items: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[] = []): WorkspaceListState => ({
-  items, archivedSessionIds, state: 'idle', phase: 'ready', error: null, baselinesReady: true,
+const workspaceState = (
+  items: readonly WorkspaceView[],
+  archivedSessionIds: readonly SessionId[] = [],
+  pinnedSessionIds: readonly SessionId[] = [],
+): WorkspaceListState => ({
+  items, archivedSessionIds, pinnedSessionIds, state: 'idle', phase: 'ready', error: null, baselinesReady: true,
   recentWorkspaceId: items[0]?.workspaceId,
 })
 function hook<T>(snapshot: T) {
@@ -77,6 +81,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     renameWorkspace: vi.fn(async () => {}),
     deleteWorkspace: vi.fn(async () => {}),
     archiveSession: vi.fn(async () => {}),
+    setSessionPinned: vi.fn(async () => {}),
     insertWorkspaceBefore: vi.fn(async () => {}),
     insertSessionBefore: vi.fn(async () => {}),
     createWorkspace: vi.fn(async () => workspace('created', [])),
@@ -360,6 +365,61 @@ describe('WorkspaceBrowser', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '单列表' }))
     expect(screen.getByText('kept-s')).toBeTruthy()
     expect(screen.queryByText('gone-s')).toBeNull()
+  })
+
+  it('pins and unpins a session from the row menu, leading pinned rows in both modes', async () => {
+    const setSessionPinned = vi.fn(async () => {})
+    const b = mount({
+      useSessions: hook(sessionState([summary('pinned-s', 1), summary('later-s', 2)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['pinned-s', 'later-s'])])),
+      setSessionPinned,
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    fireEvent.click(screen.getByRole('button', { name: '会话“pinned-s”的操作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '置顶会话' }))
+    expect(setSessionPinned).toHaveBeenCalledWith(sid('pinned-s'), true)
+
+    // The pinned-set echo leads the pinned row ahead of the unpinned one.
+    rerender(b, {
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['pinned-s', 'later-s'])], [], [sid('pinned-s')])),
+    })
+    const isBefore = (a: string, c: string) => {
+      const text = document.body.textContent ?? ''
+      return text.indexOf(a) < text.indexOf(c) && text.indexOf(a) !== -1
+    }
+    expect(isBefore('pinned-s', 'later-s')).toBe(true)
+
+    // Flat mode re-applies pinned-first after recombination.
+    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '单列表' }))
+    expect(isBefore('pinned-s', 'later-s')).toBe(true)
+
+    // Unpin removes the lead and echoes the call.
+    fireEvent.click(screen.getByRole('button', { name: '会话“pinned-s”的操作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '取消置顶' }))
+    expect(setSessionPinned).toHaveBeenCalledWith(sid('pinned-s'), false)
+  })
+
+  it('logs and keeps the tree when the pin call rejects', async () => {
+    const rejection = new Error('pin exploded')
+    const setSessionPinned = vi.fn(async () => { throw rejection })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      mount({
+        useSessions: hook(sessionState([summary('pin-s', 1)])),
+        useWorkspaces: hook(workspaceState([workspace('alpha', ['pin-s'])])),
+        setSessionPinned,
+      })
+      fireEvent.click(screen.getByText('alpha'))
+      fireEvent.click(screen.getByRole('button', { name: '会话“pin-s”的操作' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: '置顶会话' }))
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(warn).toHaveBeenCalledWith('session pin rejected:', rejection)
+      expect(screen.getByText('pin-s')).toBeTruthy()
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   it('logs and keeps the tree when the archive call rejects', async () => {
