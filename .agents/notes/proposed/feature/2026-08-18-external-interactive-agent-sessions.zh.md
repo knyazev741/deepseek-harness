@@ -26,6 +26,10 @@ Status: proposed
 
 智能体驱动的会话通过一个构建在 `ctx.externalSessions` 之上的 `subagent` provider 复用同一能力族；会话本身不区分握方向盘的是人还是智能体。
 
+### 第 1 阶段已定稿的落地面
+
+第 1 阶段交付 Codex 方言。已定稿的实现名称：`ctx.externalSessions` 位于 `packages/external/external-session`；宿主机桥驱动是 `packages/external/external-session-bridge`；Codex provider 是 `packages/external/external-session-codex`（以 `@openai/codex@0.147.0` 钉证据）；第 1 阶段 ask-user 权限桥是 `packages/interaction/external-permission`；客户端插件（模式选择器 + 外部转录本节点）是 `packages/client/ui-session-mode`。会话的模式在创建时持久地盖章在头部，默认 `dsh`。
+
 ## 备选方案
 
 - **基于 `packages/terminal` 的 PTY 终端适配器：** 否决——没有结构化流、没有会话日志投影、没有策略继承；转录将是一段录像而非数据。

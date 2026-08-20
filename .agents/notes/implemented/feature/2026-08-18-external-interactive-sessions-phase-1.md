@@ -2,6 +2,8 @@
 
 Status: implemented
 
+English | [中文](2026-08-18-external-interactive-sessions-phase-1.zh.md)
+
 ## Problem
 
 The harness runs its own agent loop; console coding agents are one-shot subagent

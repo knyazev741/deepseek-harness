@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-08-18-external-interactive-agent-sessions.md
 2026-08-18-external-interactive-agent-sessions.md: 2825bf93621a94e7455b4539e2fdc9eaa1767847
-2026-08-18-external-interactive-agent-sessions.zh.md: 8b0306b8e20ba6d1c7c5963a23fa9a40f2f2afae
+2026-08-18-external-interactive-agent-sessions.zh.md: b3a4c61e950d034b42c96ad512ecf03127a945d3
