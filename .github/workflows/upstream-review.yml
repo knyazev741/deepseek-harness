@@ -32,13 +32,6 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
-    # The sync PR's diff includes upstream's .github/workflows/* changes;
-    # merging workflow files requires the `workflows` permission (only
-    # grantable per job).
-    permissions:
-      contents: write
-      pull-requests: write
-      workflows: write
     if: github.head_ref == 'sync/upstream-master'
     steps:
       - name: Checkout PR head
