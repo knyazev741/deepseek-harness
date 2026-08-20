@@ -74,6 +74,23 @@ describe('external-session-codex registration', () => {
     }
   })
 
+  it('cancels startup before it can spawn when disposed immediately', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      const opening = harness.start()
+      const openingOutcome = opening.then(() => undefined, error => error)
+      const closingOutcome = harness.provider.dispose(harness.sessionId).then(
+        () => undefined,
+        error => error,
+      )
+      await expect(closingOutcome).resolves.toBeUndefined()
+      await expect(openingOutcome).resolves.toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
+      expect(harness.handles).toHaveLength(0)
+    } finally {
+      await harness.close()
+    }
+  })
+
   it('stores model and effort and applies them to the next turn', async () => {
     const harness = await startCodexHarness([{ kind: 'complete', text: 'MODEL_SWITCHED' }])
     try {
@@ -96,9 +113,55 @@ describe('external-session-codex registration', () => {
       await harness.close()
     }
   })
+
+  it('rejects a model outside the authoritative native catalog', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      await harness.start()
+      await expect(harness.provider.setModel(
+        harness.sessionId,
+        'not-in-the-native-catalog',
+      )).rejects.toThrow(/not listed/u)
+      expect(harness.recorded.events).not.toContainEqual({
+        type: 'external/model-switched',
+        data: { model: 'not-in-the-native-catalog' },
+      })
+    } finally {
+      await harness.close()
+    }
+  })
+
+  it('confines a pre-session model listing under read-only policy', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      await harness.ctx.externalSessions.listModels('codex')
+      expect(harness.confinedPolicies[0]).toMatchObject({ mode: 'read-only' })
+      expect(harness.confinedPolicies[0]?.stateRoot).toContain(harness.codexHome)
+      expect(harness.spawnSpecs[0]?.env?.CODEX_HOME).toContain(harness.codexHome)
+    } finally {
+      await harness.close()
+    }
+  })
 })
 
 describe('external-session-codex persistent turns', () => {
+  it('serializes concurrent prompts across thread startup and turn dispatch', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'complete', text: 'CONCURRENT_FIRST' },
+      { kind: 'complete', text: 'CONCURRENT_SECOND' },
+    ])
+    try {
+      await harness.start()
+      const first = harness.provider.prompt(harness.sessionId, 'first concurrent prompt')
+      const second = harness.provider.prompt(harness.sessionId, 'second concurrent prompt')
+      await expect(Promise.all([first, second])).resolves.toHaveLength(2)
+      await harness.waitTurns(2, 5_000)
+      expect(harness.recorded.events.filter(event => event.type === 'external/turn-started')).toHaveLength(2)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
   it('runs two prompts on one persistent thread and commits both agent messages', async () => {
     const first = 'FIRST_TURN_SENTINEL'
     const second = 'SECOND_TURN_SENTINEL'
@@ -146,6 +209,28 @@ describe('external-session-codex persistent turns', () => {
 })
 
 describe('external-session-codex approval round-trip', () => {
+  it('cancels a pending approval before session-ended without a late decision', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'advertisedFunctionCall', choices: [{ name: 'exec_command', arguments: execCommandArgs }] },
+    ])
+    try {
+      harness.holdPermission()
+      await harness.start()
+      await harness.provider.prompt(harness.sessionId, 'hold for disposal')
+      await harness.waitCount('external/permission-asked', 1)
+      await harness.provider.dispose(harness.sessionId)
+      harness.releasePermission('allowed')
+      await settle()
+
+      const endedIndex = harness.recorded.events.findIndex(event => event.type === 'external/session-ended')
+      const lateDecisionIndex = harness.recorded.events.findIndex(event => event.type === 'external/permission-decided')
+      expect(endedIndex).toBeGreaterThanOrEqual(0)
+      expect(lateDecisionIndex).toBe(-1)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
   it('applies an allowed decision: the command executes', async () => {
     const harness = await startCodexHarness([
       { kind: 'advertisedFunctionCall', choices: [{ name: 'exec_command', arguments: execCommandArgs }] },
@@ -228,7 +313,7 @@ describe('external-session-codex interrupt and disposal', () => {
   }, 60_000)
 })
 
-describe('external-session-codex cold reattach', () => {
+describe('external-session-codex child respawn', () => {
   it('settles a turn when the app-server dies before completion and accepts the next prompt', async () => {
     const harness = await startCodexHarness([
       { kind: 'hold' },
@@ -259,7 +344,7 @@ describe('external-session-codex cold reattach', () => {
     }
   }, 60_000)
 
-  it('resumes the persisted thread after the app-server process restarts', async () => {
+  it('resumes the in-memory thread after the app-server child restarts', async () => {
     const first = 'REATTACH_FIRST'
     const second = 'REATTACH_SECOND'
     const harness = await startCodexHarness([
@@ -271,8 +356,8 @@ describe('external-session-codex cold reattach', () => {
       await harness.provider.prompt(harness.sessionId, 'first')
       await harness.waitTurns(1)
 
-      // Kill the app-server child mid-session; the provider must respawn and
-      // `thread/resume` the persisted thread before the next turn.
+      // Kill the app-server child mid-session; this provider instance must
+      // respawn and `thread/resume` its in-memory thread before the next turn.
       expect(harness.handles.length).toBeGreaterThan(0)
       const child = harness.handles[0]!
       child.terminate()

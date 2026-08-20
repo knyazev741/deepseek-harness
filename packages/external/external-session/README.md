@@ -6,6 +6,8 @@ External interactive-agent session Service Definition. Owns the `ctx.externalSes
 
 The contract in one line: a registry maps unique provider names (`provider`, also the session mode id) to [`ExternalSessionProvider`](src/types.ts) implementations; `start(request)` resolves the provider, records the session-to-provider route, and hands it a live [`ExternalBridgeContext`](src/types.ts) — `appendEvent` (log-only session events), `requestPermission` (ask the human), `streamDelta` (live-only deltas), and a `disposal` signal. Later calls — `prompt`, `interrupt`, `compact`, `setModel`, `dispose` — take only the session id and dispatch to the owning provider. `compact` runs the provider's native context compaction (`/compact` in an external mode maps here); a provider whose native surface lacks the operation rejects loud.
 
+`ExternalSessionStartRequest` accepts optional `sandbox` and `approvalPolicy`; the registry resolves them to `read-only` and `ask` before calling the provider, while `model` and `reasoningEffort` remain provider-facing selections. The registry publishes the provider route and disposal signal before awaiting startup, and rolls both back when startup rejects, so a failed start cannot leave a stale dispatch route. A provider's `setModel` must accept only an id from its advertised `listModels` catalog or document a different authoritative catalog.
+
 The registry is effect-scoped HMR-safe: `registerProvider(provider)` returns the exact Cordis effect disposer. Removing a provider blocks new starts but does not revoke live sessions already returned to their holders.
 
 ## Registry
@@ -24,6 +26,8 @@ Modes are not presets: choosing one composes the same host process and fixes the
 - `requestPermission(sessionId, ask)` — consults the registered permission channel and fails closed while none is wired (rejects `PERMISSION_UNWIRED`); the ask-user bridge is a host responsibility. `registerPermissionChannel(answerer)` registers the channel, effect-scoped and HMR safe like `registerProvider`: at most one is active, and disposing it restores the fail-closed default.
 - `streamDelta(sessionId, turnId, delta)` — forward-only live deltas, never durable.
 - `disposal` — an `AbortSignal` that fires when the session is disposed, so the provider can tear down its process.
+
+Providers should treat `disposal` as cancellation for pending work: approval asks and startup operations must settle without appending decisions after `external/session-ended`.
 
 ## Events
 

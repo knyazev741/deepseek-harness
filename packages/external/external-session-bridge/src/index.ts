@@ -115,7 +115,13 @@ export function apply(ctx: Context, _config: Config): void {
   })
   ctx.on('session/disposed', (session: Session) => {
     if (started.delete(session.id)) {
-      void ctx.externalSessions.dispose(session.id)
+      void ctx.externalSessions.dispose(session.id).catch((error: unknown) => {
+        ctx.emit('external/session-bridge/error', {
+          sessionId: session.id,
+          provider: session.header.mode ?? 'unknown',
+          error,
+        })
+      })
     }
   })
 }

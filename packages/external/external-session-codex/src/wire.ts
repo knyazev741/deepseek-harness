@@ -5,7 +5,8 @@
  * notification routing that drive an interactive external session — a
  * non-ephemeral thread, repeated `turn/start` on one thread, streamed deltas,
  * committed-item and terminal-turn notifications, approval asks answered by
- * the caller, cold reattach via `thread/resume`, and native `model/list`.
+ * the caller, same-process child respawn via `thread/resume`, and native
+ * `model/list`.
  *
  * The one-shot sibling (`@deepseek-ai/dsh-subagent-codex`) does not export its
  * wire, and its single-ephemeral-thread, unattended-approval dataflow does not
@@ -208,10 +209,10 @@ export class CodexExternalWire {
   }
 
   /**
-   * Reattach a persisted thread after an app-server restart. Evidence line:
-   * `thread/resume { threadId, model?, sandbox?, approvalPolicy? }` resumes a persisted thread on a cold process
-   * (tests/evidence/README.md, thread-persistence.json).
-   * @param threadId - the persisted thread to resume.
+   * Reattach the in-memory thread id after an app-server child restart within
+   * this provider instance. Durable Harness restart/resume is deferred to Task
+   * 3. Evidence line: `thread/resume { threadId, model?, sandbox?, approvalPolicy? }`.
+   * @param threadId - the protocol-persisted thread id retained in this provider instance.
    * @param signal - operation cancellation.
    * @param settings - resolved model, sandbox, and approval settings.
    * @returns the resumed thread id.

@@ -6,6 +6,8 @@
 
 用一句话概括约定：注册表把唯一的提供方名称（`provider`，也是会话 mode id）映射到 [`ExternalSessionProvider`](src/types.ts) 实现；`start(request)` 解析提供方、记录会话到提供方的路由，并把实时 [`ExternalBridgeContext`](src/types.ts) 交给它——`appendEvent`（仅日志的会话事件）、`requestPermission`（询问人类）、`streamDelta`（仅实时的增量）、以及 `disposal` 信号。后续调用——`prompt`、`interrupt`、`compact`、`setModel`、`dispose`——只接收会话 id 并分发给所属提供方。`compact` 运行提供方的原生上下文压缩（外部模式下的 `/compact` 映射到这里）；原生表面缺少该操作的提供方会大声拒绝。
 
+`ExternalSessionStartRequest` 接受可选的 `sandbox` 与 `approvalPolicy`；注册表在调用提供方前将它们解析为 `read-only` 与 `ask`，而 `model` 与 `reasoningEffort` 仍是提供方侧的选择。注册表会在等待启动前发布提供方路由与 disposal 信号，启动拒绝时回滚两者，因此失败的启动不会留下陈旧的分发路由。提供方的 `setModel` 必须只接受其 `listModels` 目录中的 id，或明确说明另一项权威目录。
+
 注册表按 effect 作用域实现 HMR 安全：`registerProvider(provider)` 返回确切的 Cordis effect disposer。移除提供方会阻止新的启动，但不会撤销已交给持有者的实时会话。
 
 ## 注册表
@@ -24,6 +26,8 @@ Mode 不是预设：选择某一个 mode 会在同一宿主进程中组合，并
 - `requestPermission(sessionId, ask)`——咨询已注册的权限通道，在未注册任何通道时故障关闭（拒绝 `PERMISSION_UNWIRED`）；ask-user bridge 是宿主的职责。`registerPermissionChannel(answerer)` 注册该通道，像 `registerProvider` 一样按 effect 作用域且 HMR 安全：同一时刻最多激活一个，dispose 它即恢复故障关闭的默认行为。
 - `streamDelta(sessionId, turnId, delta)`——仅转发的实时增量，绝不持久化。
 - `disposal`——一个 `AbortSignal`，在会话被 dispose 时触发，让提供方能够拆解其进程。
+
+提供方应把 `disposal` 当作待处理工作的取消信号：审批询问与启动操作必须结算，且在 `external/session-ended` 之后不得追加决策。
 
 ## 事件
 

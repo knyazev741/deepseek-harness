@@ -61,7 +61,9 @@ export interface ExternalAgentDescriptor {
 /**
  * The request that {@link ExternalSessionsService.start} resolves before a
  * provider owns a live session. The session id is pre-reserved by the host
- * session creation (a later phase), so the provider never invents it.
+ * session creation (a later phase), so the provider never invents it. Sandbox
+ * and approval are resolved policy values; startup cancellation and rollback
+ * remain provider/registry lifecycle responsibilities.
  */
 export interface ExternalSessionStart {
   /** Pre-reserved durable session id owned by the host. */
@@ -180,7 +182,7 @@ export interface ExternalBridgeContext {
 export interface ExternalSessionProvider extends ExternalAgentDescriptor {
   /**
    * Begin driving one live external session.
-   * @param request - the resolved start request.
+   * @param request - the resolved start request, including sandbox and approval policy.
    * @param bridge - the live conduit the provider writes transcripts through.
    */
   start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void>
@@ -213,7 +215,8 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
   /**
    * Switch the live session to a listed model.
    * @param sessionId - the live external session.
-   * @param model - a model id from {@link ExternalSessionProvider.listModels}.
+   * @param model - a model id from {@link ExternalSessionProvider.listModels};
+   *   providers reject ids outside their authoritative catalog.
    * @param reasoningEffort - optional effort applied to the next turn.
    */
   setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
@@ -274,7 +277,7 @@ export interface ExternalSessionsService {
   dispose(sessionId: SessionId): Promise<void>
 }
 
-/** Host-facing start input; the registry fills policy defaults before dispatch. */
+/** Host-facing start input; the registry fills `read-only`/`ask` policy defaults before dispatch. */
 export type ExternalSessionStartRequest = Omit<ExternalSessionStart, 'sandbox' | 'approvalPolicy'> & {
   readonly sandbox?: SandboxMode
   readonly approvalPolicy?: ApprovalPolicy

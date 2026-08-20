@@ -19,6 +19,7 @@ import * as bridge from '@deepseek-ai/dsh-external-session-bridge'
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   started: boolean | undefined
+  disposeError: Error | undefined
 
   constructor(
     readonly provider: string,
@@ -37,7 +38,9 @@ class StubProvider implements ExternalSessionProvider {
   async compact() {}
   async listModels() { return [] }
   async setModel() {}
-  async dispose() {}
+  async dispose() {
+    if (this.disposeError !== undefined) throw this.disposeError
+  }
 }
 
 let ctx: Context | undefined
@@ -71,5 +74,19 @@ describe('external-session-bridge driver', () => {
     const { ctx: loaded } = await setup()
     expect(() => loaded.sessions.create(SessionId('z1'), { meta: { cwd: '/tmp', mode: 'missing' } }))
       .toThrow(/was created in mode "missing".*no such external provider is registered/)
+  })
+
+  it('surfaces provider disposal failure instead of creating an unhandled rejection', async () => {
+    const { ctx: loaded, provider } = await setup()
+    const errors: unknown[] = []
+    loaded.on('external/session-bridge/error', (payload) => { errors.push(payload.error) })
+    const session = loaded.sessions.prepare(SessionId('dispose-error'), { meta: { cwd: '/tmp', mode: 'alpha' } })
+    const detach = loaded.sessions.enter(session)
+    loaded.sessions.announce(session)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    provider.disposeError = new Error('dispose failed')
+    detach()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(errors).toEqual([provider.disposeError])
   })
 })

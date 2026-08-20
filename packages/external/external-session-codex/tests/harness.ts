@@ -19,7 +19,7 @@ import type {
   ExternalPermissionDecision,
   ExternalSessionProvider,
 } from '@deepseek-ai/dsh-external-session'
-import type { SubprocessHandle } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import { SandboxProvider } from '@deepseek-ai/dsh-sandbox'
 import type { ConfinedArgv, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
@@ -50,10 +50,16 @@ export interface CodexTestHarness {
   readonly recorded: CodexRecorded
   readonly fixture: ResponsesFixture
   readonly handles: SubprocessHandle[]
+  readonly spawnSpecs: SubprocessSpawnSpec[]
+  readonly confinedPolicies: SandboxPolicy[]
   readonly workspace: string
   readonly codexHome: string
   /** Set the decision every permission ask resolves with. */
   setPermissionAnswer(decision: ExternalPermissionDecision): void
+  /** Hold the next permission answer until {@link releasePermission}. */
+  holdPermission(): void
+  /** Resolve a held permission answer. */
+  releasePermission(decision: ExternalPermissionDecision): void
   /** Open the session on the recorded bridge (provider.start). */
   start(model?: string): Promise<void>
   /** Wait until at least `count` events of `type` have been recorded. */
@@ -69,8 +75,12 @@ export interface CodexTestHarness {
 function makeBridge(recorded: CodexRecorded): {
   bridge: ExternalBridgeContext
   setAnswer: (decision: ExternalPermissionDecision) => void
+  holdAnswer: () => void
+  releaseAnswer: (decision: ExternalPermissionDecision) => void
 } {
   let answer: ExternalPermissionDecision = 'allowed'
+  let hold = false
+  let pending: PromiseWithResolvers<ExternalPermissionDecision> | undefined
   const bridge: ExternalBridgeContext = {
     appendEvent: (_sessionId, event) => {
       recorded.events.push({ type: event.type, data: event.data })
@@ -81,7 +91,10 @@ function makeBridge(recorded: CodexRecorded): {
         title: ask.title,
         options: [...ask.options],
       })
-      return answer
+      if (!hold) return answer
+      const next = Promise.withResolvers<ExternalPermissionDecision>()
+      pending = next
+      return next.promise
     },
     streamDelta: (_sessionId, turnId, delta) => {
       recorded.deltas.push({ turnId: String(turnId), delta })
@@ -91,6 +104,12 @@ function makeBridge(recorded: CodexRecorded): {
   return {
     bridge,
     setAnswer: (decision) => { answer = decision },
+    holdAnswer: () => { hold = true },
+    releaseAnswer: (decision) => {
+      hold = false
+      pending?.resolve(decision)
+      pending = undefined
+    },
   }
 }
 
@@ -163,8 +182,10 @@ export async function startCodexHarness(
   await ctx.plugin(SessionStore)
   await ctx.plugin(ExternalSessions)
   await ctx.plugin(LocalSubprocessRuntime)
+  const confinedPolicies: SandboxPolicy[] = []
   class TestSandboxProvider extends SandboxProvider {
-    confine(argv: readonly string[], _policy: SandboxPolicy): ConfinedArgv {
+    confine(argv: readonly string[], policy: SandboxPolicy): ConfinedArgv {
+      confinedPolicies.push(policy)
       return {
         argv: [...argv],
         enforcement: 'full',
@@ -176,8 +197,10 @@ export async function startCodexHarness(
   await ctx.plugin(TestSandboxProvider)
 
   const handles: SubprocessHandle[] = []
+  const spawnSpecs: SubprocessSpawnSpec[] = []
   const spawn = ctx.subprocess.spawn.bind(ctx.subprocess)
   vi.spyOn(ctx.subprocess, 'spawn').mockImplementation((spec) => {
+    spawnSpecs.push(spec)
     const handle = spawn(spec)
     handles.push(handle)
     return handle
@@ -190,7 +213,7 @@ export async function startCodexHarness(
   }
 
   const recorded: CodexRecorded = { events: [], deltas: [], permissionAsks: [] }
-  const { bridge, setAnswer } = makeBridge(recorded)
+  const { bridge, setAnswer, holdAnswer, releaseAnswer } = makeBridge(recorded)
   ctx.sessions.create(sessionId, { meta: { cwd: workspace, mode: 'codex' } })
 
   const harness: CodexTestHarness = {
@@ -200,9 +223,13 @@ export async function startCodexHarness(
     recorded,
     fixture,
     handles,
+    spawnSpecs,
+    confinedPolicies,
     workspace,
     codexHome,
     setPermissionAnswer: setAnswer,
+    holdPermission: holdAnswer,
+    releasePermission: releaseAnswer,
     start: model => provider.start({
       sessionId,
       provider: 'codex',

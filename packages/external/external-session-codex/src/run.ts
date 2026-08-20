@@ -1,7 +1,8 @@
 /**
  * The persistent Codex external-session runtime: owns the app-server child
- * process, the interactive wire, cold reattach (thread/resume after a process
- * restart), and the projection of live wire activity onto the session bridge —
+ * process, the interactive wire, same-process child respawn (thread/resume
+ * after a child restart), and the projection of live wire activity onto the
+ * session bridge —
  * log-only `external/*` events plus `streamDelta` on the live frame path.
  *
  * Prompts run strictly serially: each `prompt` awaits the prior turn's
@@ -118,6 +119,13 @@ function thrown(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value))
 }
 
+function throwIfAborted(signal: AbortSignal): void {
+  if (!signal.aborted) return
+  throw signal.reason instanceof Error
+    ? signal.reason
+    : new Error(`external-session-codex: operation aborted: ${String(signal.reason)}`)
+}
+
 /**
  * Bind one app-server argv for a platform. Windows npm/pnpm installs expose
  * `codex.cmd`, which requires `cmd.exe`; argv is config-owned and never
@@ -147,6 +155,7 @@ export class CodexExternalSession {
   private readonly bridge: ExternalBridgeContext
   private readonly spec: CodexSessionSpec
   private settings: CodexWireSettings
+  private modelCatalog: readonly ExternalModelInfo[] | undefined
   private threadId: string | undefined
   private live: LiveProcess | undefined
   private activeEnd: {
@@ -155,6 +164,9 @@ export class CodexExternalSession {
     resolve: () => void
     settled: boolean
   } | undefined
+  /** Serializes all prompt operations, including process/thread preparation. */
+  private promptSerial: Promise<void> = Promise.resolve()
+  private readonly pendingApprovals = new Set<PromiseWithResolvers<ExternalPermissionOutcome>>()
   /** Serializes process cleanup so a respawn cannot race the old tree. */
   private quiescence: Promise<void> = Promise.resolve()
   private disposed = false
@@ -204,6 +216,18 @@ export class CodexExternalSession {
    * @returns the provider-issued turn id; the turn streams and completes asynchronously.
    */
   async prompt(text: string, signal: AbortSignal): Promise<{ turnId: ExternalTurnId }> {
+    const previous = this.promptSerial
+    let release!: () => void
+    this.promptSerial = new Promise<void>((resolve) => { release = resolve })
+    await previous
+    try {
+      return await this.promptUnlocked(text, signal)
+    } finally {
+      release()
+    }
+  }
+
+  private async promptUnlocked(text: string, signal: AbortSignal): Promise<{ turnId: ExternalTurnId }> {
     if (this.activeEnd !== undefined) await this.activeEnd.promise
     await this.ensureLive(signal, true)
     const resolvers = Promise.withResolvers<void>()
@@ -236,8 +260,12 @@ export class CodexExternalSession {
    * @param model - selected native model id.
    * @param reasoningEffort - optional stable reasoning effort.
    */
-  setModel(model: string, reasoningEffort?: ReasoningEffort): void {
+  async setModel(model: string, reasoningEffort?: ReasoningEffort): Promise<void> {
     if (model.length === 0) throw new Error('external-session-codex: model must be non-empty')
+    const catalog = this.modelCatalog ?? await this.listModels(new AbortController().signal)
+    if (!catalog.some(entry => entry.id === model)) {
+      throw new Error(`external-session-codex: model "${model}" is not listed by the native catalog`)
+    }
     this.settings = {
       ...this.settings,
       model,
@@ -260,7 +288,9 @@ export class CodexExternalSession {
    */
   async listModels(signal: AbortSignal): Promise<ExternalModelInfo[]> {
     await this.ensureLive(signal, true)
-    return this.liveWire().listModels(signal)
+    const models = await this.liveWire().listModels(signal)
+    this.modelCatalog = models
+    return models
   }
 
   /**
@@ -288,6 +318,8 @@ export class CodexExternalSession {
   async dispose(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
+    for (const pending of this.pendingApprovals) pending.resolve('cancelled')
+    this.pendingApprovals.clear()
     this.append('external/session-ended', { stopReason: 'completed' })
     this.live?.wire.interrupt()
     const live = this.live
@@ -372,20 +404,32 @@ export class CodexExternalSession {
 
   /** Ask the human through the bridge and answer the app-server approval. */
   private async answerApproval(ask: CodexApprovalAsk): Promise<string> {
+    if (this.disposed || this.bridge.disposal.aborted) return 'cancel'
     const askId = ask.itemId.length > 0 ? ask.itemId : `ask-${randomUUID()}`
     const title = ask.reason ?? 'Run a command in the workspace'
     const options = this.approvalOptions(ask.availableDecisions)
     this.append('external/permission-asked', { askId, title, options })
+    const cancellation = Promise.withResolvers<ExternalPermissionOutcome>()
+    this.pendingApprovals.add(cancellation)
+    const onDispose = (): void => { cancellation.resolve('cancelled') }
+    this.bridge.disposal.addEventListener('abort', onDispose, { once: true })
     let outcome: ExternalPermissionOutcome
     try {
-      const decision = await this.bridge.requestPermission(this.sessionId, { askId, title, options })
-      outcome = decision
+      const decision = await Promise.race([
+        this.bridge.requestPermission(this.sessionId, { askId, title, options }),
+        cancellation.promise,
+      ])
+      outcome = decision === 'cancelled' ? 'cancelled' : decision
     } catch (error) {
       // A failed or unwired permission channel fails closed to the human's
       // cancel outcome and the safest offered decision.
       this.spec.onError?.(thrown(error))
       outcome = 'cancelled'
+    } finally {
+      this.bridge.disposal.removeEventListener('abort', onDispose)
+      this.pendingApprovals.delete(cancellation)
     }
+    if (this.disposed || this.bridge.disposal.aborted) return 'cancel'
     const requested = outcome === 'allowed' ? 'accept' : outcome === 'rejected' ? 'decline' : 'cancel'
     const decision = offeredApprovalDecision(ask.availableDecisions, requested)
     this.append('external/permission-decided', { askId, outcome })
@@ -408,12 +452,13 @@ export class CodexExternalSession {
    * Guarantee a live child: spawn one when absent or after an unexpected
    * death, handshake, and open or resume the persistent thread.
    * @param signal - operation cancellation.
-   * @param resume - whether to `thread/resume` the persisted thread (deep path
-   *   after a process restart) instead of creating a new one.
+   * @param resume - whether to `thread/resume` the in-memory thread id after a
+   *   child restart instead of creating a new one.
    */
   private async ensureLive(signal: AbortSignal, resume: boolean): Promise<void> {
     if (this.live !== undefined) return
     await this.quiescence
+    throwIfAborted(signal)
     if (this.disposed) throw new Error('external-session-codex: session is disposed')
     const handle = this.spec.spawn(createCodexSpawnSpec(this.spec, this.bridge.disposal))
     const liveRef: { current?: LiveProcess } = {}
@@ -475,14 +520,19 @@ export class CodexExternalSession {
     })
   }
 
-  /** Enqueue one child teardown behind all earlier process trees. */
+  /**
+   * Enqueue one child teardown behind all earlier process trees. A cleanup
+   * rejection remains on the quiescence barrier: later respawn and disposal
+   * observe the failure instead of treating an unreaped child as settled.
+   */
   private cleanupLive(live: LiveProcess | undefined): Promise<void> {
     if (live === undefined) return this.quiescence
     if (live.cleanup !== undefined) return live.cleanup
     const previous = this.quiescence
     const cleanup = previous.then(() => this.disposeChild(live.handle, live.wire))
     live.cleanup = cleanup
-    this.quiescence = cleanup.catch(() => {})
+    this.quiescence = cleanup
+    void cleanup.catch(() => {})
     return cleanup
   }
 
@@ -505,7 +555,8 @@ export class CodexExternalSession {
       }
       handle.terminate()
     }
-    await handle.waitForExit().catch(() => false)
+    const exited = await handle.waitForExit()
+    if (!exited) throw new Error('external-session-codex: process tree did not reach quiescence')
     await handle.done.catch(() => {})
   }
 

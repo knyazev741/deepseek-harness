@@ -5,7 +5,8 @@
  * session workspace, opens a non-ephemeral thread, and then serves repeated
  * prompts on that thread, streaming deltas and committed items out through the
  * per-session bridge, answering approval asks through the permission channel,
- * and reattaching via `thread/resume` when the app-server process restarts.
+ * and respawning the app-server within the same provider instance when the
+ * child process restarts. Durable provider identity belongs to a later phase.
  *
  * @module @deepseek-ai/dsh-external-session-codex
  */
@@ -117,7 +118,7 @@ export function codexStateRoot(root: string, sessionId: string): string {
   return join(resolve(root), key)
 }
 
-/** Create a private Harness-owned directory and retain it across process restarts. */
+/** Create a private Harness-owned directory retained by this provider instance. */
 async function ensurePrivateStateRoot(root: string, sessionId: string): Promise<string> {
   const stateRoot = codexStateRoot(root, sessionId)
   await mkdir(stateRoot, { recursive: true, mode: 0o700 })
@@ -129,6 +130,24 @@ function throwable(message: string): never {
   throw new Error(`external-session-codex: ${message}`)
 }
 
+function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new Error(`external-session-codex: startup aborted: ${String(signal.reason)}`)
+}
+
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) throw abortError(signal)
+}
+
+interface CodexLifecycle {
+  readonly controller: AbortController
+  readonly signal: AbortSignal
+  start: Promise<void>
+  session?: CodexExternalSession
+  disposed: boolean
+}
+
 /**
  * The `codex` mode's provider: owns one persistent session per started session
  * id and answers the registry's model-seat surface from the native catalog.
@@ -138,6 +157,7 @@ class CodexProvider implements ExternalSessionProvider {
   readonly label = 'Codex'
   readonly modelDirectory: ExternalModelDirectory = 'provider'
   private readonly sessions = new Map<SessionId, CodexExternalSession>()
+  private readonly lifecycles = new Map<SessionId, CodexLifecycle>()
 
   constructor(
     private readonly ctx: Context,
@@ -145,28 +165,62 @@ class CodexProvider implements ExternalSessionProvider {
   ) {}
 
   async start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
-    const liveSession = this.ctx.get('sessions')?.get(request.sessionId)
-    if (liveSession === undefined) throwable(`no live Session for ${String(request.sessionId)}`)
-    const policy = this.resolveSandboxPolicy(liveSession, request)
-    const resolvedRequest: ExternalSessionStart = {
-      ...request,
-      ...request.reasoningEffort === undefined && this.config.reasoningEffort === undefined
-        ? {}
-        : { reasoningEffort: request.reasoningEffort ?? this.config.reasoningEffort },
-      sandbox: policy.mode,
-      approvalPolicy: this.resolveApprovalPolicy(liveSession, request.approvalPolicy),
+    if (this.lifecycles.has(request.sessionId)) {
+      throwable(`external session ${String(request.sessionId)} is already starting or live`)
     }
-    const stateRoot = await ensurePrivateStateRoot(this.config.stateRoot, String(request.sessionId))
-    const session = new CodexExternalSession(
-      resolvedRequest,
-      bridge,
-      this.spec(request.cwd, policy, stateRoot),
-    )
-    this.sessions.set(request.sessionId, session)
+    const controller = new AbortController()
+    const signal = AbortSignal.any([bridge.disposal, controller.signal])
+    const lifecycle: CodexLifecycle = {
+      controller,
+      signal,
+      start: Promise.resolve(),
+      disposed: false,
+    }
+    this.lifecycles.set(request.sessionId, lifecycle)
+    const start = this.startLifecycle(request, bridge, lifecycle)
+    lifecycle.start = start
     try {
-      await session.start(new AbortController().signal)
+      await start
     } catch (error: unknown) {
-      this.sessions.delete(request.sessionId)
+      if (this.lifecycles.get(request.sessionId) === lifecycle) this.lifecycles.delete(request.sessionId)
+      throw error
+    }
+  }
+
+  private async startLifecycle(
+    request: ExternalSessionStart,
+    bridge: ExternalBridgeContext,
+    lifecycle: CodexLifecycle,
+  ): Promise<void> {
+    let session: CodexExternalSession | undefined
+    try {
+      const liveSession = this.ctx.get('sessions')?.get(request.sessionId)
+      if (liveSession === undefined) throwable(`no live Session for ${String(request.sessionId)}`)
+      const policy = this.resolveSandboxPolicy(liveSession, request)
+      const resolvedRequest: ExternalSessionStart = {
+        ...request,
+        ...request.reasoningEffort === undefined && this.config.reasoningEffort === undefined
+          ? {}
+          : { reasoningEffort: request.reasoningEffort ?? this.config.reasoningEffort },
+        sandbox: policy.mode,
+        approvalPolicy: this.resolveApprovalPolicy(liveSession, request.approvalPolicy),
+      }
+      const stateRoot = await ensurePrivateStateRoot(this.config.stateRoot, String(request.sessionId))
+      throwIfAborted(lifecycle.signal)
+      session = new CodexExternalSession(
+        resolvedRequest,
+        bridge,
+        this.spec(request.cwd, policy, stateRoot),
+      )
+      lifecycle.session = session
+      this.sessions.set(request.sessionId, session)
+      await session.start(lifecycle.signal)
+      throwIfAborted(lifecycle.signal)
+    } catch (error: unknown) {
+      if (session !== undefined && this.sessions.get(request.sessionId) === session) {
+        this.sessions.delete(request.sessionId)
+        await session.dispose().catch(() => {})
+      }
       throw error
     }
   }
@@ -211,12 +265,12 @@ class CodexProvider implements ExternalSessionProvider {
         sessionId,
         provider: 'codex',
         cwd: process.cwd(),
-        sandbox: 'danger-full-access',
+        sandbox: 'read-only',
         approvalPolicy: 'ask',
       },
       inertBridge,
       this.spec(process.cwd(), {
-        mode: 'danger-full-access',
+        mode: 'read-only',
         workspaceRoot: process.cwd(),
         sessionId,
       }, await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))),
@@ -235,15 +289,22 @@ class CodexProvider implements ExternalSessionProvider {
    * @param model - the selected model id.
    * @param reasoningEffort - optional selected reasoning effort.
    */
-  setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void> {
-    this.require(sessionId).setModel(model, reasoningEffort)
-    return Promise.resolve()
+  async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void> {
+    await this.require(sessionId).setModel(model, reasoningEffort)
   }
 
   async dispose(sessionId: SessionId): Promise<void> {
-    const session = this.require(sessionId)
-    this.sessions.delete(sessionId)
-    await session.dispose()
+    const lifecycle = this.lifecycles.get(sessionId)
+    if (lifecycle === undefined) throwable(`no live external session ${String(sessionId)}`)
+    lifecycle.disposed = true
+    lifecycle.controller.abort()
+    await lifecycle.start.catch(() => {})
+    const session = lifecycle.session
+    if (session !== undefined && this.sessions.get(sessionId) === session) {
+      this.sessions.delete(sessionId)
+      await session.dispose()
+    }
+    if (this.lifecycles.get(sessionId) === lifecycle) this.lifecycles.delete(sessionId)
   }
 
   private require(sessionId: SessionId): CodexExternalSession {

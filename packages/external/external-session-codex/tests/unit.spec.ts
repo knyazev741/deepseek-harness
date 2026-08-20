@@ -8,9 +8,11 @@ import { PassThrough } from 'node:stream'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import ExternalSessions from '@deepseek-ai/dsh-external-session'
+import { writableRoots } from '@deepseek-ai/dsh-sandbox'
+import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { apply } from '../src/index.ts'
-import { appServerArgv, createCodexSpawnSpec } from '../src/run.ts'
+import { appServerArgv, CodexExternalSession, createCodexSpawnSpec } from '../src/run.ts'
 import {
   CodexExternalWire,
   mapExternalStopReason,
@@ -197,6 +199,54 @@ describe('Codex spawn policy', () => {
       if (previous === undefined) Reflect.deleteProperty(process.env, ambientName)
       else process.env[ambientName] = previous
     }
+  })
+
+  it('does not grant a configured state root under read-only policy', () => {
+    let confinedPolicy: SandboxExecutionPolicy | undefined
+    const stateRoot = '/harness/codex/read-only-session'
+    createCodexSpawnSpec({
+      cwd: '/work',
+      command: 'codex',
+      args: ['app-server', '--stdio'],
+      env: {},
+      disposeGraceMs: 3_000,
+      sandboxPolicy: { mode: 'read-only', workspaceRoot: '/work' },
+      stateRoot,
+      confine: (argv, policy) => {
+        confinedPolicy = policy
+        return {
+          argv: [...argv],
+          enforcement: 'full',
+          denialSignatures: [],
+          runnerFailureRules: [],
+        }
+      },
+      spawn: () => { throw new Error('spawn is not used by this unit') },
+    })
+    expect(confinedPolicy?.stateRoot).toBe(stateRoot)
+    if (confinedPolicy === undefined) throw new Error('sandbox policy was not captured')
+    expect(writableRoots(confinedPolicy)).toEqual([])
+  })
+
+  it('retains cleanup failure on the quiescence barrier', async () => {
+    const session = Object.create(CodexExternalSession.prototype) as {
+      quiescence: Promise<void>
+      cleanupLive(live: unknown): Promise<void>
+    }
+    session.quiescence = Promise.resolve()
+    const failure = new Error('process did not reach quiescence')
+    const live = {
+      handle: {
+        pid: 1,
+        stdin: { end: () => {} },
+        terminate: () => {},
+        waitForExit: async () => { throw failure },
+        done: Promise.resolve(),
+      },
+      wire: { close: () => {} },
+    }
+    await expect(session.cleanupLive(live)).rejects.toThrow(failure)
+    await expect(session.quiescence).rejects.toThrow(failure)
   })
 })
 

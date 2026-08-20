@@ -18,7 +18,7 @@
 
 | 记录 | 场景 | 证明 |
 | --- | --- | --- |
-| `thread-persistence.json` | `thread/start{ephemeral:false}`、同线程两次 `turn/start`、进程关闭、全新进程 `thread/resume{threadId}` | 非临时线程、同线程多轮、冷重挂 |
+| `thread-persistence.json` | `thread/start{ephemeral:false}`、同线程两次 `turn/start`、进程关闭、全新进程 `thread/resume{threadId}` | 协议证明非临时线程与进程重启恢复；Task 2 只把它用于同一提供方实例的子进程重启，跨 Harness 重启恢复属于 Task 3 |
 | `turn-notifications.json` | 一个完整轮次与一个通过 `turn/interrupt` 中断的轮次 | 通知族与中断终态 |
 | `approvals.json` | `approval_policy = "on-request"` 下的工具调用，分别回答 `accept` 与 `decline` | 审批请求、决策、工具结果往返 |
 | `models.json` | `model/list` | 原生模型目录 |
@@ -36,10 +36,10 @@
 | 方法 | 判断 | 说明 |
 | --- | --- | --- |
 | `initialize` | stable, observed | 握手；响应携带 `userAgent`、`codexHome`、平台信息。 |
-| `thread/start` | stable, observed | `{ cwd, ephemeral, model?, sandbox?, approvalPolicy? }`；`ephemeral:false` 持久化 rollout。 |
-| `turn/start` | stable, observed | `{ threadId, input, model?, effort?, sandbox?, approvalPolicy? }`；响应 `{ turn }` 后发送 `turn/started`。 |
+| `thread/start` | stable, method observed | 当前 JSON 记录观察到 `{ cwd, ephemeral }`；可选的 `model`、`sandbox` 与 `approvalPolicy` 是稳定 schema 字段，由提供方 wire 序列化测试覆盖，并未出现在此记录中。`ephemeral:false` 持久化 rollout。 |
+| `turn/start` | stable, method observed | 当前 JSON 记录观察到方法与文本输入；可选的 `model`、`effort`、`sandbox` 与 `approvalPolicy` 是稳定 schema 字段，由提供方 wire 序列化测试覆盖，并未出现在此记录中。响应 `{ turn }` 后发送 `turn/started`。 |
 | `turn/interrupt` | stable, observed | `{ threadId, turnId }`；以 `interrupted` 的 `turn/completed` 结算。 |
-| `thread/resume` | stable, observed | `{ threadId, model?, sandbox?, approvalPolicy? }`；冷进程返回线程与初始轮次页。 |
+| `thread/resume` | stable, method observed | 当前 JSON 记录在全新 app-server 上观察到 `{ threadId }`；可选的 `model`、`sandbox` 与 `approvalPolicy` 是稳定 schema 字段，由提供方 wire 序列化测试覆盖，并未出现在此记录中。响应返回线程与初始轮次页。 |
 | `model/list` | stable, observed | 原生模型目录，返回 `{ data, nextCursor }`。 |
 | `thread/compact/start` | stable, observed | 专用压缩路径，立即返回 `{}`，压缩作为后台轮次运行。 |
 | `initialized` | stable, observed | `initialize` 后发送一次客户端通知。 |
@@ -75,5 +75,7 @@
 - **模型目录原生存在：** 不需要回退名册；记录的模型包括 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`、`gpt-5.5` 与 `gpt-5.2`。
 - **稳定设置是请求字段：** `thread/start` 与 `thread/resume` 接受模型及 sandbox/approval 覆盖；`turn/start` 接受模型、`effort`、sandbox 与 approval 覆盖。Harness 的 `ask` 映射为 `on-request`，`never` 映射为 `never`，reasoning effort 映射为 `effort`。
 - **压缩是专用方法：** `thread/compact/start` 是异步后台轮次，不是 slash passthrough。
-- **线程支持冷恢复：** `ephemeral:false` 与 `thread/resume` 可跨进程重启恢复持久线程。
+- **协议持久性与 Task 2 范围：** 此协议记录证明 `ephemeral:false` 与 `thread/resume` 可跨进程重启恢复；Task 2 仅在同一提供方实例重启子进程时使用该方法，跨 Harness 重启的提供方线程身份属于 Task 3。
 - **审批决策可直接映射：** allow → `accept`、reject → `decline`，并提供 `cancel`。
+
+组装应用的 Loader 组合、浏览器可访问性与面向用户的无密钥快照验收证据延后至 Task 9。此处 JSON 记录证明固定协议的方法/通知词汇；可选设置字段的映射由提供方精确 wire 单元测试证明，上表不把它们声称为 JSON 记录中已观察到的内容。
