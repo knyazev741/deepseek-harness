@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
+import LlmRuntime from '@deepseek-ai/dsh-llm'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
@@ -41,6 +42,7 @@ async function setup(toolConfig: tool.Config, mockConfig: Partial<mock.Config> =
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(LlmRuntime)
   await ctx.plugin(SubagentRuntime)
   await mock.mountScriptedProvider(ctx, { name: 'mock', ...mockConfig })
   await ctx.plugin(tool, toolConfig)
@@ -100,20 +102,27 @@ describe('dsh-tool-subagent', () => {
     expect(text(result)).toBe('child says hi')
   })
 
-  it('exposes description + prompt + run_in_background to the model (no provider/type parameter)', async () => {
+  it('exposes description + prompt + run_in_background + optional provider/model to the model', async () => {
     const ctx = await setup({ provider: 'mock' })
     const schema = ctx.tools.schemas().find(s => s.name === 'subagent')
     expect(schema).toBeDefined()
     const props = (schema!.parameters as { properties?: Record<string, unknown> }).properties ?? {}
-    expect(Object.keys(props).sort()).toEqual(['description', 'prompt', 'run_in_background'])
+    expect(Object.keys(props).sort()).toEqual(['description', 'model', 'prompt', 'provider', 'run_in_background'])
+    const providerProp = props['provider'] as { type?: string; description?: string }
+    const modelProp = props['model'] as { type?: string; description?: string }
+    expect(providerProp?.type).toBe('string')
+    expect(modelProp?.type).toBe('string')
+    expect(providerProp?.description).toContain('inherit the parent route')
+    expect(modelProp?.description).toContain('inherit the parent route')
     expect(schema!.description).toContain('job_output')
+    expect(schema!.description).toContain('optional `provider` and `model`')
   })
 
   it('omits run_in_background entirely when the instance disables it (schema and capability never disagree)', async () => {
     const ctx = await setup({ provider: 'mock', enableRunInBackground: false })
     const schema = ctx.tools.schemas().find(s => s.name === 'subagent')
     const props = (schema!.parameters as { properties?: Record<string, unknown> }).properties ?? {}
-    expect(Object.keys(props).sort()).toEqual(['description', 'prompt'])
+    expect(Object.keys(props).sort()).toEqual(['description', 'model', 'prompt', 'provider'])
     expect(schema!.description).not.toContain('job_output')
   })
 
@@ -208,6 +217,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     await mock.mountScriptedProvider(ctx, { name: 'spawn', reply: 'from spawn' })
     await mock.mountScriptedProvider(ctx, { name: 'acp', reply: 'from acp' })
@@ -229,6 +239,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'weird',
@@ -255,6 +266,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'capture',
@@ -276,6 +288,120 @@ describe('dsh-tool-subagent', () => {
     expect(seen?.agentOptions).toEqual({ model: 'child-model' })
   })
 
+  it('routes per-call provider/model into the child request and validates them', async () => {
+    let seen: { agentOptions?: { provider?: string; model?: string } } | undefined
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SubagentRuntime)
+    const resolveModelInfo = vi.spyOn(ctx.llm, 'resolveModelInfo').mockResolvedValue({
+      provider: 'call-prov', id: 'call-model', name: 'call-model',
+    })
+    ctx.subagents.registerProvider({
+      name: 'route-capture',
+      capabilities: { outputSchema: false, depthLimit: false, toolFilter: false, persona: false },
+      inheritsParentContext: false,
+      start: async (request) => {
+        seen = request
+        return {
+          id: SessionId('route-child'),
+          localAgent: undefined,
+          result: Promise.resolve({ output: [{ type: 'text', text: 'routed' }], stopReason: 'completed' as const }),
+          dispose: async () => {},
+        }
+      },
+    })
+    const parent = { id: SessionId('route-parent'), options: { provider: 'parent-prov', model: 'parent-model' } } as unknown as Agent
+    await ctx.plugin(tool, { provider: 'route-capture', maxDepth: 'provider-managed' })
+
+    const result = await callSubagent(ctx, { description: 'd', prompt: 'p', provider: 'call-prov', model: 'call-model' }, { agent: parent })
+    expect(result.isError).toBe(false)
+    expect(seen?.agentOptions).toEqual({ provider: 'call-prov', model: 'call-model' })
+    expect(resolveModelInfo).toHaveBeenCalledWith('call-prov', 'call-model', expect.any(AbortSignal))
+  })
+
+  it('favors per-call provider/model over the configured agentOptions default', async () => {
+    let seen: { agentOptions?: { provider?: string; model?: string } } | undefined
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SubagentRuntime)
+    const resolveModelInfo = vi.spyOn(ctx.llm, 'resolveModelInfo').mockResolvedValue({
+      provider: 'cfg-prov', id: 'call-model', name: 'call-model',
+    })
+    ctx.subagents.registerProvider({
+      name: 'route-capture2',
+      capabilities: { outputSchema: false, depthLimit: false, toolFilter: false, persona: false },
+      inheritsParentContext: false,
+      start: async (request) => {
+        seen = request
+        return {
+          id: SessionId('route-child2'),
+          localAgent: undefined,
+          result: Promise.resolve({ output: [{ type: 'text', text: 'routed' }], stopReason: 'completed' as const }),
+          dispose: async () => {},
+        }
+      },
+    })
+    await ctx.plugin(tool, {
+      provider: 'route-capture2',
+      agentOptions: { provider: 'cfg-prov', model: 'cfg-model' },
+      maxDepth: 'provider-managed',
+    })
+
+    // Only the model is overridden per call; provider still inherits the config default.
+    const result = await callSubagent(ctx, { description: 'd', prompt: 'p', model: 'call-model' })
+    expect(result.isError).toBe(false)
+    expect(seen?.agentOptions).toEqual({ provider: 'cfg-prov', model: 'call-model' })
+    expect(resolveModelInfo).toHaveBeenCalledWith('cfg-prov', 'call-model', expect.any(AbortSignal))
+  })
+
+  it('fails the call with the route named when a per-call route cannot be resolved (never starts a child)', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SubagentRuntime)
+    vi.spyOn(ctx.llm, 'resolveModelInfo').mockRejectedValue(new Error('unknown model catalog'))
+    let started = false
+    ctx.subagents.registerProvider({
+      name: 'never',
+      capabilities: { outputSchema: false, depthLimit: false, toolFilter: false, persona: false },
+      inheritsParentContext: false,
+      start: async () => {
+        started = true
+        throw new Error('unreachable: a bad route must stop before provider.start')
+      },
+    })
+    await ctx.plugin(tool, { provider: 'never', maxDepth: 'provider-managed' })
+
+    const result = await callSubagent(ctx, { description: 'd', prompt: 'p', provider: 'ghost', model: 'nope' })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toContain('ghost')
+    expect(text(result)).toContain('nope')
+    expect(text(result)).toContain('unknown model catalog')
+    expect(started).toBe(false)
+  })
+
+  it('validates and proceeds when a per-call route resolves', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SubagentRuntime)
+    vi.spyOn(ctx.llm, 'resolveModelInfo').mockResolvedValue({
+      provider: 'mock', id: 'm', name: 'm',
+    })
+    await mock.mountScriptedProvider(ctx, { name: 'mock', reply: 'known route answer' })
+    await ctx.plugin(tool, { provider: 'mock' })
+
+    const result = await callSubagent(ctx, { description: 'd', prompt: 'p', provider: 'mock', model: 'm' })
+    expect(result.isError).toBe(false)
+    expect(text(result)).toBe('known route answer')
+  })
+
   it('defaults toolName and omits agentOptions when apply() is called directly (schema bypass)', async () => {
     // `ctx.plugin` validates+defaults config first (toolName→'subagent', the
     // agentOptions object→{}), so the runtime `?? 'subagent'` fallback and the
@@ -285,6 +411,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'bare',
@@ -320,6 +447,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     // Tool first: no provider yet — the tool must be absent, not broken.
     // Direct apply (schema bypass): also covers the waiting-note's default
@@ -337,6 +465,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     tool.apply(ctx, {
       provider: 'later-continuable',
@@ -353,6 +482,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     const backend = await mock.mountScriptedProvider(ctx, { name: 'mock' }) // fresh conversation (descriptor: false)
     await ctx.plugin(tool, { provider: 'mock' })
@@ -372,6 +502,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
 
     // Arm 1: a mounted tool and its prompt section die with the plugin fiber;
@@ -408,6 +539,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     await mock.mountScriptedProvider(ctx, { name: 'mock' })
     await ctx.plugin(tool, { provider: 'mock' })
@@ -444,6 +576,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'spy',
@@ -467,6 +600,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'spy',
@@ -491,6 +625,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'spy',
@@ -519,6 +654,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'spy',
@@ -546,6 +682,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'spy',
@@ -585,6 +722,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'spy',
@@ -612,7 +750,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
-    // No SubagentRuntime mounted. The tool injects its three required services so its
+    // No SubagentRuntime mounted. The tool injects its four required services so its
     // apply never runs; the tool is absent rather than half-registered.
     let booted = true
     try {
@@ -633,13 +771,13 @@ describe('dsh-tool-subagent', () => {
     // load with "cannot get property … without inject". Guard the shape directly.
     expect('default' in tool).toBe(false)
     expect(tool.name).toBe('tool-subagent')
-    expect(tool.inject).toEqual(['tools', 'subagents', 'systemPrompt'])
+    expect(tool.inject).toEqual(['tools', 'subagents', 'systemPrompt', 'llm'])
 
     const loader = Object.create(Loader.prototype) as Loader
     const unwrapped = loader.unwrapExports(tool) as Record<string, unknown>
     expect(unwrapped).toBe(tool)
     expect(unwrapped.name).toBe('tool-subagent')
-    expect(unwrapped.inject).toEqual(['tools', 'subagents', 'systemPrompt'])
+    expect(unwrapped.inject).toEqual(['tools', 'subagents', 'systemPrompt', 'llm'])
     expect(typeof unwrapped.apply).toBe('function')
     expect(unwrapped.Config).toBeDefined()
   })
@@ -649,6 +787,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'capture2',
@@ -706,6 +845,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'capture3',
@@ -736,6 +876,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'capture4',
@@ -761,6 +902,7 @@ describe('dsh-tool-subagent', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'p',
@@ -1292,6 +1434,7 @@ describe('depth budget configuration', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'capture',
@@ -1330,6 +1473,7 @@ describe('depth budget configuration', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'no-depth',
@@ -1346,6 +1490,7 @@ describe('depth budget configuration', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(LlmRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'external',

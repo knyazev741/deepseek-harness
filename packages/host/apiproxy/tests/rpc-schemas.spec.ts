@@ -27,6 +27,7 @@ import {
   workspaceInsertSessionBeforeRequestSchema, workspaceInsertSessionBeforeValueSchema,
   workspaceListRequestSchema, workspaceListValueSchema,
   workspaceRenameRequestSchema, workspaceRenameValueSchema, workspaceViewSchema,
+  workspaceSetSessionPinnedRequestSchema, workspaceSetSessionPinnedValueSchema,
 } from '../src/api/workspace.schema.ts'
 import { skillEntrySchema, skillListRequestSchema, skillListValueSchema } from '../src/api/skills.schema.ts'
 import {
@@ -314,17 +315,14 @@ describe('host domain schemas', () => {
   it('validates describe request/value', () => {
     expect(hostDescribeRequestSchema.parse({})).toEqual({})
     const value = hostDescribeValueSchema.parse({
-      version: '1', cwd: '/x', provider: 'p', model: 'm', attachedSessions: 2, home: '/h', canOpenPath: true,
+      version: '1', cwd: '/x', provider: 'p', model: 'm', attachedSessions: 2, canOpenPath: true,
     })
     expect(value).toMatchObject({ provider: 'p', model: 'm', attachedSessions: 2, canOpenPath: true })
     expect(hostDescribeValueSchema.parse({
-      version: '1', cwd: '/x', attachedSessions: 0, home: '/h', canOpenPath: false,
+      version: '1', cwd: '/x', attachedSessions: 0, canOpenPath: false,
     }).provider).toBeUndefined()
     expect(() => hostDescribeValueSchema.parse({
       version: '1', cwd: '/x', attachedSessions: 0,
-    })).toThrow()
-    expect(() => hostDescribeValueSchema.parse({
-      version: '1', cwd: '/x', attachedSessions: 0, canOpenPath: true,
     })).toThrow()
   })
 
@@ -361,8 +359,8 @@ describe('workspace domain schemas', () => {
     expect(workspaceViewSchema.parse(view).sessionIds).toEqual(['s1'])
     expect(() => workspaceViewSchema.parse({ ...view, sessionIds: 's1' })).toThrow()
     expect(workspaceListRequestSchema.parse({})).toEqual({})
-    expect(workspaceListValueSchema.parse({ items: [view], archivedSessionIds: ['s1'] }).items).toHaveLength(1)
-    expect(() => workspaceListValueSchema.parse({ items: [view] })).toThrow()
+    expect(workspaceListValueSchema.parse({ items: [view], archivedSessionIds: ['s1'], pinnedSessionIds: ['s2'] }).items).toHaveLength(1)
+    expect(() => workspaceListValueSchema.parse({ items: [view], archivedSessionIds: ['s1'] })).toThrow()
   })
 
   it('archiveSession request/value carry the id and the full updated set', () => {
@@ -371,6 +369,15 @@ describe('workspace domain schemas', () => {
     expect(workspaceArchiveSessionValueSchema.parse({ archivedSessionIds: ['s1', 's2'] }).archivedSessionIds)
       .toEqual(['s1', 's2'])
     expect(() => workspaceArchiveSessionValueSchema.parse({ archivedSessionIds: 's1' })).toThrow()
+  })
+
+  it('setSessionPinned request/value carry the flag and the full updated set', () => {
+    expect(workspaceSetSessionPinnedRequestSchema.parse({ sessionId: 's1', pinned: true }).pinned).toBe(true)
+    expect(workspaceSetSessionPinnedRequestSchema.parse({ sessionId: 's1', pinned: false }).pinned).toBe(false)
+    expect(() => workspaceSetSessionPinnedRequestSchema.parse({ sessionId: 's1' })).toThrow()
+    expect(workspaceSetSessionPinnedValueSchema.parse({ pinnedSessionIds: ['s1', 's2'] }).pinnedSessionIds)
+      .toEqual(['s1', 's2'])
+    expect(() => workspaceSetSessionPinnedValueSchema.parse({ pinnedSessionIds: 's1' })).toThrow()
   })
 
   it('insertSessionBefore accepts an anchored and an anchorless move', () => {

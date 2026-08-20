@@ -14,7 +14,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { assertUsableApiKey, LlmError, resolveRetryPolicy, RetryPolicySchema } from '@deepseek-ai/dsh-llm'
-import type { ModelModality, RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
+import type { RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { deepEqualJson, installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
@@ -53,8 +53,6 @@ const DEFAULT_MODELS: DeepSeekCatalogModel[] = [
   { id: 'deepseek-v4-pro', name: 'DeepSeek-V4-Pro', contextWindow: DEFAULT_CONTEXT_WINDOW },
 ]
 
-const MODEL_MODALITIES = ['text', 'image'] as const satisfies readonly ModelModality[]
-
 /**
  * Plugin config, validated by the same-named schemastery schema and doubling
  * as the `llm-deepseek` settings-section shape. Every field is optional in
@@ -92,7 +90,6 @@ const catalogModel: z<DeepSeekCatalogModel> = z.object({
   description: z.string(),
   contextWindow: z.number().step(1).min(1),
   maxTokens: z.number().step(1).min(1),
-  inputModalities: z.array(z.union(MODEL_MODALITIES)).min(1).default(['text']),
 })
 
 export const Config: z<Config> = z.object({
@@ -142,18 +139,6 @@ function resolveModels(models: readonly DeepSeekCatalogModel[] | undefined): Dee
         `llm-deepseek: catalog model "${model.id}" maxTokens must be a positive integer`,
       )
     }
-    const inputModalities = model.inputModalities ?? ['text']
-    if (inputModalities.length === 0) {
-      throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not be empty`)
-    }
-    if (inputModalities.some(modality => !MODEL_MODALITIES.includes(modality))) {
-      throw new Error(
-        `llm-deepseek: catalog model "${model.id}" inputModalities must contain only "text" and "image"`,
-      )
-    }
-    if (new Set(inputModalities).size !== inputModalities.length) {
-      throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not contain duplicates`)
-    }
     if (seen.has(model.id)) throw new Error(`llm-deepseek: duplicate catalog model "${model.id}"`)
     seen.add(model.id)
     return {
@@ -162,7 +147,6 @@ function resolveModels(models: readonly DeepSeekCatalogModel[] | undefined): Dee
       ...model.description === undefined ? {} : { description: model.description },
       ...model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow },
       ...model.maxTokens === undefined ? {} : { maxTokens: model.maxTokens },
-      inputModalities: [...inputModalities],
     }
   })
 }
@@ -277,12 +261,7 @@ export function apply(ctx: Context, config: Config): void {
 
   let userId: AnonymousUserId | undefined
   const resolveUserId = (): AnonymousUserId => userId ??= getOrCreateAnonymousUserId()
-  const adapter = new DeepSeekAdapter({
-    options,
-    resolveApiKey,
-    resolveUserId,
-    resolveAttachments: () => ctx.get('attachments'),
-  })
+  const adapter = new DeepSeekAdapter({ options, resolveApiKey, resolveUserId })
   ctx.llm.registerConfigurableProviders([
     { provider: PROVIDER, displayName: 'DeepSeek', settingsNs: NS, settingsPath: [] },
   ])

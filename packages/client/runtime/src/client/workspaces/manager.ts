@@ -21,6 +21,12 @@ export interface WorkspaceListSnapshot {
    * lookups build their own transient Set where they need one.
    */
   archivedSessionIds: readonly SessionId[]
+  /**
+   * Registry-global pin set in Host pin order (grouping surfaces surface
+   * pinned sessions first; accounting slots retained). Plain array, same
+   * store-engine reason as `archivedSessionIds`.
+   */
+  pinnedSessionIds: readonly SessionId[]
   state: 'idle' | 'loading' | 'error'
   phase: WorkspaceListPhase
   error: RpcError | null
@@ -39,6 +45,7 @@ export class WorkspaceManager {
   // Full-snapshot state (list response / unary response / changed frame all
   // carry the complete set), so deltas never merge — installs replace.
   private archivedSessionIds: readonly SessionId[] = []
+  private pinnedSessionIds: readonly SessionId[] = []
   private state: WorkspaceListSnapshot['state'] = 'idle'
   private phase: WorkspaceListPhase = 'pending'
   private error: RpcError | null = null
@@ -51,6 +58,8 @@ export class WorkspaceManager {
    * mirror of replaying refreshFrames over the item baseline.
    */
   private archivedSupersedesRefresh = false
+  /** Pin-set mirror of {@link archivedSupersedesRefresh}. */
+  private pinnedSupersedesRefresh = false
   /** Latest local reorder request; only its unary echo may install order. */
   private orderRequestGeneration = 0
   /** Increments on order frames so a later remote commit outranks an older unary echo. */
@@ -99,6 +108,7 @@ export class WorkspaceManager {
           for (const delta of frames) items = applyWorkspaceDelta(items, delta)
           this.installViews(items)
           if (!this.archivedSupersedesRefresh) this.installArchived(result.value.archivedSessionIds)
+          if (!this.pinnedSupersedesRefresh) this.installPinned(result.value.pinnedSessionIds)
           this.state = 'idle'
           this.phase = 'ready'
         } else {
@@ -113,6 +123,7 @@ export class WorkspaceManager {
       } finally {
         this.refreshFrames = null
         this.archivedSupersedesRefresh = false
+        this.pinnedSupersedesRefresh = false
         this.inflight = null
         this.notifier.markDirty()
       }
@@ -232,6 +243,19 @@ export class WorkspaceManager {
   }
 
   /**
+   * Pin or unpin one session in the registry-global set, then install the
+   * returned full set without waiting for the changed frame.
+   * @param sessionId - session to pin or unpin.
+   * @param pinned - `true` pins, `false` unpins.
+   * @returns the wire result.
+   */
+  async setSessionPinned(sessionId: SessionId, pinned: boolean): Promise<RpcResult<{ pinnedSessionIds: SessionId[] }>> {
+    const { result } = await this.api.workspace.setSessionPinned({ sessionId, pinned })
+    if (result.ok) this.installPinned(result.value.pinnedSessionIds)
+    return result
+  }
+
+  /**
    * Host-frame entry. Non-workspace frames are ignored so the runtime can
    * fan one host stream out to both object managers.
    * @param envelope - host stream envelope.
@@ -245,6 +269,9 @@ export class WorkspaceManager {
     }
     else if (envelope.payload.type === 'host/archived-sessions-changed') {
       this.installArchived(envelope.payload.archivedSessionIds)
+    }
+    else if (envelope.payload.type === 'host/pinned-sessions-changed') {
+      this.installPinned(envelope.payload.pinnedSessionIds)
     }
   }
 
@@ -275,6 +302,7 @@ export class WorkspaceManager {
     return {
       items: this.itemViews(),
       archivedSessionIds: this.archivedSessionIds,
+      pinnedSessionIds: this.pinnedSessionIds,
       state: this.state,
       phase: this.phase,
       error: this.error,
@@ -291,6 +319,19 @@ export class WorkspaceManager {
     if (archivedSessionIds.length === this.archivedSessionIds.length
       && archivedSessionIds.every((id, index) => id === this.archivedSessionIds[index])) return
     this.archivedSessionIds = [...archivedSessionIds]
+    this.notifier.markDirty()
+  }
+
+  /**
+   * Replace the pin set when membership actually changed (array identity
+   * backs Object.is short-circuits). Host snapshots are append-ordered, so
+   * positional comparison is exact, not merely heuristic.
+   */
+  private installPinned(pinnedSessionIds: readonly SessionId[]): void {
+    if (this.refreshFrames !== null) this.pinnedSupersedesRefresh = true
+    if (pinnedSessionIds.length === this.pinnedSessionIds.length
+      && pinnedSessionIds.every((id, index) => id === this.pinnedSessionIds[index])) return
+    this.pinnedSessionIds = [...pinnedSessionIds]
     this.notifier.markDirty()
   }
 

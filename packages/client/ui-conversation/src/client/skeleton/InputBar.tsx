@@ -323,6 +323,14 @@ export function InputBar({
       if (keyboard.arbitrate('escape', composing) === 'consumed') e.preventDefault()
       return
     }
+    if (e.key === 'Tab') {
+      // Terminal-style slash autocomplete: while the candidate menu is open,
+      // Tab cycles the highlight (down), Shift+Tab up, Enter picks — the menu
+      // arbitration owns the key, so Tab never focus-jumps to the "+" button.
+      // When no menu is open arbitration passes and the native Tab proceeds.
+      if (keyboard.arbitrate(e.shiftKey ? 'up' : 'down', composing) === 'consumed') e.preventDefault()
+      return
+    }
     if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y')) {
       // The machine owns the undo/redo log (chip transactions have semantics
       // the browser stack cannot represent); never let the native stack run.

@@ -200,6 +200,13 @@ describe('deadline — nested deadlines', () => {
 describe('idleWatchdog', () => {
   afterEach(() => { vi.useRealTimers() })
 
+  const budgets = {
+    firstChunkMs: 100,
+    firstChunkCode: 'LLM_FIRST_CHUNK_IDLE_TIMEOUT',
+    idleMs: 100,
+    idleCode: 'LLM_STREAM_IDLE_TIMEOUT',
+  }
+
   it('arms only while next is outstanding and rearms the same signal for later demand', async () => {
     vi.useFakeTimers()
     const first = Promise.withResolvers<IteratorResult<number>>()
@@ -209,7 +216,7 @@ describe('idleWatchdog', () => {
         .mockImplementationOnce(() => first.promise)
         .mockImplementationOnce(() => second.promise),
     }
-    using watchdog = idleWatchdog(undefined, 100, 'LLM_STREAM_IDLE_TIMEOUT')
+    using watchdog = idleWatchdog(undefined, { ...budgets })
     const stableSignal = watchdog.signal
 
     const firstNext = watchdog.next(iterator)
@@ -229,10 +236,104 @@ describe('idleWatchdog', () => {
     await expect(secondNext).rejects.toBe(stableSignal.reason)
   })
 
+  it('gives the first demand the first-chunk budget and later demand the idle budget', async () => {
+    vi.useFakeTimers()
+    const first = Promise.withResolvers<IteratorResult<number>>()
+    const second = Promise.withResolvers<IteratorResult<number>>()
+    const iterator: AsyncIterator<number> = {
+      next: vi.fn()
+        .mockImplementationOnce(() => first.promise)
+        .mockImplementationOnce(() => second.promise),
+    }
+    using watchdog = idleWatchdog(undefined, {
+      firstChunkMs: 500,
+      firstChunkCode: 'LLM_FIRST_CHUNK_IDLE_TIMEOUT',
+      idleMs: 100,
+      idleCode: 'LLM_STREAM_IDLE_TIMEOUT',
+    })
+    const stableSignal = watchdog.signal
+
+    // The first demand enjoys the larger first-chunk budget: at 400ms — four
+    // times the 100ms idle budget — the stream is still legitimately waiting
+    // on its first value.
+    const firstNext = watchdog.next(iterator)
+    await vi.advanceTimersByTimeAsync(400)
+    expect(stableSignal.aborted).toBe(false)
+    first.resolve({ done: false, value: 1 })
+    await expect(firstNext).resolves.toEqual({ done: false, value: 1 })
+
+    // A subsequent demand falls back to the short idle budget.
+    const secondNext = watchdog.next(iterator)
+    await vi.advanceTimersByTimeAsync(99)
+    expect(stableSignal.aborted).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(timeoutOf(stableSignal, 'LLM_STREAM_IDLE_TIMEOUT')).toMatchObject({ timeoutMs: 100 })
+    second.reject(stableSignal.reason)
+    await expect(secondNext).rejects.toBe(stableSignal.reason)
+  })
+
+  it('stamps the first-chunk code when the first-chunk budget expires', async () => {
+    vi.useFakeTimers()
+    const pending = Promise.withResolvers<IteratorResult<number>>()
+    const iterator: AsyncIterator<number> = { next: () => pending.promise }
+    using watchdog = idleWatchdog(undefined, {
+      firstChunkMs: 100,
+      firstChunkCode: 'LLM_FIRST_CHUNK_IDLE_TIMEOUT',
+      idleMs: 50,
+      idleCode: 'LLM_STREAM_IDLE_TIMEOUT',
+    })
+    const next = watchdog.next(iterator)
+    // The first-chunk budget outlives the idle budget, so at 60ms the stream
+    // is still legitimately waiting on its first value — and only a first-chunk
+    // expiry, never an idle one, can fire.
+    await vi.advanceTimersByTimeAsync(60)
+    expect(watchdog.signal.aborted).toBe(false)
+    await vi.advanceTimersByTimeAsync(40)
+    expect(timeoutOf(watchdog.signal, 'LLM_FIRST_CHUNK_IDLE_TIMEOUT')).toMatchObject({ timeoutMs: 100 })
+    pending.reject(watchdog.signal.reason)
+    await expect(next).rejects.toBe(watchdog.signal.reason)
+  })
+
+  it('pulse() re-arms with the first-chunk budget before a value and the idle budget after', async () => {
+    vi.useFakeTimers()
+    const first = Promise.withResolvers<IteratorResult<number>>()
+    const second = Promise.withResolvers<IteratorResult<number>>()
+    const iterator: AsyncIterator<number> = {
+      next: vi.fn()
+        .mockImplementationOnce(() => first.promise)
+        .mockImplementationOnce(() => second.promise),
+    }
+    using watchdog = idleWatchdog(undefined, {
+      firstChunkMs: 100,
+      firstChunkCode: 'LLM_FIRST_CHUNK_IDLE_TIMEOUT',
+      idleMs: 50,
+      idleCode: 'LLM_STREAM_IDLE_TIMEOUT',
+    })
+
+    // First demand: pulse re-arms with the first-chunk budget, so the
+    // outstanding wait survives past the 50ms idle budget.
+    const firstNext = watchdog.next(iterator)
+    await vi.advanceTimersByTimeAsync(80)
+    watchdog.pulse()
+    await vi.advanceTimersByTimeAsync(60)
+    expect(watchdog.signal.aborted).toBe(false) // still first-chunk budget, not idle's 50
+    first.resolve({ done: false, value: 1 })
+    await expect(firstNext).resolves.toEqual({ done: false, value: 1 })
+
+    // Later demand: pulse re-arms with the idle budget only.
+    const secondNext = watchdog.next(iterator)
+    await vi.advanceTimersByTimeAsync(40)
+    watchdog.pulse()
+    await vi.advanceTimersByTimeAsync(60)
+    expect(timeoutOf(watchdog.signal, 'LLM_STREAM_IDLE_TIMEOUT')).toMatchObject({ timeoutMs: 50 })
+    second.reject(watchdog.signal.reason)
+    await expect(secondNext).rejects.toBe(watchdog.signal.reason)
+  })
+
   it('rearms outstanding demand on an out-of-band activity pulse', async () => {
     vi.useFakeTimers()
     const pending = Promise.withResolvers<IteratorResult<number>>()
-    const watchdog = idleWatchdog(undefined, 100, 'LLM_STREAM_IDLE_TIMEOUT')
+    const watchdog = idleWatchdog(undefined, { ...budgets })
     watchdog.pulse()
     await vi.advanceTimersByTimeAsync(1_000)
     expect(watchdog.signal.aborted).toBe(false)
@@ -243,7 +344,9 @@ describe('idleWatchdog', () => {
     await vi.advanceTimersByTimeAsync(99)
     expect(watchdog.signal.aborted).toBe(false)
     await vi.advanceTimersByTimeAsync(1)
-    expect(timeoutOf(watchdog.signal, 'LLM_STREAM_IDLE_TIMEOUT')).toMatchObject({ timeoutMs: 100 })
+    // This demand has not yet produced a value, so the re-armed timer is on the
+    // first-chunk budget.
+    expect(timeoutOf(watchdog.signal, 'LLM_FIRST_CHUNK_IDLE_TIMEOUT')).toMatchObject({ timeoutMs: 100 })
     pending.reject(watchdog.signal.reason)
     await expect(next).rejects.toBe(watchdog.signal.reason)
 
@@ -254,10 +357,11 @@ describe('idleWatchdog', () => {
   it('keeps an earlier upstream abort distinct from its own timeout', async () => {
     vi.useFakeTimers()
     const upstream = new AbortController()
-    using watchdog = idleWatchdog(upstream.signal, 100, 'LLM_STREAM_IDLE_TIMEOUT')
+    using watchdog = idleWatchdog(upstream.signal, { ...budgets })
     upstream.abort('caller cancelled')
     expect(watchdog.signal.aborted).toBe(true)
     expect(timeoutOf(watchdog.signal, 'LLM_STREAM_IDLE_TIMEOUT')).toBeUndefined()
+    expect(timeoutOf(watchdog.signal, 'LLM_FIRST_CHUNK_IDLE_TIMEOUT')).toBeUndefined()
     await vi.advanceTimersByTimeAsync(1_000)
     expect(watchdog.signal.reason).toBe('caller cancelled')
   })
@@ -265,7 +369,7 @@ describe('idleWatchdog', () => {
   it('clears an outstanding arm on disposal', async () => {
     vi.useFakeTimers()
     const pending = Promise.withResolvers<IteratorResult<number>>()
-    const watchdog = idleWatchdog(undefined, 100, 'LLM_STREAM_IDLE_TIMEOUT')
+    const watchdog = idleWatchdog(undefined, { ...budgets })
     void watchdog.next({ next: () => pending.promise })
     watchdog[Symbol.dispose]()
     await vi.advanceTimersByTimeAsync(1_000)
@@ -277,12 +381,20 @@ describe('idleWatchdog', () => {
   })
 
   it('rejects invalid bounds and concurrent iterator demand', async () => {
-    expect(() => idleWatchdog(undefined, 0, 'IDLE')).toThrow(/positive finite/)
-    expect(() => idleWatchdog(undefined, Number.NaN, 'IDLE')).toThrow(/positive finite/)
-    expect(() => idleWatchdog(undefined, MAX_TIMER_DELAY_MS + 1, 'IDLE'))
+    expect(() => idleWatchdog(undefined, { ...budgets, firstChunkMs: 0 }))
+      .toThrow(/positive finite/)
+    expect(() => idleWatchdog(undefined, { ...budgets, firstChunkMs: Number.NaN }))
+      .toThrow(/positive finite/)
+    expect(() => idleWatchdog(undefined, { ...budgets, firstChunkMs: MAX_TIMER_DELAY_MS + 1 }))
+      .toThrow(`no greater than ${MAX_TIMER_DELAY_MS}`)
+    expect(() => idleWatchdog(undefined, { ...budgets, idleMs: 0 }))
+      .toThrow(/positive finite/)
+    expect(() => idleWatchdog(undefined, { ...budgets, idleMs: Number.POSITIVE_INFINITY }))
+      .toThrow(/positive finite/)
+    expect(() => idleWatchdog(undefined, { ...budgets, idleMs: MAX_TIMER_DELAY_MS + 1 }))
       .toThrow(`no greater than ${MAX_TIMER_DELAY_MS}`)
     const pending = Promise.withResolvers<IteratorResult<number>>()
-    using watchdog = idleWatchdog(undefined, 100, 'IDLE')
+    using watchdog = idleWatchdog(undefined, { ...budgets })
     const iterator = { next: () => pending.promise }
     void watchdog.next(iterator)
     await expect(watchdog.next(iterator)).rejects.toThrow(/already outstanding/)

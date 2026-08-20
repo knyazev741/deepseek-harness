@@ -231,6 +231,21 @@
   flex: none;
 }
 
+/* Pinned-session thumbtack leading the title (row already sorts to the top
+   of its section); secondary grey so it reads without competing with the
+   row's status dot. */
+.pinSlot {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.pinIcon {
+  display: block;
+}
+
 /* Trailing action buttons surface on hover only (figma 27:4668 / 27:4656):
    bare 16px glyphs, gap 12, tertiary grey. */
 .rowActions {

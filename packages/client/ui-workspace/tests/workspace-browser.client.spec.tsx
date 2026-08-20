@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import type {
   SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
@@ -38,8 +38,12 @@ const workspace = (id: string, sessionIds: string[], title = id): WorkspaceView 
   workspaceId: wid(id), path: `/projects/${id}`, title,
   sessionIds: sessionIds.map(sid), createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
 })
-const workspaceState = (items: readonly WorkspaceView[], archivedSessionIds: readonly SessionId[] = []): WorkspaceListState => ({
-  items, archivedSessionIds, state: 'idle', phase: 'ready', error: null, baselinesReady: true,
+const workspaceState = (
+  items: readonly WorkspaceView[],
+  archivedSessionIds: readonly SessionId[] = [],
+  pinnedSessionIds: readonly SessionId[] = [],
+): WorkspaceListState => ({
+  items, archivedSessionIds, pinnedSessionIds, state: 'idle', phase: 'ready', error: null, baselinesReady: true,
   recentWorkspaceId: items[0]?.workspaceId,
 })
 function hook<T>(snapshot: T) {
@@ -77,11 +81,11 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     renameWorkspace: vi.fn(async () => {}),
     deleteWorkspace: vi.fn(async () => {}),
     archiveSession: vi.fn(async () => {}),
+    setSessionPinned: vi.fn(async () => {}),
     insertWorkspaceBefore: vi.fn(async () => {}),
     insertSessionBefore: vi.fn(async () => {}),
     createWorkspace: vi.fn(async () => workspace('created', [])),
     useDirectoryFlow: bindSnapshotSelector({ getSnapshot: () => true, subscribe: () => () => {} }),
-    useHostDescription: selector => selector(undefined),
     renderSlot: ((_name: string, owner: { open: boolean }) => (owner.open ? <div data-testid="directory-flow" /> : null)) as never,
     t,
     ...overrides,
@@ -97,27 +101,6 @@ function rerender(b: ReturnType<typeof mount>, overrides: Partial<WorkspaceBrows
 }
 
 describe('WorkspaceBrowser', () => {
-  it('workspace hover card shows a POSIX home descendant as ~', () => {
-    vi.useFakeTimers()
-    try {
-      mount({
-        useWorkspaces: hook(workspaceState([{
-          ...workspace('project', []),
-          path: '/home/u/Documents/project',
-          title: 'Project',
-        }])),
-        useHostDescription: selector => selector({
-          version: '0', cwd: '/tmp', attachedSessions: 0, home: '/home/u', canOpenPath: false,
-        }),
-      })
-      fireEvent.pointerEnter(screen.getByRole('treeitem').parentElement as HTMLElement)
-      act(() => { vi.advanceTimersByTime(500) })
-      expect(screen.getByText('~/Documents/project')).toBeTruthy()
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
   it('prunes deleted Workspace view state only after the Workspace baseline is ready', async () => {
     const pending = {
       ...workspaceState([]),
@@ -382,6 +365,61 @@ describe('WorkspaceBrowser', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '单列表' }))
     expect(screen.getByText('kept-s')).toBeTruthy()
     expect(screen.queryByText('gone-s')).toBeNull()
+  })
+
+  it('pins and unpins a session from the row menu, leading pinned rows in both modes', async () => {
+    const setSessionPinned = vi.fn(async () => {})
+    const b = mount({
+      useSessions: hook(sessionState([summary('pinned-s', 1), summary('later-s', 2)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['pinned-s', 'later-s'])])),
+      setSessionPinned,
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    fireEvent.click(screen.getByRole('button', { name: '会话“pinned-s”的操作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '置顶会话' }))
+    expect(setSessionPinned).toHaveBeenCalledWith(sid('pinned-s'), true)
+
+    // The pinned-set echo leads the pinned row ahead of the unpinned one.
+    rerender(b, {
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['pinned-s', 'later-s'])], [], [sid('pinned-s')])),
+    })
+    const isBefore = (a: string, c: string) => {
+      const text = document.body.textContent ?? ''
+      return text.indexOf(a) < text.indexOf(c) && text.indexOf(a) !== -1
+    }
+    expect(isBefore('pinned-s', 'later-s')).toBe(true)
+
+    // Flat mode re-applies pinned-first after recombination.
+    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '单列表' }))
+    expect(isBefore('pinned-s', 'later-s')).toBe(true)
+
+    // Unpin removes the lead and echoes the call.
+    fireEvent.click(screen.getByRole('button', { name: '会话“pinned-s”的操作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '取消置顶' }))
+    expect(setSessionPinned).toHaveBeenCalledWith(sid('pinned-s'), false)
+  })
+
+  it('logs and keeps the tree when the pin call rejects', async () => {
+    const rejection = new Error('pin exploded')
+    const setSessionPinned = vi.fn(async () => { throw rejection })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      mount({
+        useSessions: hook(sessionState([summary('pin-s', 1)])),
+        useWorkspaces: hook(workspaceState([workspace('alpha', ['pin-s'])])),
+        setSessionPinned,
+      })
+      fireEvent.click(screen.getByText('alpha'))
+      fireEvent.click(screen.getByRole('button', { name: '会话“pin-s”的操作' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: '置顶会话' }))
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(warn).toHaveBeenCalledWith('session pin rejected:', rejection)
+      expect(screen.getByText('pin-s')).toBeTruthy()
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   it('logs and keeps the tree when the archive call rejects', async () => {
@@ -813,28 +851,6 @@ describe('WorkspaceBrowser', () => {
       // Wide search button is decorative (tabIndex -1, no expand call).
       fireEvent.click(screen.getByRole('button', { name: '搜索会话' }))
       expect(expandSidebar).toHaveBeenCalledTimes(1)
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it('keeps the rail-opened search expanded when the initiating click reaches document', () => {
-    vi.useFakeTimers()
-    try {
-      const b = mount({ wide: false })
-      fireEvent.click(screen.getByRole('button', { name: '搜索会话' }))
-      rerender(b, { wide: true })
-      // In the browser the rail click keeps bubbling to document after the
-      // wide flip mounted the outside-click listener, with the unmounted rail
-      // button as its target — outside searchRoot. It must not dismiss the
-      // search it just opened.
-      fireEvent.click(document.body)
-      expect(screen.getByRole('button', { name: '搜索会话' }).getAttribute('aria-expanded')).toBe('true')
-      act(() => { vi.advanceTimersByTime(300) })
-      expect(document.activeElement).toBe(screen.getByPlaceholderText('搜索会话…'))
-      // The gesture has settled: outside clicks dismiss the search again.
-      fireEvent.click(document.body)
-      expect(screen.getByRole('button', { name: '搜索会话' }).getAttribute('aria-expanded')).toBe('false')
     } finally {
       vi.useRealTimers()
     }

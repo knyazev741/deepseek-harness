@@ -507,6 +507,10 @@ async function runBehavior(
       return
     case 'stall':
       openSse(response)
+      // Emit one content chunk so the stall is a mid-body idle (inter-chunk),
+      // not a first-chunk timeout: the retry suite asserts TIMEOUT for a body
+      // that stalls after it starts, and first-chunk stalls are a distinct code.
+      writeSse(record, response, { choices: [{ index: 0, delta: { content: 'stalled' }, finish_reason: null }] })
       finishRecord(options, record, 'stalled')
       return
     case 'malformed_json':

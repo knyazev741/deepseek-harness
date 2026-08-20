@@ -151,4 +151,35 @@ describe('API Remote Agent resolver races', () => {
     await expect(resolution).rejects.toMatchObject({ failure: { code: 'agent-busy' } })
     await ctx.fiber.dispose()
   })
+
+  it('refuses an external-mode Session as an Agent without fabricating a native one', async () => {
+    const ctx = await createContext()
+    const sessionId = sid('external-attached')
+    const meta = { ...header(sessionId), mode: 'codex' }
+    provideSession(ctx, meta, () => {
+      ctx.sessions.create(sessionId, { meta: { cwd: '/proj', mode: 'codex' } })
+      return Promise.resolve({ meta, events: [] })
+    })
+    const resume = vi.spyOn(ctx.agents, 'resume')
+
+    const result = await createApiRemoteAgentResolver(ctx, {})(sessionId)
+
+    expect(result).toMatchObject({ error: { code: 'external-session', details: { sessionId, mode: 'codex' } } })
+    expect(resume).not.toHaveBeenCalled()
+    await ctx.fiber.dispose()
+  })
+
+  it('reclassifies a cold external-mode resume as external-session without an Agent', async () => {
+    const ctx = await createContext()
+    const sessionId = sid('external-cold')
+    const meta = { ...header(sessionId), mode: 'acp' }
+    provideSession(ctx, meta, () => Promise.resolve({ meta, events: [] }))
+    const resume = vi.spyOn(ctx.agents, 'resume')
+
+    const result = await createApiRemoteAgentResolver(ctx, {})(sessionId)
+
+    expect(result).toMatchObject({ error: { code: 'external-session', details: { sessionId, mode: 'acp' } } })
+    expect(resume).not.toHaveBeenCalled()
+    await ctx.fiber.dispose()
+  })
 })

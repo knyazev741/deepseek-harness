@@ -215,6 +215,11 @@
   color: var(--dsw-alias-label-secondary);
 }
 
+.retryCompactHint {
+  margin: 2px 0 0;
+  color: var(--dsw-alias-state-warn-primary);
+}
+
 .turnErrorRow {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr) auto;

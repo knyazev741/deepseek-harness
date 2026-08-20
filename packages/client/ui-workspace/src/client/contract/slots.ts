@@ -22,8 +22,7 @@
  * and a hole has exactly one declaring entry — they carry the same owner
  * contract and the same occupant.
  */
-import type { HostDescriptionSource } from '@deepseek-ai/dsh-client-connection/client'
-import type { HostObservable, PropsHooks, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { HostObservable, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pull the owner SlotMap merges into programs that resolve the
 // runtime shares below.
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -80,18 +79,17 @@ export type DirectoryPickingInjected = {
 }
 
 /** Component-side view of the picking share: the bound occupancy selector hook. */
-export type DirectoryPickingHooks = PropsHooks<DirectoryPickingInjected['hooks']>
+export type DirectoryPickingHooks = {
+  /** Selector hook over this surface's directory-flow occupancy. */
+  useDirectoryFlow: SnapshotSelectorHook<boolean>
+}
 
 /**
  * Browser-private injected share (arrives via the register inject factory).
  * Data reads use the global framework hooks; these are the Host actions the
  * browsing region drives.
  */
-export type WorkspaceBrowserInjected = {
-  hooks: DirectoryPickingInjected['hooks'] & {
-    /** Current generation's Host description, bound by the slot renderer. */
-    hostDescription: HostDescriptionSource
-  }
+export type WorkspaceBrowserInjected = DirectoryPickingInjected & {
   /**
    * Start a New Session in a Workspace: reuse-or-create its blank session and
    * open it; without an explicit workspace, inherit the current Session
@@ -114,6 +112,11 @@ export type WorkspaceBrowserInjected = {
   searchResultLimit: number
   /** Rename a Session (explicit user title; resolves on host acceptance). */
   renameSession: (sessionId: SessionId, title: string) => Promise<void>
+  /**
+   * Pin or unpin a Session in the registry-global set (grouping surfaces
+   * surface pinned sessions first; resolves on host durability).
+   */
+  setSessionPinned: (sessionId: SessionId, pinned: boolean) => Promise<void>
   /** Fork a Session at its last completed turn and open the child. */
   forkSession: (sessionId: SessionId) => void
   /** Rename a Host Workspace (rejects on name conflict; resolves on durability). */
@@ -147,7 +150,7 @@ export type WorkspaceBrowserProps =
   & PropsRenderSlots<'sidebar.workspaces.directoryFlow'>
   & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
   & Omit<WorkspaceBrowserInjected, 'hooks'>
-  & PropsHooks<WorkspaceBrowserInjected['hooks']>
+  & DirectoryPickingHooks
   & PropsLocale<'workspace'>
 
 /**

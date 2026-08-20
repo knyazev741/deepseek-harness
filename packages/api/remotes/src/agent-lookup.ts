@@ -11,6 +11,11 @@ import type {} from '@deepseek-ai/dsh-typert-registry'
 export type ApiRemoteLookupError =
   | { readonly code: 'agent-busy'; readonly message: string; readonly details: { readonly reason: string } }
   | { readonly code: 'session-not-found'; readonly message: string; readonly details: { readonly sessionId: SessionId } }
+  | {
+    readonly code: 'external-session'
+    readonly message: string
+    readonly details: { readonly sessionId: SessionId; readonly mode: string }
+  }
   | { readonly code: 'internal'; readonly message: string; readonly details: Record<never, never> }
 
 /** Result of resolving one session identity to its live Agent. */
@@ -50,6 +55,46 @@ export class ApiRemoteSubagentSessionOwnership extends Error {
   constructor(readonly sessionId: SessionId) {
     super(`session "${sessionId}" is a subagent session; use subagent delivery`)
   }
+}
+
+/**
+ * Session identity created in an external drive mode (no native Agent).
+ * Generic Remote and legacy API dispatch must refuse it: an external session
+ * is driven by a registered external-session provider, and fabricating a
+ * native Agent here would run the native agent loop it does not own.
+ */
+export class ApiRemoteExternalSessionOwnership extends Error {
+  /**
+   * Construct the ownership fence.
+   * @param sessionId - identity created in an external mode.
+   * @param mode - the external provider name stamped on the session header.
+   */
+  constructor(
+    readonly sessionId: SessionId,
+    readonly mode: string,
+  ) {
+    super(`session "${sessionId}" is an external-session (mode "${mode}"); route through its provider`)
+  }
+}
+
+/**
+ * Build the stable caller-facing rejection for an external-mode identity.
+ * @param sessionId - identity reserved to external-session routing.
+ * @param mode - the external provider name driving the session.
+ * @returns the dedicated `external-session` RPC error shape.
+ */
+export function apiRemoteExternalSessionError(sessionId: SessionId, mode: string): ApiRemoteLookupError {
+  return {
+    code: 'external-session',
+    message: `session "${sessionId}" is an external-session (mode "${mode}"): it has no native Agent and is driven by its external-session provider`,
+    details: { sessionId, mode },
+  }
+}
+
+/** Whether a session header names a registered external drive mode (no native Agent). */
+function isExternalSession(header: Pick<Session, 'header'>): { external: true; mode: string } | { external: false } {
+  const mode = header.header.mode
+  return mode !== undefined && mode !== 'dsh' ? { external: true, mode } : { external: false }
 }
 
 /**
@@ -140,11 +185,19 @@ export function createApiRemoteAgentResolver(
     if (attached !== undefined && hasApiRemoteSubagentOwner(ctx, attached, undefined)) {
       return { error: apiRemoteSubagentOwnershipError(sessionId) }
     }
+    if (attached !== undefined) {
+      const external = isExternalSession(attached)
+      if (external.external) return { error: apiRemoteExternalSessionError(sessionId, external.mode) }
+    }
     let resume = resumes.get(sessionId)
     if (resume === undefined) {
       resume = (async () => {
         try {
           const inspected = await inspectApiRemoteSession(ctx, sessionId)
+          const external = isExternalSession({ header: inspected.meta })
+          if (external.external) {
+            throw new ApiRemoteExternalSessionOwnership(sessionId, external.mode)
+          }
           if (hasApiRemoteSubagentOwner(ctx, { header: inspected.meta }, undefined)) {
             throw new ApiRemoteSubagentSessionOwnership(sessionId)
           }
@@ -180,11 +233,18 @@ export function createApiRemoteAgentResolver(
       if (error instanceof ApiRemoteSubagentSessionOwnership) {
         return { error: apiRemoteSubagentOwnershipError(error.sessionId) }
       }
+      if (error instanceof ApiRemoteExternalSessionOwnership) {
+        return { error: apiRemoteExternalSessionError(error.sessionId, error.mode) }
+      }
       const fenced = fencedLiveAgent(sessionId)
       if (fenced !== undefined) return fenced
       const attached = ctx.sessions.get(sessionId)
       if (attached !== undefined && hasApiRemoteSubagentOwner(ctx, attached, undefined)) {
         return { error: apiRemoteSubagentOwnershipError(sessionId) }
+      }
+      if (attached !== undefined) {
+        const external = isExternalSession(attached)
+        if (external.external) return { error: apiRemoteExternalSessionError(sessionId, external.mode) }
       }
       return {
         error: {

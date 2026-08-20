@@ -8,7 +8,6 @@
  * client half (see the contract module doc). Export discipline:
  * packages/client/AGENTS.md.
  */
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
@@ -43,7 +42,7 @@ const NS = 'workspace'
  * provides a waitable service. apply therefore depends on each slot
  * declaration through `slots.inject()` instead of assuming order.
  */
-export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection']
+export const inject = ['slots', 'sessions', 'workspaces', 'locale']
 
 /**
  * Register the browser and picker once their slot declarations are on the
@@ -52,8 +51,6 @@ export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection'
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  const connection = ctx.get('connection') as ConnectionHandle
-  const hostDescription = connection.hostDescription
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workspace: dictionaries')
 
   const searchSessions: WorkspaceBrowserInjected['searchSessions'] = async (query, signal) => {
@@ -99,11 +96,12 @@ export function apply(ctx: ClientContext): void {
       await ctx.workspaces.insertBefore(workspaceId, beforeWorkspaceId)
     },
     archiveSession: async (sessionId) => { await ctx.workspaces.archiveSession(sessionId) },
+    setSessionPinned: async (sessionId, pinned) => { await ctx.workspaces.setSessionPinned(sessionId, pinned) },
     insertSessionBefore: async (workspaceId, sessionId, beforeSessionId) => {
       await ctx.workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId)
     },
     createWorkspace: input => ctx.workspaces.create(input),
-    hooks: { directoryFlow: browserFlowSource, hostDescription },
+    hooks: { directoryFlow: browserFlowSource },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({
     createWorkspace: input => ctx.workspaces.create(input),

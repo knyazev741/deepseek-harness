@@ -10,11 +10,10 @@ import clsx from 'clsx'
 import {
   HoverCard, IconArchiveOutline20, IconBranchOutline16, IconCopyOutline16,
   IconEditOutline16, IconEllipsisOutline16, IconFolderClose16, IconFolderOpen16,
-  IconPlusOutline16, IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot,
+  IconPinOutline16, IconPlusOutline16, IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot,
   Toast, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
-import { abbreviateHomePath } from '@deepseek-ai/dsh-client-runtime/client'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import { relativeTime } from '../tree.ts'
@@ -52,7 +51,7 @@ function createdLabel(createdAt: number, t: RowTranslate): string {
   return t('hover.created', { time: `${date} ${pad2(d.getHours())}:${pad2(d.getMinutes())}` })
 }
 
-/** Hover-card body: workspace title, display directory path, absolute creation time. */
+/** Hover-card body: workspace title, full directory path, absolute creation time. */
 function WorkspaceHoverContent({ label, cwd, createdAt, t }: {
   label: string
   cwd: string | undefined
@@ -106,11 +105,10 @@ function rowHalf(e: { clientY: number; currentTarget: HTMLElement }): 'before' |
  * @param props.onToggle - expand/collapse the group.
  * @param props.onCreate - start a frontend Session inside this Workspace.
  * @param props.drag - optional workspace-row drag wiring.
- * @param props.home - host account home for POSIX hover-path abbreviation.
  * @param props.t - the browser root's locale seat.
  * @returns the row element.
  */
-export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home, t }: {
+export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, t }: {
   group: GroupNode
   onToggle: () => void
   onCreate: () => void
@@ -118,8 +116,6 @@ export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home,
   actions?: { rename: () => void; delete: () => void } | undefined
   /** Present only for real Workspace rows in the grouped view. */
   drag?: WorkspaceRowDragProps | undefined
-  /** Host account home; POSIX home-rooted hover paths display as `~`. */
-  home?: string | undefined
   t: RowTranslate
 }) {
   const row = group
@@ -201,12 +197,7 @@ export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home,
   return (
     <HoverCard
       anchor={ownRow}
-      content={<WorkspaceHoverContent
-        label={row.label}
-        cwd={row.cwd === undefined ? undefined : abbreviateHomePath(row.cwd, home)}
-        createdAt={row.createdAt}
-        t={t}
-      />}
+      content={<WorkspaceHoverContent label={row.label} cwd={row.cwd} createdAt={row.createdAt} t={t} />}
       disabled={menuOpen}
       copyText={row.cwd}
       copyLabel={t('copy')}
@@ -355,12 +346,15 @@ export function SearchResultItem({ result, currentId, onOpen, t }: {
  * @param props.onRename - open the session rename dialog (id + current title).
  * @param props.onFork - fork a session at its last completed turn.
  * @param props.onArchive - archive a session by id.
+ * @param props.onSetPinned - pin or unpin a session by id (row menu action).
  * @param props.drag - optional draggable-row wiring.
  * @param props.flat - omit the empty status slot in the hierarchy-free flat list.
  * @param props.t - the browser root's locale seat.
  * @returns the session row.
  */
-export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, onMarkUnread, drag, flat = false, t }: {
+export function SessionNodeItem({
+  node, currentId, now, onOpen, onRename, onFork, onArchive, onMarkUnread, onSetPinned, drag, flat = false, t,
+}: {
   node: SessionNode
   currentId: string | undefined
   now: number
@@ -373,6 +367,8 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
   onArchive: (id: SessionNode['id']) => void
   /** Re-arm this session's green "done" reminder (row menu action). */
   onMarkUnread: (id: SessionNode['id']) => void
+  /** Pin or unpin this session (row menu action; commits without a dialog). */
+  onSetPinned: (id: SessionNode['id'], pinned: boolean) => void
   /** Present only on draggable rows (workspace-group sessions outside search). */
   drag?: RowDragProps | undefined
   /** The row is rendered without a parent Workspace header. */
@@ -394,6 +390,8 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
   // touches the session log, so it is not styled as destructive and needs no
   // confirmation dialog.
   const sessionMenuItems = [
+    // The affordance label reflects the target state: pin when unpinned, unpin when pinned.
+    { id: 'pin', label: row.pinned ? t('menu.unpinSession') : t('menu.pinSession'), icon: <IconPinOutline16 /> },
     { id: 'rename', label: t('rename'), icon: <IconEditOutline16 /> },
     { id: 'fork', label: t('menu.fork'), icon: <IconBranchOutline16 /> },
     // 20-native glyph in the menu's 16px icon slot (Menu.module.css .itemIcon).
@@ -447,6 +445,11 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
           {showStatus && <SessionStatusDots statuses={statuses} />}
         </span>
       )}
+      {row.pinned && (
+        <span className={css.pinSlot} aria-hidden="true">
+          <IconPinOutline16 size={12} className={css.pinIcon} />
+        </span>
+      )}
       <span className={css.title}>{title}</span>
       {/* CI-review runs carry their durable origin: a compact inline badge. */}
       {node.origin === 'github-actions' && (
@@ -465,6 +468,7 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
             items={sessionMenuItems}
             onSelect={(id) => {
               setMenuOpen(false)
+              if (id === 'pin') onSetPinned(node.id, !row.pinned)
               if (id === 'rename') onRename(node.id, row.title)
               if (id === 'fork') onFork(node.id)
               if (id === 'archive') onArchive(node.id)

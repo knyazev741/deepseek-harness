@@ -31,7 +31,7 @@ const sessions: SessionListState = {
   ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
 }
 const workspaceState = (items: readonly WorkspaceView[]): WorkspaceListState => ({
-  items, archivedSessionIds: [], state: 'idle', phase: 'ready', error: null, baselinesReady: true,
+  items, archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null, baselinesReady: true,
   recentWorkspaceId: items[0]?.workspaceId,
 })
 function anchor(): { current: HTMLElement } {

@@ -39,11 +39,16 @@ export interface WorkspaceView {
 export interface WorkspaceApi {
   /**
    * Lists all workspaces in the registry's durable display order, plus the
-   * registry-global archive set (the reconnect baseline of
-   * `host/archived-sessions-changed`). Archived sessions stay in their
-   * workspace's `sessionIds` account; grouping surfaces hide them.
+   * registry-global archive and pin sets (the reconnect baselines of
+   * `host/archived-sessions-changed` and `host/pinned-sessions-changed`).
+   * Archived sessions stay in their workspace's `sessionIds` account;
+   * grouping surfaces hide them. Pin order is the durable pin-set order.
    */
-  list(request: RpcRequest<{}>): Promise<RpcResponse<{ items: WorkspaceView[]; archivedSessionIds: SessionId[] }>>
+  list(request: RpcRequest<{}>): Promise<RpcResponse<{
+    items: WorkspaceView[]
+    archivedSessionIds: SessionId[]
+    pinnedSessionIds: SessionId[]
+  }>>
 
   /**
    * Creates (or idempotently resolves) a workspace over an EXISTING directory
@@ -106,4 +111,16 @@ export interface WorkspaceApi {
    */
   archiveSession(request: RpcRequest<{ sessionId: SessionId }>):
   Promise<RpcResponse<{ archivedSessionIds: SessionId[] }>>
+
+  /**
+   * Pins or unpins one session in the registry-global pin set. Pinned
+   * sessions surface first within every grouping surface while keeping their
+   * workspace accounting slot (unpinning restores the prior position).
+   * Idempotent for a session already in (pinning) or absent from (unpinning)
+   * the target state. Pinning a session neither live nor in session
+   * persistence fails with `session-not-found`. Returns the full updated pin
+   * set (same snapshot the changed frame carries).
+   */
+  setSessionPinned(request: RpcRequest<{ sessionId: SessionId; pinned: boolean }>):
+  Promise<RpcResponse<{ pinnedSessionIds: SessionId[] }>>
 }

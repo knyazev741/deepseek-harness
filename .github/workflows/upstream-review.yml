@@ -146,16 +146,23 @@ jobs:
           if-no-files-found: warn
 
       - name: Post the review comment
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" --body "**AI review verdict:** ${{ steps.review.outputs.verdict }}
+          # Build the body into a file (the summary/risks outputs arrive
+          # JSON-quoted, which breaks --body "..." shell quoting) and never
+          # let a comment failure block the merge step.
+          cat > /tmp/review-comment.md <<'EOF'
+          **AI review verdict:** ${{ steps.review.outputs.verdict }}
 
           Summary: ${{ steps.review.outputs.summary }}
 
           Risks: ${{ steps.review.outputs.risks }}
 
-          Sanity gates: ${{ steps.gates.outcome == 'success' && 'passed' || 'FAILED' }}"
+          Sanity gates: ${{ steps.gates.outcome == 'success' && 'passed' || 'FAILED' }}
+          EOF
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/review-comment.md
 
       - name: Merge when safe and gates pass
         if: steps.review.outputs.verdict == 'safe' && steps.gates.outcome == 'success'

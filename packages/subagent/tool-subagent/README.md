@@ -39,6 +39,8 @@ Foreground and background calls are concurrency-safe: sibling delegations in one
 
 The generated default [`subagent` schema](../../../docs/tool-catalog.md#deepseek-aidsh-tool-subagent) under this instance's configured name while its provider exists. Provider context inheritance changes the tool and prompt descriptions. Enabled background mode adds `run_in_background`: continuable mode documents its `true` default, runtime settlement notice, and explicit foreground override, while one-shot mode documents its `false` default and the job id collected with `job_output` or stopped with `job_kill`. While the tool is visible in an assembly's scope, a `tool:<toolName>` system-prompt section tells the model to start independent continuable delegations together, keep working while they run, and choose foreground only when its next action depends on the result; a tool restriction removes both its schema and this guidance.
 
+The model may also pass optional `provider` and `model` to route a single child to a specific model. Omitted, the child inherits the parent's route, falling back to the configured `agentOptions` default; a per-call value overrides an `agentOptions` default. A requested route whose `provider`/`model` pair cannot be resolved fails the call loud at the tool boundary before any child is started, and the error names the attempted route.
+
 #### Token effect
 
 Fixed schema cost per parent request; each provider instance adds one schema, and each continuable instance adds one short system-prompt section.
@@ -79,4 +81,4 @@ Append-only; newly visible content follows the reusable request prefix and does 
 
 - **Background runs expose no result through this tool** — a one-shot task's final output is collected through the generic task surface, and a continuable child's output stays in its own session, read by its subagent id. The settlement notice states how that child ended and carries any final assistant message, but it is not this call's return value and cannot be awaited here.
 - **Duplicate names across waiting one-shot instances are detected late** (`TODO(subagent-dup-toolname)`) — continuable instances reserve their prompt-section name during plugin application, but preventing provider-registration rollback for waiting one-shot instances requires a registry of intended names.
-- **Child policy is fixed per instance** — another model, persona, tool filter, or depth cap requires another distinctly named tool.
+- **Child policy is fixed per instance** — persona, tool filter, and depth cap are fixed per instance and require another distinctly named tool; the model route is the exception, selectable per call through optional `provider`/`model`.
