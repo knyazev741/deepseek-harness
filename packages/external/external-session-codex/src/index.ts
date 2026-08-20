@@ -226,11 +226,15 @@ class CodexProvider implements ExternalSessionProvider {
   }
 
   prompt(sessionId: SessionId, text: string): Promise<{ turnId: ExternalTurnId }> {
-    return this.require(sessionId).prompt(text, new AbortController().signal)
+    return this.ready(sessionId).then(({ lifecycle, session }) => session.prompt(text, lifecycle.signal))
   }
 
+  /** Interrupt a live turn; a startup-time call is a defined no-op. */
   interrupt(sessionId: SessionId): void {
-    this.require(sessionId).interrupt()
+    const lifecycle = this.lifecycles.get(sessionId)
+    if (lifecycle === undefined) throwable(`no live external session ${String(sessionId)}`)
+    if (lifecycle.disposed) return
+    lifecycle.session?.interrupt()
   }
 
   /**
@@ -239,7 +243,8 @@ class CodexProvider implements ExternalSessionProvider {
    * @param sessionId - the live external session.
    */
   async compact(sessionId: SessionId): Promise<void> {
-    await this.require(sessionId).compact(new AbortController().signal)
+    const { lifecycle, session } = await this.ready(sessionId)
+    await session.compact(lifecycle.signal)
   }
 
   /**
@@ -290,7 +295,8 @@ class CodexProvider implements ExternalSessionProvider {
    * @param reasoningEffort - optional selected reasoning effort.
    */
   async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void> {
-    await this.require(sessionId).setModel(model, reasoningEffort)
+    const { session } = await this.ready(sessionId)
+    await session.setModel(model, reasoningEffort)
   }
 
   async dispose(sessionId: SessionId): Promise<void> {
@@ -307,12 +313,19 @@ class CodexProvider implements ExternalSessionProvider {
     if (this.lifecycles.get(sessionId) === lifecycle) this.lifecycles.delete(sessionId)
   }
 
-  private require(sessionId: SessionId): CodexExternalSession {
-    const session = this.sessions.get(sessionId)
-    if (session === undefined) {
+  private async ready(sessionId: SessionId): Promise<{
+    lifecycle: CodexLifecycle
+    session: CodexExternalSession
+  }> {
+    const lifecycle = this.lifecycles.get(sessionId)
+    if (lifecycle === undefined) throwable(`no live external session ${String(sessionId)}`)
+    await lifecycle.start
+    if (lifecycle.disposed) throw abortError(lifecycle.signal)
+    const session = lifecycle.session
+    if (session === undefined || this.sessions.get(sessionId) !== session) {
       throwable(`no live external session ${String(sessionId)}`)
     }
-    return session
+    return { lifecycle, session }
   }
 
   private resolveSandboxPolicy(session: Session, request: ExternalSessionStart): SandboxExecutionPolicy {

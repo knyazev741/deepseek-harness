@@ -91,6 +91,72 @@ describe('external-session-codex registration', () => {
     }
   })
 
+  it('gates prompt and model operations until startup and lets disposal win', async () => {
+    const harness = await startCodexHarness([{ kind: 'complete', text: 'STARTUP_GATED' }])
+    try {
+      const opening = harness.start()
+      const prompt = Promise.resolve().then(() => harness.provider.prompt(harness.sessionId, 'queued during startup'))
+      const model = harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol')
+      let interruptError: unknown
+      try {
+        harness.provider.interrupt(harness.sessionId)
+      } catch (error: unknown) {
+        interruptError = error
+      }
+      const closing = harness.provider.dispose(harness.sessionId)
+
+      const [closingOutcome, openingOutcome, promptOutcome, modelOutcome] = await Promise.all([
+        closing.then(() => undefined, error => error),
+        opening.then(() => undefined, error => error),
+        prompt.then(value => value, error => error),
+        model.then(() => undefined, error => error),
+      ])
+      expect(closingOutcome).toBeUndefined()
+      expect(openingOutcome).toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
+      expect(promptOutcome).toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
+      expect(modelOutcome).toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
+      expect(interruptError).toBeUndefined()
+      expect(harness.recorded.events).not.toContainEqual(expect.objectContaining({
+        type: 'external/turn-started',
+      }))
+    } finally {
+      await harness.close()
+    }
+  })
+
+  it('gates immediate operations behind the completed thread startup', async () => {
+    const harness = await startCodexHarness([{ kind: 'complete', text: 'STARTUP_ORDERED' }])
+    try {
+      const opening = harness.start()
+      const prompt = Promise.resolve().then(() => harness.provider.prompt(harness.sessionId, 'after startup'))
+      const model = harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol')
+      let interruptError: unknown
+      try {
+        harness.provider.interrupt(harness.sessionId)
+      } catch (error: unknown) {
+        interruptError = error
+      }
+
+      const [openingOutcome, modelOutcome, promptOutcome] = await Promise.all([
+        opening.then(() => undefined, error => error),
+        model.then(() => undefined, error => error),
+        prompt.then(value => value, error => error),
+      ])
+      expect(openingOutcome).toBeUndefined()
+      expect(modelOutcome).toBeUndefined()
+      expect(promptOutcome).toMatchObject({ turnId: expect.any(String) })
+      expect(interruptError).toBeUndefined()
+      await harness.waitTurns(1)
+
+      const started = harness.recorded.events.findIndex(event => event.type === 'external/session-started')
+      const turnStarted = harness.recorded.events.findIndex(event => event.type === 'external/turn-started')
+      expect(started).toBeGreaterThanOrEqual(0)
+      expect(turnStarted).toBeGreaterThan(started)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
   it('stores model and effort and applies them to the next turn', async () => {
     const harness = await startCodexHarness([{ kind: 'complete', text: 'MODEL_SWITCHED' }])
     try {
@@ -226,6 +292,39 @@ describe('external-session-codex approval round-trip', () => {
       const lateDecisionIndex = harness.recorded.events.findIndex(event => event.type === 'external/permission-decided')
       expect(endedIndex).toBeGreaterThanOrEqual(0)
       expect(lateDecisionIndex).toBe(-1)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('cancels a pending approval when the child dies before a respawn', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'advertisedFunctionCall', choices: [{ name: 'exec_command', arguments: execCommandArgs }] },
+      { kind: 'complete', text: 'RESPAWN_AFTER_APPROVAL_DEATH' },
+    ])
+    try {
+      harness.holdPermission()
+      await harness.start()
+      await harness.provider.prompt(harness.sessionId, 'hold for child death')
+      await harness.waitCount('external/permission-asked', 1)
+      const child = harness.handles.at(-1)!
+      child.terminate()
+      await child.waitForExit()
+      await child.done.catch(() => {})
+      await harness.waitCount('external/turn-ended', 1)
+
+      await harness.provider.prompt(harness.sessionId, 'respawn after child death')
+      await harness.waitTurns(2)
+      harness.releasePermission('allowed')
+      await settle()
+
+      expect(harness.recorded.events).not.toContainEqual(expect.objectContaining({
+        type: 'external/permission-decided',
+      }))
+      expect(harness.recorded.events
+        .filter(event => event.type === 'external/turn-ended')
+        .map(event => (event.data as { stopReason: string }).stopReason))
+        .toEqual(['error', 'completed'])
     } finally {
       await harness.close()
     }

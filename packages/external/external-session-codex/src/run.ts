@@ -109,6 +109,7 @@ export function createCodexSpawnSpec(
 
 /** One live app-server process and its interactive wire. */
 interface LiveProcess {
+  readonly generation: number
   readonly handle: SubprocessHandle
   readonly wire: CodexExternalWire
   cleanup?: Promise<void>
@@ -166,7 +167,8 @@ export class CodexExternalSession {
   } | undefined
   /** Serializes all prompt operations, including process/thread preparation. */
   private promptSerial: Promise<void> = Promise.resolve()
-  private readonly pendingApprovals = new Set<PromiseWithResolvers<ExternalPermissionOutcome>>()
+  private readonly pendingApprovals = new Map<PromiseWithResolvers<ExternalPermissionOutcome>, number>()
+  private nextGeneration = 0
   /** Serializes process cleanup so a respawn cannot race the old tree. */
   private quiescence: Promise<void> = Promise.resolve()
   private disposed = false
@@ -318,7 +320,7 @@ export class CodexExternalSession {
   async dispose(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
-    for (const pending of this.pendingApprovals) pending.resolve('cancelled')
+    for (const pending of this.pendingApprovals.keys()) pending.resolve('cancelled')
     this.pendingApprovals.clear()
     this.append('external/session-ended', { stopReason: 'completed' })
     this.live?.wire.interrupt()
@@ -330,7 +332,7 @@ export class CodexExternalSession {
   }
 
   /** Build the wire hooks that project live app-server activity onto the bridge. */
-  private makeHooks(onProcessClosed: (error: Error) => void): CodexWireHooks {
+  private makeHooks(onProcessClosed: (error: Error) => void, generation: number): CodexWireHooks {
     return {
       onTurnStarted: (turnId) => {
         this.append('external/turn-started', { turnId })
@@ -359,7 +361,7 @@ export class CodexExternalSession {
         onProcessClosed(error)
       },
       answerApproval: async (ask) => {
-        return this.answerApproval(ask)
+        return this.answerApproval(ask, generation)
       },
     }
   }
@@ -403,14 +405,14 @@ export class CodexExternalSession {
   }
 
   /** Ask the human through the bridge and answer the app-server approval. */
-  private async answerApproval(ask: CodexApprovalAsk): Promise<string> {
-    if (this.disposed || this.bridge.disposal.aborted) return 'cancel'
+  private async answerApproval(ask: CodexApprovalAsk, generation: number): Promise<string> {
+    if (this.disposed || this.bridge.disposal.aborted || this.live?.generation !== generation) return 'cancel'
     const askId = ask.itemId.length > 0 ? ask.itemId : `ask-${randomUUID()}`
     const title = ask.reason ?? 'Run a command in the workspace'
     const options = this.approvalOptions(ask.availableDecisions)
     this.append('external/permission-asked', { askId, title, options })
     const cancellation = Promise.withResolvers<ExternalPermissionOutcome>()
-    this.pendingApprovals.add(cancellation)
+    this.pendingApprovals.set(cancellation, generation)
     const onDispose = (): void => { cancellation.resolve('cancelled') }
     this.bridge.disposal.addEventListener('abort', onDispose, { once: true })
     let outcome: ExternalPermissionOutcome
@@ -429,7 +431,7 @@ export class CodexExternalSession {
       this.bridge.disposal.removeEventListener('abort', onDispose)
       this.pendingApprovals.delete(cancellation)
     }
-    if (this.disposed || this.bridge.disposal.aborted) return 'cancel'
+    if (this.disposed || this.bridge.disposal.aborted || this.live?.generation !== generation) return 'cancel'
     const requested = outcome === 'allowed' ? 'accept' : outcome === 'rejected' ? 'decline' : 'cancel'
     const decision = offeredApprovalDecision(ask.availableDecisions, requested)
     this.append('external/permission-decided', { askId, outcome })
@@ -461,15 +463,16 @@ export class CodexExternalSession {
     throwIfAborted(signal)
     if (this.disposed) throw new Error('external-session-codex: session is disposed')
     const handle = this.spec.spawn(createCodexSpawnSpec(this.spec, this.bridge.disposal))
+    const generation = ++this.nextGeneration
     const liveRef: { current?: LiveProcess } = {}
     const wire = new CodexExternalWire(
       handle.stdout as NonNullable<SubprocessHandle['stdout']>,
       handle.stdin as NonNullable<SubprocessHandle['stdin']>,
       this.makeHooks((error) => {
         if (liveRef.current !== undefined) this.handleProcessClosed(liveRef.current, error)
-      }),
+      }, generation),
     )
-    const live: LiveProcess = { handle, wire }
+    const live: LiveProcess = { generation, handle, wire }
     liveRef.current = live
     const processFailure: Promise<never> = handle.done.then(
       outcome => Promise.reject(new Error(
@@ -513,11 +516,19 @@ export class CodexExternalSession {
   private handleProcessClosed(live: LiveProcess, error: Error): void {
     if (this.disposed || this.live?.handle !== live.handle) return
     this.live = undefined
+    this.cancelPendingApprovals(live.generation)
     this.spec.onError?.(error)
     this.settleActiveTurn('error')
     void this.cleanupLive(live).catch((cleanupError: unknown) => {
       this.spec.onError?.(thrown(cleanupError))
     })
+  }
+
+  /** Cancel approvals belonging to a child that can no longer receive answers. */
+  private cancelPendingApprovals(generation: number): void {
+    for (const [pending, pendingGeneration] of this.pendingApprovals) {
+      if (pendingGeneration === generation) pending.resolve('cancelled')
+    }
   }
 
   /**
