@@ -27,15 +27,19 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  # Upstream's changes often touch .github/workflows/*; pushing or merging
-  # workflow files requires the `workflows` permission, otherwise GitHub
-  # rejects the sync branch push ("refusing to allow a GitHub App to create
-  # or update workflow ... without `workflows` permission").
-  workflows: write
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Upstream's changes often touch .github/workflows/*; pushing workflow
+    # files requires the `workflows` permission (only grantable per job),
+    # otherwise GitHub rejects the sync branch push ("refusing to allow a
+    # GitHub App to create or update workflow ... without `workflows`
+    # permission").
+    permissions:
+      contents: write
+      pull-requests: write
+      workflows: write
     steps:
       - name: Checkout fork master
         uses: actions/checkout@v4
