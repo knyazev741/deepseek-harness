@@ -26,6 +26,8 @@ Authentication is checked before method validation, body parsing, MCP dispatch, 
 
 Every call reaches `ctx.tools.execute` with the supplied `ExternalToolPrincipal`. The gateway never calls a definition directly, creates a native Agent, opens a native turn, or uses scheduler internals. Guards, approval, validation, rendering, result observers, and the external recorder therefore remain in the normal pipeline. The recorder receives one call commit before dispatch and one matching result or error commit after dispatch.
 
+Before either MCP projection or recorder commit, structured success and error values are traversed recursively. Secret-bearing keys and values are replaced with `[REDACTED]`, and complete local paths are removed even when they contain spaces. Benign object structure is retained. A lease rejects a selected tool name when the fixed bounded terminal fallback could not fit the recorder envelope, so an accepted call cannot strand its call commit. The terminal event is emitted only after the durable result commit; observer failures are contained so later listeners and terminalization still run.
+
 Requests accept only `GET`, `POST`, and `DELETE` at the stateful MCP endpoint. JSON POST bodies require `application/json`, strict UTF-8 decoding, one JSON value with no trailing bytes, and the configured byte/time limits. Unknown routes, sessions, methods, and tool names fail closed.
 
 ## Configuration
@@ -39,7 +41,7 @@ Requests accept only `GET`, `POST`, and `DELETE` at the stateful MCP endpoint. J
 
 ## Lifecycle
 
-The lease disposer removes the route, aborts in-flight calls, waits for request handlers, and closes stateful MCP transports. The external-session recorder finalizes pending calls with one bounded cancellation result before its scope closes. The external Codex provider awaits this quiescent lease before tearing down its child process. A resumed attachment writes a fresh endpoint and token to the private Codex home while retaining the existing rollout files.
+The lease disposer removes the route, aborts in-flight calls, waits for request handlers, and closes stateful MCP transports. The external-session recorder finalizes pending calls with one bounded cancellation result before its scope closes. The external Codex provider awaits this quiescent lease before tearing down its child process. A resumed attachment writes a fresh endpoint and token to the private Codex home while retaining the existing rollout files. Lease lifecycle and call observer failures do not disclose state or prevent quiescent finalization.
 
 The token is passed to Codex only through the explicit environment variable named by `bearer_token_env_var`; it is never written to `config.toml`, the URL, argv, session events, logs, or snapshots. This package does not configure client routing or a Web opt-in bundle; those belong to later tasks.
 

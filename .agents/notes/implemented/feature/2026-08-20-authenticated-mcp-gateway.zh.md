@@ -14,7 +14,7 @@ Status: implemented
 
 Codex provider 在启动子进程前创建 lease，只把 endpoint 和 `bearer_token_env_var` 写入私有 Codex TOML，并通过该显式环境变量传递 token。lease 处置会在子进程拆除前完成等待。Resume 会写入新的 endpoint 和 token，同时保留哈希 Codex home 及 rollout 状态。
 
-网关强制回环绑定、Streamable HTTP 方法/Accept/content-type/protocol 顺序、严格 JSON UTF-8/请求体字节与时间限制、有界脱敏结果、session 所有权，以及路由、工具和处置的故障关闭。未完成的 recorder call 会在 external scope 关闭前写入一个有界取消结果。Codex provider 对网关的 peer 依赖是可选的，缺少网关时 provider 不产生运行时网关导入；此任务不改变默认 Web profile 或客户端路由。
+网关强制回环绑定、Streamable HTTP 方法/Accept/content-type/protocol 顺序、严格 JSON UTF-8/请求体字节与时间限制、对秘密键/值及完整本地路径（包括空格）递归脱敏、有界结果、session 所有权，以及路由、工具和处置的故障关闭。lease 创建会拒绝无法放入固定持久化终端 fallback 的已选名称，call-terminal 事件只在持久化 result commit 之后发出。未完成的 recorder call 会在 external scope 关闭前写入一个有界取消结果；同步观察器异常会被隔离，后续监听器和终结仍会继续。Codex provider 对网关的 peer 依赖是可选的，缺少网关时 provider 不产生运行时网关导入；此任务不改变默认 Web profile 或客户端路由。
 
 ## Alternatives considered
 
@@ -26,7 +26,7 @@ Codex provider 在启动子进程前创建 lease，只把 endpoint 和 `bearer_t
 
 ## Testing
 
-网关 focused tests 覆盖认证顺序、allowlist/eligibility、MCP session、Streamable HTTP envelope/顺序、尾随 JSON、UTF-8 与 chunked 字节限制、截止时间、有界脱敏输出、recorder 成对事件、处置终结、invariant 以及真实 Loader 组合。Codex tests 覆盖仅通过环境注入 bearer、无网关时的可选 peer 加载、provider 级 gateway start/resume/teardown，以及替换临时 MCP TOML 段并保留 rollout 文件。
+网关 focused tests 覆盖认证顺序、allowlist/eligibility、MCP session、Streamable HTTP envelope/顺序、尾随 JSON、UTF-8 与 chunked 字节限制、成功和错误的结构化递归脱敏、recorder envelope 边界上的成对事件、观察器隔离、处置终结、invariant 以及真实 Loader 组合。Codex tests 覆盖仅通过环境注入 bearer、无网关时的可选 peer 加载、provider 级 gateway start/resume/teardown，以及替换临时 MCP TOML 段并保留 rollout 文件。
 
 ## Consequences
 

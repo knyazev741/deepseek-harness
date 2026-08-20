@@ -14,7 +14,7 @@ An external Codex attachment needs a local Harness tool catalog without bypassin
 
 The Codex provider creates the lease before spawning its child, writes only the endpoint and `bearer_token_env_var` into the private Codex TOML, and passes the token through that explicit environment variable. Lease disposal is awaited before child teardown. Resume writes a fresh endpoint and token while retaining the hashed Codex home and rollout state.
 
-The gateway enforces loopback binding, Streamable HTTP method/Accept/content-type/protocol ordering, strict JSON UTF-8/body byte and time bounds, bounded redacted results, session ownership, and fail-closed route/tool/disposal behavior. Pending recorder calls are finalized with one bounded cancellation result before the external scope closes. The gateway peer of the Codex provider is optional and the provider emits no runtime gateway import when it is absent; no default Web profile or client routing is changed here.
+The gateway enforces loopback binding, Streamable HTTP method/Accept/content-type/protocol ordering, strict JSON UTF-8/body byte and time bounds, recursive redaction of secret-bearing keys/values and complete local paths (including spaces), bounded results, session ownership, and fail-closed route/tool/disposal behavior. Lease creation rejects any selected name that cannot fit a fixed durable terminal fallback, and the call-terminal event follows the durable result commit. Pending recorder calls are finalized with one bounded cancellation result before the external scope closes; synchronous observer failures are contained so later listeners and finalization continue. The gateway peer of the Codex provider is optional and the provider emits no runtime gateway import when it is absent; no default Web profile or client routing is changed here.
 
 ## Alternatives considered
 
@@ -26,7 +26,7 @@ The gateway enforces loopback binding, Streamable HTTP method/Accept/content-typ
 
 ## Testing
 
-Focused gateway tests cover authentication order, allowlist/eligibility, MCP sessions, Streamable HTTP envelope/order, trailing JSON, UTF-8 and chunked byte limits, deadlines, bounded/redacted output, recorder pairs, disposal finalization, invariants, and a real Loader composition. Codex tests cover environment-only bearer injection, optional-peer loading without a gateway, provider-level gateway start/resume/teardown, and replacing the ephemeral MCP TOML section while retaining rollout files.
+Focused gateway tests cover authentication order, allowlist/eligibility, MCP sessions, Streamable HTTP envelope/order, trailing JSON, UTF-8 and chunked byte limits, deadlines, recursive structured redaction for success and error, exact recorder-envelope call/result pairing, observer containment, disposal finalization, invariants, and a real Loader composition. Codex tests cover environment-only bearer injection, optional-peer loading without a gateway, provider-level gateway start/resume/teardown, and replacing the ephemeral MCP TOML section while retaining rollout files.
 
 ## Consequences
 

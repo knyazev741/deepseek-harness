@@ -65,7 +65,7 @@ declare module '@deepseek-ai/cordis' {
      * @param payload - call ownership payload.
      */
     'mcp-gateway/call-started'(payload: { route: string; callId: string }): void
-    /** One gateway call committed a terminal recorder result or teardown error.
+    /** One gateway call committed its durable terminal recorder result.
      * @mode emit
      * @param payload - call ownership payload.
      */

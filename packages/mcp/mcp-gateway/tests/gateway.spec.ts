@@ -10,7 +10,9 @@ import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import WebServer from '@deepseek-ai/dsh-host-webserver'
 import ApprovalService, { type ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import ExternalSessions, { ExternalTurnId, type ExternalSessionProvider } from '@deepseek-ai/dsh-external-session'
+import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import McpGateway from '../src/index.ts'
+import * as McpGatewayInvariant from '../src/invariant.ts'
 import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
 
 function principal(ctx?: Context): ExternalToolPrincipal {
@@ -28,18 +30,24 @@ function principal(ctx?: Context): ExternalToolPrincipal {
 
 async function setup(options: {
   approval?: boolean
+  allowlist?: string[]
+  beforeGateway?: (ctx: Context) => void
+  invariant?: boolean
   maxRequestBytes?: number
   maxResponseBytes?: number
   executionTimeoutMs?: number
 } = {}) {
   const ctx = new Context()
+  if (options.invariant === true) await ctx.plugin(InvariantRegistry)
   if (options.approval === true) await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   if (options.approval === true) await ctx.plugin(ApprovalService)
   await ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
+  options.beforeGateway?.(ctx)
+  if (options.invariant === true) await ctx.plugin(McpGatewayInvariant)
   await ctx.plugin(McpGateway, {
-    allowlist: ['allowed'],
+    allowlist: options.allowlist ?? ['allowed'],
     ...options.maxRequestBytes === undefined ? {} : { maxRequestBytes: options.maxRequestBytes },
     ...options.maxResponseBytes === undefined ? {} : { maxResponseBytes: options.maxResponseBytes },
     ...options.executionTimeoutMs === undefined ? {} : { executionTimeoutMs: options.executionTimeoutMs },
@@ -559,6 +567,141 @@ describe('authenticated MCP gateway', () => {
     await client.close()
     await lease[Symbol.asyncDispose]()
     await ctx.fiber.dispose()
+  })
+
+  it('recursively redacts structured success and error secrets and complete local paths in MCP and durable data', async () => {
+    const ctx = await setup({ approval: true })
+    const owner = (await livePrincipal(ctx)).principal
+    let fail = false
+    ctx.tools.register({
+      name: 'allowed',
+      description: 'structured redaction fixture',
+      parameters: { type: 'object', properties: {} },
+      externalEligibility: 'allow',
+      output: {
+        schema: { type: 'object', properties: { safe: { type: 'object' } } },
+        render: () => [{ type: 'text', text: 'structured' }],
+      },
+      async execute() {
+        if (fail) {
+          throw new Error(JSON.stringify({
+            apiKey: 'error-api-key',
+            nested: { password: 'error-password', token: 'error-token' },
+            path: '/Users/knyaz/Application Support/private error.json',
+          }))
+        }
+        return {
+          safe: { answer: 42, key: 'preserve this benign key', label: 'preserve this structure' },
+          apiKey: 'success-api-key',
+          nested: { password: 'success-password', token: 'success-token' },
+          path: '/Users/knyaz/Application Support/private success.json',
+        }
+      },
+    })
+    const lease = await ctx.mcpGateway.create({ principal: owner, tools: ['allowed'], signal: new AbortController().signal })
+    const client = new Client({ name: 'gateway-structured-redaction-test', version: '1.0.0' }, { capabilities: {} })
+    await client.connect(new StreamableHTTPClientTransport(new URL(lease.url), {
+      requestInit: { headers: { authorization: `Bearer ${lease.bearerToken}` } },
+    }) as unknown as Parameters<Client['connect']>[0])
+    const success = await client.callTool({ name: 'allowed', arguments: {} })
+    const successJson = JSON.stringify(success)
+    expect(successJson).toContain('preserve this structure')
+    expect(successJson).toContain('preserve this benign key')
+    for (const secret of ['success-api-key', 'success-password', 'success-token', 'Application Support/private success.json']) {
+      expect(successJson).not.toContain(secret)
+    }
+    const firstDurable = JSON.stringify(owner.session.events)
+    for (const secret of ['success-api-key', 'success-password', 'success-token', 'Application Support/private success.json']) {
+      expect(firstDurable).not.toContain(secret)
+    }
+
+    fail = true
+    const error = await client.callTool({ name: 'allowed', arguments: {} })
+    const errorJson = JSON.stringify(error)
+    for (const secret of ['error-api-key', 'error-password', 'error-token', 'Application Support/private error.json']) {
+      expect(errorJson).not.toContain(secret)
+    }
+    const durable = JSON.stringify(owner.session.events)
+    for (const secret of ['error-api-key', 'error-password', 'error-token', 'Application Support/private error.json']) {
+      expect(durable).not.toContain(secret)
+    }
+    await client.close()
+    await lease[Symbol.asyncDispose]()
+    await ctx.externalSessions.dispose(owner.session.id)
+    await ctx.fiber.dispose()
+  })
+
+  it('pairs an exact near-limit tool name with one durable result and clean disposal', async () => {
+    const name = 'n'.repeat(65_385)
+    const ctx = await setup({ approval: true, allowlist: [name], invariant: true, maxRequestBytes: 70_000, maxResponseBytes: 512 })
+    const owner = (await livePrincipal(ctx)).principal
+    ctx.tools.register({
+      name,
+      description: 'near-limit fixture',
+      parameters: { type: 'object', properties: {} },
+      externalEligibility: 'allow',
+      output: { schema: { type: 'string' }, render: () => [{ type: 'text', text: 'near-limit' }] },
+      async execute() { return 'x'.repeat(1_000) },
+    })
+    const lease = await ctx.mcpGateway.create({ principal: owner, tools: [name], signal: new AbortController().signal })
+    const client = new Client({ name: 'gateway-record-boundary-test', version: '1.0.0' }, { capabilities: {} })
+    await client.connect(new StreamableHTTPClientTransport(new URL(lease.url), {
+      requestInit: { headers: { authorization: `Bearer ${lease.bearerToken}` } },
+    }) as unknown as Parameters<Client['connect']>[0])
+    await expect(client.callTool({ name, arguments: {} })).resolves.toMatchObject({ isError: true })
+    expect(owner.session.events.filter(event => event.type === 'external/tool-call')).toHaveLength(1)
+    expect(owner.session.events.filter(event => event.type === 'external/tool-result')).toHaveLength(1)
+    await client.close()
+    await expect(ctx.externalSessions.dispose(owner.session.id)).resolves.toBeUndefined()
+    await lease[Symbol.asyncDispose]()
+    await ctx.fiber.dispose()
+  })
+
+  it('contains throwing call observers while preserving bounded terminalization and later listeners', async () => {
+    const ctx = await setup({ approval: true })
+    const owner = (await livePrincipal(ctx)).principal
+    ctx.tools.register(defineContentToolFixture({
+      name: 'allowed',
+      description: 'observer containment fixture',
+      parameters: {},
+      externalEligibility: 'allow',
+      async execute() { return [{ type: 'text' as const, text: 'observer-ok' }] },
+    }))
+    const later: string[] = []
+    ctx.on('mcp-gateway/call-started', () => { throw new Error('started observer boom') })
+    ctx.on('mcp-gateway/call-started', () => { later.push('started') })
+    ctx.on('mcp-gateway/call-terminal', () => { throw new Error('terminal observer boom') })
+    ctx.on('mcp-gateway/call-terminal', () => { later.push('terminal') })
+    const lease = await ctx.mcpGateway.create({ principal: owner, tools: ['allowed'], signal: new AbortController().signal })
+    const client = new Client({ name: 'gateway-observer-test', version: '1.0.0' }, { capabilities: {} })
+    await client.connect(new StreamableHTTPClientTransport(new URL(lease.url), {
+      requestInit: { headers: { authorization: `Bearer ${lease.bearerToken}` } },
+    }) as unknown as Parameters<Client['connect']>[0])
+    await expect(client.callTool({ name: 'allowed', arguments: {} })).resolves.toMatchObject({ isError: true })
+    expect(later).toEqual(['started', 'terminal'])
+    expect(owner.session.events.filter(event => event.type === 'external/tool-call')).toHaveLength(1)
+    expect(owner.session.events.filter(event => event.type === 'external/tool-result')).toHaveLength(1)
+    await client.close()
+    await lease[Symbol.asyncDispose]()
+    await ctx.externalSessions.dispose(owner.session.id)
+    await ctx.fiber.dispose()
+  })
+
+  it('contains throwing lease lifecycle observers and still completes disposal', async () => {
+    const later: string[] = []
+    const ctx = await setup({
+      beforeGateway: (beforeGatewayCtx) => {
+        beforeGatewayCtx.on('mcp-gateway/lease-created', () => { throw new Error('created observer boom') })
+        beforeGatewayCtx.on('mcp-gateway/lease-created', () => { later.push('created') })
+        beforeGatewayCtx.on('mcp-gateway/lease-disposed', () => { throw new Error('disposed observer boom') })
+        beforeGatewayCtx.on('mcp-gateway/lease-disposed', () => { later.push('disposed') })
+      },
+    })
+    const owner = principal()
+    const lease = await ctx.mcpGateway.create({ principal: owner, tools: [], signal: new AbortController().signal })
+    await lease[Symbol.asyncDispose]()
+    await ctx.fiber.dispose()
+    expect(later).toEqual(['created', 'disposed'])
   })
 
   it('records one terminal result when external-session disposal cancels a live call', async () => {

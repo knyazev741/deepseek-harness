@@ -333,13 +333,56 @@ function requestSignal(parent: AbortSignal, lease: AbortSignal, timeoutMs: numbe
 const REDACTED = '[REDACTED]'
 const PATH_REDACTION = '[PATH REDACTED]'
 const RESPONSE_LIMIT_MESSAGE = 'tool result exceeded the configured response limit'
+const SECRET_TEXT_KEYS = [
+  'api[-_ ]?key',
+  'access[-_ ]?token',
+  'auth(?:orization)?',
+  'password',
+  'passphrase',
+  'secret',
+  'token',
+  '(?:bearer|refresh|session)[-_ ]?token',
+  'credential(?:s)?',
+  'cookie',
+].join('|')
+const SECRET_TEXT_PATTERN = new RegExp(
+  `((?:["']?\\b(?:${SECRET_TEXT_KEYS})\\b["']?)\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^\\s,;}]+)`,
+  'giu',
+)
+const LOCAL_PATH_PATTERN = new RegExp(
+  String.raw`(?:\/(?:Users|home|private|tmp|var|opt)\/|[A-Za-z]:[\\/]|\\\\(?:Users|home|private|tmp|var|opt)\\)[^"'\x60<>\r\n]*`,
+  'gu',
+)
+
+/** Key suffixes whose values are credential-bearing rather than ordinary data. */
+function isSecretKey(key: string): boolean {
+  const normalized = key.replace(/[^a-z0-9]/giu, '').toLowerCase()
+  return normalized === 'auth'
+    || normalized === 'authorization'
+    || normalized === 'bearer'
+    || normalized === 'cookie'
+    || normalized === 'setcookie'
+    || normalized.endsWith('apikey')
+    || normalized.endsWith('accesstoken')
+    || normalized.endsWith('authtoken')
+    || normalized.endsWith('password')
+    || normalized.endsWith('passphrase')
+    || normalized.endsWith('secret')
+    || normalized.endsWith('secretkey')
+    || normalized.endsWith('token')
+    || normalized.endsWith('credential')
+    || normalized.endsWith('credentials')
+    || normalized.endsWith('privatekey')
+    || normalized.endsWith('signingkey')
+    || normalized.endsWith('encryptionkey')
+}
 
 /** Redact bearer/secret fields and local paths before they leave the process. */
 function redactText(value: string): string {
   return value
     .replace(/\bBearer\s+\S+/giu, `Bearer ${REDACTED}`)
-    .replace(/\b(api[_-]?key|access[_-]?token|auth(?:orization)?|password|secret|token)\s*[:=]\s*(["']?)[^\s,"'}]+\2/giu, `$1=${REDACTED}`)
-    .replace(/(?:\/Users\/|\/home\/|\/private\/|[A-Za-z]:\\)[^\s"'`<>]+/gu, PATH_REDACTION)
+    .replace(SECRET_TEXT_PATTERN, `$1${REDACTED}`)
+    .replace(LOCAL_PATH_PATTERN, PATH_REDACTION)
 }
 
 /** Detach a JSON-compatible value while redacting strings and limiting depth. */
@@ -351,7 +394,7 @@ function sanitizeJsonValue(value: unknown, depth = 0): unknown {
   if (typeof value === 'object') {
     const output: Record<string, unknown> = {}
     for (const [key, item] of Object.entries(value as Record<string, unknown>).slice(0, 256)) {
-      output[key] = sanitizeJsonValue(item, depth + 1)
+      output[key] = isSecretKey(key) ? REDACTED : sanitizeJsonValue(item, depth + 1)
     }
     return output
   }
@@ -365,6 +408,42 @@ function safeJson(value: unknown): string {
     return encoded
   } catch {
     return JSON.stringify(REDACTED)
+  }
+}
+
+type GatewayEventListener = (...args: unknown[]) => unknown
+
+/** Dispatch one gateway observation without letting a subscriber break the owner operation. */
+function emitContained(ctx: Context, name: string, payload?: unknown): unknown {
+  const args = payload === undefined ? [name] : [name, payload]
+  let callbacks: GatewayEventListener[]
+  try {
+    callbacks = ctx.events.dispatch('emit', args) as GatewayEventListener[]
+  } catch (error: unknown) {
+    ctx.logger.warn(`mcp-gateway: ${name} dispatch failed: ${listenerErrorMessage(error)}`)
+    return error
+  }
+  let firstError: unknown
+  for (const callback of callbacks) {
+    try {
+      const returned = callback(...payload === undefined ? [] : [payload])
+      void Promise.resolve(returned).catch((error: unknown) => {
+        ctx.logger.warn(`mcp-gateway: ${name} listener rejected: ${listenerErrorMessage(error)}`)
+      })
+    } catch (error: unknown) {
+      firstError ??= error
+      ctx.logger.warn(`mcp-gateway: ${name} listener threw: ${listenerErrorMessage(error)}`)
+    }
+  }
+  return firstError
+}
+
+/** Render observer failures without allowing error coercion to escape containment. */
+function listenerErrorMessage(error: unknown): string {
+  try {
+    return error instanceof Error ? error.message : String(error)
+  } catch {
+    return 'unprintable listener error'
   }
 }
 
@@ -452,9 +531,20 @@ function fitsExternalResultRecord(record: ExternalToolResultRecord): boolean {
   return Buffer.byteLength(safeJson(record), 'utf8') <= MAX_EXTERNAL_TOOL_RECORD_BYTES
 }
 
+const DURABLE_FALLBACK_CALL_ID = ExternalToolCallId('mcp-00000000-0000-0000-0000-000000000000')
+
+/** Reject a tool name that cannot carry the fixed terminal error envelope. */
+function fitsDurableFallbackForName(name: string): boolean {
+  return fitsExternalResultRecord(externalResultRecord(
+    DURABLE_FALLBACK_CALL_ID,
+    name,
+    thrownResult(new Error(RESPONSE_LIMIT_MESSAGE)),
+  ))
+}
+
 /** Return an MCP JSON-RPC request id as a stable call correlation suffix. */
-function callIdFor(requestId: unknown): string {
-  return `mcp-${typeof requestId === 'string' || typeof requestId === 'number' ? String(requestId) : 'notification'}-${randomUUID()}`
+function callIdFor(): string {
+  return `mcp-${randomUUID()}`
 }
 
 /** One live authenticated endpoint and its stateful MCP transports. */
@@ -545,7 +635,7 @@ class GatewayLease implements McpGatewayLease {
       await connection.server.close().catch(() => {})
       await connection.transport.close().catch(() => {})
     }
-    this.ctx.emit('mcp-gateway/lease-disposed', { route: this.path })
+    emitContained(this.ctx, 'mcp-gateway/lease-disposed', { route: this.path })
   }
 
   private async handleAuthenticated(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -650,7 +740,7 @@ class GatewayLease implements McpGatewayLease {
     if (entry === undefined) throw new Error('MCP tool is unavailable')
     const current = this.ctx.tools.get(name, this.principal)
     if (current !== entry.definition) throw new Error('MCP tool is unavailable')
-    const callId = ExternalToolCallId(callIdFor(extra.requestId))
+    const callId = ExternalToolCallId(callIdFor())
     const args = request.params.arguments ?? {}
     const callRecord: ExternalToolCallRecord = { callId, name, arguments: args }
     const recorder = this.principal.recorder
@@ -658,17 +748,24 @@ class GatewayLease implements McpGatewayLease {
       throw new Error('MCP tool recorder is unavailable')
     }
     await recorder.recordCall(callRecord)
-    this.ctx.emit('mcp-gateway/call-started', { route: this.path, callId: String(callId) })
+    const startObserverError = emitContained(this.ctx, 'mcp-gateway/call-started', {
+      route: this.path,
+      callId: String(callId),
+    })
     let result: ToolExecutionResult
     const requestSignalState = requestSignal(extra.signal, this.controller.signal, this.executionTimeoutMs)
     try {
-      result = await this.ctx.tools.execute({
-        callId: CallId(String(callId)),
-        name,
-        arguments: args,
-        principal: this.principal,
-        signal: requestSignalState.signal,
-      })
+      if (startObserverError !== undefined) {
+        result = thrownResult(new Error('MCP gateway observer failed'))
+      } else {
+        result = await this.ctx.tools.execute({
+          callId: CallId(String(callId)),
+          name,
+          arguments: args,
+          principal: this.principal,
+          signal: requestSignalState.signal,
+        })
+      }
     } catch (error: unknown) {
       result = thrownResult(error)
     } finally {
@@ -687,26 +784,28 @@ class GatewayLease implements McpGatewayLease {
       terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
       resultRecord = externalResultRecord(callId, name, terminal)
     }
+    let durableResultCommitted = false
     try {
+      await recorder.recordResult(resultRecord)
+      durableResultCommitted = true
+    } catch {
+      // A recorder can reject an oversized candidate before committing it.
+      // Retry exactly once with a fixed bounded error so every accepted call
+      // still has one terminal durable result.
+      terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
+      resultRecord = externalResultRecord(callId, name, terminal)
       try {
         await recorder.recordResult(resultRecord)
+        durableResultCommitted = true
       } catch {
-        // A recorder can reject an oversized candidate before committing it.
-        // Retry exactly once with a fixed bounded error so every accepted call
-        // still has one terminal durable result.
-        terminal = thrownResult(new Error(RESPONSE_LIMIT_MESSAGE))
-        resultRecord = externalResultRecord(callId, name, terminal)
-        try {
-          await recorder.recordResult(resultRecord)
-        } catch {
-          // Session teardown may have closed the recorder after the call was
-          // accepted. The external-session finalizer owns that final result.
-        }
+        // Session teardown may have closed the recorder after the call was
+        // accepted. The external-session finalizer owns that final result.
       }
-      return mcpResult(terminal)
-    } finally {
-      this.ctx.emit('mcp-gateway/call-terminal', { route: this.path, callId: String(callId) })
     }
+    if (durableResultCommitted) {
+      emitContained(this.ctx, 'mcp-gateway/call-terminal', { route: this.path, callId: String(callId) })
+    }
+    return mcpResult(terminal)
   }
 }
 
@@ -751,7 +850,7 @@ export class McpGateway extends Service implements McpGatewayService {
     ctx.effect(() => async () => {
       const leases = [...this.leases]
       await Promise.allSettled(leases.map(lease => lease[Symbol.asyncDispose]()))
-      this.ctx.emit('mcp-gateway/teardown-complete')
+      emitContained(this.ctx, 'mcp-gateway/teardown-complete')
     }, 'mcpGateway.leases')
   }
 
@@ -763,6 +862,9 @@ export class McpGateway extends Service implements McpGatewayService {
       if (!this.config.allowlist.has(name) || entries.has(name)) continue
       const definition = this.ctx.tools.get(name, request.principal)
       if (definition === undefined || definition.externalEligibility !== 'allow') continue
+      if (!fitsDurableFallbackForName(name)) {
+        throw new Error('mcp-gateway: selected tool name cannot fit a durable terminal result')
+      }
       entries.set(name, { definition, schema: toolSchema(definition) })
     }
 
@@ -802,7 +904,7 @@ export class McpGateway extends Service implements McpGatewayService {
         handler: (req, res) => lease.handle(req, res),
       }
       disposer = this.ctx.webServer.register(route)
-      this.ctx.emit('mcp-gateway/lease-created', { route: path })
+      emitContained(this.ctx, 'mcp-gateway/lease-created', { route: path })
     } catch (error) {
       this.routes.delete(path)
       await lease[Symbol.asyncDispose]().catch(() => {})

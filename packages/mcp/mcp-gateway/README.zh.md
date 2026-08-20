@@ -26,6 +26,8 @@
 
 每次调用都以给定的 `ExternalToolPrincipal` 进入 `ctx.tools.execute`。网关不会直接调用定义、创建原生 Agent、打开原生 turn 或使用 scheduler 内部接口，因此普通流水线中的 guard、approval、验证、渲染、结果观察器和外部 recorder 都会继续生效。recorder 在分发前提交一次 call，在分发后提交一次匹配的 result 或 error。
 
+在 MCP 投影或 recorder 提交之前，结构化成功值和错误值都会递归遍历。含有秘密的键和值会替换为 `[REDACTED]`；即使本地路径包含空格，也会完整移除。普通对象结构会保留。如果固定且有界的终端 fallback 无法放入 recorder envelope，lease 会在选择工具名称时拒绝该名称，因此已接受的调用不会遗留未配对的 call commit。只有持久化 result commit 成功后才会发出 terminal 事件；观察器异常会被隔离，后续监听器和终结流程仍会运行。
+
 请求只接受有状态 MCP 端点上的 `GET`、`POST` 和 `DELETE`。JSON POST 请求体必须是 `application/json`，严格按 UTF-8 解码，只包含一个无尾随字节的 JSON 值，并遵守配置的字节和时间限制。未知路由、session、方法和工具名称都会故障关闭。
 
 ## 配置
@@ -39,7 +41,7 @@
 
 ## 生命周期
 
-lease disposer 会移除路由、中止进行中的调用、等待请求处理器并关闭有状态 MCP transport。external-session recorder 会在其 scope 关闭前，为未完成调用写入一个有界的取消结果。外部 Codex provider 会在拆除子进程前等待这个静默完成的 lease。恢复 attachment 会在私有 Codex home 中写入新的端点和 token，同时保留已有 rollout 文件。
+lease disposer 会移除路由、中止进行中的调用、等待请求处理器并关闭有状态 MCP transport。external-session recorder 会在其 scope 关闭前，为未完成调用写入一个有界的取消结果。外部 Codex provider 会在拆除子进程前等待这个静默完成的 lease。恢复 attachment 会在私有 Codex home 中写入新的端点和 token，同时保留已有 rollout 文件。lease 生命周期和调用观察器异常不会泄露状态，也不会阻止静默终结。
 
 token 只通过 `bearer_token_env_var` 指定的显式环境变量传递给 Codex；它不会写入 `config.toml`、URL、argv、session 事件、日志或快照。本包不配置客户端路由或 Web opt-in bundle；这些属于后续任务。
 
