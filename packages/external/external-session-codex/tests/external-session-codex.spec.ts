@@ -6,6 +6,7 @@
 
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import * as ExternalCodexInvariant from '@deepseek-ai/dsh-external-session-codex/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { startCodexHarness, type CodexTestHarness } from './harness.ts'
@@ -73,11 +74,24 @@ describe('external-session-codex registration', () => {
     }
   })
 
-  it('setModel rejects loud: 0.147.0 exposes no runtime model-switch on a live thread', async () => {
-    const harness = await startCodexHarness([])
+  it('stores model and effort and applies them to the next turn', async () => {
+    const harness = await startCodexHarness([{ kind: 'complete', text: 'MODEL_SWITCHED' }])
     try {
-      await expect(harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol'))
-        .rejects.toThrow(/no runtime model-switch/)
+      await harness.start('fixture-model')
+      await harness.waitCount('external/session-started', 1)
+      expect(harness.recorded.events).toContainEqual({
+        type: 'external/session-started',
+        data: { provider: 'codex', cwd: harness.workspace, model: 'fixture-model' },
+      })
+      await harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol', ReasoningEffortId('high'))
+      await harness.provider.prompt(harness.sessionId, 'switch model')
+      await harness.waitTurns(1)
+      expect(harness.recorded.events)
+        .toContainEqual({ type: 'external/model-switched', data: { model: 'gpt-5.6-sol' } })
+      expect(harness.fixture.requests[0]?.body).toMatchObject({
+        model: 'gpt-5.6-sol',
+        reasoning: { effort: 'high' },
+      })
     } finally {
       await harness.close()
     }
@@ -215,6 +229,36 @@ describe('external-session-codex interrupt and disposal', () => {
 })
 
 describe('external-session-codex cold reattach', () => {
+  it('settles a turn when the app-server dies before completion and accepts the next prompt', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'hold' },
+      { kind: 'complete', text: 'AFTER_PROCESS_DEATH' },
+    ])
+    try {
+      await harness.start()
+      await harness.provider.prompt(harness.sessionId, 'first')
+      await harness.fixture.requestStarted
+      expect(harness.handles.length).toBeGreaterThan(0)
+      const child = harness.handles.at(-1)!
+      child.terminate()
+      await child.waitForExit()
+      await child.done.catch(() => {})
+
+      await expect(Promise.race([
+        harness.provider.prompt(harness.sessionId, 'second'),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('second prompt timed out')), 5_000)),
+      ])).resolves.toMatchObject({ turnId: expect.any(String) })
+      await harness.waitTurns(2, 10_000)
+      expect(harness.recorded.events
+        .filter(event => event.type === 'external/turn-ended')
+        .map(event => (event.data as { stopReason: string }).stopReason))
+        .toEqual(['error', 'completed'])
+      expect(agentMessageTexts(harness)).toContain('AFTER_PROCESS_DEATH')
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
   it('resumes the persisted thread after the app-server process restarts', async () => {
     const first = 'REATTACH_FIRST'
     const second = 'REATTACH_SECOND'

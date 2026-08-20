@@ -29,6 +29,7 @@ function request<P>(payload: P): RpcRequest<P> {
 
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
+  selected: { model: string; reasoningEffort?: string } | undefined
   constructor(
     readonly provider: string,
     readonly label: string,
@@ -38,7 +39,9 @@ class StubProvider implements ExternalSessionProvider {
   interrupt() {}
   async compact() {}
   async listModels() { return [] }
-  async setModel() {}
+  async setModel(_sessionId: SessionId, model: string, reasoningEffort?: string) {
+    this.selected = { model, ...reasoningEffort === undefined ? {} : { reasoningEffort } }
+  }
   async dispose() {}
 }
 
@@ -88,6 +91,33 @@ describe('session.create mode arms', () => {
     const session = ctx.sessions.get(SessionId('e1m'))
     expect(session?.header.mode).toBe('alpha')
     expect(session?.header.model).toBe('gpt-5')
+  })
+
+  it('routes model and reasoning selection to a live external provider', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    const sessionId = SessionId('e1-select')
+    const created = await ctx.apiProxy.sessions.create(request({
+      sessionId,
+      cwd: '/tmp',
+      mode: 'alpha',
+    }))
+    expect(created.result.ok).toBe(true)
+    await ctx.externalSessions.start({ sessionId, provider: 'alpha', cwd: '/tmp' })
+
+    const result = await ctx.apiProxy.sessions.selectModel(request({
+      sessionId,
+      provider: 'alpha',
+      model: 'gpt-5.6-sol',
+      reasoningEffort: 'high',
+    }))
+    expect(result.result.ok).toBe(true)
+    expect(result.result.ok ? result.result.value.selected : undefined).toMatchObject({
+      provider: 'alpha',
+      model: 'gpt-5.6-sol',
+      reasoningEffort: 'high',
+    })
+    expect(provider.selected).toEqual({ model: 'gpt-5.6-sol', reasoningEffort: 'high' })
   })
 
   it('fails loud with unknown-mode when the provider is not registered', async () => {

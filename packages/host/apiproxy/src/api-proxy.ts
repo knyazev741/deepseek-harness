@@ -1129,8 +1129,8 @@ async function routeExternalSessionCommand(
   try {
     await external.setModel(session.id, model)
   } catch (error: unknown) {
-    // e.g. a provider whose native surface has no runtime model-switch
-    // (Codex 0.147.0) rejects here; the message names the limitation.
+    // A provider may reject a model that its native catalog cannot apply; the
+    // message names that provider-owned limitation.
     return { kind: 'error', text: renderFailure(error) }
   }
   return { kind: 'success', text: `Switched the external agent to model "${model}".` }
@@ -2400,6 +2400,46 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
       async selectModel(request) {
         const { sessionId, provider, model, reasoningEffort } = request.payload
+        const externalSession = ctx.sessions.get(sessionId)
+        if (externalSession?.header.mode !== undefined && externalSession.header.mode !== 'dsh') {
+          const external = ctx.get('externalSessions')
+          if (external === undefined) {
+            return err(request, {
+              code: 'model-unavailable',
+              message: `external session mode "${externalSession.header.mode}" is unavailable`,
+              details: { provider, model },
+            })
+          }
+          if (provider !== externalSession.header.mode) {
+            return err(request, {
+              code: 'model-unavailable',
+              message: `provider "${provider}" is not the external session provider "${externalSession.header.mode}"`,
+              details: { provider, model },
+            })
+          }
+          try {
+            await external.setModel(
+              sessionId,
+              model,
+              reasoningEffort === undefined ? undefined : ReasoningEffortId(reasoningEffort),
+            )
+            return ok(request, {
+              selected: {
+                provider,
+                model,
+                ...reasoningEffort === undefined
+                  ? {}
+                  : { reasoningEffort: ReasoningEffortId(reasoningEffort) },
+              },
+            })
+          } catch (error: unknown) {
+            return err(request, {
+              code: 'model-unavailable',
+              message: error instanceof Error ? error.message : String(error),
+              details: { provider, model },
+            })
+          }
+        }
         const found = await agentFor(sessionId)
         if ('error' in found) return err(request, found.error)
         return serializeImageAdmission(found.agent, async () => {

@@ -10,20 +10,31 @@
  * @module @deepseek-ai/dsh-external-session-codex
  */
 
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import { chmod, mkdir } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {
+  ApprovalPolicy,
   ExternalBridgeContext,
   ExternalModelDirectory,
   ExternalModelInfo,
   ExternalSessionProvider,
   ExternalSessionStart,
   ExternalTurnId,
+  ReasoningEffort,
 } from '@deepseek-ai/dsh-external-session'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import type { Session } from '@deepseek-ai/dsh-session'
+import type { SandboxExecutionPolicy, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
+import type {} from '@deepseek-ai/dsh-sandbox-policy'
+import { effectiveApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import type {} from '@deepseek-ai/dsh-user-approval'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { CodexExternalSession, type CodexSessionSpec } from './run.ts'
+import { appServerArgv, CodexExternalSession, type CodexSessionSpec } from './run.ts'
 
 export const name = 'external-session-codex'
 export const inject = ['externalSessions', 'subprocess']
@@ -34,7 +45,8 @@ export const DEFAULT_DISPOSE_GRACE_MS = 3_000
 /** Deployment-owned command, environment, and process-release bound. */
 export interface Config {
   /**
-   * App-server command or path; resolves `codex` from PATH by default.
+   * Optional app-server command or path override; the packaged launcher is
+   * used when this is absent.
    */
   command?: string
   /**
@@ -47,18 +59,71 @@ export interface Config {
    * credential-scrubbed parent environment.
    */
   env?: Record<string, string>
+  /** Harness-owned parent directory for per-session Codex homes. */
+  stateRoot?: string
+  /** Initial reasoning effort used when the request does not provide one. */
+  reasoningEffort?: ReasoningEffort
   /** Grace in milliseconds for app-server process-tree termination. */
   disposeGraceMs?: number
 }
 
-export const Config: z<Config> = z.object({
-  command: z.string().default('codex'),
+export const Config = z.object({
+  command: z.union([z.string(), undefined]),
   args: z.array(z.string()).default(['app-server', '--stdio']),
   env: z.dict(z.string()).default({}),
+  stateRoot: z.string().default(join(tmpdir(), 'dsh-external-codex')),
+  reasoningEffort: z.union([z.string(), undefined]) as unknown as z<ReasoningEffort | undefined>,
   disposeGraceMs: z.number().default(DEFAULT_DISPOSE_GRACE_MS),
-})
+}) as unknown as z<Config>
 
-type ResolvedConfig = Required<Config>
+type ResolvedConfig = Config & {
+  readonly args: string[]
+  readonly env: Record<string, string>
+  readonly stateRoot: string
+  readonly disposeGraceMs: number
+}
+
+const require = createRequire(import.meta.url)
+
+/** Resolve the packaged launcher when no deployment command override exists.
+ * @param args - app-server arguments appended to the packaged launcher.
+ * @returns the direct Node-plus-launcher argv.
+ */
+export function packagedCodexArgv(args: readonly string[]): string[] {
+  return [process.execPath, require.resolve('@openai/codex/bin/codex.js'), ...args]
+}
+
+/** Return the exact app-server argv for an explicit command or packaged launcher.
+ * @param command - explicit command override, or undefined for the package.
+ * @param args - app-server arguments.
+ * @param platform - platform used for explicit Windows command binding.
+ * @returns the direct app-server argv.
+ */
+export function resolvedCodexArgv(
+  command: string | undefined,
+  args: readonly string[],
+  platform: NodeJS.Platform = process.platform,
+): string[] {
+  return command === undefined ? packagedCodexArgv(args) : appServerArgv(command, args, platform)
+}
+
+/** Key one session's state directory without putting the opaque id in a path.
+ * @param root - Harness-owned state parent directory.
+ * @param sessionId - opaque session id to key.
+ * @returns the private per-session state directory.
+ */
+export function codexStateRoot(root: string, sessionId: string): string {
+  const key = createHash('sha256').update(sessionId, 'utf8').digest('hex')
+  return join(resolve(root), key)
+}
+
+/** Create a private Harness-owned directory and retain it across process restarts. */
+async function ensurePrivateStateRoot(root: string, sessionId: string): Promise<string> {
+  const stateRoot = codexStateRoot(root, sessionId)
+  await mkdir(stateRoot, { recursive: true, mode: 0o700 })
+  await chmod(stateRoot, 0o700)
+  return stateRoot
+}
 
 function throwable(message: string): never {
   throw new Error(`external-session-codex: ${message}`)
@@ -80,9 +145,30 @@ class CodexProvider implements ExternalSessionProvider {
   ) {}
 
   async start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
-    const session = new CodexExternalSession(request, bridge, this.spec(request.cwd))
+    const liveSession = this.ctx.get('sessions')?.get(request.sessionId)
+    if (liveSession === undefined) throwable(`no live Session for ${String(request.sessionId)}`)
+    const policy = this.resolveSandboxPolicy(liveSession, request)
+    const resolvedRequest: ExternalSessionStart = {
+      ...request,
+      ...request.reasoningEffort === undefined && this.config.reasoningEffort === undefined
+        ? {}
+        : { reasoningEffort: request.reasoningEffort ?? this.config.reasoningEffort },
+      sandbox: policy.mode,
+      approvalPolicy: this.resolveApprovalPolicy(liveSession, request.approvalPolicy),
+    }
+    const stateRoot = await ensurePrivateStateRoot(this.config.stateRoot, String(request.sessionId))
+    const session = new CodexExternalSession(
+      resolvedRequest,
+      bridge,
+      this.spec(request.cwd, policy, stateRoot),
+    )
     this.sessions.set(request.sessionId, session)
-    await session.start(new AbortController().signal)
+    try {
+      await session.start(new AbortController().signal)
+    } catch (error: unknown) {
+      this.sessions.delete(request.sessionId)
+      throw error
+    }
   }
 
   prompt(sessionId: SessionId, text: string): Promise<{ turnId: ExternalTurnId }> {
@@ -121,9 +207,19 @@ class CodexProvider implements ExternalSessionProvider {
       disposal: new AbortController().signal,
     }
     const session = new CodexExternalSession(
-      { sessionId, provider: 'codex', cwd: process.cwd() },
+      {
+        sessionId,
+        provider: 'codex',
+        cwd: process.cwd(),
+        sandbox: 'danger-full-access',
+        approvalPolicy: 'ask',
+      },
       inertBridge,
-      this.spec(process.cwd()),
+      this.spec(process.cwd(), {
+        mode: 'danger-full-access',
+        workspaceRoot: process.cwd(),
+        sessionId,
+      }, await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))),
     )
     try {
       await session.start(signal)
@@ -134,20 +230,14 @@ class CodexProvider implements ExternalSessionProvider {
   }
 
   /**
-   * Switch the live session to a listed model.
-   * @throws always — the 0.147.0 app-server exposes no runtime model-switch on
-   *   a live thread and no per-turn model option (tests/evidence/README.md
-   *   lists no `thread/model` method, and `turn/start`/`thread/start`/`thread/resume`
-   *   accept no `model` field). Native `model/list` still discloses the
-   *   config-selected catalog.
+   * Store a model/effort selection for the next stable `turn/start` request.
+   * @param sessionId - the live external session.
+   * @param model - the selected model id.
+   * @param reasoningEffort - optional selected reasoning effort.
    */
-  setModel(): Promise<void> {
-    return Promise.reject(
-      new Error(
-        'external-session-codex: the Codex app-server 0.147.0 exposes no runtime model-switch on a live thread; '
-        + 'the native model list is read-only (select the model in Codex config instead)',
-      ),
-    )
+  setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void> {
+    this.require(sessionId).setModel(model, reasoningEffort)
+    return Promise.resolve()
   }
 
   async dispose(sessionId: SessionId): Promise<void> {
@@ -164,13 +254,36 @@ class CodexProvider implements ExternalSessionProvider {
     return session
   }
 
-  private spec(cwd: string): CodexSessionSpec {
+  private resolveSandboxPolicy(session: Session, request: ExternalSessionStart): SandboxExecutionPolicy {
+    const service = this.ctx.get('sandboxPolicy')
+    if (service !== undefined) return service.resolve({ session })
+    return {
+      mode: request.sandbox,
+      workspaceRoot: request.cwd,
+      sessionId: session.id,
+    }
+  }
+
+  private resolveApprovalPolicy(session: Session, fallback: ApprovalPolicy): ApprovalPolicy {
+    const service = this.ctx.get('approval')
+    if (service === undefined) return fallback
+    return effectiveApprovalPolicy(session.events) ?? service.config.policy ?? fallback
+  }
+
+  private spec(cwd: string, sandboxPolicy: SandboxExecutionPolicy, stateRoot: string): CodexSessionSpec {
+    const sandbox = this.ctx.get('sandbox')
     return {
       cwd,
-      command: this.config.command,
+      command: this.config.command ?? 'codex',
       args: this.config.args,
       env: this.config.env,
       disposeGraceMs: this.config.disposeGraceMs,
+      stateRoot,
+      sandboxPolicy,
+      ...sandbox === undefined
+        ? {}
+        : { confine: (argv: readonly string[], policy: SandboxExecutionPolicy) => sandbox.confine(argv, policy as SandboxPolicy) },
+      argv: resolvedCodexArgv(this.config.command, this.config.args),
       spawn: spec => this.ctx.subprocess.spawn(spec),
       onError: (error) => {
         this.ctx.logger.warn(`external-session-codex: child session: ${error.message}`)
@@ -185,7 +298,13 @@ class CodexProvider implements ExternalSessionProvider {
  * @param config - explicit command, arguments, child environment, and disposal grace.
  */
 export function apply(ctx: Context, config: Config): void {
-  const resolved = config as ResolvedConfig
+  const resolved: ResolvedConfig = {
+    ...config,
+    args: config.args ?? ['app-server', '--stdio'],
+    env: config.env ?? {},
+    stateRoot: config.stateRoot ?? join(tmpdir(), 'dsh-external-codex'),
+    disposeGraceMs: config.disposeGraceMs ?? DEFAULT_DISPOSE_GRACE_MS,
+  }
   if (!Number.isFinite(resolved.disposeGraceMs) || resolved.disposeGraceMs <= 0) {
     throwable(`disposeGraceMs must be a positive finite number, got ${resolved.disposeGraceMs}`)
   }
@@ -197,5 +316,9 @@ export function apply(ctx: Context, config: Config): void {
       throwable('app-server args must not contain an empty string')
     }
   }
+  if (resolved.command !== undefined && resolved.command.length === 0) {
+    throwable('command must be non-empty when configured')
+  }
+  if (resolved.stateRoot.length === 0) throwable('stateRoot must be non-empty')
   ctx.externalSessions.registerProvider(new CodexProvider(ctx, resolved))
 }

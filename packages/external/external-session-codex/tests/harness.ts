@@ -13,7 +13,7 @@ import { delimiter, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import ExternalSessions from '@deepseek-ai/dsh-external-session'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import type {
   ExternalBridgeContext,
   ExternalPermissionDecision,
@@ -21,8 +21,11 @@ import type {
 } from '@deepseek-ai/dsh-external-session'
 import type { SubprocessHandle } from '@deepseek-ai/dsh-subprocess'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
+import { SandboxProvider } from '@deepseek-ai/dsh-sandbox'
+import type { ConfinedArgv, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
 import { vi } from 'vitest'
 import * as codex from '../src/index.ts'
+import { codexStateRoot } from '../src/index.ts'
 import {
   startResponsesFixture,
   type ResponsesBehavior,
@@ -52,7 +55,7 @@ export interface CodexTestHarness {
   /** Set the decision every permission ask resolves with. */
   setPermissionAnswer(decision: ExternalPermissionDecision): void
   /** Open the session on the recorded bridge (provider.start). */
-  start(): Promise<void>
+  start(model?: string): Promise<void>
   /** Wait until at least `count` events of `type` have been recorded. */
   waitCount(type: string, count: number, timeoutMs?: number): Promise<void>
   /** Wait until the recorded deltas mention `needle`. */
@@ -120,10 +123,13 @@ export async function startCodexHarness(
   const root = mkdtempSync(join(tmpdir(), 'dsh-external-codex-'))
   const workspace = join(root, 'workspace')
   const codexHome = join(root, 'codex-home')
+  const sessionId = SessionId('external-codex-test-session')
   mkdirSync(workspace)
   mkdirSync(codexHome)
   const fixture = await startResponsesFixture(script)
-  writeFileSync(join(codexHome, 'config.toml'), [
+  const sessionHome = codexStateRoot(codexHome, String(sessionId))
+  mkdirSync(sessionHome, { recursive: true })
+  writeFileSync(join(sessionHome, 'config.toml'), [
     'model = "fixture-model"',
     'model_provider = "fixture"',
     'approval_policy = "on-request"',
@@ -154,8 +160,20 @@ export async function startCodexHarness(
     NO_PROXY: '127.0.0.1,localhost',
   }
   const ctx = new Context()
+  await ctx.plugin(SessionStore)
   await ctx.plugin(ExternalSessions)
   await ctx.plugin(LocalSubprocessRuntime)
+  class TestSandboxProvider extends SandboxProvider {
+    confine(argv: readonly string[], _policy: SandboxPolicy): ConfinedArgv {
+      return {
+        argv: [...argv],
+        enforcement: 'full',
+        denialSignatures: [],
+        runnerFailureRules: [],
+      }
+    }
+  }
+  await ctx.plugin(TestSandboxProvider)
 
   const handles: SubprocessHandle[] = []
   const spawn = ctx.subprocess.spawn.bind(ctx.subprocess)
@@ -165,7 +183,7 @@ export async function startCodexHarness(
     return handle
   })
 
-  await ctx.plugin(codex, { env, disposeGraceMs: 2_000 })
+  await ctx.plugin(codex, { env, stateRoot: codexHome, disposeGraceMs: 2_000 })
   const provider = ctx.externalSessions.getProvider('codex')
   if (provider === undefined) {
     throw new Error('codex provider did not register')
@@ -173,7 +191,7 @@ export async function startCodexHarness(
 
   const recorded: CodexRecorded = { events: [], deltas: [], permissionAsks: [] }
   const { bridge, setAnswer } = makeBridge(recorded)
-  const sessionId = SessionId('external-codex-test-session')
+  ctx.sessions.create(sessionId, { meta: { cwd: workspace, mode: 'codex' } })
 
   const harness: CodexTestHarness = {
     ctx,
@@ -185,7 +203,14 @@ export async function startCodexHarness(
     workspace,
     codexHome,
     setPermissionAnswer: setAnswer,
-    start: () => provider.start({ sessionId, provider: 'codex', cwd: workspace }, bridge),
+    start: model => provider.start({
+      sessionId,
+      provider: 'codex',
+      cwd: workspace,
+      ...(model === undefined ? {} : { model }),
+      sandbox: 'read-only',
+      approvalPolicy: 'ask',
+    }, bridge),
     waitCount: (type, count, timeoutMs = 120_000) => poll(
       () => recorded.events.filter(event => event.type === type).length >= count,
       `${count}x ${type} (saw ${recorded.events.filter(e => e.type === type).length})`,

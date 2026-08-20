@@ -16,7 +16,12 @@
  */
 
 import type { Readable, Writable } from 'node:stream'
-import type { ExternalModelInfo } from '@deepseek-ai/dsh-external-session'
+import type {
+  ApprovalPolicy,
+  ExternalModelInfo,
+  ReasoningEffort,
+  SandboxMode,
+} from '@deepseek-ai/dsh-external-session'
 import { JsonRpcLineTransport } from '@deepseek-ai/dsh-sdk-protocol'
 
 /** A JSON object carried by the app-server protocol. */
@@ -42,6 +47,18 @@ export interface CodexApprovalAsk {
   readonly command: string | null
   /** The raw `availableDecisions` offered by the request, for decision picking. */
   readonly availableDecisions: unknown
+}
+
+/** Stable per-session settings sent to the 0.147.0 app-server. */
+export interface CodexWireSettings {
+  /** Optional model override accepted by thread and turn starts. */
+  readonly model?: string
+  /** Optional reasoning effort accepted by turn starts. */
+  readonly reasoningEffort?: ReasoningEffort | string
+  /** Harness sandbox mode mapped to the stable Codex vocabulary. */
+  readonly sandbox: SandboxMode
+  /** Harness approval policy mapped to `on-request` or `never`. */
+  readonly approvalPolicy: ApprovalPolicy
 }
 
 /** Outward event sinks the persistent session drives off live app-server activity. */
@@ -110,6 +127,8 @@ async function raceAbort<T>(pending: Promise<T>, signal: AbortSignal): Promise<T
  */
 export class CodexExternalWire {
   private readonly transport: JsonRpcLineTransport
+  private readonly input: Readable
+  private readonly output: Writable
   private readonly fatal = Promise.withResolvers<never>()
   private threadId: string | undefined
   private pendingTurnId: string | undefined
@@ -120,12 +139,15 @@ export class CodexExternalWire {
     readonly params: JsonObject
   }> = []
   private closed = false
+  private failed = false
 
   constructor(
     input: Readable,
     output: Writable,
     private readonly hooks: CodexWireHooks,
   ) {
+    this.input = input
+    this.output = output
     this.transport = new JsonRpcLineTransport(input, output)
     void this.fatal.promise.catch(() => {})
     this.transport.onRequest((method, params) => this.handleServerRequest(method, params))
@@ -172,12 +194,14 @@ export class CodexExternalWire {
    * (tests/evidence/README.md, thread-persistence.json).
    * @param cwd - the session workspace.
    * @param signal - operation cancellation.
+   * @param settings - resolved model, effort, sandbox, and approval settings.
    * @returns the new thread id.
    */
-  async startPersistentThread(cwd: string, signal: AbortSignal): Promise<string> {
+  async startPersistentThread(cwd: string, signal: AbortSignal, settings?: CodexWireSettings): Promise<string> {
     const response = object(await this.guarded(this.transport.request('thread/start', {
       cwd,
       ephemeral: false,
+      ...settings === undefined ? {} : wireSettings(settings),
     }, signal), signal), 'thread/start response')
     const thread = object(response.thread, 'thread/start thread')
     return this.commitThreadId(string(thread.id, 'thread/start thread id'))
@@ -185,31 +209,38 @@ export class CodexExternalWire {
 
   /**
    * Reattach a persisted thread after an app-server restart. Evidence line:
-   * `thread/resume { threadId }` resumes a persisted thread on a cold process
+   * `thread/resume { threadId, model?, sandbox?, approvalPolicy? }` resumes a persisted thread on a cold process
    * (tests/evidence/README.md, thread-persistence.json).
    * @param threadId - the persisted thread to resume.
    * @param signal - operation cancellation.
+   * @param settings - resolved model, sandbox, and approval settings.
    * @returns the resumed thread id.
    */
-  async resumeThread(threadId: string, signal: AbortSignal): Promise<string> {
-    await this.guarded(this.transport.request('thread/resume', { threadId }, signal), signal)
+  async resumeThread(threadId: string, signal: AbortSignal, settings?: CodexWireSettings): Promise<string> {
+    await this.guarded(this.transport.request('thread/resume', {
+      threadId,
+      ...settings === undefined ? {} : wireSettings(settings),
+    }, signal), signal)
     return this.commitThreadId(threadId)
   }
 
   /**
-   * Start one turn on the active thread and return its id. The turn then runs
+   * Start one turn on the active thread with optional model, effort, sandbox,
+   * and approval overrides and return its id. The turn then runs
    * to completion asynchronously: live deltas and committed items stream out
    * through the hooks until `turn/completed`.
    * @param text - the validated user prompt text.
    * @param signal - operation cancellation.
+   * @param settings - resolved model, effort, sandbox, and approval settings.
    * @returns the provider-issued turn id.
    */
-  async startTurn(text: string, signal: AbortSignal): Promise<string> {
+  async startTurn(text: string, signal: AbortSignal, settings?: CodexWireSettings): Promise<string> {
     const threadId = this.threadId as string
     this.turnActive = true
     const response = object(await this.guarded(this.transport.request('turn/start', {
       threadId,
       input: [{ type: 'text', text, text_elements: [] }],
+      ...settings === undefined ? {} : wireSettings(settings, true),
     }, signal), signal), 'turn/start response')
     const turn = object(response.turn, 'turn/start turn')
     return this.commitTurnId(string(turn.id, 'turn/start turn id'))
@@ -269,6 +300,9 @@ export class CodexExternalWire {
   close(): void {
     if (this.closed) return
     this.closed = true
+    this.input.off('error', this.onInputError)
+    this.input.off('end', this.onInputEnd)
+    this.output.off('error', this.onOutputError)
     this.transport.close()
   }
 
@@ -277,6 +311,8 @@ export class CodexExternalWire {
   }
 
   private fail(error: Error): void {
+    if (this.closed || this.failed) return
+    this.failed = true
     this.fatal.reject(error)
     this.hooks.onProcessClosed(error)
   }
@@ -441,7 +477,23 @@ export class CodexExternalWire {
   }
 }
 
-/** Map a `turn/completed` status and error onto the external stop reason. */
+/** Map Harness settings to the stable app-server field names. */
+function wireSettings(settings: CodexWireSettings, includeEffort = false): JsonObject {
+  return {
+    ...settings.model === undefined ? {} : { model: settings.model },
+    ...(includeEffort && settings.reasoningEffort !== undefined
+      ? { effort: String(settings.reasoningEffort) }
+      : {}),
+    sandbox: settings.sandbox,
+    approvalPolicy: settings.approvalPolicy === 'ask' ? 'on-request' : 'never',
+  }
+}
+
+/** Map a `turn/completed` status and error onto the external stop reason.
+ * @param status - terminal status reported by the app-server.
+ * @param error - optional terminal error payload.
+ * @returns the stable external stop reason.
+ */
 export function mapExternalStopReason(
   status: CodexTurnTerminalStatus | (string & {}),
   error: unknown,
@@ -461,7 +513,11 @@ export function mapExternalStopReason(
   throw new Error(`external-session-codex: app-server returned invalid terminal turn status ${JSON.stringify(status)}`)
 }
 
-/** Pick an approval decision: the requested one when offered, else the safe `decline`. */
+/** Pick an approval decision: the requested one when offered, else the safe `decline`.
+ * @param available - decisions advertised by the app-server.
+ * @param fallback - requested Harness decision.
+ * @returns the wire decision to answer.
+ */
 export function offeredApprovalDecision(
   available: unknown,
   fallback: 'accept' | 'decline' | 'cancel',

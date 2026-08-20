@@ -14,7 +14,15 @@
  */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import type { SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/dsh-session'
+
+/** Model reasoning level accepted by an external provider's stable wire. */
+export type ReasoningEffort = ReasoningEffortId
+/** Sandbox mode folded from the session policy for one external child. */
+export type { ApprovalPolicy, SandboxMode }
 
 /**
  * Which surface answers {@link ExternalSessionsService.listModels} for a mode.
@@ -64,6 +72,12 @@ export interface ExternalSessionStart {
   readonly cwd: string
   /** Optional initial model the mode should drive with. */
   readonly model?: string
+  /** Optional initial reasoning effort the mode should drive with. */
+  readonly reasoningEffort?: ReasoningEffort
+  /** Resolved Harness file policy for the child process. */
+  readonly sandbox: SandboxMode
+  /** Resolved Harness approval policy for the child process. */
+  readonly approvalPolicy: ApprovalPolicy
 }
 
 /** One disclosed model the external agent can switch to. */
@@ -200,8 +214,9 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
    * Switch the live session to a listed model.
    * @param sessionId - the live external session.
    * @param model - a model id from {@link ExternalSessionProvider.listModels}.
+   * @param reasoningEffort - optional effort applied to the next turn.
    */
-  setModel(sessionId: SessionId, model: string): Promise<void>
+  setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
   /**
    * Dispose the live session and its process tree.
    * @param sessionId - the live external session.
@@ -221,7 +236,7 @@ export interface ExternalSessionsService {
    * Begin a live external session on the named provider, handing it a bridge.
    * @param request - the start request with a pre-reserved session id.
    */
-  start(request: ExternalSessionStart): Promise<void>
+  start(request: ExternalSessionStartRequest): Promise<void>
   /**
    * Submit one prompt to a live external session.
    * @param sessionId - the live external session.
@@ -249,11 +264,18 @@ export interface ExternalSessionsService {
    * Switch a live external session to a listed model.
    * @param sessionId - the live external session.
    * @param model - the model id to switch to.
+   * @param reasoningEffort - optional effort applied to the next turn.
    */
-  setModel(sessionId: SessionId, model: string): Promise<void>
+  setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
   /**
    * Dispose a live external session and its process tree.
    * @param sessionId - the live external session.
    */
   dispose(sessionId: SessionId): Promise<void>
+}
+
+/** Host-facing start input; the registry fills policy defaults before dispatch. */
+export type ExternalSessionStartRequest = Omit<ExternalSessionStart, 'sandbox' | 'approvalPolicy'> & {
+  readonly sandbox?: SandboxMode
+  readonly approvalPolicy?: ApprovalPolicy
 }

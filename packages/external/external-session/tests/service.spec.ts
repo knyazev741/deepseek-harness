@@ -21,6 +21,7 @@ import ExternalSessions, {
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory: ExternalModelDirectory
   startCount = 0
+  startError: Error | undefined
   lastStart: ExternalSessionStart | undefined
   lastBridge: ExternalBridgeContext | undefined
   readonly prompts: string[] = []
@@ -40,6 +41,7 @@ class StubProvider implements ExternalSessionProvider {
 
   async start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
     this.startCount += 1
+    if (this.startError !== undefined) throw this.startError
     this.lastStart = request
     this.lastBridge = bridge
   }
@@ -129,6 +131,21 @@ describe('ExternalSessions registry', () => {
     await expect(service.compact(SessionId('none'))).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
     await expect(service.setModel(SessionId('none'), 'm')).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
     await expect(service.dispose(SessionId('none'))).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
+  })
+
+  it('rolls back the route when provider start fails', async () => {
+    const { service } = await setup()
+    const provider = new StubProvider('alpha', 'Alpha')
+    provider.startError = new Error('start failed')
+    service.registerProvider(provider)
+    const sessionId = SessionId('start-failed')
+
+    await expect(service.start({ sessionId, provider: 'alpha', cwd: '/tmp' }))
+      .rejects.toThrow('start failed')
+
+    provider.startError = undefined
+    await expect(service.start({ sessionId, provider: 'alpha', cwd: '/tmp' })).resolves.toBeUndefined()
+    expect(provider.startCount).toBe(2)
   })
 })
 

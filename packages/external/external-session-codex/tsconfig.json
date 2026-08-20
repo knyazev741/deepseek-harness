@@ -21,6 +21,15 @@
       "path": "../external-session"
     },
     {
+      "path": "../../sandbox/sandbox"
+    },
+    {
+      "path": "../../sandbox/sandbox-policy"
+    },
+    {
+      "path": "../../interaction/user-approval"
+    },
+    {
       "path": "../../session/session-projection"
     },
     {

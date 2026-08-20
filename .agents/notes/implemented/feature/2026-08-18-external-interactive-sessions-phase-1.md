@@ -42,6 +42,16 @@ External-mode session creation with a registered provider starts a bridge and ne
 a native Agent; an unknown mode fails loud at creation. A no-mode (`dsh`) session is
 untouched.
 
+The Codex provider folds the live session's sandbox and approval settings into each
+external start. Restricted children receive the exact confined app-server argv and a
+private per-session `CODEX_HOME` under the configured state root; the packaged
+`@openai/codex` launcher is the default and an explicit command is an override. The
+launcher environment scrubs ambient credential-shaped variables while retaining
+explicit provider credentials. Stable `model` and reasoning `effort` fields are sent
+on thread start/resume and each turn; accepted model changes are recorded before the
+next turn. A process death settles an active turn, closes wire listeners before
+termination, waits for the process tree, and then permits a cold reattach.
+
 ### The `external/*` session events
 
 The driver appends log-only events via `SessionEventMap` declaration merging, all

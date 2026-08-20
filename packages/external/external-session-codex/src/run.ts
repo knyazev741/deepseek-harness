@@ -13,15 +13,21 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import type { ExternalModelInfo, ExternalSessionStart } from '@deepseek-ai/dsh-external-session'
+import type {
+  ExternalModelInfo,
+  ExternalSessionStart,
+  ReasoningEffort,
+} from '@deepseek-ai/dsh-external-session'
 import { ExternalTurnId } from '@deepseek-ai/dsh-external-session'
 import type { SessionEventMap, SessionId } from '@deepseek-ai/dsh-session'
 import type { ExternalBridgeContext } from '@deepseek-ai/dsh-external-session'
+import type { ConfinedArgv, SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
 import type {
   ExternalMessageAddedData,
   ExternalPermissionOutcome,
   ExternalToolActivityData,
 } from '@deepseek-ai/dsh-session-projection'
+import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import {
   CodexExternalWire,
@@ -30,6 +36,7 @@ import {
   type CodexApprovalAsk,
   type CodexTurnEnd,
   type CodexWireHooks,
+  type CodexWireSettings,
   type JsonObject,
 } from './wire.ts'
 
@@ -45,16 +52,65 @@ export interface CodexSessionSpec {
   readonly command: string
   /** App-server arguments (defaults to `app-server --stdio`). */
   readonly args: readonly string[]
+  /** Fully resolved file-effect policy for this session's child. */
+  readonly sandboxPolicy: SandboxExecutionPolicy
+  /** Optional sandbox wrapper for a non-dangerous file-effect policy. */
+  readonly confine?: (argv: readonly string[], policy: SandboxExecutionPolicy) => ConfinedArgv
+  /** Direct executable argv used by the packaged launcher. */
+  readonly argv?: readonly string[]
+  /** Private per-session `CODEX_HOME` directory owned by the provider. */
+  readonly stateRoot?: string
   /** Shared subprocess service spawn operation. */
   readonly spawn: (spec: SubprocessSpawnSpec) => SubprocessHandle
   /** Diagnostic sink for an unexpected app-server closure mid-session. */
   readonly onError?: (error: Error) => void
 }
 
+/**
+ * Build the exact subprocess request for one Codex app-server.
+ *
+ * The command is an argv, never a shell string. Explicit environment entries
+ * are layered after the shared credential scrub, and restricted sessions must
+ * provide a sandbox wrapper rather than silently running unconfined.
+ * @param spec - resolved session command, policy, and process options.
+ * @param signal - disposal signal inherited by the child.
+ * @returns the fully specified managed-child request.
+ */
+export function createCodexSpawnSpec(
+  spec: CodexSessionSpec,
+  signal?: AbortSignal,
+): SubprocessSpawnSpec {
+  const rawArgv = [...(spec.argv ?? appServerArgv(spec.command, spec.args))]
+  const policy = spec.stateRoot === undefined
+    ? spec.sandboxPolicy
+    : { ...spec.sandboxPolicy, stateRoot: spec.stateRoot }
+  const argv = spec.sandboxPolicy.mode === 'danger-full-access'
+    ? rawArgv
+    : spec.confine?.(rawArgv, policy).argv
+  if (argv === undefined) {
+    throw new Error(
+      `external-session-codex: sandbox mode "${spec.sandboxPolicy.mode}" has no confinement provider`,
+    )
+  }
+  return {
+    argv,
+    cwd: spec.cwd,
+    stdio: { stdin: 'pipe', stdout: 'pipe', stderr: 'inherit' },
+    graceMs: spec.disposeGraceMs,
+    signal,
+    env: {
+      ...scrubbedParentEnv(),
+      ...spec.env,
+      ...spec.stateRoot === undefined ? {} : { CODEX_HOME: spec.stateRoot },
+    },
+  }
+}
+
 /** One live app-server process and its interactive wire. */
 interface LiveProcess {
   readonly handle: SubprocessHandle
   readonly wire: CodexExternalWire
+  cleanup?: Promise<void>
 }
 
 function thrown(value: unknown): Error {
@@ -90,9 +146,17 @@ export class CodexExternalSession {
   private readonly sessionId: SessionId
   private readonly bridge: ExternalBridgeContext
   private readonly spec: CodexSessionSpec
+  private settings: CodexWireSettings
   private threadId: string | undefined
   private live: LiveProcess | undefined
-  private activeEnd: { raw: string; promise: Promise<void>; resolve: () => void } | undefined
+  private activeEnd: {
+    raw: string
+    promise: Promise<void>
+    resolve: () => void
+    settled: boolean
+  } | undefined
+  /** Serializes process cleanup so a respawn cannot race the old tree. */
+  private quiescence: Promise<void> = Promise.resolve()
   private disposed = false
 
   constructor(
@@ -103,9 +167,17 @@ export class CodexExternalSession {
     this.sessionId = request.sessionId
     this.bridge = bridge
     this.spec = spec
+    this.settings = {
+      ...request.model === undefined ? {} : { model: request.model },
+      ...request.reasoningEffort === undefined ? {} : { reasoningEffort: request.reasoningEffort },
+      sandbox: request.sandbox,
+      approvalPolicy: request.approvalPolicy,
+    }
   }
 
-  /** True while an app-server child is alive and usable. */
+  /** True while an app-server child is alive and usable.
+   * @returns whether this session currently owns a live wire.
+   */
   isLive(): boolean {
     return this.live !== undefined
   }
@@ -118,7 +190,11 @@ export class CodexExternalSession {
   async start(signal: AbortSignal): Promise<void> {
     if (this.live !== undefined) return
     await this.ensureLive(signal, false)
-    this.append('external/session-started', { provider: 'codex', cwd: this.spec.cwd })
+    this.append('external/session-started', {
+      provider: 'codex',
+      cwd: this.spec.cwd,
+      ...this.settings.model === undefined ? {} : { model: this.settings.model },
+    })
   }
 
   /**
@@ -130,11 +206,51 @@ export class CodexExternalSession {
   async prompt(text: string, signal: AbortSignal): Promise<{ turnId: ExternalTurnId }> {
     if (this.activeEnd !== undefined) await this.activeEnd.promise
     await this.ensureLive(signal, true)
-    const raw = await this.liveWire().startTurn(text, signal)
     const resolvers = Promise.withResolvers<void>()
-    this.activeEnd = { raw, promise: resolvers.promise, resolve: resolvers.resolve }
-    this.append('external/message-added', { turnId: raw, role: 'user', text })
-    return { turnId: ExternalTurnId(raw) }
+    const active = {
+      raw: '',
+      promise: resolvers.promise,
+      resolve: resolvers.resolve,
+      settled: false,
+    }
+    this.activeEnd = active
+    try {
+      const raw = await this.liveWire().startTurn(text, signal, this.settings)
+      if (active.settled) {
+        throw new Error('external-session-codex: app-server closed while starting the turn')
+      }
+      active.raw = raw
+      this.append('external/message-added', { turnId: raw, role: 'user', text })
+      return { turnId: ExternalTurnId(raw) }
+    } catch (error: unknown) {
+      if (!active.settled) {
+        active.settled = true
+        if (this.activeEnd === active) this.activeEnd = undefined
+        active.resolve()
+      }
+      throw thrown(error)
+    }
+  }
+
+  /** Store model and reasoning settings for the next stable `turn/start`.
+   * @param model - selected native model id.
+   * @param reasoningEffort - optional stable reasoning effort.
+   */
+  setModel(model: string, reasoningEffort?: ReasoningEffort): void {
+    if (model.length === 0) throw new Error('external-session-codex: model must be non-empty')
+    this.settings = {
+      ...this.settings,
+      model,
+      ...reasoningEffort === undefined ? {} : { reasoningEffort },
+    }
+    if (reasoningEffort === undefined) {
+      this.settings = {
+        ...this.settings.model === undefined ? {} : { model: this.settings.model },
+        sandbox: this.settings.sandbox,
+        approvalPolicy: this.settings.approvalPolicy,
+      }
+    }
+    this.append('external/model-switched', { model })
   }
 
   /**
@@ -174,28 +290,19 @@ export class CodexExternalSession {
     this.disposed = true
     this.append('external/session-ended', { stopReason: 'completed' })
     this.live?.wire.interrupt()
-    this.live?.wire.close()
     const live = this.live
     this.live = undefined
-    const handle = live?.handle
-    if (handle === undefined) return
-    if (handle.pid > 0) {
-      try {
-        handle.stdin?.end()
-      } catch {
-        // A concurrently closed stdin does not change tree ownership below.
-      }
-      handle.terminate()
-      await handle.waitForExit()
-    }
-    await handle.done.catch(() => {})
+    this.settleActiveTurn('aborted')
+    if (live !== undefined) await this.cleanupLive(live)
+    await this.quiescence
   }
 
   /** Build the wire hooks that project live app-server activity onto the bridge. */
-  private makeHooks(): CodexWireHooks {
+  private makeHooks(onProcessClosed: (error: Error) => void): CodexWireHooks {
     return {
       onTurnStarted: (turnId) => {
         this.append('external/turn-started', { turnId })
+        if (this.activeEnd?.raw === '') this.activeEnd.raw = turnId
       },
       onItemStarted: (turnId, item) => {
         this.emitToolActivity(turnId, item)
@@ -217,13 +324,7 @@ export class CodexExternalSession {
         this.finishTurn(end)
       },
       onProcessClosed: (error) => {
-        if (this.disposed) return
-        this.spec.onError?.(error)
-        if (this.live !== undefined) {
-          // The app-server died mid-session; the next operation respawns and
-          // resumes the persisted thread.
-          this.live = undefined
-        }
+        onProcessClosed(error)
       },
       answerApproval: async (ask) => {
         return this.answerApproval(ask)
@@ -251,9 +352,22 @@ export class CodexExternalSession {
     this.append('external/turn-ended', { turnId: end.id, stopReason })
     const active = this.activeEnd
     if (active !== undefined && active.raw === end.id) {
+      active.settled = true
       this.activeEnd = undefined
       active.resolve()
     }
+  }
+
+  /** Settle a turn that cannot receive a terminal wire notification. */
+  private settleActiveTurn(stopReason: 'aborted' | 'error'): void {
+    const active = this.activeEnd
+    if (active === undefined || active.settled) return
+    active.settled = true
+    this.activeEnd = undefined
+    if (active.raw.length > 0) {
+      this.append('external/turn-ended', { turnId: active.raw, stopReason })
+    }
+    active.resolve()
   }
 
   /** Ask the human through the bridge and answer the app-server approval. */
@@ -299,19 +413,19 @@ export class CodexExternalSession {
    */
   private async ensureLive(signal: AbortSignal, resume: boolean): Promise<void> {
     if (this.live !== undefined) return
-    const handle = this.spec.spawn({
-      argv: appServerArgv(this.spec.command, this.spec.args),
-      cwd: this.spec.cwd,
-      stdio: { stdin: 'pipe', stdout: 'pipe', stderr: 'inherit' },
-      graceMs: this.spec.disposeGraceMs,
-      env: this.spec.env,
-      signal: this.bridge.disposal,
-    })
+    await this.quiescence
+    if (this.disposed) throw new Error('external-session-codex: session is disposed')
+    const handle = this.spec.spawn(createCodexSpawnSpec(this.spec, this.bridge.disposal))
+    const liveRef: { current?: LiveProcess } = {}
     const wire = new CodexExternalWire(
       handle.stdout as NonNullable<SubprocessHandle['stdout']>,
       handle.stdin as NonNullable<SubprocessHandle['stdin']>,
-      this.makeHooks(),
+      this.makeHooks((error) => {
+        if (liveRef.current !== undefined) this.handleProcessClosed(liveRef.current, error)
+      }),
     )
+    const live: LiveProcess = { handle, wire }
+    liveRef.current = live
     const processFailure: Promise<never> = handle.done.then(
       outcome => Promise.reject(new Error(
         'external-session-codex: app-server exited before the operation settled '
@@ -321,24 +435,55 @@ export class CodexExternalSession {
     )
     processFailure.catch(() => {})
     void handle.done.then(
-      () => { if (this.live?.handle === handle) this.live = undefined },
-      () => {},
+      (outcome) => {
+        if (live !== undefined && this.live?.handle === handle) {
+          this.handleProcessClosed(live, new Error(
+            'external-session-codex: app-server exited before the operation settled '
+            + `(code ${String(outcome.exitCode)}, signal ${String(outcome.signal)})`,
+          ))
+        }
+      },
+      (error: unknown) => {
+        if (live !== undefined && this.live?.handle === handle) this.handleProcessClosed(live, thrown(error))
+      },
     )
-    this.live = { handle, wire }
+    this.live = live
     try {
       wire.start()
       await Promise.race([wire.initialize(signal), processFailure])
       if (this.threadId === undefined || !resume) {
-        const id = await Promise.race([wire.startPersistentThread(this.spec.cwd, signal), processFailure])
+        const id = await Promise.race([wire.startPersistentThread(this.spec.cwd, signal, this.settings), processFailure])
         this.threadId = id
       } else {
-        await Promise.race([wire.resumeThread(this.threadId, signal), processFailure])
+        await Promise.race([wire.resumeThread(this.threadId, signal, this.settings), processFailure])
       }
     } catch (error: unknown) {
-      this.live = undefined
-      await this.disposeChild(handle, wire)
+      if (this.live?.handle === handle) this.live = undefined
+      await this.cleanupLive(live)
       throw thrown(error)
     }
+  }
+
+  /** Handle one process failure for the exact child that owned the wire. */
+  private handleProcessClosed(live: LiveProcess, error: Error): void {
+    if (this.disposed || this.live?.handle !== live.handle) return
+    this.live = undefined
+    this.spec.onError?.(error)
+    this.settleActiveTurn('error')
+    void this.cleanupLive(live).catch((cleanupError: unknown) => {
+      this.spec.onError?.(thrown(cleanupError))
+    })
+  }
+
+  /** Enqueue one child teardown behind all earlier process trees. */
+  private cleanupLive(live: LiveProcess | undefined): Promise<void> {
+    if (live === undefined) return this.quiescence
+    if (live.cleanup !== undefined) return live.cleanup
+    const previous = this.quiescence
+    const cleanup = previous.then(() => this.disposeChild(live.handle, live.wire))
+    live.cleanup = cleanup
+    this.quiescence = cleanup.catch(() => {})
+    return cleanup
   }
 
   /** The live wire, or fail loud if no app-server child is alive. */
@@ -350,7 +495,7 @@ export class CodexExternalSession {
     return wire
   }
 
-  private disposeChild(handle: SubprocessHandle, wire: CodexExternalWire): Promise<void> {
+  private async disposeChild(handle: SubprocessHandle, wire: CodexExternalWire): Promise<void> {
     wire.close()
     if (handle.pid > 0) {
       try {
@@ -360,8 +505,8 @@ export class CodexExternalSession {
       }
       handle.terminate()
     }
-    const joined = (): Promise<void> => handle.done.then(() => {}, () => {})
-    return handle.waitForExit().then(joined, joined)
+    await handle.waitForExit().catch(() => false)
+    await handle.done.catch(() => {})
   }
 
   private append<K extends keyof SessionEventMap>(type: K, data: SessionEventMap[K]): void {

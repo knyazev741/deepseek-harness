@@ -26,8 +26,10 @@ import type {
   ExternalPermissionAnswerer,
   ExternalPermissionDecision,
   ExternalSessionEvent,
+  ExternalSessionStartRequest,
   ExternalSessionProvider,
   ExternalSessionStart,
+  ReasoningEffort,
   ExternalSessionsService,
 } from './types.ts'
 
@@ -40,9 +42,13 @@ export type {
   ExternalPermissionAnswerer,
   ExternalPermissionAsk,
   ExternalPermissionDecision,
+  ApprovalPolicy,
+  ReasoningEffort,
+  SandboxMode,
   ExternalSessionEvent,
   ExternalSessionProvider,
   ExternalSessionStart,
+  ExternalSessionStartRequest,
   ExternalSessionsService,
 } from './types.ts'
 
@@ -178,13 +184,13 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   /**
    * Begin a live external session on the named provider, handing it a bridge.
    * Records the session-to-provider route before awaiting the provider so a
-   * later prompt/interrupt/setModel/dispose always resolves, even if start
-   * rejects.
+   * later prompt/interrupt/setModel/dispose resolves during startup, then
+   * removes the route when startup rejects.
    * @param request - the start request with a pre-reserved session id.
    * @throws {@link ExternalSessionError} for an unknown provider or a
    *   session id that is already live.
    */
-  async start(request: ExternalSessionStart): Promise<void> {
+  async start(request: ExternalSessionStartRequest): Promise<void> {
     const provider = this.expectProvider(request.provider)
     if (this.sessions.has(request.sessionId)) {
       throw new ExternalSessionError(
@@ -192,10 +198,24 @@ export class ExternalSessions extends Service implements ExternalSessionsService
         'DUPLICATE_SESSION',
       )
     }
+    const resolved: ExternalSessionStart = {
+      ...request,
+      sandbox: request.sandbox ?? 'read-only',
+      approvalPolicy: request.approvalPolicy ?? 'ask',
+    }
     this.sessions.set(request.sessionId, request.provider)
     const controller = new AbortController()
     this.disposals.set(request.sessionId, controller)
-    await provider.start(request, this.createBridge(controller))
+    try {
+      await provider.start(resolved, this.createBridge(controller))
+    } catch (error) {
+      this.sessions.delete(request.sessionId)
+      if (this.disposals.get(request.sessionId) === controller) {
+        this.disposals.delete(request.sessionId)
+        controller.abort()
+      }
+      throw error
+    }
   }
 
   /**
@@ -245,8 +265,8 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    * @param model - the model id to switch to.
    * @throws {@link ExternalSessionError} when the session is not live.
    */
-  async setModel(sessionId: SessionId, model: string): Promise<void> {
-    await this.providerFor(sessionId).setModel(sessionId, model)
+  async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void> {
+    await this.providerFor(sessionId).setModel(sessionId, model, reasoningEffort)
   }
 
   /**

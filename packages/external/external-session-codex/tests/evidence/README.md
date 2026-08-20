@@ -1,5 +1,7 @@
 # Codex app-server 0.147.0 — evidence transcripts
 
+English | [中文](README.zh.md)
+
 Recorded JSON-RPC transcripts of the **real** `codex app-server --stdio` wire for
 `@openai/codex@0.147.0`, captured through an in-process OpenAI Responses SSE
 fixture. These are the ground-truth method and notification names every later
@@ -68,10 +70,10 @@ Each method below is marked:
 | method | judgment | notes |
 | --- | --- | --- |
 | `initialize` | stable, observed | handshake; response carries `userAgent`, `codexHome`, `platformFamily`, `platformOs`. |
-| `thread/start` | stable, observed | `{ cwd, ephemeral }`; `ephemeral:false` persists to a rollout `.jsonl` (see `.result.thread.path` and `thread/started`). |
-| `turn/start` | stable, observed | `{ threadId, input: [{ type: "text", text, text_elements: [] }] }`; response `{ turn }`, then `turn/started`. |
+| `thread/start` | stable, observed | `{ cwd, ephemeral, model?, sandbox?, approvalPolicy? }`; `ephemeral:false` persists to a rollout `.jsonl` (see `.result.thread.path` and `thread/started`). |
+| `turn/start` | stable, observed | `{ threadId, input: [{ type: "text", text, text_elements: [] }], model?, effort?, sandbox?, approvalPolicy? }`; response `{ turn }`, then `turn/started`. |
 | `turn/interrupt` | stable, observed | `{ threadId, turnId }`; responds `{}`; settles the turn with `turn/completed` status `interrupted`. |
-| `thread/resume` | stable, observed | `{ threadId }` resumes a persisted thread; on the cold-restart process it returned a `thread` plus `initialTurnsPage`, `turnsBackwardsCursor`, `itemsBackwardsCursor`. |
+| `thread/resume` | stable, observed | `{ threadId, model?, sandbox?, approvalPolicy? }` resumes a persisted thread; on the cold-restart process it returned a `thread` plus `initialTurnsPage`, `turnsBackwardsCursor`, `itemsBackwardsCursor`. |
 | `model/list` | stable, observed | native model roster; returns `{ data: [...], nextCursor }`. **Not ABSENT** in 0.147.0. |
 | `thread/compact/start` | stable, observed | **the** compact path. **Not ABSENT**: a dedicated method (not a `/compact` slash passthrough). Responds `{}` immediately; compaction runs as a background turn (`turn/started`, `item/started`, extra model rounds, `turn/completed`). |
 | `initialized` (client notification) | stable, observed | sent once after `initialize`. |
@@ -114,6 +116,10 @@ shapes.
   required. The recorded roster for this build: `gpt-5.6-sol`, `gpt-5.6-terra`,
   `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.2` (the fixture-provided model is not in it,
   hence the `warning` notification).
+- **Stable settings are request fields**: model and sandbox/approval overrides
+  are accepted on `thread/start` and `thread/resume`; `turn/start` accepts model,
+  effort, sandbox, and approval overrides. The provider maps Harness `ask` to
+  `on-request` and `never` to `never`; reasoning effort maps to `effort`.
 - **Compact is a dedicated method** (`thread/compact/start`, async, returns
   `{}`), not a `/compact` slash passthrough. There is no slash-command namespace
   on the app-server wire.
