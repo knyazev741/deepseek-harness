@@ -64,6 +64,10 @@ jobs:
           # keep the fork's file when it still exists, keep the deletion when
           # the fork removed it. Then continue until the rebase completes.
           if ! git rebase -X ours --empty=drop master; then
+            # A rebase that stops on conflicts can leave a stale
+            # .git/index.lock behind (seen on runner git 2.54); we are the
+            # only git process here, so a lock at this point is stale.
+            rm -f .git/index.lock
             while [ -n "$(git diff --name-only --diff-filter=U)" ]; do
               while IFS= read -r -d '' f; do
                 if git cat-file -e "HEAD:$f" 2>/dev/null; then
@@ -75,8 +79,18 @@ jobs:
                 fi
                 git add -- "$f"
               done < <(git diff --name-only --diff-filter=U -z)
-              GIT_EDITOR=true git rebase --continue
+              rm -f .git/index.lock
+              GIT_EDITOR=true git rebase --continue || {
+                rm -f .git/index.lock
+                GIT_EDITOR=true git rebase --continue
+              }
             done
+          fi
+          # Never push a half-rebased branch: if the rebase is still in
+          # progress, fail the step instead of pushing fork-deleting diffs.
+          if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+            echo "rebase did not complete; refusing to push sync/upstream-master" >&2
+            exit 1
           fi
           git push -f origin sync/upstream-master
 
