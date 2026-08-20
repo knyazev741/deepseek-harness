@@ -13,7 +13,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { chmod, mkdir } from 'node:fs/promises'
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -37,13 +37,19 @@ import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import { effectiveApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { MCP_BEARER_TOKEN_ENV_VAR } from '@deepseek-ai/dsh-mcp-gateway'
+import type { McpGatewayLease } from '@deepseek-ai/dsh-mcp-gateway'
 import { appServerArgv, CodexExternalSession, type CodexSessionSpec } from './run.ts'
 
 export const name = 'external-session-codex'
 export const inject = ['externalSessions', 'subprocess']
+export { MCP_BEARER_TOKEN_ENV_VAR }
 
 /** Default POSIX grace between subprocess termination tiers. */
 export const DEFAULT_DISPOSE_GRACE_MS = 3_000
+
+/** Stable Codex config key for the Harness MCP server. */
+export const CODEX_MCP_SERVER_NAME = 'dsh_harness'
 
 /** Deployment-owned command, environment, and process-release bound. */
 export interface Config {
@@ -68,6 +74,8 @@ export interface Config {
   reasoningEffort?: ReasoningEffort
   /** Grace in milliseconds for app-server process-tree termination. */
   disposeGraceMs?: number
+  /** Tool names requested from the optional authenticated Harness MCP gateway. */
+  mcpTools?: string[]
 }
 
 export const Config = z.object({
@@ -77,6 +85,7 @@ export const Config = z.object({
   stateRoot: z.string().default(join(tmpdir(), 'dsh-external-codex')),
   reasoningEffort: z.union([z.string(), undefined]) as unknown as z<ReasoningEffort | undefined>,
   disposeGraceMs: z.number().default(DEFAULT_DISPOSE_GRACE_MS),
+  mcpTools: z.array(z.string()).default([]),
 }) as unknown as z<Config>
 
 type ResolvedConfig = Config & {
@@ -84,6 +93,7 @@ type ResolvedConfig = Config & {
   readonly env: Record<string, string>
   readonly stateRoot: string
   readonly disposeGraceMs: number
+  readonly mcpTools: readonly string[]
 }
 
 const require = createRequire(import.meta.url)
@@ -128,6 +138,54 @@ async function ensurePrivateStateRoot(root: string, sessionId: string): Promise<
   return stateRoot
 }
 
+/**
+ * Upsert the ephemeral Harness MCP server in one private Codex home.
+ *
+ * The endpoint and environment-variable name are configuration facts; the
+ * bearer value remains in the child environment only. Existing Codex settings
+ * and rollout files are retained, while a stale Harness section is replaced
+ * for each new attachment (including resume).
+ * @param stateRoot - private per-session `CODEX_HOME` directory.
+ * @param lease - live gateway endpoint and in-memory bearer credential.
+ */
+export async function writeCodexMcpConfig(stateRoot: string, lease: McpGatewayLease): Promise<void> {
+  const endpoint = new URL(lease.url)
+  if (endpoint.protocol !== 'http:' || endpoint.hostname !== '127.0.0.1'
+    || endpoint.username !== '' || endpoint.password !== ''
+    || endpoint.search !== '' || endpoint.hash !== '') {
+    throw new Error('external-session-codex: MCP endpoint must be an authenticated loopback URL')
+  }
+  if (lease.bearerToken.length === 0 || lease.url.includes(lease.bearerToken)) {
+    throw new Error('external-session-codex: MCP bearer token must not be embedded in its URL')
+  }
+  const header = `[mcp_servers.${CODEX_MCP_SERVER_NAME}]`
+  const block = [
+    header,
+    `url = ${JSON.stringify(lease.url)}`,
+    `bearer_token_env_var = ${JSON.stringify(MCP_BEARER_TOKEN_ENV_VAR)}`,
+  ].join('\n')
+  const configPath = join(stateRoot, 'config.toml')
+  let existing = ''
+  try {
+    existing = await readFile(configPath, 'utf8')
+  } catch (error: unknown) {
+    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error
+  }
+  const lines = existing.split(/\r?\n/u)
+  const section = lines.findIndex(line => line.trim() === header)
+  const replacement = block.split('\n')
+  let next: string
+  if (section === -1) {
+    next = `${existing.trimEnd()}${existing.trimEnd().length === 0 ? '' : '\n\n'}${block}\n`
+  } else {
+    let end = section + 1
+    while (end < lines.length && !/^\s*\[[^\]]+\]\s*$/u.test(lines[end] ?? '')) end += 1
+    next = [...lines.slice(0, section), ...replacement, ...lines.slice(end)].join('\n').replace(/\n*$/u, '\n')
+  }
+  await writeFile(configPath, next, { encoding: 'utf8', mode: 0o600 })
+  await chmod(configPath, 0o600)
+}
+
 function throwable(message: string): never {
   throw new Error(`external-session-codex: ${message}`)
 }
@@ -147,6 +205,7 @@ interface CodexLifecycle {
   readonly signal: AbortSignal
   start: Promise<void>
   session?: CodexExternalSession
+  mcpLease?: McpGatewayLease | undefined
   disposed: boolean
 }
 
@@ -214,6 +273,7 @@ class CodexProvider implements ExternalSessionProvider {
     providerThreadId?: ExternalProviderThreadId,
   ): Promise<void> {
     let session: CodexExternalSession | undefined
+    let mcpLease: McpGatewayLease | undefined
     try {
       const liveSession = this.ctx.get('sessions')?.get(request.sessionId)
       if (liveSession === undefined) throwable(`no live Session for ${String(request.sessionId)}`)
@@ -228,10 +288,21 @@ class CodexProvider implements ExternalSessionProvider {
       }
       const stateRoot = await ensurePrivateStateRoot(this.config.stateRoot, String(request.sessionId))
       throwIfAborted(lifecycle.signal)
+      const gateway = this.ctx.get('mcpGateway')
+      if (gateway !== undefined && bridge.principal !== undefined && this.config.mcpTools.length > 0) {
+        mcpLease = await gateway.create({
+          principal: bridge.principal,
+          tools: this.config.mcpTools,
+          signal: lifecycle.signal,
+        })
+        lifecycle.mcpLease = mcpLease
+        await writeCodexMcpConfig(stateRoot, mcpLease)
+        throwIfAborted(lifecycle.signal)
+      }
       session = new CodexExternalSession(
         resolvedRequest,
         bridge,
-        this.spec(request.cwd, policy, stateRoot),
+        this.spec(request.cwd, policy, stateRoot, mcpLease),
       )
       lifecycle.session = session
       this.sessions.set(request.sessionId, session)
@@ -239,6 +310,10 @@ class CodexProvider implements ExternalSessionProvider {
       else await session.resume(providerThreadId, lifecycle.signal)
       throwIfAborted(lifecycle.signal)
     } catch (error: unknown) {
+      if (mcpLease !== undefined) {
+        lifecycle.mcpLease = undefined
+        await Promise.resolve(mcpLease[Symbol.asyncDispose]()).catch(() => {})
+      }
       if (session !== undefined && this.sessions.get(request.sessionId) === session) {
         this.sessions.delete(request.sessionId)
         await session.dispose().catch(() => {})
@@ -327,6 +402,9 @@ class CodexProvider implements ExternalSessionProvider {
     lifecycle.disposed = true
     lifecycle.controller.abort()
     await lifecycle.start.catch(() => {})
+    const mcpLease = lifecycle.mcpLease
+    lifecycle.mcpLease = undefined
+    if (mcpLease !== undefined) await mcpLease[Symbol.asyncDispose]()
     const session = lifecycle.session
     if (session !== undefined && this.sessions.get(sessionId) === session) {
       this.sessions.delete(sessionId)
@@ -366,7 +444,12 @@ class CodexProvider implements ExternalSessionProvider {
     return effectiveApprovalPolicy(session.events) ?? service.config.policy ?? fallback
   }
 
-  private spec(cwd: string, sandboxPolicy: SandboxExecutionPolicy, stateRoot: string): CodexSessionSpec {
+  private spec(
+    cwd: string,
+    sandboxPolicy: SandboxExecutionPolicy,
+    stateRoot: string,
+    mcpLease?: McpGatewayLease,
+  ): CodexSessionSpec {
     const sandbox = this.ctx.get('sandbox')
     return {
       cwd,
@@ -375,6 +458,13 @@ class CodexProvider implements ExternalSessionProvider {
       env: this.config.env,
       disposeGraceMs: this.config.disposeGraceMs,
       stateRoot,
+      ...mcpLease === undefined ? {} : {
+        mcp: {
+          url: mcpLease.url,
+          bearerToken: mcpLease.bearerToken,
+          bearerTokenEnvVar: MCP_BEARER_TOKEN_ENV_VAR,
+        },
+      },
       sandboxPolicy,
       ...sandbox === undefined
         ? {}
@@ -400,6 +490,7 @@ export function apply(ctx: Context, config: Config): void {
     env: config.env ?? {},
     stateRoot: config.stateRoot ?? join(tmpdir(), 'dsh-external-codex'),
     disposeGraceMs: config.disposeGraceMs ?? DEFAULT_DISPOSE_GRACE_MS,
+    mcpTools: config.mcpTools ?? [],
   }
   if (!Number.isFinite(resolved.disposeGraceMs) || resolved.disposeGraceMs <= 0) {
     throwable(`disposeGraceMs must be a positive finite number, got ${resolved.disposeGraceMs}`)

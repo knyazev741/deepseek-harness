@@ -61,6 +61,12 @@ export interface CodexSessionSpec {
   readonly argv?: readonly string[]
   /** Private per-session `CODEX_HOME` directory owned by the provider. */
   readonly stateRoot?: string
+  /** Ephemeral MCP endpoint and bearer credential for this attachment. */
+  readonly mcp?: {
+    readonly url: string
+    readonly bearerToken: string
+    readonly bearerTokenEnvVar: string
+  }
   /** Shared subprocess service spawn operation. */
   readonly spawn: (spec: SubprocessSpawnSpec) => SubprocessHandle
   /** Diagnostic sink for an unexpected app-server closure mid-session. */
@@ -103,6 +109,7 @@ export function createCodexSpawnSpec(
       ...scrubbedParentEnv(),
       ...spec.env,
       ...spec.stateRoot === undefined ? {} : { CODEX_HOME: spec.stateRoot },
+      ...spec.mcp === undefined ? {} : { [spec.mcp.bearerTokenEnvVar]: spec.mcp.bearerToken },
     },
   }
 }

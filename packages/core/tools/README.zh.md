@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-工具注册表与执行流水线。工具插件注册各自的 schema 和执行器；agent loop（智能体循环）依次让每次调用经过 `tools/pre-execute`（可扩展的允许／拒绝门禁）→ 已注册的单调守卫 → `tools/execute`（供超时／重试／指标插件使用的环绕分发包装层）→ `tools/post-execute`（检查／替换结果、附加上下文）→ 由工具定义持有的 `finalizeContent` 边界 → 仅观测的 `tools/result` 通知。注册表还决定以何种方式向模型呈现工具：`mode` 配置可以选择原生 Function Calling（函数调用）、[Code Mode](#code-mode)，或同时选择两者；单个 agent 可用 `presentAs` 为自己遮蔽该默认值。调用方可以使用原生 `Agent` 或 `ExternalToolPrincipal`；后者携带自己的 session、作用域 context 与 recorder，但不会进入 `ctx.agents`，两种身份共用同一作用域策略与结果流水线。工具定义通过 `externalEligibility: 'allow'` 选择对 external principal 可见；省略即默认拒绝，因此只有已适配的 shell／filesystem 前台工具具备资格，外部后台 job 仍仅限原生 Agent。
+工具注册表与执行流水线。工具插件注册各自的 schema 和执行器；agent loop（智能体循环）依次让每次调用经过 `tools/pre-execute`（可扩展的允许／拒绝门禁）→ 已注册的单调守卫 → `tools/execute`（供超时／重试／指标插件使用的环绕分发包装层）→ `tools/post-execute`（检查／替换结果、附加上下文）→ 由工具定义持有的 `finalizeContent` 边界 → 仅观测的 `tools/result` 通知。注册表还决定以何种方式向模型呈现工具：`mode` 配置可以选择原生 Function Calling（函数调用）、[Code Mode](#code-mode)，或同时选择两者；单个 agent 可用 `presentAs` 为自己遮蔽该默认值。调用方可以使用原生 `Agent` 或 `ExternalToolPrincipal`；后者携带自己的 session、作用域 context 与 recorder，但不会进入 `ctx.agents`，两种身份共用同一作用域策略与结果流水线。工具定义通过 `externalEligibility: 'allow'` 选择对 external principal 可见；省略即默认拒绝，因此只有已适配的 shell／filesystem 前台工具具备资格，外部后台 job 仍仅限原生 Agent。external 调用遇到 `ask` 决策时会使用 `ApprovalService.requestExternal`，在不需要原生 Agent 或 turn 的情况下记录 external approval 成对事件；缺少 approval 仍然故障关闭。
 
 ## 服务：`ToolRuntime`（ctx 键：`tools`）
 

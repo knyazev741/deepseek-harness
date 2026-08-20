@@ -21,6 +21,9 @@
       "path": "../external-session"
     },
     {
+      "path": "../../mcp/mcp-gateway"
+    },
+    {
       "path": "../../sandbox/sandbox"
     },
     {

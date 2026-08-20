@@ -17,6 +17,7 @@ import type { ToolProviderResult } from '@deepseek-ai/dsh-system-prompt'
 import type { CodeRuntime } from '@deepseek-ai/dsh-code-runtime'
 // Type-only: makes `ctx.get('approval')` resolve to the ApprovalService
 // augmentation. The seam stays optional at runtime — see `serviceAsk`.
+import type { ExternalToolCallId } from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type { ToolCallView, ToolResultView } from './presentation.ts'
 import { assertSupportedJsonSchema, validateJsonSchemaValue } from './json-schema.ts'
@@ -1755,6 +1756,34 @@ export class ToolRuntime extends Service {
       return {
         decision: { kind: 'deny', reason: ask.reason ?? `tool "${exec.name}" requires approval (not yet supported)` },
         approvalCancelled: false,
+      }
+    }
+    if (exec.principal !== undefined) {
+      const outcome = await approval.requestExternal({
+        principal: exec.principal,
+        toolName: exec.name,
+        // The approval seam owns a distinct external-call brand to keep its
+        // durable audit ids independent from native model call ids.  The
+        // gateway creates the id at the same trusted execution boundary.
+        callId: exec.callId as unknown as ExternalToolCallId,
+        ...ask.reason !== undefined ? { reason: ask.reason } : {},
+        signal: exec.signal,
+      })
+      switch (outcome) {
+        case 'allowed-once': return { decision: { kind: 'allow' }, approvalCancelled: false }
+        case 'rejected': return {
+          decision: { kind: 'deny', reason: `the user rejected tool "${exec.name}"` },
+          approvalCancelled: false,
+        }
+        case 'cancelled': return {
+          decision: { kind: 'deny', reason: `approval for tool "${exec.name}" was cancelled` },
+          approvalCancelled: true,
+        }
+        case 'unavailable': return {
+          decision: { kind: 'deny', reason: `tool "${exec.name}" requires approval, but no approval channel is available` },
+          approvalCancelled: false,
+        }
+        default: return assertNever(outcome, 'ApprovalOutcome')
       }
     }
     const agent = executionAgent(exec)

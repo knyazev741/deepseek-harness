@@ -7,3 +7,4 @@ Packages bridging the harness to the MCP ecosystem.
 | Package | Role |
 |---|---|
 | [`mcp-client/`](mcp-client/README.md) | MCP client bridge that registers external server tools on `ctx.tools` |
+| [`mcp-gateway/`](mcp-gateway/README.md) | Authenticated loopback gateway that exposes an allowlisted set of external-eligible Harness tools |

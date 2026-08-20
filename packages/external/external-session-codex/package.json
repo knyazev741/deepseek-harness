@@ -36,6 +36,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-external-session": "workspace:^",
+    "@deepseek-ai/dsh-mcp-gateway": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-sandbox": "workspace:^",
     "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/dsh-external-session": "workspace:^",
+    "@deepseek-ai/dsh-mcp-gateway": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-sandbox": "workspace:^",
     "@deepseek-ai/dsh-sandbox-policy": "workspace:^",

@@ -981,6 +981,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mcpGateway',
+    summary: 'Service Definition consumed by external-session providers.',
+    description: 'Service Definition consumed by external-session providers.',
+    methods: [
+      {
+        signature: 'create(request: McpGatewayCreateRequest): Promise<McpGatewayLease>',
+        description: 'Create one fixed, authenticated endpoint for an external principal.',
+        parameters: [{ name: 'request', description: 'external principal, requested tool names, and attachment signal.' }],
+        returns: 'a live authenticated gateway lease.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -3569,6 +3582,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ManualCompactAgentContext',
     declaration: 'export interface ManualCompactAgentContext extends CompactionAgentContext {\n    runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>;\n}',
+  },
+  {
+    name: 'McpGatewayCreateRequest',
+    declaration: 'export interface McpGatewayCreateRequest {\n    readonly principal: ExternalToolPrincipal;\n    readonly tools: readonly string[];\n    readonly signal: AbortSignal;\n}',
+  },
+  {
+    name: 'McpGatewayLease',
+    declaration: 'export interface McpGatewayLease extends AsyncDisposable {\n    readonly url: string;\n    readonly bearerToken: string;\n}',
   },
   {
     name: 'Message',

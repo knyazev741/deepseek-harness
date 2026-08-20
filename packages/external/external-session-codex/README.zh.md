@@ -10,6 +10,8 @@
 
 `resume(request, providerThreadId)` 发布同样的生命周期，但执行 `initialize` → `initialized` → `thread/resume { threadId, model?, sandbox, approvalPolicy }`。它要求持久化的品牌化不透明 id，不会发出新的 `external/session-started`；id 缺失或未知时会拒绝，并且不会回退到 `thread/start`。宿主只在实时操作需要提供方时，才通过 `SessionPersistence.prepare`、`SessionStore.enter` 与 `SessionStore.announce` 物化冷会话。
 
+当可选的 [`dsh-mcp-gateway`](../../mcp/mcp-gateway/README.md) 服务已挂载、bridge 提供 external principal 且 `mcpTools` 非空时，每次 start 或 resume 都会在子进程启动前创建新的认证回环 MCP lease。提供方只把不透明 URL 和 `bearer_token_env_var` 写入私有 Codex `config.toml`；token 通过该显式环境变量注入。lease 处置会在子进程拆除前完成等待；resume 会重写 endpoint/token 段，同时保留同一个哈希 `CODEX_HOME` rollout 状态。
+
 `prompt(text)` 严格串行地轮转：它等待上一条轮次的 `turn/completed` 终态通知，在同一条线程上提交下一条 `turn/start`，并立即返回提供方签发的轮次 id。该轮次随后异步流式运行至完成：`item/agentMessage/delta` 被转发到 `streamDelta`（仅实时，绝不持久化）；一条完成的 `agentMessage` 被提交为 `external/message-added { role: 'agent' }`，提交的 prompt 被提交为 `{ role: 'user' }`，`commandExecution` 项被提交为 `external/tool-activity { kind: 'call' | 'result' }`，终态的 `turn/completed` 被提交为 `external/turn-ended`（`completed` / `aborted` / `error` / `max-tokens`）。`interrupt()` 发送尽力而为的 `turn/interrupt`，其中断后的终态映射为 `aborted`。
 
 审批询问以 `item/commandExecution/requestApproval` 形式抵达。提供方发出 `external/permission-asked`，咨询 bridge 的 `requestPermission`（ask-user 权限通道），把人类的 `allowed` / `rejected` / `cancelled` 决策映射到线上的 `accept` / `decline` / `cancel`，回答该请求，并记录 `external/permission-decided`。失败、未接线或关闭的权限通道会故障关闭到最安全的已提供决策与 `cancelled`。
@@ -35,8 +37,11 @@
 | `reasoningEffort` | 未设置 | 可选的初始稳定 reasoning effort；逐会话选择可在下一轮替换它。 |
 | `sandbox` / `approvalPolicy` | `read-only` / `ask` | 从会话启动请求与会话 policy fold 解析；Codex 接收 `read-only` / `workspace-write` / `danger-full-access` 以及 `on-request` / `never`。 |
 | `disposeGraceMs` | `3000` | 正有限毫秒宽限，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md)，介于共享进程树所有者的各终止层级之间。 |
+| `mcpTools` | `[]` | 传给可选 MCP 网关的 Harness 工具名称；网关会与固定 allowlist 以及定义级别的 external opt-in 求交集。 |
 
 生产环境默认使用固定版本的打包启动器，除非显式配置 `command` 覆盖。本插件不登录，也不探测版本。subprocess seam 会移除凭证形状的环境变量，因此为子进程准备的 API 密钥必须显式提供在 `env` 中；普通的 `PATH`、`HOME` 等环境值在未覆盖时保持可用。受限模式会把准确的启动器 argv 与 `{ ...sandboxPolicy, stateRoot }` 交给 `ctx.sandbox.confine`；`read-only` 下沙盒不会从 `stateRoot` 授予任何可写根目录；缺失 confinement provider 时故障关闭。会话创建前的 model 目录使用明确的 `read-only` policy 与同一私有状态根目录处理，绝不会使用裸的 `danger-full-access` 预检。
+
+MCP bearer 不会放入 Codex URL、TOML、argv、session 事件、日志或快照。网关与子进程属于同一个 attachment 生命周期：网关处置会中止迟到的工具调用，并在释放 app-server 进程树之前完成。
 
 生产环境的 `dsh` 不安装也不挂载这个可选提供方。选择加入的 Profile 需安装 `@deepseek-ai/dsh-external-session-codex` 与 `dsh-external-session` 注册表，并在宿主平面各挂载一次：
 

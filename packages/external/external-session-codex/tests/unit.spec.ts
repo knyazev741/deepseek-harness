@@ -5,13 +5,22 @@
  */
 
 import { PassThrough } from 'node:stream'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import ExternalSessions from '@deepseek-ai/dsh-external-session'
 import { writableRoots } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { apply } from '../src/index.ts'
+import {
+  apply,
+  CODEX_MCP_SERVER_NAME,
+  MCP_BEARER_TOKEN_ENV_VAR,
+  writeCodexMcpConfig,
+} from '../src/index.ts'
+import type { McpGatewayLease } from '@deepseek-ai/dsh-mcp-gateway'
 import { appServerArgv, CodexExternalSession, createCodexSpawnSpec } from '../src/run.ts'
 import {
   CodexExternalWire,
@@ -226,6 +235,69 @@ describe('Codex spawn policy', () => {
     expect(confinedPolicy?.stateRoot).toBe(stateRoot)
     if (confinedPolicy === undefined) throw new Error('sandbox policy was not captured')
     expect(writableRoots(confinedPolicy)).toEqual([])
+  })
+
+  it('passes the MCP bearer only through the explicit child environment', () => {
+    const token = 'mcp-token-not-in-argv'
+    const spec = createCodexSpawnSpec({
+      cwd: '/work',
+      command: 'codex',
+      args: ['app-server', '--stdio'],
+      env: {},
+      disposeGraceMs: 3_000,
+      sandboxPolicy: { mode: 'danger-full-access', workspaceRoot: '/work' },
+      stateRoot: '/harness/codex/session-a',
+      mcp: {
+        url: 'http://127.0.0.1:43123/mcp/opaque-route',
+        bearerToken: token,
+        bearerTokenEnvVar: MCP_BEARER_TOKEN_ENV_VAR,
+      },
+      spawn: () => { throw new Error('spawn is not used by this unit') },
+    })
+    expect(spec.env?.[MCP_BEARER_TOKEN_ENV_VAR]).toBe(token)
+    expect(spec.argv).not.toContain(token)
+    expect(spec.argv).not.toContain('http://127.0.0.1:43123/mcp/opaque-route')
+  })
+
+  it('replaces only the ephemeral MCP config section and retains rollout state', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-codex-mcp-'))
+    try {
+      await mkdir(join(root, 'sessions'), { recursive: true })
+      await writeFile(join(root, 'sessions', 'rollout.jsonl'), 'durable rollout')
+      await writeFile(join(root, 'config.toml'), [
+        '[model]',
+        'name = "fixture"',
+        '',
+        `[mcp_servers.${CODEX_MCP_SERVER_NAME}]`,
+        'url = "http://127.0.0.1:1/mcp/stale"',
+        'bearer_token_env_var = "OLD_TOKEN"',
+        '',
+        '[other]',
+        'enabled = true',
+        '',
+      ].join('\n'))
+      const lease = (url: string, bearerToken: string): McpGatewayLease => ({
+        url,
+        bearerToken,
+        [Symbol.asyncDispose]: async () => {},
+      })
+      await writeCodexMcpConfig(root, lease('http://127.0.0.1:43123/mcp/new-route', 'new-token'))
+      const first = await readFile(join(root, 'config.toml'), 'utf8')
+      expect(first).toContain('name = "fixture"')
+      expect(first).toContain('enabled = true')
+      expect(first).toContain('http://127.0.0.1:43123/mcp/new-route')
+      expect(first).toContain(`bearer_token_env_var = "${MCP_BEARER_TOKEN_ENV_VAR}"`)
+      expect(first).not.toContain('new-token')
+      expect(first).not.toContain('/mcp/stale')
+      await writeCodexMcpConfig(root, lease('http://127.0.0.1:43123/mcp/resumed-route', 'rotated-token'))
+      const resumed = await readFile(join(root, 'config.toml'), 'utf8')
+      expect(resumed.match(new RegExp(`^\\[mcp_servers\\.${CODEX_MCP_SERVER_NAME}\\]$`, 'gmu'))).toHaveLength(1)
+      expect(resumed).toContain('/mcp/resumed-route')
+      expect(resumed).not.toContain('rotated-token')
+      await expect(readFile(join(root, 'sessions', 'rollout.jsonl'), 'utf8')).resolves.toBe('durable rollout')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 
   it('retains cleanup failure on the quiescence barrier', async () => {
