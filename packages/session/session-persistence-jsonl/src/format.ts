@@ -111,6 +111,11 @@ function isHeaderLine(value: unknown): value is HeaderLine {
       || (value as { origin?: unknown }).origin === 'github-actions')
     && ((value as { agentPreset?: unknown }).agentPreset === undefined
       || typeof (value as { agentPreset?: unknown }).agentPreset === 'string')
+    && ((value as { mode?: unknown }).mode === undefined
+      || (typeof (value as { mode?: unknown }).mode === 'string'
+        && (value as { mode: string }).mode.length > 0))
+    && ((value as { model?: unknown }).model === undefined
+      || typeof (value as { model?: unknown }).model === 'string')
   )
 }
 

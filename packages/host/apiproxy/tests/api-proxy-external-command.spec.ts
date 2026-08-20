@@ -9,7 +9,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -119,6 +119,7 @@ afterEach(async () => {
 interface RestartProviderState {
   started: number
   readonly resumed: ExternalProviderThreadId[]
+  readonly resumeModels: unknown[]
   readonly prompts: string[]
   bridge: ExternalBridgeContext | undefined
 }
@@ -141,8 +142,9 @@ function restartProvider(state: RestartProviderState): ExternalSessionProvider {
         },
       })
     },
-    async resume(_request, bridge, providerThreadId) {
+    async resume(request, bridge, providerThreadId) {
       state.resumed.push(providerThreadId)
+      state.resumeModels.push(request.model)
       state.bridge = bridge
     },
     async prompt(sessionId, text) {
@@ -230,7 +232,7 @@ describe('session external-mode JSONL restart', () => {
   it('keeps reads process-free and resumes once on the first live operation', async () => {
     restartRoot = await mkdtemp(join(tmpdir(), 'dsh-external-jsonl-restart-'))
     const sessionId = SessionId('jsonl-restart')
-    const firstState: RestartProviderState = { started: 0, resumed: [], prompts: [], bridge: undefined }
+    const firstState: RestartProviderState = { started: 0, resumed: [], resumeModels: [], prompts: [], bridge: undefined }
     const first = await loadRestartComposition(restartRoot, firstState)
     context = first
 
@@ -252,7 +254,7 @@ describe('session external-mode JSONL restart', () => {
     await first.fiber.dispose()
     context = undefined
 
-    const secondState: RestartProviderState = { started: 0, resumed: [], prompts: [], bridge: undefined }
+    const secondState: RestartProviderState = { started: 0, resumed: [], resumeModels: [], prompts: [], bridge: undefined }
     const second = await loadRestartComposition(restartRoot, secondState)
     context = second
     try {
@@ -285,6 +287,50 @@ describe('session external-mode JSONL restart', () => {
         .toContain('resume after restart')
     } finally {
       await second.fiber.dispose()
+      context = undefined
+    }
+  })
+
+  it.each([
+    ['mode', { mode: 42, model: 'valid-model' }],
+    ['model', { mode: 'alpha', model: 42 }],
+  ] as const)('does not list or resume a cold JSONL session with malformed %s metadata', async (field, metadata) => {
+    restartRoot = await mkdtemp(join(tmpdir(), 'dsh-external-jsonl-invalid-'))
+    const sessionId = SessionId(`jsonl-invalid-${field}`)
+    const sessionDir = join(restartRoot, 'sessions', '--tmp--', sessionId)
+    await mkdir(sessionDir, { recursive: true })
+    await writeFile(join(sessionDir, 'session.jsonl'), [
+      JSON.stringify({
+        type: 'session',
+        version: 0,
+        id: sessionId,
+        createdAt: 1,
+        cwd: '/tmp',
+        delegationDepth: 0,
+        ...metadata,
+      }),
+      JSON.stringify({ type: 'session/end-seed', seq: 0, time: 1, data: {} }),
+      '',
+    ].join('\n'))
+    const state: RestartProviderState = { started: 0, resumed: [], resumeModels: [], prompts: [], bridge: undefined }
+    const ctx = await loadRestartComposition(restartRoot, state)
+    context = ctx
+    try {
+      const listed = await ctx.apiProxy.sessions.list(request({}))
+      expect(listed.result).toMatchObject({ ok: true, value: { items: [] } })
+      expect(state.started).toBe(0)
+      expect(state.resumed).toEqual([])
+
+      const command = await ctx.apiProxy.sessions.command(request({
+        sessionId,
+        line: 'must not resume',
+      }))
+      expect(command.result).toMatchObject({ ok: false })
+      expect(state.started).toBe(0)
+      expect(state.resumed).toEqual([])
+      expect(state.resumeModels).toEqual([])
+    } finally {
+      await ctx.fiber.dispose()
       context = undefined
     }
   })
