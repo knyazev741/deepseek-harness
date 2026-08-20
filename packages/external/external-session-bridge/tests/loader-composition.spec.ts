@@ -66,7 +66,12 @@ const stubProvider: ExternalSessionProvider = {
     return { turnId: ExternalTurnId('t1') }
   },
   interrupt() {},
-  async compact() {},
+  async compact(sessionId) {
+    providerState.bridge!.appendEvent(sessionId, {
+      type: 'external/compaction-noticed',
+      data: { notice: 'compacted stub' },
+    })
+  },
   async listModels() { return [] },
   async setModel() {},
   async dispose() { providerState.disposed = true },
@@ -184,6 +189,24 @@ describe('external-session-bridge REAL composition', () => {
       title: 'proceed?',
       options: ['allow', 'reject'],
     })).resolves.toBe('allowed')
+
+    // The transcript projection folds the committed turn units (streamed
+    // message pieces arrive as committed message-added events).
+    const transcript = ctx.sessionProjections.snapshot(session).values['external/transcript'] as unknown as {
+      provider: string
+      cwd: string
+      turns: { turnId: string; messages: { role: string; text: string }[] }[]
+    }
+    expect(transcript.provider).toBe('stub')
+    expect(transcript.turns[0]!.messages).toEqual([
+      { role: 'user', text: 'hello' },
+      { role: 'agent', text: 'done' },
+    ])
+
+    // Task 6 `/compact` routing: the service calls the provider's native
+    // compact, which records `external/compaction-noticed` in the durable log.
+    await ctx.externalSessions.compact(session.id)
+    expect(session.events.map(event => event.type)).toContain('external/compaction-noticed')
 
     // Disposing the context tears the provider (and thus its process tree)
     // down via the driver's session/disposed reaction.
