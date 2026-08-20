@@ -90,7 +90,8 @@
     "packages/*/*/tests/**/*.ts",
     "scripts/**/*.ts",
     "website/**/*.ts",
-    "website/.vitepress/**/*.ts"
+    "website/.vitepress/**/*.ts",
+    "packages/client/web/src/platform.ts"
   ],
   "exclude": [
     "packages/client/*/src/**",
