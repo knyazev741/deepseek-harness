@@ -3,8 +3,13 @@
 #
 # - Runs hourly (and on manual dispatch).
 # - Creates/updates branch `sync/upstream-master` = upstream master rebased
-#   onto our master; on conflict OUR (fork) version wins (`-X ours`), so the
-#   fork's own changes are never silently overwritten by upstream.
+#   onto our master; on conflict OUR (fork) version wins, so the fork's own
+#   changes are never silently overwritten by upstream.
+# - The rebase runs non-interactively: `-X ours` covers content conflicts,
+#   `--empty=drop` skips commits that become empty, and modify/delete +
+#   rename/delete conflicts (which `-X ours` cannot auto-resolve) are also
+#   resolved in the fork's favor: keep the fork's file when it still exists,
+#   keep the deletion when the fork removed it.
 # - Opens (or updates) a PR sync/upstream-master -> master. The companion
 #   workflow `upstream-review.yml` reviews that PR with an LLM and merges it
 #   only when the review and the sanity gates approve.
@@ -47,12 +52,32 @@ jobs:
       - name: Rebuild the sync branch (conflicts resolve in our favor)
         if: steps.check.outputs.behind != '0'
         run: |
+          set -euo pipefail
           git config user.name 'dsh-sync[bot]'
           git config user.email 'dsh-sync[bot]@users.noreply.github.com'
           git checkout -B sync/upstream-master upstream/master
-          # Replay upstream commits on top of our master; -X ours keeps the
-          # fork's version of any hunk that conflicts with fork changes.
-          git rebase -X ours master
+          # Replay upstream commits on top of our master. -X ours keeps the
+          # fork's version of any hunk that conflicts with fork changes;
+          # --empty=drop skips upstream commits that become empty. Rebase
+          # stops on modify/delete and rename/delete conflicts, which -X ours
+          # cannot auto-resolve, so resolve those in the fork's favor too:
+          # keep the fork's file when it still exists, keep the deletion when
+          # the fork removed it. Then continue until the rebase completes.
+          if ! git rebase -X ours --empty=drop master; then
+            while [ -n "$(git diff --name-only --diff-filter=U)" ]; do
+              while IFS= read -r -d '' f; do
+                if git cat-file -e "HEAD:$f" 2>/dev/null; then
+                  # The fork still has this file: keep the fork's version.
+                  git checkout --ours -- "$f"
+                else
+                  # The fork deleted this file: keep the deletion.
+                  git rm -f --ignore-unmatch -- "$f"
+                fi
+                git add -- "$f"
+              done < <(git diff --name-only --diff-filter=U -z)
+              GIT_EDITOR=true git rebase --continue
+            done
+          fi
           git push -f origin sync/upstream-master
 
       - name: Open or update the sync PR
