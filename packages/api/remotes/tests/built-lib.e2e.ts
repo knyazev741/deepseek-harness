@@ -20,6 +20,8 @@ const requiredArtifacts = [
   'packages/api/remotes/lib/client.js',
   'packages/core/agent/lib/index.js',
   'packages/core/session/lib/index.js',
+  'packages/interaction/commands/lib/index.js',
+  'packages/interaction/commands/lib/typert.host.js',
   'packages/goal/goal/lib/index.js',
   'packages/goal/goal/lib/typert.host.js',
   'packages/api/gateway/lib/client.js',
@@ -38,6 +40,8 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       connectionHost: 'packages/client/connection/lib/index.js',
       goal: 'packages/goal/goal/lib/index.js',
       goalTypert: 'packages/goal/goal/lib/typert.host.js',
+      commands: 'packages/interaction/commands/lib/index.js',
+      commandsTypert: 'packages/interaction/commands/lib/typert.host.js',
       registryClient: 'packages/typert/registry/lib/client.js',
       registryHost: 'packages/typert/registry/lib/index.js',
       remotesClient: 'packages/api/remotes/lib/client.js',
@@ -54,6 +58,8 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       const { default: TypertRemoteService } = await import(urls.apiGatewayHost)
       const { default: GoalService } = await import(urls.goal)
       const { TYPERT } = await import(urls.goalTypert)
+      const { default: CommandRuntime } = await import(urls.commands)
+      const { TYPERT: commandsTYPERT } = await import(urls.commandsTypert)
       const { default: TypertRegistry } = await import(urls.registryHost)
       const { Session, SessionId } = await import(urls.session)
 
@@ -72,7 +78,14 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       await host.plugin(AgentRegistry)
       await host.plugin(TypertRemoteService)
       await host.plugin(GoalService)
+      await host.plugin(CommandRuntime)
       host.typert.register(TYPERT)
+      host.typert.register(commandsTYPERT)
+      host.commands.register({
+        name: 'compact',
+        description: 'fixture compaction command',
+        handler: () => ({ kind: 'success', text: 'compacted' }),
+      })
 
       const makeAgent = rawId => {
         const session = new Session(SessionId(rawId))
@@ -157,11 +170,14 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       )
       const agentContext = client.extend({ builtAgentId: scopedAgent.id })
       const scopedResult = await agentContext.remote.goals.create({ objective: 'scoped goal', maxGoalRounds: 3 })
+      const compactResult = await client.remote.commands.execute(rootAgent.id, '/compact', [])
+      if (!compactResult.ok || compactResult.value === undefined) throw new Error('compact Remote did not execute')
       const result = {
         invalidRejected,
         rootResult: rootResult.value,
         rootEdit: rootEdit.value,
         scopedResult: scopedResult.value,
+        compactResult: compactResult.value.result,
         rootGoal: host.goals.get(rootAgent)?.objective,
         scopedGoal: host.goals.get(scopedAgent)?.objective,
         rootEvents: rootAgent.session.events.length,
@@ -194,9 +210,10 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       rootResult: { ref: { revision: 1 } },
       rootEdit: { objective: 'edited root goal', revision: 2 },
       scopedResult: { ref: { revision: 1 } },
+      compactResult: { kind: 'success', text: 'compacted' },
       rootGoal: 'edited root goal',
       scopedGoal: 'scoped goal',
-      rootEvents: 2,
+      rootEvents: 4,
       scopedEvents: 1,
     })
     expect(output.rootResult.ref.id).toMatch(/^goal-/)

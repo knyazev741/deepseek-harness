@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-20-command-remote-argument-sync.md
+2026-08-20-command-remote-argument-sync.md: 7f45e82b18928324dcd73f1be4adfc04b1c59a97
+2026-08-20-command-remote-argument-sync.zh.md: ce043bd235aaa3066a49250ab5eed44556ef595b

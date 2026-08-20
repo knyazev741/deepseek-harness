@@ -21,6 +21,7 @@ import type {
   UserMessage,
 } from '@deepseek-ai/dsh-llm'
 import type { AttachmentIdType, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
+import type { EncodedImageAttachment } from '@deepseek-ai/dsh-attachment/types'
 import type {
   SessionEvent,
   SessionId,
@@ -1740,7 +1741,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         ],
       }
     },
-    execute(id: SessionId, line: string): RpcResult<CommandExecution | undefined> {
+    execute(id: SessionId, line: string, _images: readonly EncodedImageAttachment[] = []): RpcResult<CommandExecution | undefined> {
       const missing = requireGoalSession(id)
       if (missing !== undefined) return missing
       // Structured split mirroring the Host parser: name + verbatim rawInput
@@ -3022,6 +3023,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         args: {
           agentId: SessionId
           line?: string
+          images?: readonly EncodedImageAttachment[]
           ref?: { id: string; revision: number }
           request?: { objective?: string; maxGoalRounds?: number }
         }
@@ -3029,7 +3031,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const sessionId = args.agentId
       switch (endpoint) {
         case 'commands/list': return Promise.resolve(commandRemotes.list(sessionId))
-        case 'commands/execute': return Promise.resolve(commandRemotes.execute(sessionId, args.line as string))
+        case 'commands/execute': return Promise.resolve(commandRemotes.execute(sessionId, args.line as string, args.images))
         case 'goals/create': return Promise.resolve(goalRemotes.create(sessionId, {
           objective: args.request?.objective as string,
           ...args.request?.maxGoalRounds === undefined ? {} : { maxGoalRounds: args.request.maxGoalRounds },

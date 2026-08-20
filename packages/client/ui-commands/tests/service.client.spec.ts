@@ -68,6 +68,7 @@ async function bench(opts: BenchOptions = {}) {
   const registered = new Map<string, InputTriggerSource>()
   const listCalls: Array<{ sessionId: SessionId }> = []
   const executeCalls: Array<{ sessionId: SessionId; line: string }> = []
+  const executeImages: Array<readonly unknown[] | undefined> = []
   // The service reads the generated commands Remote, which delivers the
   // carrier's outcome, so a programmed failure answers the error branch.
   const commandsRemote = {
@@ -80,8 +81,9 @@ async function bench(opts: BenchOptions = {}) {
         return value.commands
       })
     },
-    execute: async (sessionId: SessionId, line: string) => {
+    execute: async (sessionId: SessionId, line: string, images?: readonly unknown[]) => {
       executeCalls.push({ sessionId, line })
+      executeImages.push(images)
       return await carried(async () => {
         const fallback = (): Promise<ExecuteValue> => Promise.resolve({ matched: true })
         const value = await (opts.execute ?? fallback)({ sessionId, line })
@@ -150,7 +152,7 @@ async function bench(opts: BenchOptions = {}) {
   const warm = async (session: ClientSessionContext) => {
     await source.candidates(session, { query: '', position: 'leading', signal: new AbortController().signal })
   }
-  return { ctx, fiber, command, source, mint, warm, listCalls, executeCalls, executions, registered, notices }
+  return { ctx, fiber, command, source, mint, warm, listCalls, executeCalls, executeImages, executions, registered, notices }
 }
 
 function menuPick(source: InputTriggerSource, name: string, session: ClientSessionContext, end?: number) {
@@ -506,6 +508,17 @@ describe('matchEnter (enter column)', () => {
 })
 
 describe('execute payload', () => {
+  it('claim.submit supplies the image batch required by the commands Remote contract', async () => {
+    const { source, warm, executeImages } = await bench()
+    await warm(proj('s1'))
+    const outcome = source.matchSpace!(proj('s1'), '/goal')
+    if (outcome === undefined || outcome === 'handled' || !('claim' in outcome)) throw new Error('expected claim')
+
+    await outcome.claim.submit('ship it', new Context())
+
+    expect(executeImages).toEqual([[]])
+  })
+
   it('claim.submit addresses the session; admitted outcomes stay off the composer (flow card owns them)', async () => {
     const { source, warm, executeCalls, executions } = await bench({
       execute: () => Promise.resolve({ matched: true }),
