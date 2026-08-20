@@ -201,7 +201,12 @@ describe('external-session-codex registration', () => {
       await harness.waitCount('external/session-started', 1)
       expect(harness.recorded.events).toContainEqual({
         type: 'external/session-started',
-        data: { provider: 'codex', cwd: harness.workspace, model: 'fixture-model' },
+        data: {
+          provider: 'codex',
+          cwd: harness.workspace,
+          model: 'fixture-model',
+          providerThreadId: expect.any(String),
+        },
       })
       await harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol', ReasoningEffortId('high'))
       await harness.provider.prompt(harness.sessionId, 'switch model')
@@ -286,6 +291,36 @@ describe('external-session-codex persistent turns', () => {
         .filter(event => event.type === 'external/turn-ended')
         .map(event => (event.data as { stopReason: string }).stopReason)
       expect(turnEnded).toEqual(['completed', 'completed'])
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('resumes the durable provider thread without starting a replacement thread', async () => {
+    const first = 'DURABLE_FIRST'
+    const second = 'DURABLE_SECOND'
+    const harness = await startCodexHarness([
+      { kind: 'complete', text: first },
+      { kind: 'complete', text: second },
+    ])
+    try {
+      await harness.start()
+      await harness.waitCount('external/session-started', 1)
+      const started = harness.recorded.events.find(event => event.type === 'external/session-started')
+      const providerThreadId = (started?.data as { providerThreadId?: unknown } | undefined)?.providerThreadId
+      expect(providerThreadId).toBeTypeOf('string')
+
+      await harness.provider.prompt(harness.sessionId, 'before host restart')
+      await harness.waitTurns(1)
+      await harness.provider.dispose(harness.sessionId)
+      await harness.resume(providerThreadId as string)
+
+      expect(harness.recorded.events.filter(event => event.type === 'external/session-started'))
+        .toHaveLength(1)
+      await harness.provider.prompt(harness.sessionId, 'after host restart')
+      await harness.waitTurns(2)
+      expect(agentMessageTexts(harness)).toEqual([first, second])
+      expect(responseInputTexts(harness.fixture.requests[1]!.body)).toContain(first)
     } finally {
       await harness.close()
     }

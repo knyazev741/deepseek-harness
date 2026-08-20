@@ -26,6 +26,7 @@ Session-projection Service Definition and drive registry. It owns `ctx.sessionPr
 - **State is plain JSON, `stateVersion` is its invalidation anchor.** The persisted projection cache stores `(sessionId, key, ver, seq, val)` rows; bump `stateVersion` whenever the state shape or the fold semantics change so stale rows are discarded instead of forward-applied into garbage.
 - **No wire vocabulary here.** The registry exposes only the change feed and the snapshot read face; carriers (api-proxy) mint their own frames (`session/projection`) and blocks from them.
 - **Optional capability.** Domain plugins register under `ctx.inject(['sessionProjections'], …)` so headless assemblies without the registry stay unaffected; carriers use `ctx.get('sessionProjections')` and omit their block/frames entirely when the registry is absent.
+- **Operational identity stays out of transcript rendering.** The external-transcript unit preserves the opaque `providerThreadId` from `external/session-started` in its replay value for host attachment, while transcript presenters render only external conversation and activity fields.
 
 ## Role
 

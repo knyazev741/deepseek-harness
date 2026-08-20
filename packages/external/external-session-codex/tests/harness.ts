@@ -62,6 +62,8 @@ export interface CodexTestHarness {
   releasePermission(decision: ExternalPermissionDecision): void
   /** Open the session on the recorded bridge (provider.start). */
   start(model?: string): Promise<void>
+  /** Attach the session on the recorded bridge (provider.resume). */
+  resume(providerThreadId: string): Promise<void>
   /** Wait until at least `count` events of `type` have been recorded. */
   waitCount(type: string, count: number, timeoutMs?: number): Promise<void>
   /** Wait until the recorded deltas mention `needle`. */
@@ -238,6 +240,13 @@ export async function startCodexHarness(
       sandbox: 'read-only',
       approvalPolicy: 'ask',
     }, bridge),
+    resume: providerThreadId => provider.resume({
+      sessionId,
+      provider: 'codex',
+      cwd: workspace,
+      sandbox: 'read-only',
+      approvalPolicy: 'ask',
+    }, bridge, providerThreadId),
     waitCount: (type, count, timeoutMs = 120_000) => poll(
       () => recorded.events.filter(event => event.type === type).length >= count,
       `${count}x ${type} (saw ${recorded.events.filter(e => e.type === type).length})`,

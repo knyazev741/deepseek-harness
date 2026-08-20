@@ -34,6 +34,9 @@ class StubProvider implements ExternalSessionProvider {
   async start(_request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
     this.lastBridge = bridge
   }
+  async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, _providerThreadId: string): Promise<void> {
+    this.lastBridge = bridge
+  }
 
   async prompt() { return { turnId: ExternalTurnId('t1') } }
   interrupt() {}

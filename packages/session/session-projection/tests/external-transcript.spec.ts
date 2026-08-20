@@ -23,7 +23,12 @@ async function harness(): Promise<{ ctx: Context; session: Session }> {
 
 /** Append one committed external transcript, exercising every event type. */
 function appendFullExternalRun(session: Session): void {
-  session.append('external/session-started', { provider: 'codex', cwd: '/work', model: 'gpt-5' })
+  session.append('external/session-started', {
+    provider: 'codex',
+    cwd: '/work',
+    model: 'gpt-5',
+    providerThreadId: 'opaque-thread-1',
+  })
   session.append('external/turn-started', { turnId: 't1' })
   session.append('external/message-added', { turnId: 't1', role: 'user', text: 'add a test' })
   session.append('external/message-added', { turnId: 't1', role: 'agent', text: 'on it' })
@@ -49,7 +54,7 @@ describe('external/* event vocabulary', () => {
     expect(original.seq).toBe(12)
 
     const expectedData = [
-      { provider: 'codex', cwd: '/work', model: 'gpt-5' },
+      { provider: 'codex', cwd: '/work', model: 'gpt-5', providerThreadId: 'opaque-thread-1' },
       { turnId: 't1' },
       { turnId: 't1', role: 'user', text: 'add a test' },
       { turnId: 't1', role: 'agent', text: 'on it' },
@@ -82,7 +87,7 @@ describe('external/* event vocabulary', () => {
     // an ignorable type it does not know instead of refusing the log). Seeding
     // replays the constructor's auto-`session/end-seed`, hence length 4.
     const seeded = Session.create(SessionId('unknown-seed'), [
-      { type: 'external/session-started', seq: 0, time: 1, data: { provider: 'codex', cwd: '/work' } },
+      { type: 'external/session-started', seq: 0, time: 1, data: { provider: 'codex', cwd: '/work', providerThreadId: 'opaque-thread-unknown' } },
       unknown,
       { type: 'external/turn-started', seq: 2, time: 3, data: { turnId: 't1' } },
     ])
@@ -104,6 +109,7 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
+      providerThreadId: 'opaque-thread-unknown',
       turns: [
         {
           turnId: 't1',
@@ -125,6 +131,7 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
+      providerThreadId: 'opaque-thread-1',
       sessionModel: 'gpt-5.1',
       turns: [
         {
@@ -149,10 +156,28 @@ describe('external/* event vocabulary', () => {
     })
   })
 
+  it('preserves the opaque provider thread id for attachment without rendering it as transcript content', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: 'opaque-thread-for-resume',
+    })
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({ providerThreadId: 'opaque-thread-for-resume' })
+    expect(projection).not.toHaveProperty('turns.0.providerThreadId')
+  })
+
   it('leaves unrelated (non-external) events out of the fold and shows an open turn', async () => {
     const { ctx, session } = await harness()
     ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
-    session.append('external/session-started', { provider: 'codex', cwd: '/work' })
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: 'opaque-thread-unrelated',
+    })
     session.append('external/turn-started', { turnId: 't1' })
     session.append('external/message-added', { turnId: 't1', role: 'agent', text: 'before unrelated' })
     session.append('turn/start', { turn: 1 })
@@ -162,6 +187,7 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
+      providerThreadId: 'opaque-thread-unrelated',
       turns: [
         {
           turnId: 't1',

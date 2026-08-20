@@ -28,7 +28,8 @@ declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /**
      * A live external agent session opened on `provider` in `cwd`, optionally
-     * starting on `model`. Log-only `ignorable: true`; not a
+     * starting on `model`, with the provider-owned thread identity returned by
+     * a successful thread start. Log-only `ignorable: true`; not a
      * `SurfaceEventType`. Standalone: the bridge appends it before any turn.
      */
     'external/session-started': ExternalSessionStartedData
@@ -95,6 +96,8 @@ export interface ExternalSessionStartedData {
   readonly provider: string
   readonly cwd: string
   readonly model?: string
+  /** Opaque provider-owned thread identity used for an explicit cold resume. */
+  readonly providerThreadId: string
 }
 /** Opens one external turn, identified by the provider-issued id. */
 export interface ExternalTurnStartedData {
@@ -174,6 +177,8 @@ export interface ExternalTranscriptTurn {
 export interface ExternalTranscriptProjection {
   readonly provider: string
   readonly cwd: string
+  /** Opaque provider identity retained for host attachment; transcript renderers ignore it. */
+  readonly providerThreadId?: string
   /** The current model, once started on or switched to one. */
   readonly sessionModel?: string
   readonly turns: readonly ExternalTranscriptTurn[]
@@ -189,6 +194,7 @@ export interface ExternalTranscriptProjection {
 interface ExternalTranscriptState {
   provider: string | null
   cwd: string | null
+  providerThreadId: string | null
   sessionModel: string | null
   turns: ExternalTranscriptTurn[]
   open: ExternalTranscriptTurn | null
@@ -231,6 +237,7 @@ const turnSchema = z.object({
 const externalTranscriptSchema = z.object({
   provider: z.string(),
   cwd: z.string(),
+  providerThreadId: z.string().optional(),
   sessionModel: z.string().optional(),
   turns: z.array(turnSchema),
   stopReason: z.string().optional(),
@@ -288,6 +295,7 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
         ...state,
         provider: event.data.provider,
         cwd: event.data.cwd,
+        providerThreadId: event.data.providerThreadId,
         sessionModel: event.data.model ?? state.sessionModel,
       }
     case 'external/turn-started':
@@ -380,6 +388,7 @@ function view(state: ExternalTranscriptState): ExternalTranscriptProjection {
     provider: state.provider === null ? '' : state.provider,
     cwd: state.cwd === null ? '' : state.cwd,
     turns,
+    ...(state.providerThreadId === null ? {} : { providerThreadId: state.providerThreadId }),
     ...(state.sessionModel === null ? {} : { sessionModel: state.sessionModel }),
     ...(state.stopReason === null ? {} : { stopReason: state.stopReason }),
   }
@@ -404,6 +413,7 @@ ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
   init: () => ({
     provider: null,
     cwd: null,
+    providerThreadId: null,
     sessionModel: null,
     turns: [],
     open: null,
@@ -411,5 +421,5 @@ ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
   }),
   apply,
   view,
-  stateVersion: 1,
+  stateVersion: 2,
 }

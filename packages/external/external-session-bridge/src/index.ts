@@ -59,14 +59,35 @@ export interface Config {}
 /** Empty validated configuration; the driver ships with no tunables. */
 export const Config: z<Config> = z.object({})
 
+/** Return the durable provider thread id, or null for an invalid persisted id. */
+function durableProviderThreadId(session: Session): string | null | undefined {
+  for (let index = session.events.length - 1; index >= 0; index -= 1) {
+    const event = session.events[index]
+    if (event?.type !== 'external/session-started') continue
+    const data = event.data
+    if (typeof data.providerThreadId !== 'string' || data.providerThreadId.length === 0) return null
+    return data.providerThreadId
+  }
+  return undefined
+}
+
+function externalModel(session: Session): string | undefined {
+  for (let index = session.events.length - 1; index >= 0; index -= 1) {
+    const event = session.events[index]
+    if (event?.type === 'external/model-switched') return event.data.model
+    if (event?.type === 'external/session-started') return event.data.model ?? session.header.model
+  }
+  return session.header.model
+}
+
 /**
- * Start the provider's live session for an already-stamped external session.
- * The provider's name is the session's durable header `mode`; the session must
- * carry an absolute `cwd` for the external agent to run in (the create gateway
- * always resolves a project directory before creating). A rejection surfaces on
- * the typed {@link Events} channel so it is not silently dropped.
+ * Start or resume the provider's live session for an already-stamped external
+ * session. The provider's name is the session's durable header `mode`; the
+ * session must carry an absolute `cwd` for the external agent to run in. A
+ * rejection surfaces on the typed {@link Events} channel so it is not silently
+ * dropped.
  * @param ctx - the plugin context.
- * @param session - the external-mode session just created.
+ * @param session - the external-mode session just created or materialized.
  * @param mode - the provider/mode name stamped on the session header.
  */
 function startOnProvider(ctx: Context, session: Session, mode: string): void {
@@ -74,14 +95,20 @@ function startOnProvider(ctx: Context, session: Session, mode: string): void {
   if (cwd === undefined) {
     throw new Error(`external-session-bridge: external session ${String(session.id)} has no cwd`)
   }
-  void ctx.externalSessions.start({
+  const model = externalModel(session)
+  const request = {
     sessionId: session.id,
     provider: mode,
     cwd,
     // The initial model the create gateway stamped on the durable header; the
     // provider resolves it against its own catalog/roster at start.
-    ...session.header.model === undefined ? {} : { model: session.header.model },
-  }).catch((error: unknown) => {
+    ...model === undefined ? {} : { model },
+  }
+  const providerThreadId = durableProviderThreadId(session)
+  const operation = providerThreadId === undefined
+    ? ctx.externalSessions.start(request)
+    : ctx.externalSessions.resume(request, providerThreadId === null ? '' : providerThreadId)
+  void operation.catch((error: unknown) => {
     // A provider that rejects start (e.g. an unavailable child process) must
     // surface: the session is already published, so the failure cannot unwind
     // the creation dispatch. Emit the loud host signal rather than an
@@ -116,6 +143,7 @@ export function apply(ctx: Context, _config: Config): void {
   ctx.on('session/disposed', (session: Session) => {
     if (started.delete(session.id)) {
       void ctx.externalSessions.dispose(session.id).catch((error: unknown) => {
+        if (error instanceof Error && 'code' in error && error.code === 'UNKNOWN_SESSION') return
         ctx.emit('external/session-bridge/error', {
           sessionId: session.id,
           provider: session.header.mode ?? 'unknown',

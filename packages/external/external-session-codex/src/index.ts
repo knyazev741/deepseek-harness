@@ -6,7 +6,8 @@
  * prompts on that thread, streaming deltas and committed items out through the
  * per-session bridge, answering approval asks through the permission channel,
  * and respawning the app-server within the same provider instance when the
- * child process restarts. Durable provider identity belongs to a later phase.
+ * child process restarts. Durable provider identity is accepted by the
+ * explicit resume path.
  *
  * @module @deepseek-ai/dsh-external-session-codex
  */
@@ -165,6 +166,25 @@ class CodexProvider implements ExternalSessionProvider {
   ) {}
 
   async start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
+    return this.open(request, bridge)
+  }
+
+  async resume(
+    request: ExternalSessionStart,
+    bridge: ExternalBridgeContext,
+    providerThreadId: string,
+  ): Promise<void> {
+    if (providerThreadId.length === 0) {
+      throwable('provider thread id must be non-empty for resume')
+    }
+    return this.open(request, bridge, providerThreadId)
+  }
+
+  private async open(
+    request: ExternalSessionStart,
+    bridge: ExternalBridgeContext,
+    providerThreadId?: string,
+  ): Promise<void> {
     if (this.lifecycles.has(request.sessionId)) {
       throwable(`external session ${String(request.sessionId)} is already starting or live`)
     }
@@ -177,7 +197,7 @@ class CodexProvider implements ExternalSessionProvider {
       disposed: false,
     }
     this.lifecycles.set(request.sessionId, lifecycle)
-    const start = this.startLifecycle(request, bridge, lifecycle)
+    const start = this.startLifecycle(request, bridge, lifecycle, providerThreadId)
     lifecycle.start = start
     // Keep the failed owner until the registry rolls its route back or a
     // concurrent disposal claims it. Both paths must be able to reap the
@@ -190,6 +210,7 @@ class CodexProvider implements ExternalSessionProvider {
     request: ExternalSessionStart,
     bridge: ExternalBridgeContext,
     lifecycle: CodexLifecycle,
+    providerThreadId?: string,
   ): Promise<void> {
     let session: CodexExternalSession | undefined
     try {
@@ -213,7 +234,8 @@ class CodexProvider implements ExternalSessionProvider {
       )
       lifecycle.session = session
       this.sessions.set(request.sessionId, session)
-      await session.start(lifecycle.signal)
+      if (providerThreadId === undefined) await session.start(lifecycle.signal)
+      else await session.resume(providerThreadId, lifecycle.signal)
       throwIfAborted(lifecycle.signal)
     } catch (error: unknown) {
       if (session !== undefined && this.sessions.get(request.sessionId) === session) {

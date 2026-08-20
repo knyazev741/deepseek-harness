@@ -177,7 +177,7 @@ export interface ExternalBridgeContext {
  * A named provider driving live external sessions, as the registry's
  * registered member. It carries the descriptor fields the registry reports and
  * the same operational set as {@link ExternalSessionsService} minus registry
- * concerns; `start` additionally receives the per-session bridge.
+ * concerns; `start` and `resume` additionally receive the per-session bridge.
  */
 export interface ExternalSessionProvider extends ExternalAgentDescriptor {
   /**
@@ -186,6 +186,13 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
    * @param bridge - the live conduit the provider writes transcripts through.
    */
   start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void>
+  /**
+   * Attach an existing provider thread without creating a replacement thread.
+   * @param request - the resolved session identity and policy values.
+   * @param bridge - the live conduit for durable and transient activity.
+   * @param providerThreadId - the opaque provider thread id persisted by start.
+   */
+  resume(request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: string): Promise<void>
   /**
    * Submit one user prompt as the next turn.
    * @param sessionId - the live external session.
@@ -230,7 +237,8 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
 /**
  * The registry surface later tasks code against. It owns named-provider
  * registration, session-to-provider dispatch, and the per-session bridge it
- * hands at {@link ExternalSessionsService.start}.
+ * hands at {@link ExternalSessionsService.start} or
+ * {@link ExternalSessionsService.resume}.
  */
 export interface ExternalSessionsService {
   /** List the registered agents' descriptors. */
@@ -240,6 +248,12 @@ export interface ExternalSessionsService {
    * @param request - the start request with a pre-reserved session id.
    */
   start(request: ExternalSessionStartRequest): Promise<void>
+  /**
+   * Attach a persisted external session to its provider-owned thread.
+   * @param request - the resolved session identity and policy values.
+   * @param providerThreadId - the opaque provider thread id persisted by start.
+   */
+  resume(request: ExternalSessionStartRequest, providerThreadId: string): Promise<void>
   /**
    * Submit one prompt to a live external session.
    * @param sessionId - the live external session.

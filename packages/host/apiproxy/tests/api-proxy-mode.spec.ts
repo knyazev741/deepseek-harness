@@ -35,6 +35,7 @@ class StubProvider implements ExternalSessionProvider {
     readonly label: string,
   ) {}
   async start(_request: ExternalSessionStart, _bridge: ExternalBridgeContext) {}
+  async resume(_request: ExternalSessionStart, _bridge: ExternalBridgeContext, _providerThreadId: string) {}
   async prompt() { return { turnId: ExternalTurnId('t1') } }
   interrupt() {}
   async compact() {}

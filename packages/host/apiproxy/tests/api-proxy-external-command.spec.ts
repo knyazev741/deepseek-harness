@@ -8,9 +8,10 @@
  * durable events through the per-session bridge.
  */
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { SESSION_FORMAT_VERSION, SessionId, SessionPreparation } from '@deepseek-ai/dsh-session'
+import SessionProjection from '@deepseek-ai/dsh-session-projection'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import ExternalSessions, {
@@ -19,6 +20,7 @@ import ExternalSessions, {
   type ExternalSessionProvider,
   type ExternalSessionStart,
 } from '@deepseek-ai/dsh-external-session'
+import * as ExternalSessionBridge from '@deepseek-ai/dsh-external-session-bridge'
 import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
@@ -32,6 +34,8 @@ function request<P>(payload: P): RpcRequest<P> {
 class CommandProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   lastBridge: ExternalBridgeContext | undefined
+  started = 0
+  readonly resumed: string[] = []
   readonly compacted = new Set<SessionId>()
   readonly switched: Array<{ sessionId: SessionId; model: string }> = []
   readonly prompts: string[] = []
@@ -44,6 +48,11 @@ class CommandProvider implements ExternalSessionProvider {
   ) {}
 
   async start(_request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
+    this.started += 1
+    this.lastBridge = bridge
+  }
+  async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: string): Promise<void> {
+    this.resumed.push(providerThreadId)
     this.lastBridge = bridge
   }
   async prompt(sessionId: SessionId, text: string) {
@@ -74,6 +83,7 @@ class CommandProvider implements ExternalSessionProvider {
 async function harness(): Promise<{ ctx: Context; provider: CommandProvider }> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjection)
   await ctx.plugin(UserQuestionService)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(ExternalSessions)
@@ -101,6 +111,51 @@ async function bootExternal(ctx: Context, sessionId: SessionId): Promise<void> {
 }
 
 describe('session.command external-mode routing', () => {
+  it('materializes one cold external session and resumes its durable thread on first command', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    await ctx.plugin(ExternalSessionBridge)
+    const sessionId = SessionId('cold-command')
+    const meta = {
+      version: SESSION_FORMAT_VERSION,
+      id: sessionId,
+      createdAt: 1,
+      cwd: '/tmp',
+      mode: 'alpha',
+    }
+    const events = [{
+      type: 'external/session-started' as const,
+      seq: 0,
+      time: 1,
+      data: { provider: 'alpha', cwd: '/tmp', providerThreadId: 'opaque-cold-command' },
+      ignorable: true as const,
+    }]
+    const inspect = vi.fn(async () => ({ meta, events }))
+    const prepare = vi.fn(async () => SessionPreparation.create(ctx.sessions.prepare(sessionId, {
+      seed: events,
+      meta,
+      seedSource: 'persistence',
+    })))
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      inspect,
+      prepare,
+    } as never)
+
+    const history = await ctx.apiProxy.sessions.history(request({ sessionId }))
+    expect(history.result.ok).toBe(true)
+    expect(provider.started).toBe(0)
+    expect(provider.resumed).toEqual([])
+
+    const result = await ctx.apiProxy.sessions.command(request({ sessionId, line: 'resume me' }))
+    expect(result.result.ok).toBe(true)
+    expect(provider.started).toBe(0)
+    expect(provider.resumed).toEqual(['opaque-cold-command'])
+    expect(prepare).toHaveBeenCalledOnce()
+    expect(inspect).toHaveBeenCalled()
+    expect(ctx.sessions.get(sessionId)?.header.id).toBe(sessionId)
+  })
+
   it('routes /compact to the provider native compact and records the notice', async () => {
     const { ctx, provider } = await harness()
     context = ctx

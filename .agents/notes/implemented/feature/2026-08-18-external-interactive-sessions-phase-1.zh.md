@@ -22,13 +22,13 @@ Harness 运行自己的 agent loop；console coding agent 是一次性 subagent 
 
 使用已注册提供方的 external-mode 会话创建会启动 bridge，绝不会启动原生 Agent；未知 mode 在创建时大声失败。无 mode（`dsh`）的会话不受影响。
 
-Codex 提供方把实时会话的 sandbox 与 approval fold 合并到每次 external start。受限子进程收到精确的 app-server argv 与配置 state root 下的私有 `CODEX_HOME`；默认使用打包的 `@openai/codex` launcher，显式 command 是覆盖项。launcher 环境清洗环境中的凭证形状变量，同时保留显式提供的凭证。稳定的 `model` 与 reasoning `effort` 字段发送到 thread start/resume 与每轮；模型切换只有在原生目录中时才接受，并在下一轮前记录。启动生命周期记录在第一次 await 前即可取消；dispose 会回滚它，不会生成孤儿。并发 prompt 串行化，待处理审批在 `external/session-ended` 前取消，清理失败保留在 quiescence 屏障上。子进程死亡会结算活动轮次、在终止前关闭 wire listener、等待进程树，然后使用内存线程 id 在同一提供方实例内重启子进程。跨 Harness 重启的提供方线程身份属于 Task 3。会话创建前的模型目录使用明确的 read-only policy；read-only 忽略 state-root 的写授权。Loader 组合、浏览器与面向用户的快照验收证据延后到 Task 9。
+Codex 提供方把实时会话的 sandbox 与 approval fold 合并到每次 external start 或 resume。受限子进程收到精确的 app-server argv 与配置 state root 下的私有 `CODEX_HOME`；默认使用打包的 `@openai/codex` launcher，显式 command 是覆盖项。launcher 环境清洗环境中的凭证形状变量，同时保留显式提供的凭证。稳定的 `model` 与 reasoning `effort` 字段发送到 thread start/resume 与每轮；模型切换只有在原生目录中时才接受，并在下一轮前记录。成功的 `thread/start` 会把不透明的 `providerThreadId` 写入 `external/session-started`；冷会话使用显式的 `resume`/`thread/resume`，绝不回退到替代线程。宿主只在实时操作需要时通过 `SessionPersistence.prepare`、`SessionStore.enter` 与 `SessionStore.announce` 物化冷外部会话；history 与 list 保持无进程。start/resume 按会话去重，挂接失败会回滚实时路由，同时让持久日志保持可读。启动生命周期记录在第一次 await 前即可取消；dispose 会回滚它，不会生成孤儿。并发 prompt 串行化，待处理审批在 `external/session-ended` 前取消，清理失败保留在 quiescence 屏障上。子进程死亡会结算活动轮次、在终止前关闭 wire listener、等待进程树，然后使用内存线程 id 在同一提供方实例内重启子进程。会话创建前的模型目录使用明确的 read-only policy；read-only 忽略 state-root 的写授权。Loader 组合、浏览器与面向用户的快照验收证据延后到 Task 9。
 
 ### The `external/*` session events
 
 Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全部为 `ignorable: true`（读取时未知 `external/*` 不会破坏 replay）。实时 frame 增量通过 frame channel 传递，不持久化（`streamDelta` 永不写日志）。只提交以下单元：
 
-`external/session-started`、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
+`external/session-started`（包含不透明的提供方线程身份）、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
 
 `/compact` 与 `/model` 按 session mode 路由：压缩调用提供方原生 compact 并记录 notice；模型切换调用 `setModel` 并记录切换。外部 mode 中未知 slash command 作为 prompt 文本传递。
 

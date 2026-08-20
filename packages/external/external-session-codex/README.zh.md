@@ -2,11 +2,13 @@
 
 [English](README.md) | 中文
 
-持久化 Codex 外部 agent 会话提供方。在 [`ctx.externalSessions`](../external-session/README.md) 上注册 `codex` mode：每个被接受的会话都会启动打包的 `@openai/codex@0.147.0` app-server，除非显式配置命令覆盖；它在会话工作目录中打开一条非临时（non-ephemeral）线程，然后在该线程上服务重复的 prompt。实时助手文本通过逐会话 bridge 的 `streamDelta` 流出；已提交的消息、工具活动、审批询问与终态停止原因被记录为仅日志的 `external/*` 会话事件；压缩通过专用的 `thread/compact/start` 方法进行；而 app-server 意外退出则会先结算活动轮次、回收旧子进程树，再由同一提供方实例用内存中的线程 id 重启子进程并继续。跨 Harness 重启的持久提供方线程身份与恢复延后至 Task 3。一次性兄弟包 [`@deepseek-ai/dsh-subagent-codex`](../../subagent/subagent-codex/README.md) 驱动自己的临时线程；本提供方则是与之对应的交互式、持续性版本。
+持久化 Codex 外部 agent 会话提供方。在 [`ctx.externalSessions`](../external-session/README.md) 上注册 `codex` mode：每个被接受的会话都会启动打包的 `@openai/codex@0.147.0` app-server，除非显式配置命令覆盖；它在会话工作目录中打开一条非临时（non-ephemeral）线程，然后在该线程上服务重复的 prompt。实时助手文本通过逐会话 bridge 的 `streamDelta` 流出；已提交的消息、工具活动、审批询问与终态停止原因被记录为仅日志的 `external/*` 会话事件；压缩通过专用的 `thread/compact/start` 方法进行；而 app-server 意外退出则会先结算活动轮次、回收旧子进程树，再由同一提供方实例用内存中的线程 id 重启子进程并继续。冷的 Harness 会话通过显式 `resume` 与 `thread/resume` 恢复其不透明的持久提供方线程 id；恢复失败绝不创建替代线程。一次性兄弟包 [`@deepseek-ai/dsh-subagent-codex`](../../subagent/subagent-codex/README.md) 驱动自己的临时线程；本提供方则是与之对应的交互式、持续性版本。
 
 ## 启动与所有权
 
 `start(request)` 会在首次异步状态根目录操作前发布可取消的提供方生命周期记录，解析会话的 sandbox 与 approval fold，创建私有 Codex 状态目录，然后通过 [`dsh-subprocess`](../../subprocess/subprocess/README.md) 在会话工作目录下启动 app-server。dispose 会取消该记录并等待启动回滚后才返回，因此路由 dispose 后不会再启动子进程。它执行 `initialize` → `initialized` → `thread/start { cwd, ephemeral: false, model?, sandbox, approvalPolicy }`，并在该提供方实例生命周期内保留非临时线程 id。一旦线程存在，提供方就发出 `external/session-started`。
+
+`resume(request, providerThreadId)` 发布同样的生命周期，但执行 `initialize` → `initialized` → `thread/resume { threadId, model?, sandbox, approvalPolicy }`。它要求持久化的不透明 id，不会发出新的 `external/session-started`；id 缺失或未知时会拒绝，并且不会回退到 `thread/start`。宿主只在实时操作需要提供方时，才通过 `SessionPersistence.prepare`、`SessionStore.enter` 与 `SessionStore.announce` 物化冷会话。
 
 `prompt(text)` 严格串行地轮转：它等待上一条轮次的 `turn/completed` 终态通知，在同一条线程上提交下一条 `turn/start`，并立即返回提供方签发的轮次 id。该轮次随后异步流式运行至完成：`item/agentMessage/delta` 被转发到 `streamDelta`（仅实时，绝不持久化）；一条完成的 `agentMessage` 被提交为 `external/message-added { role: 'agent' }`，提交的 prompt 被提交为 `{ role: 'user' }`，`commandExecution` 项被提交为 `external/tool-activity { kind: 'call' | 'result' }`，终态的 `turn/completed` 被提交为 `external/turn-ended`（`completed` / `aborted` / `error` / `max-tokens`）。`interrupt()` 发送尽力而为的 `turn/interrupt`，其中断后的终态映射为 `aborted`。
 
@@ -14,7 +16,7 @@
 
 `compact()` 调用专用的 `thread/compact/start` 并记录 `external/compaction-noticed`；压缩随后作为后台轮次沿常规通知路径运行。
 
-当 app-server 子进程在会话中途退出时，提供方会把活动轮次记录为 `error`，关闭 listener，等待旧子进程树结算；下一次操作在同一提供方实例中启动新的子进程，并用内存中的线程 id 通过 `thread/resume` 继续（同一进程内的子进程重启；协议证据为 `thread-persistence.json`）。跨 Harness 重启的提供方线程身份不属于本任务。`dispose()` 记录 `external/session-ended`、取消尚未完成的审批且不产生迟到决策、中断任何活动轮次、关闭 wire，并运行整棵进程树的终止阶梯（stdin EOF 宽限期，然后是共享进程树的 SIGTERM → 宽限 → SIGKILL 升级）；清理失败会保留在 quiescence 屏障上并阻止重启。
+当 app-server 子进程在会话中途退出时，提供方会把活动轮次记录为 `error`，关闭 listener，等待旧子进程树结算；下一次操作在同一提供方实例中启动新的子进程，并用内存中的线程 id 通过 `thread/resume` 继续（同一进程内的子进程重启；协议证据为 `thread-persistence.json`）。同一显式恢复路径也会在 Harness 重启后接受持久化 id。`dispose()` 会为已挂接的实时会话记录 `external/session-ended`，取消尚未完成的审批且不产生迟到决策，中断任何活动轮次、关闭 wire，并运行整棵进程树的终止阶梯（stdin EOF 宽限期，然后是共享进程树的 SIGTERM → 宽限 → SIGKILL 升级）；清理失败会保留在 quiescence 屏障上并阻止重启。
 
 ## 模型列出与切换
 
@@ -74,8 +76,8 @@
 - **模型选择从下一轮生效**——`setModel` 记录选定模型与可选 reasoning effort，并通过稳定的 `turn/start` 字段发送；不会改变正在运行的轮次。
 - **无流式持久性保证**——实时增量只沿实时 frame 路径上的 `streamDelta` 传输，绝不写入持久日志；回放仅重建已提交的 `external/*` 单元。
 - **审批依赖权限通道**——在宿主插件接线 ask-user 通道之前，`requestPermission` 会故障关闭（`PERMISSION_UNWIRED`）；随后提供方映射到安全的 decline 与 `cancelled`。
-- **app-server 子进程关闭只在同一提供方实例内恢复**——意外的子进程死亡会把活动轮次结算为 `error`，随后下一次操作重启并恢复内存中的线程 id；跨 Harness 重启的提供方线程身份属于 Task 3，死亡的 app-server 本身不会再发出终态 `turn/completed`。
+- **app-server 子进程关闭会先结算再恢复**——意外的子进程死亡会把活动轮次结算为 `error`，随后下一次操作重启并恢复内存中的线程 id；冷宿主会话通过显式 `resume` 使用持久化的提供方线程 id，死亡的 app-server 本身不会再发出终态 `turn/completed`。
 - **组装应用验收证据延后**——Loader 组合、浏览器可访问性与面向用户的无密钥快照证据属于 Task 9；本程序包测试仅覆盖提供方 seam 与固定的无密钥 fixture。
-- **启动失败可能留下空的哈希状态目录**——该目录是私有的并由提供方拥有；Task 2 不删除它，持久恢复的所有权延后至 Task 3。
+- **启动失败可能留下空的哈希状态目录**——该目录是私有的并由提供方拥有；进程回滚不会删除它，因为后续显式恢复可能仍需保留的 Codex rollout 状态。
 - **压缩通知文本是固定摘要，而非线上压缩详情**——0.147.0 证据显示 `thread/compact/start` 立即返回 `{}`，压缩作为后台轮次运行；持久通知由提供方撰写。
 - **兼容性由开发证据固定**——从已验证的 0.147.0 协议基线升级，需要重新生成上游 schema 证据并重跑无密钥的真实产品测试。

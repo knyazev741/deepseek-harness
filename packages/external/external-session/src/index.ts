@@ -96,6 +96,8 @@ export class ExternalSessions extends Service implements ExternalSessionsService
   private sessions = new Map<SessionId, string>()
   /** Per-session disposal signals aborted on {@link dispose}. */
   private disposals = new Map<SessionId, AbortController>()
+  /** In-flight start/resume operations shared by concurrent attach callers. */
+  private attachments = new Map<SessionId, { promise: Promise<void>; token: object }>()
   /** The registered permission answerer, or undefined while the channel is unwired. */
   private permissionAnswerer: ExternalPermissionAnswerer | undefined
 
@@ -191,6 +193,34 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    *   session id that is already live.
    */
   async start(request: ExternalSessionStartRequest): Promise<void> {
+    return this.attach(request, 'start')
+  }
+
+  /**
+   * Attach a persisted external session to its provider-owned thread. Resume
+   * is a distinct operation: providers must reject a missing or unknown id and
+   * never create a replacement thread.
+   * @param request - the resolved session identity and policy values.
+   * @param providerThreadId - the opaque provider thread id from the durable log.
+   */
+  async resume(request: ExternalSessionStartRequest, providerThreadId: string): Promise<void> {
+    if (providerThreadId.length === 0) {
+      throw new ExternalSessionError(
+        'external provider thread id must be non-empty for resume',
+        'INVALID_PROVIDER_THREAD_ID',
+      )
+    }
+    return this.attach(request, 'resume', providerThreadId)
+  }
+
+  /** Start or resume one provider attachment while retaining rollback ownership. */
+  private attach(
+    request: ExternalSessionStartRequest,
+    operation: 'start' | 'resume',
+    providerThreadId?: string,
+  ): Promise<void> {
+    const pending = this.attachments.get(request.sessionId)
+    if (pending !== undefined) return pending.promise
     const provider = this.expectProvider(request.provider)
     if (this.sessions.has(request.sessionId)) {
       throw new ExternalSessionError(
@@ -206,21 +236,41 @@ export class ExternalSessions extends Service implements ExternalSessionsService
     this.sessions.set(request.sessionId, request.provider)
     const controller = new AbortController()
     this.disposals.set(request.sessionId, controller)
-    try {
-      await provider.start(resolved, this.createBridge(controller))
-    } catch (error) {
-      const ownsRoute = this.sessions.get(request.sessionId) === request.provider
-        && this.disposals.get(request.sessionId) === controller
-      if (ownsRoute) {
-        this.sessions.delete(request.sessionId)
-        this.disposals.delete(request.sessionId)
-        controller.abort()
-        await provider.dispose(request.sessionId).catch(() => {})
-      } else {
-        controller.abort()
+    const token = {}
+    const deferred = Promise.withResolvers<undefined>()
+    this.attachments.set(request.sessionId, { promise: deferred.promise, token })
+    void (async () => {
+      try {
+        const bridge = this.createBridge(controller)
+        if (operation === 'start') await provider.start(resolved, bridge)
+        else if (providerThreadId === undefined) {
+          throw new ExternalSessionError(
+            'external provider thread id is required for resume',
+            'INVALID_PROVIDER_THREAD_ID',
+          )
+        } else {
+          await provider.resume(resolved, bridge, providerThreadId)
+        }
+        deferred.resolve(undefined)
+      } catch (error) {
+        const ownsRoute = this.sessions.get(request.sessionId) === request.provider
+          && this.disposals.get(request.sessionId) === controller
+        if (ownsRoute) {
+          this.sessions.delete(request.sessionId)
+          this.disposals.delete(request.sessionId)
+          controller.abort()
+          await provider.dispose(request.sessionId).catch(() => {})
+        } else {
+          controller.abort()
+        }
+        deferred.reject(error)
+      } finally {
+        if (this.attachments.get(request.sessionId)?.token === token) {
+          this.attachments.delete(request.sessionId)
+        }
       }
-      throw error
-    }
+    })()
+    return deferred.promise
   }
 
   /**

@@ -6,7 +6,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjection from '@deepseek-ai/dsh-session-projection'
 import ExternalSessions, {
   ExternalTurnId,
@@ -19,6 +19,7 @@ import * as bridge from '@deepseek-ai/dsh-external-session-bridge'
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   started: boolean | undefined
+  resumed: string | undefined
   disposeError: Error | undefined
 
   constructor(
@@ -30,7 +31,18 @@ class StubProvider implements ExternalSessionProvider {
     this.started = true
     bridgeCtx.appendEvent(request.sessionId, {
       type: 'external/session-started',
-      data: { provider: this.provider, cwd: request.cwd },
+      data: { provider: this.provider, cwd: request.cwd, providerThreadId: 'opaque-thread-started' },
+    })
+  }
+  async resume(
+    request: ExternalSessionStart,
+    bridgeCtx: ExternalBridgeContext,
+    providerThreadId: string,
+  ): Promise<void> {
+    this.resumed = providerThreadId
+    bridgeCtx.appendEvent(request.sessionId, {
+      type: 'external/message-added',
+      data: { turnId: 'resume-turn', role: 'agent', text: 'resumed' },
     })
   }
   async prompt() { return { turnId: ExternalTurnId('t1') } }
@@ -88,5 +100,35 @@ describe('external-session-bridge driver', () => {
     detach()
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(errors).toEqual([provider.disposeError])
+  })
+
+  it('resumes a cold external session from its durable provider thread id', async () => {
+    const { ctx: loaded, provider } = await setup()
+    const session = loaded.sessions.prepare(SessionId('cold-resume'), {
+      seed: [
+        {
+          type: 'external/session-started',
+          seq: 0,
+          time: 1,
+          data: { provider: 'alpha', cwd: '/tmp', providerThreadId: 'opaque-thread-cold' },
+          ignorable: true,
+        },
+      ],
+      meta: {
+        id: SessionId('cold-resume'),
+        version: SESSION_FORMAT_VERSION,
+        createdAt: 1,
+        cwd: '/tmp',
+        mode: 'alpha',
+      },
+      seedSource: 'persistence',
+    })
+    const detach = loaded.sessions.enter(session)
+    loaded.sessions.announce(session)
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(provider.started).toBeUndefined()
+    expect(provider.resumed).toBe('opaque-thread-cold')
+    detach()
   })
 })

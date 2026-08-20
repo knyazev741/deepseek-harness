@@ -171,6 +171,8 @@ export class CodexExternalSession {
   private nextGeneration = 0
   /** Serializes process cleanup so a respawn cannot race the old tree. */
   private quiescence: Promise<void> = Promise.resolve()
+  /** Whether this instance successfully attached to a provider thread. */
+  private attached = false
   private disposed = false
 
   constructor(
@@ -200,15 +202,47 @@ export class CodexExternalSession {
    * Spawn the app-server child, handshake, and open (or resume) the persistent
    * thread, then record `external/session-started`.
    * @param signal - operation cancellation.
+   * @returns the durable provider thread id.
    */
-  async start(signal: AbortSignal): Promise<void> {
-    if (this.live !== undefined) return
+  async start(signal: AbortSignal): Promise<string> {
+    if (this.live !== undefined) {
+      if (this.threadId === undefined) throw new Error('external-session-codex: live wire has no provider thread id')
+      return this.threadId
+    }
     await this.ensureLive(signal, false)
+    const providerThreadId = this.threadId
+    if (providerThreadId === undefined) {
+      throw new Error('external-session-codex: thread/start completed without a provider thread id')
+    }
+    this.attached = true
     this.append('external/session-started', {
       provider: 'codex',
       cwd: this.spec.cwd,
       ...this.settings.model === undefined ? {} : { model: this.settings.model },
+      providerThreadId,
     })
+    return providerThreadId
+  }
+
+  /**
+   * Attach to one durable provider thread. This path only sends
+   * `thread/resume`; it never creates a replacement thread when resume fails.
+   * @param providerThreadId - opaque provider thread id from the durable log.
+   * @param signal - operation cancellation.
+   */
+  async resume(providerThreadId: string, signal: AbortSignal): Promise<void> {
+    if (providerThreadId.length === 0) {
+      throw new Error('external-session-codex: provider thread id must be non-empty')
+    }
+    if (this.live !== undefined) {
+      if (this.threadId !== providerThreadId) {
+        throw new Error('external-session-codex: live provider thread id does not match resume request')
+      }
+      return
+    }
+    this.threadId = providerThreadId
+    await this.ensureLive(signal, true)
+    this.attached = true
   }
 
   /**
@@ -322,7 +356,7 @@ export class CodexExternalSession {
     this.disposed = true
     for (const pending of this.pendingApprovals.keys()) pending.resolve('cancelled')
     this.pendingApprovals.clear()
-    this.append('external/session-ended', { stopReason: 'completed' })
+    if (this.attached) this.append('external/session-ended', { stopReason: 'completed' })
     this.live?.wire.interrupt()
     const live = this.live
     this.live = undefined

@@ -46,9 +46,10 @@ const stubProvider: ExternalSessionProvider = {
     providerState.bridge = bridgeCtx
     bridgeCtx.appendEvent(request.sessionId, {
       type: 'external/session-started',
-      data: { provider: 'stub', cwd: request.cwd },
+      data: { provider: 'stub', cwd: request.cwd, providerThreadId: 'opaque-thread-stub' },
     })
   },
+  async resume(_request, _bridgeCtx, _providerThreadId) {},
   async prompt(sessionId, _text) {
     providerState.bridge!.appendEvent(sessionId, { type: 'external/turn-started', data: { turnId: 't1' } })
     providerState.bridge!.appendEvent(sessionId, {

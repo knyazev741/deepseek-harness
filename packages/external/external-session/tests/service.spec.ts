@@ -29,6 +29,9 @@ class StubProvider implements ExternalSessionProvider {
   readonly compacted: SessionId[] = []
   readonly switched: { sessionId: SessionId; model: string }[] = []
   readonly disposed: SessionId[] = []
+  readonly resumed: Array<{ sessionId: SessionId; providerThreadId: string }> = []
+  resumeError: Error | undefined
+  resumeGate: Promise<void> | undefined
 
   constructor(
     readonly provider: string,
@@ -44,6 +47,18 @@ class StubProvider implements ExternalSessionProvider {
     if (this.startError !== undefined) throw this.startError
     this.lastStart = request
     this.lastBridge = bridge
+  }
+
+  async resume(
+    request: ExternalSessionStart,
+    bridge: ExternalBridgeContext,
+    providerThreadId: string,
+  ): Promise<void> {
+    if (this.resumeError !== undefined) throw this.resumeError
+    this.resumed.push({ sessionId: request.sessionId, providerThreadId })
+    this.lastStart = request
+    this.lastBridge = bridge
+    await this.resumeGate
   }
 
   async prompt(_sessionId: SessionId, text: string): Promise<{ turnId: ExternalTurnId }> {
@@ -146,6 +161,45 @@ describe('ExternalSessions registry', () => {
     provider.startError = undefined
     await expect(service.start({ sessionId, provider: 'alpha', cwd: '/tmp' })).resolves.toBeUndefined()
     expect(provider.startCount).toBe(2)
+  })
+
+  it('resumes a durable provider thread without calling start', async () => {
+    const { service } = await setup()
+    const provider = new StubProvider('alpha', 'Alpha')
+    service.registerProvider(provider)
+    const sessionId = SessionId('resume-1')
+
+    await service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, 'opaque-thread-1')
+
+    expect(provider.startCount).toBe(0)
+    expect(provider.resumed).toEqual([{ sessionId, providerThreadId: 'opaque-thread-1' }])
+  })
+
+  it('rejects a resume without a durable provider thread id', async () => {
+    const { service } = await setup()
+    service.registerProvider(new StubProvider('alpha', 'Alpha'))
+
+    await expect(service.resume({
+      sessionId: SessionId('resume-missing-id'), provider: 'alpha', cwd: '/tmp',
+    }, '')).rejects.toMatchObject({ code: 'INVALID_PROVIDER_THREAD_ID' })
+  })
+
+  it('shares one in-flight resume and rolls back its route after rejection', async () => {
+    const { service } = await setup()
+    const provider = new StubProvider('alpha', 'Alpha')
+    const gate = Promise.withResolvers<undefined>()
+    provider.resumeGate = gate.promise
+    service.registerProvider(provider)
+    const sessionId = SessionId('resume-race')
+
+    const first = service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, 'opaque-thread-race')
+    const second = service.resume({ sessionId, provider: 'alpha', cwd: '/tmp' }, 'opaque-thread-race')
+    await Promise.resolve()
+    expect(provider.resumed).toHaveLength(1)
+    gate.reject(new Error('resume failed'))
+    await expect(first).rejects.toThrow('resume failed')
+    await expect(second).rejects.toThrow('resume failed')
+    await expect(service.prompt(sessionId, 'after failure')).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
   })
 })
 
@@ -300,6 +354,7 @@ describe('ExternalSessions model listing', () => {
       label: 'Config',
       modelDirectory: 'config',
       async start() {},
+      async resume() {},
       async prompt() { return { turnId: ExternalTurnId('t1') } },
       interrupt() {},
       async compact() {},

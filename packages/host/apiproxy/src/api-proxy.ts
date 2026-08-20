@@ -1173,6 +1173,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   const presetSwitches = new Map<SessionId, Promise<unknown>>()
   /** Client-chosen identity creation/resume, deduplicated across concurrent retries. */
   const sessionCreations = new Map<SessionId, Promise<Agent>>()
+  /** Cold external-session attachment, shared across concurrent first actions. */
+  const externalAttachments = new Map<SessionId, Promise<Session>>()
   /** Serializes path ownership and explicit title checks with Workspace mutations. */
   let workspaceCreationChain = Promise.resolve()
   const pendingQuestions = new Map<RpcId, PendingQuestion>()
@@ -1554,6 +1556,115 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     }
     const inspected = await inspectServable(sessionId)
     return { id: inspected.meta.id, header: inspected.meta, events: inspected.events }
+  }
+
+  /** Return the latest durable provider thread id, or undefined when absent. */
+  function externalProviderThreadId(events: readonly SessionEvent[]): string | undefined {
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index]
+      if (event?.type !== 'external/session-started') continue
+      const data = event.data as { providerThreadId?: unknown }
+      return typeof data.providerThreadId === 'string' && data.providerThreadId.length > 0
+        ? data.providerThreadId
+        : undefined
+    }
+    return undefined
+  }
+
+  /** Resolve the latest model persisted by the external provider. */
+  function externalModel(events: readonly SessionEvent[], header: SessionHeader): string | undefined {
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index]
+      if (event?.type === 'external/model-switched') return event.data.model
+      if (event?.type === 'external/session-started') return event.data.model ?? header.model
+    }
+    return header.model
+  }
+
+  /**
+   * Materialize one cold external session and explicitly resume its durable
+   * provider thread. `session.list` and `session.history` never call this
+   * helper; only an operation that needs a live external provider does.
+   * @param sessionId - persisted external session identity.
+   * @returns the exact Session published through prepare/enter/announce.
+   */
+  async function ensureExternalSessionAttached(sessionId: SessionId): Promise<Session> {
+    const live = ctx.sessions.get(sessionId)
+    if (live !== undefined) return live
+    const pending = externalAttachments.get(sessionId)
+    if (pending !== undefined) return pending
+    const operation = (async (): Promise<Session> => {
+      const persistence = ctx.get('sessionPersistence')
+      if (persistence === undefined) {
+        throw new Error('external session cannot resume: session persistence is not configured')
+      }
+      const inspected = await inspectServable(sessionId)
+      const mode = inspected.meta.mode
+      if (mode === undefined || mode === 'dsh') {
+        throw new Error(`session "${sessionId}" is not an external-mode session`)
+      }
+      const external = ctx.get('externalSessions')
+      if (external === undefined || external.getProvider(mode) === undefined) {
+        throw new Error(`external session provider "${mode}" is unavailable`)
+      }
+      const providerThreadId = externalProviderThreadId(inspected.events)
+      if (providerThreadId === undefined) {
+        throw new Error(`external session "${sessionId}" has no durable provider thread id`)
+      }
+      const preparation = await persistence.prepare(sessionId)
+      let detach: (() => void) | undefined
+      try {
+        const cwd = inspected.meta.cwd
+        if (cwd === undefined) {
+          throw new Error(`external session "${sessionId}" has no cwd`)
+        }
+        const model = externalModel(inspected.events, inspected.meta)
+        detach = ctx.sessions.enter(preparation.session)
+        ctx.sessions.announce(preparation.session)
+        await external.resume({
+          sessionId,
+          provider: mode,
+          cwd,
+          ...model === undefined ? {} : { model },
+        }, providerThreadId)
+        return preparation.session
+      } catch (error: unknown) {
+        detach?.()
+        throw error
+      } finally {
+        preparation[Symbol.dispose]()
+      }
+    })()
+    externalAttachments.set(sessionId, operation)
+    try {
+      return await operation
+    } finally {
+      if (externalAttachments.get(sessionId) === operation) externalAttachments.delete(sessionId)
+    }
+  }
+
+  /**
+   * Resolve an external session for an operation that needs a live provider.
+   * Detached native sessions stay detached so the caller can use its existing
+   * Agent path; only an external mode invokes cold materialization.
+   * @param sessionId - persisted or live session identity.
+   * @returns the live external session, or undefined for native sessions.
+   */
+  async function externalSessionForAction(sessionId: SessionId): Promise<Session | undefined> {
+    const attached = ctx.sessions.get(sessionId)
+    if (attached !== undefined) {
+      return attached.header.mode === undefined || attached.header.mode === 'dsh' ? undefined : attached
+    }
+    if (ctx.get('externalSessions') === undefined) return undefined
+    if (ctx.get('sessionPersistence') === undefined) return undefined
+    try {
+      const inspected = await inspectServable(sessionId)
+      if (inspected.meta.mode === undefined || inspected.meta.mode === 'dsh') return undefined
+      return await ensureExternalSessionAttached(sessionId)
+    } catch (error: unknown) {
+      if (error instanceof SessionNotFound) return undefined
+      throw error
+    }
   }
 
   /** Resolve the Workspace inherited by a fork without making ordinary loose lineage grouped. */
@@ -2347,6 +2458,36 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
       async models(request) {
         const { sessionId } = request.payload
+        let externalSession: Session | undefined
+        try {
+          externalSession = await externalSessionForAction(sessionId)
+        } catch (error: unknown) {
+          return err(request, {
+            code: 'internal',
+            message: error instanceof Error ? error.message : String(error),
+            details: {},
+          })
+        }
+        if (externalSession !== undefined) {
+          const external = ctx.get('externalSessions')
+          if (external === undefined) {
+            return err(request, {
+              code: 'model-unavailable',
+              message: `external session mode "${externalSession.header.mode ?? 'unknown'}" is unavailable`,
+              details: {
+                provider: externalSession.header.mode ?? 'unknown',
+                model: externalModel(externalSession.events, externalSession.header) ?? '',
+              },
+            })
+          }
+          const currentModel = externalModel(externalSession.events, externalSession.header)
+          const current = {
+            provider: externalSession.header.mode ?? 'unknown',
+            model: currentModel ?? '',
+          }
+          const { groups, failures } = await buildModelCatalog(ctx)
+          return ok(request, { current, routable: true, groups, failures })
+        }
         const found = await agentFor(sessionId)
         if ('error' in found) return err(request, found.error)
         const current = selectionFor(found.agent).current
@@ -2400,20 +2541,29 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
       async selectModel(request) {
         const { sessionId, provider, model, reasoningEffort } = request.payload
-        const externalSession = ctx.sessions.get(sessionId)
-        if (externalSession?.header.mode !== undefined && externalSession.header.mode !== 'dsh') {
+        let externalSession: Session | undefined
+        try {
+          externalSession = await externalSessionForAction(sessionId)
+        } catch (error: unknown) {
+          return err(request, {
+            code: 'model-unavailable',
+            message: error instanceof Error ? error.message : String(error),
+            details: { provider, model },
+          })
+        }
+        if (externalSession !== undefined) {
           const external = ctx.get('externalSessions')
           if (external === undefined) {
             return err(request, {
               code: 'model-unavailable',
-              message: `external session mode "${externalSession.header.mode}" is unavailable`,
+              message: `external session mode "${externalSession.header.mode ?? 'unknown'}" is unavailable`,
               details: { provider, model },
             })
           }
           if (provider !== externalSession.header.mode) {
             return err(request, {
               code: 'model-unavailable',
-              message: `provider "${provider}" is not the external session provider "${externalSession.header.mode}"`,
+              message: `provider "${provider}" is not the external session provider "${externalSession.header.mode ?? 'unknown'}"`,
               details: { provider, model },
             })
           }
@@ -2629,6 +2779,43 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             details: { value: clientTimeZone },
           })
         }
+        let externalSession: Session | undefined
+        try {
+          externalSession = await externalSessionForAction(sessionId)
+        } catch (error: unknown) {
+          return err(request, {
+            code: 'internal',
+            message: `external session attachment failed: ${renderFailure(error)}`,
+            details: { sessionId },
+          })
+        }
+        if (externalSession !== undefined) {
+          if (content.some(part => part.type === 'image')) {
+            return err(request, {
+              code: 'attachment-error',
+              message: 'External sessions currently accept text prompts only.',
+              details: { reason: 'EXTERNAL_IMAGES_UNSUPPORTED' },
+            })
+          }
+          const external = ctx.get('externalSessions')
+          if (external === undefined) {
+            return err(request, {
+              code: 'internal',
+              message: `external session mode "${externalSession.header.mode ?? 'unknown'}" is unavailable`,
+              details: { sessionId },
+            })
+          }
+          try {
+            await external.prompt(sessionId, content.map(part => part.type === 'text' ? part.text : '').join(''))
+            return ok(request, { accepted: true as const })
+          } catch (error: unknown) {
+            return err(request, {
+              code: 'agent-busy',
+              message: 'prompt rejected by external session',
+              details: { reason: renderFailure(error) },
+            })
+          }
+        }
         const resolved = await turnAgentFor<{ accepted: true }>(request, sessionId)
         if ('refused' in resolved) return resolved.refused
         const agent = resolved.agent
@@ -2681,7 +2868,17 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         // here (before the generic execute path could require one) instead of
         // through the agent-loop command registry.
         const { sessionId, line } = request.payload
-        const session = ctx.sessions.get(sessionId)
+        let session: Session | undefined
+        try {
+          session = await externalSessionForAction(sessionId)
+        } catch (error: unknown) {
+          return err(request, {
+            code: 'internal',
+            message: `external session attachment failed: ${renderFailure(error)}`,
+            details: { sessionId },
+          })
+        }
+        if (session === undefined) session = ctx.sessions.get(sessionId)
         if (session === undefined) {
           return err(request, {
             code: 'session-not-found',
@@ -2815,21 +3012,51 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         return Promise.resolve(ok(request, { accepted: true as const }))
       },
 
-      cancel(request) {
+      async cancel(request) {
         const { sessionId } = request.payload
+        let externalSession: Session | undefined
+        try {
+          externalSession = await externalSessionForAction(sessionId)
+        } catch (error: unknown) {
+          return err(request, {
+            code: 'internal',
+            message: `external session attachment failed: ${renderFailure(error)}`,
+            details: { sessionId },
+          })
+        }
+        if (externalSession !== undefined) {
+          const external = ctx.get('externalSessions')
+          if (external === undefined) {
+            return err(request, {
+              code: 'internal',
+              message: `external session mode "${externalSession.header.mode ?? 'unknown'}" is unavailable`,
+              details: { sessionId },
+            })
+          }
+          try {
+            external.interrupt(sessionId)
+            return ok(request, { accepted: true as const })
+          } catch (error: unknown) {
+            return err(request, {
+              code: 'internal',
+              message: `external session interrupt failed: ${renderFailure(error)}`,
+              details: { sessionId },
+            })
+          }
+        }
         const agent = ctx.agents.get(sessionId)
         if (agent === undefined) {
-          return Promise.resolve(err(request, {
+          return err(request, {
             code: 'session-not-found',
             message: `session "${sessionId}" not found (not attached)`,
             details: { sessionId },
-          }))
+          })
         }
         if (hasSubagentOwner(agent.session, agent)) {
-          return Promise.resolve(err(request, subagentOwnershipError(sessionId)))
+          return err(request, subagentOwnershipError(sessionId))
         }
         agent.cancel({ kind: 'user' }, { keepInbox: true })
-        return Promise.resolve(ok(request, { accepted: true as const }))
+        return ok(request, { accepted: true as const })
       },
     },
 

@@ -26,6 +26,7 @@
 - **状态是纯 JSON，`stateVersion` 是其失效锚点。** 持久投影缓存（persisted projection cache）存储 `(sessionId, key, ver, seq, val)` 行；状态形状或折叠语义一旦变化就递增 `stateVersion`，使陈旧行被丢弃，而不是被正向 apply 成垃圾。
 - **本层没有协议词汇。** 注册表只暴露变更流与快照读取面；载体（api-proxy）据此自铸各自的帧（`session/projection`）与块。
 - **可选能力。** 领域插件在 `ctx.inject(['sessionProjections'], …)` 下注册，因此不带注册表的 headless 组装完全不受影响；载体使用 `ctx.get('sessionProjections')`，注册表缺席时完全省略自己的块与帧。
+- **运行身份不进入转写渲染。** external-transcript 单元在回放值中保留 `external/session-started` 的不透明 `providerThreadId` 供宿主挂接，但转写呈现器只渲染外部对话与活动字段。
 
 ## 职责
 
