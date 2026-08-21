@@ -440,6 +440,56 @@ describe('session.command external-mode routing', () => {
     expect(ctx.sessions.get(sessionId)?.header.id).toBe(sessionId)
   })
 
+  it('coalesces cold action attachment with a paused persisted create publication', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    const sessionId = SessionId('cold-create-action-race')
+    const meta = {
+      version: SESSION_FORMAT_VERSION,
+      id: sessionId,
+      createdAt: 1,
+      cwd: '/tmp',
+      mode: 'alpha',
+    }
+    const events = [{
+      type: 'external/session-started' as const,
+      seq: 0,
+      time: 1,
+      data: { provider: 'alpha', cwd: '/tmp', providerThreadId: ExternalProviderThreadId('cold-race-thread') },
+      ignorable: true as const,
+    }]
+    const listStarted = Promise.withResolvers<undefined>()
+    const releaseList = Promise.withResolvers<undefined>()
+    let listCalls = 0
+    const list = vi.fn(async () => {
+      listCalls += 1
+      if (listCalls === 1) {
+        listStarted.resolve(undefined)
+        await releaseList.promise
+      }
+      return [meta]
+    })
+    const inspect = vi.fn(async () => ({ meta, events }))
+    const prepare = vi.fn(async () => SessionPreparation.create(ctx.sessions.prepare(sessionId, {
+      seed: events,
+      meta,
+      seedSource: 'persistence',
+    })))
+    ctx.provide('sessionPersistence', { list, inspect, prepare } as never)
+
+    const creating = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    await listStarted.promise
+    const commanding = ctx.apiProxy.sessions.command(request({ sessionId, line: 'resume concurrently' }))
+    releaseList.resolve(undefined)
+
+    const [created, command] = await Promise.all([creating, commanding])
+    expect(created.result).toEqual({ ok: true, value: { sessionId } })
+    expect(command.result).toMatchObject({ ok: true, value: { kind: 'success' } })
+    expect(prepare).toHaveBeenCalledOnce()
+    expect(provider.resumed).toEqual([ExternalProviderThreadId('cold-race-thread')])
+    expect(ctx.sessions.list().filter(session => session.id === sessionId)).toHaveLength(1)
+  })
+
   it('routes /compact to the provider native compact and records the notice', async () => {
     const { ctx, provider } = await harness()
     context = ctx

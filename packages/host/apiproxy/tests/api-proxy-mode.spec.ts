@@ -10,7 +10,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { type Agent, type AgentFactory } from '@deepseek-ai/dsh-agent'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import ExternalSessions, {
   ExternalProviderThreadId,
@@ -71,6 +71,24 @@ function harness({ external = true }: { external?: boolean } = {}): Promise<Cont
   })()
 }
 
+/** Install the smallest native factory needed to race native and external creates. */
+function installNativeFactory(ctx: Context): void {
+  const factory: AgentFactory = {
+    async createAgent(_ownerCtx, options) {
+      const session = ctx.sessions.create(options.sessionId, {
+        ...options.meta === undefined ? {} : { meta: options.meta },
+      })
+      const agent = { id: session.id, session, status: 'idle', ctx } as unknown as Agent
+      const unregister = ctx.agents.register(agent)
+      return { agent, dispose: async () => { unregister() } }
+    },
+    async resume() {
+      throw new Error('native test factory has no persisted sessions')
+    },
+  }
+  ctx.agents.setFactory(factory)
+}
+
 describe('session.create mode arms', () => {
   it('creates a bare external session with no native agent, surfacing mode', async () => {
     const ctx = await harness()
@@ -112,6 +130,41 @@ describe('session.create mode arms', () => {
     expect(first.result.ok).toBe(true)
     expect(second.result).toEqual({ ok: true, value: { sessionId } })
     expect(ctx.sessions.get(sessionId)?.header.model).toBeUndefined()
+  })
+
+  it('validates concurrent existing callers independently of the shared publication', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('external-concurrent-existing-cwd')
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(first.result.ok).toBe(true)
+
+    const wrong = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp/wrong', mode: 'alpha' }))
+    const matching = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    const [wrongResult, matchingResult] = await Promise.all([wrong, matching])
+
+    expect(wrongResult.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedCwd: '/tmp/wrong', existingCwd: '/tmp' } },
+    })
+    expect(matchingResult.result).toEqual({ ok: true, value: { sessionId } })
+  })
+
+  it('keeps a matching external retry alive when a concurrent native caller conflicts', async () => {
+    const ctx = await harness()
+    installNativeFactory(ctx)
+    const sessionId = SessionId('external-concurrent-native-conflict')
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(first.result.ok).toBe(true)
+
+    const native = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp' }))
+    const matching = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    const [nativeResult, matchingResult] = await Promise.all([native, matching])
+
+    expect(nativeResult.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedMode: 'dsh', existingMode: 'alpha' } },
+    })
+    expect(matchingResult.result).toEqual({ ok: true, value: { sessionId } })
   })
 
   it('resolves a matching retry before a later provider preflight failure', async () => {
@@ -368,6 +421,31 @@ describe('session.create mode arms', () => {
       },
     })
     expect(ctx.sessions.get(SessionId('preflight-failed'))).toBeUndefined()
+  })
+
+  it('lets a native caller materialize after an external preflight owner fails', async () => {
+    const ctx = await harness()
+    installNativeFactory(ctx)
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'AUTH_UNAVAILABLE', message: 'Codex account is not authenticated.' },
+    }
+    let releasePreflight!: () => void
+    provider.preflightGate = new Promise<void>((resolveGate) => { releasePreflight = resolveGate })
+    const sessionId = SessionId('external-failed-native-retry')
+    const external = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    await vi.waitFor(() => { expect(provider.preflightCalls).toBe(1) })
+    const native = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp' }))
+    releasePreflight()
+    const [externalResult, nativeResult] = await Promise.all([external, native])
+
+    expect(externalResult.result).toMatchObject({
+      ok: false,
+      error: { code: 'external-mode-unavailable', details: { mode: 'alpha', reason: 'AUTH_UNAVAILABLE' } },
+    })
+    expect(nativeResult.result).toEqual({ ok: true, value: { sessionId } })
+    expect(ctx.agents.get(sessionId)).toBeDefined()
   })
 
   it('maps a bounded preflight timeout to no published external session', async () => {

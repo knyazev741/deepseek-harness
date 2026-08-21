@@ -1267,12 +1267,14 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * not enforcement: the wire is reachable directly.
    */
   const presetSwitches = new Map<SessionId, Promise<unknown>>()
-  /** Client-chosen identity creation/resume, deduplicated across concurrent retries. */
-  const sessionCreations = new Map<SessionId, Promise<Agent>>()
-  /** Shared identity publication barrier across native and external create arms. */
-  const sessionCreationBarriers = new Map<SessionId, Promise<Session>>()
+  /** Shared identity materialization barrier across every live publication path. */
+  const sessionMaterializations = new Map<SessionId, Promise<Session>>()
   /** Cold external-session attachment, shared across concurrent first actions. */
   const externalAttachments = new Map<SessionId, Promise<Session>>()
+  ctx.effect(() => () => {
+    sessionMaterializations.clear()
+    externalAttachments.clear()
+  }, 'apiProxy.session-materializations')
   /** Serializes path ownership and explicit title checks with Workspace mutations. */
   let workspaceCreationChain = Promise.resolve()
   const pendingQuestions = new Map<RpcId, PendingQuestion>()
@@ -1705,12 +1707,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     const pending = externalAttachments.get(sessionId)
     if (pending !== undefined) return pending
     const operation = (async (): Promise<Session> => {
-      const persistence = ctx.get('sessionPersistence')
-      if (persistence === undefined) {
-        throw new Error('external session cannot resume: session persistence is not configured')
-      }
-      const inspected = await inspectServable(sessionId)
-      const mode = inspected.meta.mode
+      const session = await materializeSession(sessionId, async () => {
+        const attached = ctx.sessions.get(sessionId)
+        if (attached !== undefined) return attached
+        const persistence = ctx.get('sessionPersistence')
+        if (persistence === undefined) {
+          throw new Error('external session cannot resume: session persistence is not configured')
+        }
+        const materialized = await materializePersistedSession(sessionId, persistence)
+        if (materialized !== undefined) return materialized
+        throw new Error(`external session "${sessionId}" was not found in persistence`)
+      })
+      const mode = session.header.mode
       if (mode === undefined || mode === 'dsh') {
         throw new Error(`session "${sessionId}" is not an external-mode session`)
       }
@@ -1718,33 +1726,31 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       if (external === undefined || external.getProvider(mode) === undefined) {
         throw new Error(`external session provider "${mode}" is unavailable`)
       }
-      const providerThreadId = externalProviderThreadId(inspected.events)
+      const providerThreadId = externalProviderThreadId(session.events)
       if (providerThreadId === undefined) {
         throw new Error(`external session "${sessionId}" has no durable provider thread id`)
       }
-      const preparation = await persistence.prepare(sessionId)
-      let detach: (() => void) | undefined
+      const cwd = session.header.cwd
+      if (cwd === undefined) {
+        throw new Error(`external session "${sessionId}" has no cwd`)
+      }
+      const model = externalModel(session.events, session.header)
       try {
-        const cwd = inspected.meta.cwd
-        if (cwd === undefined) {
-          throw new Error(`external session "${sessionId}" has no cwd`)
-        }
-        const model = externalModel(inspected.events, inspected.meta)
-        detach = ctx.sessions.enter(preparation.session)
-        ctx.sessions.announce(preparation.session)
         await external.resume({
           sessionId,
           provider: mode,
           cwd,
           ...model === undefined ? {} : { model },
         }, providerThreadId)
-        return preparation.session
       } catch (error: unknown) {
-        detach?.()
-        throw error
-      } finally {
-        preparation[Symbol.dispose]()
+        // A composed external-session bridge may have observed the same
+        // announce and already attached the provider. Treat that exact
+        // idempotent race as success; all other provider failures remain
+        // visible to the action caller.
+        const code = error instanceof Error && 'code' in error ? error.code : undefined
+        if (code !== 'DUPLICATE_SESSION') throw error
       }
+      return session
     })()
     externalAttachments.set(sessionId, operation)
     try {
@@ -1884,142 +1890,178 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     }
   }
 
-  /** Resolve one requested identity to a live agent, creating or resuming it once. */
-  async function ensureNativeSession(
+  /**
+   * Materialize one identity through the sole live-publication coordinator.
+   * A waiter retries its own operation once when the owner failed before any
+   * session became live; the owner never retries its own request, so a failed
+   * preflight cannot create an unbounded retry loop.
+   * @param sessionId - identity being materialized.
+   * @param operation - request-owned preparation that publishes the identity.
+   * @param retryOnFailure - whether this caller may retry after a failed waiter.
+   * @returns the live session published by the owner or this caller.
+   */
+  async function materializeSession(
     sessionId: SessionId,
-    cwd: string,
-    checkPersistedIdentity: boolean,
-    presetId?: string,
-  ): Promise<Agent> {
-    let creation = sessionCreations.get(sessionId)
-    if (creation === undefined) {
-      creation = (async () => {
-        const attached = ctx.sessions.get(sessionId)
-        const live = ctx.agents.get(sessionId)
-        if (attached !== undefined && hasSubagentOwner(attached, live)) {
-          throw new SubagentSessionOwnership(sessionId)
-        }
-        if (attached !== undefined) assertSessionIdentity(attached, 'dsh', cwd)
-        if (live !== undefined) return live
-
-        const persistence = checkPersistedIdentity ? ctx.get('sessionPersistence') : undefined
-        const stored = persistence === undefined
-          ? undefined
-          : (await persistence.list()).find(header => header.id === sessionId)
-        if (persistence !== undefined && stored !== undefined) {
-          const inspected = await persistence.inspect(sessionId)
-          // Ownership first: explicit-id adoption of a session-backed
-          // subagent must answer `agent-busy` regardless of the requested
-          // cwd (the api/commands.ts contract), not a cwd conflict.
-          if (hasSubagentOwner({ header: inspected.meta }, undefined)) {
-            throw new SubagentSessionOwnership(sessionId)
-          }
-          assertSessionIdentity({ id: inspected.meta.id, header: inspected.meta }, 'dsh', cwd)
-          // Resolved from the log, not the header: a session that switched
-          // while blank ran every turn under the newer composition.
-          const storedPreset = resolveSessionPreset({ header: inspected.meta, events: inspected.events })
-          assertPresetUnchanged(sessionId, presetId, storedPreset)
-          // The stored preset wins over anything the request names: a resumed
-          // session's history was produced under that composition, and
-          // rebuilding it differently would replay tool calls the model can no
-          // longer make.
-          return (await ctx.agents.resume({
-            resumeSessionId: sessionId,
-            agentOptions: agentOptions(),
-            setup: (await composeAgent(storedPreset)).setup,
-          })).agent
-        }
-
-        try {
-          await mkdir(cwd, { recursive: true })
-        } catch (error: unknown) {
-          throw new Error(`failed to ensure project directory "${cwd}": ${String(error)}`, { cause: error })
-        }
-        const composition = await composeAgent(presetId)
-        return (await ctx.agents.create({
-          sessionId,
-          agentOptions: agentOptions(),
-          meta: {
-            cwd,
-            ...composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset },
-          },
-          setup: composition.setup,
-        })).agent
-      })().catch((error: unknown) => {
-        // Another Host entry path may have published the same identity while
-        // this operation crossed an asynchronous persistence/filesystem step.
-        const live = ctx.agents.get(sessionId)
-        if (live !== undefined) {
-          if (hasSubagentOwner(live.session, live)) throw new SubagentSessionOwnership(sessionId)
-          return live
-        }
-        const attached = ctx.sessions.get(sessionId)
-        if (attached !== undefined && hasSubagentOwner(attached, undefined)) {
-          throw new SubagentSessionOwnership(sessionId)
-        }
-        throw error
-      }).finally(() => {
-        sessionCreations.delete(sessionId)
-      })
-      sessionCreations.set(sessionId, creation)
+    operation: () => Promise<Session>,
+    retryOnFailure = true,
+  ): Promise<Session> {
+    const live = ctx.sessions.get(sessionId)
+    if (live !== undefined) return live
+    const pending = sessionMaterializations.get(sessionId)
+    if (pending !== undefined) {
+      try {
+        return await pending
+      } catch (error: unknown) {
+        const published = ctx.sessions.get(sessionId)
+        if (published !== undefined) return published
+        if (!retryOnFailure) throw error
+        return materializeSession(sessionId, operation, false)
+      }
     }
-    return creation
+    const creation = Promise.resolve().then(operation).finally(() => {
+      if (sessionMaterializations.get(sessionId) === creation) sessionMaterializations.delete(sessionId)
+    })
+    sessionMaterializations.set(sessionId, creation)
+    try {
+      return await creation
+    } catch (error: unknown) {
+      const published = ctx.sessions.get(sessionId)
+      if (published !== undefined) return published
+      throw error
+    }
   }
 
   /**
-   * Share one native/external identity operation, including all asynchronous
-   * persistence and provider work, so concurrent callers observe one result.
-   * @param sessionId - the identity being created or adopted.
-   * @param operation - the operation that may publish or resume the identity.
-   * @returns the shared session promise.
+   * Adopt an existing durable identity without consulting any caller's mode,
+   * cwd, or preset. Native records resume through the Agent factory; external
+   * records publish the prepared bare Session for the bridge.
+   * @param sessionId - durable identity to adopt.
+   * @param persistence - configured durable session store.
+   * @returns the published session, or undefined when no durable record exists.
    */
-  function shareSessionCreation(
+  async function materializePersistedSession(
     sessionId: SessionId,
-    operation: () => Promise<Session>,
-  ): Promise<Session> {
-    const pending = sessionCreationBarriers.get(sessionId)
-    if (pending !== undefined) return pending
-    const creation = Promise.resolve().then(operation).finally(() => {
-      if (sessionCreationBarriers.get(sessionId) === creation) {
-        sessionCreationBarriers.delete(sessionId)
+    persistence: SessionPersistence,
+  ): Promise<Session | undefined> {
+    const attached = ctx.sessions.get(sessionId)
+    if (attached !== undefined) return attached
+    const stored = (await persistence.list()).find(header => header.id === sessionId)
+    const afterList = ctx.sessions.get(sessionId)
+    if (afterList !== undefined) return afterList
+    if (stored === undefined) return undefined
+
+    if (stored.mode === undefined || stored.mode === 'dsh') {
+      const inspected = await persistence.inspect(sessionId)
+      const afterInspect = ctx.sessions.get(sessionId)
+      if (afterInspect !== undefined) return afterInspect
+      if (hasSubagentOwner({ header: inspected.meta }, undefined)) {
+        throw new SubagentSessionOwnership(sessionId)
       }
-    })
-    sessionCreationBarriers.set(sessionId, creation)
-    return creation
+      const storedPreset = resolveSessionPreset({ header: inspected.meta, events: inspected.events })
+      const composition = await composeAgent(storedPreset)
+      const beforeResume = ctx.sessions.get(sessionId)
+      if (beforeResume !== undefined) return beforeResume
+      try {
+        return (await ctx.agents.resume({
+          resumeSessionId: sessionId,
+          agentOptions: agentOptions(),
+          setup: composition.setup,
+        })).agent.session
+      } catch (error: unknown) {
+        const published = ctx.sessions.get(sessionId)
+        if (published !== undefined) return published
+        throw error
+      }
+    }
+
+    const preparation = await persistence.prepare(sessionId)
+    try {
+      const beforeEnter = ctx.sessions.get(sessionId)
+      if (beforeEnter !== undefined) return beforeEnter
+      let detach: (() => void) | undefined
+      try {
+        detach = ctx.sessions.enter(preparation.session)
+        ctx.sessions.announce(preparation.session)
+        return preparation.session
+      } catch (error: unknown) {
+        detach?.()
+        const published = ctx.sessions.get(sessionId)
+        if (published !== undefined) return published
+        throw error
+      }
+    } finally {
+      preparation[Symbol.dispose]()
+    }
   }
 
-  /** Resolve one requested native identity through the shared publication barrier. */
+  /** Create one new native Agent; existing identity adoption belongs above. */
+  async function createNativeSession(
+    sessionId: SessionId,
+    cwd: string,
+    presetId?: string,
+  ): Promise<Session> {
+    try {
+      await mkdir(cwd, { recursive: true })
+    } catch (error: unknown) {
+      throw new Error(`failed to ensure project directory "${cwd}": ${String(error)}`, { cause: error })
+    }
+    const afterMkdir = ctx.sessions.get(sessionId)
+    if (afterMkdir !== undefined) return afterMkdir
+    const composition = await composeAgent(presetId)
+    const afterCompose = ctx.sessions.get(sessionId)
+    if (afterCompose !== undefined) return afterCompose
+    try {
+      return (await ctx.agents.create({
+        sessionId,
+        agentOptions: agentOptions(),
+        meta: {
+          cwd,
+          ...composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset },
+        },
+        setup: composition.setup,
+      })).agent.session
+    } catch (error: unknown) {
+      const published = ctx.sessions.get(sessionId)
+      if (published !== undefined) return published
+      throw error
+    }
+  }
+
+  /** Resolve one requested native identity through the shared coordinator. */
   async function ensureSession(
     sessionId: SessionId,
     cwd: string,
     checkPersistedIdentity: boolean,
     presetId?: string,
   ): Promise<Agent> {
-    const session = await shareSessionCreation(sessionId, async () => {
-      const agent = await ensureNativeSession(sessionId, cwd, checkPersistedIdentity, presetId)
-      return agent.session
+    const session = await materializeSession(sessionId, async () => {
+      const attached = ctx.sessions.get(sessionId)
+      if (attached !== undefined) return attached
+      if (checkPersistedIdentity) {
+        const persistence = ctx.get('sessionPersistence')
+        if (persistence !== undefined) {
+          const materialized = await materializePersistedSession(sessionId, persistence)
+          if (materialized !== undefined) return materialized
+        }
+      }
+      return createNativeSession(sessionId, cwd, presetId)
     })
-    const agent = ctx.agents.get(sessionId)
+    const liveAgent = ctx.agents.get(sessionId)
+    if (hasSubagentOwner(session, liveAgent)) throw new SubagentSessionOwnership(sessionId)
+    assertSessionIdentity(session, 'dsh', cwd)
+    const agent = liveAgent
     if (agent === undefined) {
-      // A concurrent external create owns this identity; report its durable
-      // driver/cwd conflict before any native fallback or duplicate error.
-      assertSessionIdentity(session, 'dsh', cwd)
       throw new Error(`session "${sessionId}" has no native agent`)
     }
     if (hasSubagentOwner(agent.session, agent)) throw new SubagentSessionOwnership(sessionId)
     assertPresetUnchanged(sessionId, presetId, resolveSessionPreset(agent.session))
-    if (agent.session.header.cwd !== cwd) {
-      throw new SessionCwdConflict(sessionId, cwd, agent.session.header.cwd)
-    }
     return agent
   }
 
   /**
-   * Create or adopt a bare host session for an external-mode driver: the
-   * session enters the store (and announces `session/created`) WITHOUT a native
-   * Agent, so the bridge driver (a host plugin reacting to that event) owns the
-   * live external process. `mode` is stamped on the durable header so the mode
-   * survives restart.
+   * Create or adopt a bare host session for an external-mode driver. Provider
+   * health is checked only by the owner that is publishing a new identity;
+   * every caller validates its own identity after the shared operation settles.
    * @param sessionId - the target (possibly preallocated) session id.
    * @param cwd - the absolute project directory the external agent runs in.
    * @param mode - the registered external provider name driving this session.
@@ -2034,38 +2076,28 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     model: string | undefined,
     preflight: () => Promise<void>,
   ): Promise<Session> {
-    const session = await shareSessionCreation(sessionId, async () => {
+    const session = await materializeSession(sessionId, async () => {
       const existing = ctx.sessions.get(sessionId)
-      if (existing !== undefined) {
-        assertSessionIdentity(existing, mode, cwd)
-        return existing
-      }
+      if (existing !== undefined) return existing
       const persistence = ctx.get('sessionPersistence')
       if (persistence !== undefined) {
-        const stored = (await persistence.list()).find(header => header.id === sessionId)
-        if (stored !== undefined) {
-          const preparation = await persistence.prepare(sessionId)
-          try {
-            assertSessionIdentity(preparation.session, mode, cwd)
-            const detach = ctx.sessions.enter(preparation.session)
-            try {
-              ctx.sessions.announce(preparation.session)
-              return preparation.session
-            } catch (error: unknown) {
-              detach()
-              throw error
-            }
-          } finally {
-            preparation[Symbol.dispose]()
-          }
-        }
+        const materialized = await materializePersistedSession(sessionId, persistence)
+        if (materialized !== undefined) return materialized
       }
       // A new id is the only path allowed to query provider health. Keeping
-      // this inside the shared barrier also prevents duplicate preflights.
+      // this inside the publication coordinator prevents duplicate preflights.
       await preflight()
-      return ctx.sessions.create(sessionId, {
-        meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
-      })
+      const afterPreflight = ctx.sessions.get(sessionId)
+      if (afterPreflight !== undefined) return afterPreflight
+      try {
+        return ctx.sessions.create(sessionId, {
+          meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
+        })
+      } catch (error: unknown) {
+        const published = ctx.sessions.get(sessionId)
+        if (published !== undefined) return published
+        throw error
+      }
     })
     assertSessionIdentity(session, mode, cwd)
     return session
