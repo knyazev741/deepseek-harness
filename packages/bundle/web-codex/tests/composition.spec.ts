@@ -29,6 +29,11 @@ interface Booted {
   readonly restore: () => void
 }
 
+interface PatchEntry {
+  readonly name?: string
+  readonly config?: Record<string, unknown>
+}
+
 /** Source locations let this direct Loader test exercise a fresh checkout before a full build. */
 const workspacePackages = new Map<string, string>()
 function collectPackageDirs(directory: string): void {
@@ -55,6 +60,14 @@ function workspaceSource(specifier: string): string | undefined {
   const relative = parts.length === 2 ? 'src/index.ts' : `src/${parts.slice(2).join('/')}.ts`
   const source = join(packageDir, relative)
   return existsSync(source) ? pathToFileURL(source).href : undefined
+}
+
+/** Return rows introduced by one patch layer for static bundle assertions. */
+function insertedRows(patches: readonly PatchOptions[]): PatchEntry[] {
+  return patches.flatMap((patch) => {
+    const insert = (patch as { readonly insert?: unknown }).insert
+    return Array.isArray(insert) ? insert as PatchEntry[] : []
+  })
 }
 
 const booted: Booted[] = []
@@ -158,6 +171,12 @@ describe('web-codex bundle composition', () => {
   })
 
   it('boots base + Web + web-codex and discovers every required provider row once', async () => {
+    const patchText = readFileSync(codexPatchPath, 'utf8')
+    const optInRows = insertedRows(loadOverlayPatches('web-codex composition', codexPatchPath))
+    const manifest = JSON.parse(readFileSync(resolve(root, 'packages/bundle/web-codex/package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    expect(patchText).not.toMatch(/(?:API_KEY|TOKEN|PASSWORD|SECRET)/u)
     const context = await bootComposition(true)
     const names = [...context.loader.entries()].map(entry => entry.options.name)
     const required = [
@@ -168,7 +187,22 @@ describe('web-codex bundle composition', () => {
       '@deepseek-ai/dsh-mcp-gateway',
     ]
 
-    for (const name of required) expect(names.filter(candidate => candidate === name)).toHaveLength(1)
+    for (const name of required) {
+      expect(optInRows.filter(row => row.name === name)).toHaveLength(1)
+      expect(manifest.dependencies).toHaveProperty(name)
+      expect(names.filter(candidate => candidate === name)).toHaveLength(1)
+    }
+    expect(optInRows.find(row => row.name === '@deepseek-ai/dsh-external-session-codex')?.config).toMatchObject({
+      args: ['app-server', '--stdio'],
+      allowedTools: [],
+      disposeGraceMs: 3000,
+    })
+    expect(optInRows.find(row => row.name === '@deepseek-ai/dsh-mcp-gateway')?.config).toMatchObject({
+      allowlist: [],
+      maxRequestBytes: 65536,
+      maxResponseBytes: 65536,
+      executionTimeoutMs: 60000,
+    })
     const external = context.get('externalSessions')
     if (external === undefined) throw new Error('web-codex Loader boot did not provide externalSessions')
     expect(external.listAgents()).toEqual([
