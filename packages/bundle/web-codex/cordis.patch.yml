@@ -22,6 +22,7 @@
         allowedTools: []
         stateRoot: !!js dshHomePath('external-codex')
         disposeGraceMs: 3000
+        preflightTimeoutMs: 30000
 
     - id: external-session-bridge
       name: '@deepseek-ai/dsh-external-session-bridge'

@@ -196,6 +196,7 @@ describe('web-codex bundle composition', () => {
       args: ['app-server', '--stdio'],
       allowedTools: [],
       disposeGraceMs: 3000,
+      preflightTimeoutMs: 30000,
     })
     expect(optInRows.find(row => row.name === '@deepseek-ai/dsh-mcp-gateway')?.config).toMatchObject({
       allowlist: [],

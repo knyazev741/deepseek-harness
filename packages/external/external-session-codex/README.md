@@ -37,6 +37,7 @@ Evidence confirms native `model/list` exists in 0.147.0 (`models.json`), so the 
 | `reasoningEffort` | unset | Optional initial stable reasoning effort; per-session selection may replace it for the next turn. |
 | `sandbox` / `approvalPolicy` | `read-only` / `ask` | Resolved from the session start request and folded session policy; Codex receives `read-only` / `workspace-write` / `danger-full-access` and `on-request` / `never`. |
 | `disposeGraceMs` | `3000` | Positive finite grace in milliseconds, no greater than [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md), between the shared process-tree owner's termination tiers. |
+| `preflightTimeoutMs` | `30000` | Positive finite deadline for the app-server availability probe, no greater than [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md). Expiry aborts the wire, reaps the child tree, removes the private probe state, and returns `PREFLIGHT_FAILED` with a bounded message. |
 | `mcpTools` | `[]` | Requested Harness tool names passed to the optional MCP gateway; the gateway intersects them with its fixed allowlist and definition-level external opt-in. |
 | `allowedTools` | unset | Profile-facing alias for `mcpTools`; when present it replaces that legacy key and is still intersected with the gateway allowlist and definition-level external opt-in. |
 
@@ -58,7 +59,7 @@ Production `dsh` does not install or mount this optional provider. A Profile tha
     allowedTools: []
 ```
 
-The provider runs a preflight before this row is advertised or a session is published. The mode reports `BINARY_MISSING`, `AUTH_UNAVAILABLE`, `INVALID_CONFIG`, or `SANDBOX_INCOMPATIBLE` when the local deployment cannot start it; the Codex account remains the user's own login action and is never stored in this profile patch.
+The provider runs a preflight before this row is advertised or a session is published. The mode reports `BINARY_MISSING`, `AUTH_UNAVAILABLE`, `INVALID_CONFIG`, `SANDBOX_INCOMPATIBLE`, or bounded `PREFLIGHT_FAILED` when the local deployment cannot start it; the deadline is configurable through `preflightTimeoutMs`, and expiry leaves no probe child or state directory. The Codex account remains the user's own login action and is never stored in this profile patch.
 
 ## Product compatibility and evidence
 

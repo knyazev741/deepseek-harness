@@ -5,19 +5,22 @@
  */
 
 import { PassThrough } from 'node:stream'
+import { existsSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import ExternalSessions from '@deepseek-ai/dsh-external-session'
+import ExternalSessions, { type ExternalModePreflightResult } from '@deepseek-ai/dsh-external-session'
 import { writableRoots } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
+import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import {
   apply,
   CODEX_MCP_SERVER_NAME,
   MCP_BEARER_TOKEN_ENV_VAR,
+  codexStateRoot,
   writeCodexMcpConfig,
 } from '../src/index.ts'
 import type { McpGatewayLease } from '@deepseek-ai/dsh-mcp-gateway'
@@ -35,7 +38,7 @@ async function nextFrame(output: PassThrough): Promise<Record<string, unknown>> 
       try {
         resolve(JSON.parse(chunk.toString('utf8').trim()) as Record<string, unknown>)
       } catch (error: unknown) {
-        reject(error)
+        reject(error instanceof Error ? error : new Error(String(error)))
       }
     }
     output.on('data', onData)
@@ -357,6 +360,72 @@ describe('external-session-codex config validation', () => {
     expect(() => { apply(ctx, fullConfig({ disposeGraceMs: -1 })) }).toThrow(/positive finite/)
     expect(() => { apply(ctx, fullConfig({ disposeGraceMs: MAX_TIMER_DELAY_MS + 1 })) })
       .toThrow(/no greater than/)
+  })
+
+  it('rejects a non-positive or oversized preflightTimeoutMs', async () => {
+    const context = async (): Promise<Context> => {
+      const ctx = new Context()
+      await ctx.plugin(ExternalSessions)
+      return ctx
+    }
+    const zero = await context()
+    const negative = await context()
+    const oversized = await context()
+    expect(() => { apply(zero, fullConfig({ preflightTimeoutMs: 0 })) }).toThrow(/positive finite/)
+    expect(() => { apply(negative, fullConfig({ preflightTimeoutMs: -1 })) }).toThrow(/positive finite/)
+    expect(() => { apply(oversized, fullConfig({ preflightTimeoutMs: MAX_TIMER_DELAY_MS + 1 })) })
+      .toThrow(/no greater than/)
+  })
+
+  it('bounds a silent preflight, reaps its child, and removes its private state root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-codex-preflight-timeout-'))
+    const ctx = new Context()
+    const handles: import('@deepseek-ai/dsh-subprocess').SubprocessHandle[] = []
+    let pending: Promise<ExternalModePreflightResult> | undefined
+    try {
+      await ctx.plugin(ExternalSessions)
+      await ctx.plugin(LocalSubprocessRuntime)
+      const runtimeSpawn = ctx.subprocess.spawn.bind(ctx.subprocess)
+      vi.spyOn(ctx.subprocess, 'spawn').mockImplementation((spec) => {
+        const handle = runtimeSpawn(spec)
+        handles.push(handle)
+        return handle
+      })
+      apply(ctx, fullConfig({
+        command: process.execPath,
+        args: ['-e', 'setTimeout(() => {}, 60000)'],
+        stateRoot: root,
+        preflightTimeoutMs: 25,
+      }))
+      const provider = ctx.externalSessions.getProvider('codex')
+      if (provider === undefined || provider.preflight === undefined) throw new Error('codex preflight missing')
+      pending = provider.preflight({ cwd: process.cwd(), sandbox: 'danger-full-access' })
+      const outcome = await Promise.race([
+        pending.then(result => ({ kind: 'result' as const, result })),
+        new Promise<{ kind: 'timeout' }>((resolve) => {
+          setTimeout(() => { resolve({ kind: 'timeout' }) }, 100)
+        }),
+      ])
+      expect(outcome).toMatchObject({
+        kind: 'result',
+        result: { ok: false, failure: { code: 'PREFLIGHT_FAILED' } },
+      })
+      if (outcome.kind === 'result' && !outcome.result.ok) {
+        expect(outcome.result.failure.message).not.toContain(root)
+      }
+      expect(handles).toHaveLength(1)
+      await expect(handles[0]?.waitForExit()).resolves.toBe(true)
+      expect(existsSync(codexStateRoot(root, 'external-codex-preflight'))).toBe(false)
+    } finally {
+      const handle = handles[0]
+      if (handle !== undefined) {
+        handle.terminate()
+        await handle.waitForExit()
+      }
+      if (pending !== undefined) await pending.catch(() => {})
+      await ctx.fiber.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
   })
 
   it('rejects an empty app-server arg', () => {

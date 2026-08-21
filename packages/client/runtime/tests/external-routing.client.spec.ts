@@ -88,8 +88,9 @@ describe('external client routing', () => {
     const { api, session } = externalSession()
     let seq = 0
     api.onCommand = () => {
-      queueMicrotask(() => { endExternalTurn(session, ++seq, `turn-${seq}`) })
-      return Promise.resolve(ok({ kind: 'success' as const }))
+      const turnId = `turn-${String(seq + 1)}`
+      queueMicrotask(() => { endExternalTurn(session, ++seq, turnId) })
+      return Promise.resolve(ok({ kind: 'success' as const, externalTurnId: turnId }))
     }
 
     await expect(session.command('plain prompt')).resolves.toMatchObject({ ok: true })
@@ -104,7 +105,7 @@ describe('external client routing', () => {
     const { api, session } = externalSession()
     api.onCommand = () => {
       queueMicrotask(() => { endExternalTurn(session, 1, 'turn-1') })
-      return Promise.resolve(ok({ kind: 'success' as const }))
+      return Promise.resolve(ok({ kind: 'success' as const, externalTurnId: 'turn-1' }))
     }
     const image = await session.prompt([{ type: 'image', mediaType: 'image/png', data: 'AA==' }], 'queue')
     const prompt = await session.prompt([{ type: 'text', text: 'plain prompt' }], 'queue')
@@ -183,6 +184,23 @@ describe('external client routing', () => {
     expect(settled).toBe(true)
   })
 
+  it('does not settle a cold command on a stale terminal from the prior turn', async () => {
+    const { api, session } = externalSession()
+    api.onCommand = () => {
+      queueMicrotask(() => { endExternalTurn(session, 1, 'old-turn') })
+      return Promise.resolve(ok({ kind: 'success' as const }))
+    }
+
+    let settled = false
+    const command = session.command('current prompt').then(() => { settled = true })
+    await new Promise<void>((resolve) => { setImmediate(resolve) })
+    expect(settled).toBe(false)
+
+    endExternalTurn(session, 2, 'current-turn')
+    await command
+    expect(settled).toBe(true)
+  })
+
   it('keeps a loading external command pending across the history race', async () => {
     const { api, session } = externalSession()
     const history = deferred<Awaited<ReturnType<FakeApiClient['onHistory']>>>()
@@ -209,6 +227,52 @@ describe('external client routing', () => {
     expect(settled).toBe(true)
     history.resolve(ok({ events: [], hasMore: false }))
     await opening
+  })
+
+  it('keeps the turn barrier when cold history fails and no subscription baseline arrives', async () => {
+    const { api, session } = externalSession()
+    api.onHistory = () => Promise.reject(new Error('history unavailable'))
+    api.onCommand = () => {
+      queueMicrotask(() => { endExternalTurn(session, 1, 'old-turn') })
+      return Promise.resolve(ok({ kind: 'success' as const, externalTurnId: 'current-turn' }))
+    }
+    const opening = session.open()
+    let settled = false
+    const command = session.command('history failure prompt').then(() => { settled = true })
+    await opening
+    await new Promise<void>((resolve) => { setImmediate(resolve) })
+    expect(settled).toBe(false)
+
+    endExternalTurn(session, 2, 'current-turn')
+    await command
+    expect(settled).toBe(true)
+  })
+
+  it('matches concurrent external commands to their own terminal identities', async () => {
+    const { api, session } = externalSession()
+    const firstResponse = deferred<ReturnType<typeof ok<{ kind: 'success'; externalTurnId: string }>>>()
+    const secondResponse = deferred<ReturnType<typeof ok<{ kind: 'success'; externalTurnId: string }>>>()
+    api.onCommand = (payload) => {
+      const line = (payload as { line: string }).line
+      return line === 'first' ? firstResponse.promise : secondResponse.promise
+    }
+    let firstSettled = false
+    let secondSettled = false
+    const first = session.command('first').then(() => { firstSettled = true })
+    const second = session.command('second').then(() => { secondSettled = true })
+    firstResponse.resolve(ok({ kind: 'success', externalTurnId: 'first-turn' }))
+    secondResponse.resolve(ok({ kind: 'success', externalTurnId: 'second-turn' }))
+    await Promise.resolve()
+    expect(firstSettled).toBe(false)
+    expect(secondSettled).toBe(false)
+
+    endExternalTurn(session, 1, 'first-turn')
+    await first
+    expect(firstSettled).toBe(true)
+    expect(secondSettled).toBe(false)
+    endExternalTurn(session, 2, 'second-turn')
+    await second
+    expect(secondSettled).toBe(true)
   })
 
   it('does not wait for non-turn external commands', async () => {

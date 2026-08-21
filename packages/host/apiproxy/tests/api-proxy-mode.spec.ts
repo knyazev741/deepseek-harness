@@ -16,6 +16,7 @@ import ExternalSessions, {
   ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
+  type ExternalModePreflightResult,
   type ExternalSessionProvider,
   type ExternalSessionStart,
 } from '@deepseek-ai/dsh-external-session'
@@ -31,7 +32,7 @@ function request<P>(payload: P): RpcRequest<P> {
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   selected: { model: string; reasoningEffort?: string } | undefined
-  preflightResult: { ok: true } | { ok: false; failure: { code: 'AUTH_UNAVAILABLE'; message: string } } = { ok: true }
+  preflightResult: ExternalModePreflightResult = { ok: true }
   constructor(
     readonly provider: string,
     readonly label: string,
@@ -166,5 +167,25 @@ describe('session.create mode arms', () => {
       },
     })
     expect(ctx.sessions.get(SessionId('preflight-failed'))).toBeUndefined()
+  })
+
+  it('maps a bounded preflight timeout to no published external session', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'PREFLIGHT_FAILED', message: 'Codex preflight timed out before the app-server became ready.' },
+    }
+    const result = await ctx.apiProxy.sessions.create(request({
+      sessionId: SessionId('preflight-timeout'), cwd: '/tmp', mode: 'alpha',
+    }))
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'external-mode-unavailable',
+        details: { mode: 'alpha', reason: 'PREFLIGHT_FAILED' },
+      },
+    })
+    expect(ctx.sessions.get(SessionId('preflight-timeout'))).toBeUndefined()
   })
 })

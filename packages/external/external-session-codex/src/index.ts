@@ -56,6 +56,9 @@ export const MCP_BEARER_TOKEN_ENV_VAR = 'DSH_MCP_BEARER_TOKEN'
 /** Default POSIX grace between subprocess termination tiers. */
 export const DEFAULT_DISPOSE_GRACE_MS = 3_000
 
+/** Default deadline for one Codex app-server availability probe. */
+export const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000
+
 /** Stable Codex config key for the Harness MCP server. */
 export const CODEX_MCP_SERVER_NAME = 'dsh_harness'
 
@@ -82,6 +85,8 @@ export interface Config {
   reasoningEffort?: ReasoningEffort
   /** Grace in milliseconds for app-server process-tree termination. */
   disposeGraceMs?: number
+  /** Deadline in milliseconds for the pre-session app-server availability probe. */
+  preflightTimeoutMs?: number
   /** Tool names requested from the optional authenticated Harness MCP gateway. */
   mcpTools?: string[]
   /** Alias for mcpTools used by deployment profiles to state the allowlist explicitly. */
@@ -95,6 +100,7 @@ export const Config = z.object({
   stateRoot: z.string().default(join(tmpdir(), 'dsh-external-codex')),
   reasoningEffort: z.union([z.string(), undefined]) as unknown as z<ReasoningEffort | undefined>,
   disposeGraceMs: z.number().default(DEFAULT_DISPOSE_GRACE_MS),
+  preflightTimeoutMs: z.number().default(DEFAULT_PREFLIGHT_TIMEOUT_MS),
   mcpTools: z.array(z.string()).default([]),
   allowedTools: z.union([z.array(z.string()), undefined]),
 }) as unknown as z<Config>
@@ -104,6 +110,7 @@ type ResolvedConfig = Config & {
   readonly env: Record<string, string>
   readonly stateRoot: string
   readonly disposeGraceMs: number
+  readonly preflightTimeoutMs: number
   readonly mcpTools: readonly string[]
 }
 
@@ -261,29 +268,40 @@ class CodexProvider implements ExternalSessionProvider {
       }
     }
     const sessionId = SessionId(`external-codex-preflight-${randomUUID()}`)
-    const stateRoot = await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))
-    const signal = new AbortController().signal
+    const stateRoot = codexStateRoot(this.config.stateRoot, String(sessionId))
+    const controller = new AbortController()
+    const timeoutReason = new Error('external-session-codex: preflight deadline exceeded')
+    const timer = setTimeout(() => {
+      controller.abort(timeoutReason)
+    }, this.config.preflightTimeoutMs)
     try {
+      await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))
       await preflightCodexServer(this.spec(request.cwd, {
         mode,
         workspaceRoot: request.cwd,
         sessionId,
-      }, stateRoot), signal)
+      }, stateRoot), controller.signal)
       return { ok: true }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
+      const timedOut = controller.signal.reason === timeoutReason
+      const message = timedOut
+        ? 'Codex preflight timed out before the app-server became ready.'
+        : error instanceof Error ? error.message : String(error)
       const lowered = message.toLowerCase()
-      const code = lowered.includes('enoent') || lowered.includes('not found')
-        ? 'BINARY_MISSING' as const
-        : lowered.includes('account') || lowered.includes('auth') || lowered.includes('login')
-          ? 'AUTH_UNAVAILABLE' as const
-          : lowered.includes('sandbox') || lowered.includes('confin')
-            ? 'SANDBOX_INCOMPATIBLE' as const
-            : lowered.includes('config') || lowered.includes('invalid')
-              ? 'INVALID_CONFIG' as const
-              : 'PREFLIGHT_FAILED' as const
+      const code = timedOut
+        ? 'PREFLIGHT_FAILED' as const
+        : lowered.includes('enoent') || lowered.includes('not found')
+          ? 'BINARY_MISSING' as const
+          : lowered.includes('account') || lowered.includes('auth') || lowered.includes('login')
+            ? 'AUTH_UNAVAILABLE' as const
+            : lowered.includes('sandbox') || lowered.includes('confin')
+              ? 'SANDBOX_INCOMPATIBLE' as const
+              : lowered.includes('config') || lowered.includes('invalid')
+                ? 'INVALID_CONFIG' as const
+                : 'PREFLIGHT_FAILED' as const
       return { ok: false, failure: { code, message } }
     } finally {
+      clearTimeout(timer)
       await rm(stateRoot, { recursive: true, force: true })
     }
   }
@@ -558,6 +576,7 @@ export function apply(ctx: Context, config: Config): void {
     env: config.env ?? {},
     stateRoot: config.stateRoot ?? join(tmpdir(), 'dsh-external-codex'),
     disposeGraceMs: config.disposeGraceMs ?? DEFAULT_DISPOSE_GRACE_MS,
+    preflightTimeoutMs: config.preflightTimeoutMs ?? DEFAULT_PREFLIGHT_TIMEOUT_MS,
     mcpTools: configuredTools,
   }
   if (!Number.isFinite(resolved.disposeGraceMs) || resolved.disposeGraceMs <= 0) {
@@ -565,6 +584,12 @@ export function apply(ctx: Context, config: Config): void {
   }
   if (resolved.disposeGraceMs > MAX_TIMER_DELAY_MS) {
     throwable(`disposeGraceMs must be no greater than ${MAX_TIMER_DELAY_MS}`)
+  }
+  if (!Number.isFinite(resolved.preflightTimeoutMs) || resolved.preflightTimeoutMs <= 0) {
+    throwable(`preflightTimeoutMs must be a positive finite number, got ${resolved.preflightTimeoutMs}`)
+  }
+  if (resolved.preflightTimeoutMs > MAX_TIMER_DELAY_MS) {
+    throwable(`preflightTimeoutMs must be no greater than ${MAX_TIMER_DELAY_MS}`)
   }
   for (const arg of resolved.args) {
     if (arg.length === 0) {

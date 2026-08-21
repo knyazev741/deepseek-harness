@@ -38,7 +38,7 @@ import type {
   ApiProxy, ConfigurableProviderView, CredentialView, GoalRef, HistoryEntry, HostFrame,
   ModelCatalogFailure, ModelProviderGroup, ExternalModeFailure, ExternalModeGroup,
   ExternalModelView, ModelReasoning, MuxFrame, PromptContentPart, QuestionResponsePayload,
-  SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
+  SessionCommandResult, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
   QueuedInboxItem, SessionSummary, SettingsNamespaceView, SubagentAddress, JobView, ToolEventView,
   WorkspaceId, WorkspaceView,
 } from './api/index.ts'
@@ -66,11 +66,9 @@ import type {} from '@deepseek-ai/dsh-external-session'
 import { parseExternalProviderThreadId } from '@deepseek-ai/dsh-external-session'
 // Value edge: the host-side external-mode command router reuses the canonical
 // slash-line parser so its `/compact` and `/model` arms and the pass-through
-// default match the command registry's own syntax, and the CommandResult type
-// for the outcome it returns. The type-only edge below still carries the
-// command-change stream and `ctx.get('skills')`.
+// default match the command registry's own syntax. The type-only edge below
+// still carries the command-change stream and `ctx.get('skills')`.
 import { parseCommand } from '@deepseek-ai/dsh-commands'
-import type { CommandResult } from '@deepseek-ai/dsh-commands'
 // Type-only: resolves `ctx.get('tasks')` to the background job registry.
 import type {} from '@deepseek-ai/dsh-jobs'
 import type { JobSnapshot } from '@deepseek-ai/dsh-jobs'
@@ -1131,7 +1129,7 @@ async function routeExternalSessionCommand(
   ctx: Context,
   session: Session,
   line: string,
-): Promise<CommandResult> {
+): Promise<SessionCommandResult> {
   const external = ctx.get('externalSessions')
   if (external === undefined) {
     return {
@@ -1143,8 +1141,12 @@ async function routeExternalSessionCommand(
   if (parsed === undefined || (parsed.name !== 'compact' && parsed.name !== 'model')) {
     // Plain text or an unknown slash command: hand the verbatim line to the
     // external agent, whose own command namespace owns it.
-    await external.prompt(session.id, line)
-    return { kind: 'success', text: `Forwarded "${line}" to the external agent.` }
+    const turn = await external.prompt(session.id, line)
+    return {
+      kind: 'success',
+      text: `Forwarded "${line}" to the external agent.`,
+      externalTurnId: String(turn.turnId),
+    }
   }
   if (parsed.name === 'compact') {
     try {

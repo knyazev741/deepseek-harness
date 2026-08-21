@@ -341,7 +341,12 @@ export const sessionCommandRequestSchema = z.object({
 
 /** session.command response value: the routed command outcome. */
 export const sessionCommandValueSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('success'), text: z.string().optional() }),
+  z.object({
+    kind: z.literal('success'),
+    text: z.string().optional(),
+    sourceEventSeq: z.number().int().optional(),
+    externalTurnId: z.string().min(1).optional(),
+  }),
   z.object({ kind: z.literal('error'), text: z.string() }),
 ]) satisfies z.ZodType<Wire<ResponseValue<'session.command'>>>
 

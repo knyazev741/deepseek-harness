@@ -25,6 +25,7 @@ import ExternalSessions, {
   ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
+  type ExternalModePreflightResult,
   type ExternalSessionProvider,
   type ExternalSessionStart,
 } from '@deepseek-ai/dsh-external-session'
@@ -51,7 +52,7 @@ class CommandProvider implements ExternalSessionProvider {
   rejectListModels: Error | undefined
   listModelsCalls = 0
   models: Array<{ id: string; name: string; description?: string }> = []
-  preflightResult: { ok: true } | { ok: false; failure: { code: 'AUTH_UNAVAILABLE'; message: string } } = { ok: true }
+  preflightResult: ExternalModePreflightResult = { ok: true }
 
   constructor(
     readonly provider: string,
@@ -512,7 +513,10 @@ describe('session.command external-mode routing', () => {
 
     const result = await ctx.apiProxy.sessions.command(request({ sessionId, line: 'hello there' }))
     expect(result.result.ok).toBe(true)
-    expect(result.result.ok ? result.result.value : undefined).toMatchObject({ kind: 'success' })
+    expect(result.result.ok ? result.result.value : undefined).toMatchObject({
+      kind: 'success',
+      externalTurnId: 't1',
+    })
     expect(provider.prompts).toEqual(['hello there'])
   })
 
@@ -599,6 +603,24 @@ describe('session.externalModes new-session mode catalog', () => {
         failures: [{ provider: 'alpha', label: 'Alpha', code: 'AUTH_UNAVAILABLE' }],
       },
     })
+  })
+
+  it('projects a timed-out preflight as a bounded failure without probing models', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'PREFLIGHT_FAILED', message: 'Codex preflight timed out before the app-server became ready.' },
+    }
+    const result = await ctx.apiProxy.sessions.externalModes(request({}))
+    expect(result.result).toMatchObject({
+      ok: true,
+      value: {
+        groups: [],
+        failures: [{ provider: 'alpha', label: 'Alpha', code: 'PREFLIGHT_FAILED' }],
+      },
+    })
+    expect(provider.listModelsCalls).toBe(0)
   })
 
   it('returns empty when no external-session registry is composed', async () => {

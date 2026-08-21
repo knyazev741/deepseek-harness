@@ -31,8 +31,11 @@ import { ExternalLiveAccumulator } from './external-live.ts'
 
 /** One external command waiting for the next durable provider turn terminal. */
 interface ExternalTurnWaiter {
-  readonly minimumSeq: number
+  minimumSeq: number
+  armed: boolean
+  expectedTurnId: string | undefined
   readonly promise: Promise<void>
+  arm(turnId: string | undefined): void
   settle(): void
   fail(error: unknown): void
   cancel(): void
@@ -106,6 +109,8 @@ export class Session implements SessionFace {
   private readonly externalTurnWaiters: ExternalTurnWaiter[] = []
   /** Highest terminal event already observed; protects a loading-buffer replay from settling twice. */
   private lastObservedExternalTerminalSeq = -1
+  /** Recent terminal identities allow a provider response to arm after its terminal notification. */
+  private readonly recentExternalTerminals = new Map<string, number>()
   /**
    * Sticky send marker, private input of the composerPhase derivation: set
    * synchronously before prompt()'s first await, never reset — the blank →
@@ -450,7 +455,10 @@ export class Session implements SessionFace {
             },
           }
         }
-        if (wait !== undefined) await wait.promise
+        if (wait !== undefined) {
+          wait.arm(response.value.externalTurnId)
+          await wait.promise
+        }
         return { ok: true, value: { matched: true } }
       } catch (error: unknown) {
         wait?.cancel()
@@ -857,7 +865,19 @@ export class Session implements SessionFace {
     void promise.catch(() => {})
     const waiter: ExternalTurnWaiter = {
       minimumSeq,
+      armed: false,
+      expectedTurnId: undefined,
       promise,
+      arm: (turnId) => {
+        if (settled) return
+        waiter.armed = true
+        waiter.expectedTurnId = turnId
+        if (turnId === undefined) waiter.minimumSeq = Math.max(waiter.minimumSeq, this.highestKnownSeq())
+        else {
+          const terminalSeq = this.recentExternalTerminals.get(turnId)
+          if (terminalSeq !== undefined && terminalSeq > waiter.minimumSeq) waiter.settle()
+        }
+      },
       settle: () => {
         if (settled) return
         settled = true
@@ -886,8 +906,20 @@ export class Session implements SessionFace {
     if ((event as unknown as { type: string }).type !== 'external/turn-ended') return
     if (event.seq <= this.lastObservedExternalTerminalSeq) return
     this.lastObservedExternalTerminalSeq = event.seq
-    const waiter = this.externalTurnWaiters[0]
-    if (waiter !== undefined && event.seq > waiter.minimumSeq) waiter.settle()
+    const turnId = (event as unknown as { data: { turnId: string } }).data.turnId
+    this.recentExternalTerminals.set(turnId, event.seq)
+    while (this.recentExternalTerminals.size > 32) {
+      const oldest = this.recentExternalTerminals.keys().next().value
+      if (oldest === undefined) break
+      this.recentExternalTerminals.delete(oldest)
+    }
+    for (const waiter of this.externalTurnWaiters) {
+      if (!waiter.armed || event.seq <= waiter.minimumSeq) continue
+      if (waiter.expectedTurnId === undefined || waiter.expectedTurnId === turnId) {
+        waiter.settle()
+        break
+      }
+    }
   }
 
   /** Reject all barriers when their Session can no longer produce a terminal event. */
@@ -897,7 +929,7 @@ export class Session implements SessionFace {
 
   /** Highest durable sequence known to this Session at barrier creation time. */
   private highestKnownSeq(): number {
-    let highest = this.subscribedLastSeq ?? -1
+    let highest = Math.max(this.subscribedLastSeq ?? -1, this.lastObservedExternalTerminalSeq)
     for (const event of this.events) highest = Math.max(highest, event.seq)
     for (const item of this.liveBuffer) highest = Math.max(highest, item.event.seq)
     return highest

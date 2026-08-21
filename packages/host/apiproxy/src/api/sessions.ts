@@ -16,6 +16,11 @@ import type { ToolEventView } from './events.ts'
 import type { WorkspaceId } from './workspace.ts'
 import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 
+/** Routed command result with the provider turn identity for external prompts. */
+export type SessionCommandResult =
+  | (Extract<CommandResult, { kind: 'success' }> & { externalTurnId?: string })
+  | Extract<CommandResult, { kind: 'error' }>
+
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     /**
@@ -427,12 +432,13 @@ export interface SessionsApi {
    * boundary: `/compact` runs the provider's native compact (recording
    * `external/compaction-noticed`), `/model <id>` switches the live session's
    * model (`external/model-switched`), and any other line — slash or plain —
-   * is forwarded verbatim as prompt text to the external agent. A native-mode
-   * session rejects with `invalid-mode`: it routes through the command
-   * registry instead.
+   * is forwarded verbatim as prompt text to the external agent. A successful
+   * forwarded prompt carries the provider-issued `externalTurnId` so a client
+   * can wait for its own durable terminal event. A native-mode session rejects
+   * with `invalid-mode`: it routes through the command registry instead.
    */
   command(request: RpcRequest<{ sessionId: SessionId; line: string }>):
-  Promise<RpcResponse<CommandResult>>
+  Promise<RpcResponse<SessionCommandResult>>
 
   /**
    * Reads the registered external-session modes (the new-session mode picker's

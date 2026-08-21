@@ -663,6 +663,8 @@ export interface Config {
   reasoningEffort?: ReasoningEffort
   /** Grace in milliseconds for app-server process-tree termination. */
   disposeGraceMs?: number
+  /** Deadline in milliseconds for the pre-session app-server availability probe. */
+  preflightTimeoutMs?: number
   /** Tool names requested from the optional authenticated Harness MCP gateway. */
   mcpTools?: string[]
   /** Alias for mcpTools used by deployment profiles to state the allowlist explicitly. */
@@ -672,7 +674,7 @@ export interface Config {
 
 依赖：[`ReasoningEffort`](../packages/external/external-session/src/index.ts)
 
-来源：[`packages/external/external-session-codex/src/index.ts:63`](../packages/external/external-session-codex/src/index.ts)
+来源：[`packages/external/external-session-codex/src/index.ts:66`](../packages/external/external-session-codex/src/index.ts)
 
 <a id="deepseek-aidsh-fs-local"></a>
 

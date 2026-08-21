@@ -37,6 +37,7 @@
 | `reasoningEffort` | 未设置 | 可选的初始稳定 reasoning effort；逐会话选择可在下一轮替换它。 |
 | `sandbox` / `approvalPolicy` | `read-only` / `ask` | 从会话启动请求与会话 policy fold 解析；Codex 接收 `read-only` / `workspace-write` / `danger-full-access` 以及 `on-request` / `never`。 |
 | `disposeGraceMs` | `3000` | 正有限毫秒宽限，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md)，介于共享进程树所有者的各终止层级之间。 |
+| `preflightTimeoutMs` | `30000` | app-server 可用性预检的正有限毫秒截止时间，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md)。截止后会中止 wire、回收子进程树、删除私有 probe 状态，并以有界消息返回 `PREFLIGHT_FAILED`。 |
 | `mcpTools` | `[]` | 传给可选 MCP 网关的 Harness 工具名称；网关会与固定 allowlist 以及定义级别的 external opt-in 求交集。 |
 | `allowedTools` | 未设置 | 面向 Profile 的 `mcpTools` 别名；存在时替代旧键，并继续与网关 allowlist 以及定义级别的 external opt-in 求交集。 |
 
@@ -58,7 +59,7 @@ MCP bearer 不会放入 Codex URL、TOML、argv、session 事件、日志或快�
     allowedTools: []
 ```
 
-提供方会在该行被公告或 session 被发布前执行 preflight。如果本地部署无法启动它，mode 会报告 `BINARY_MISSING`、`AUTH_UNAVAILABLE`、`INVALID_CONFIG` 或 `SANDBOX_INCOMPATIBLE`；Codex 账户仍由用户自行登录，该 profile patch 永远不会保存账户信息。
+提供方会在该行被公告或 session 被发布前执行 preflight。如果本地部署无法启动它，mode 会报告 `BINARY_MISSING`、`AUTH_UNAVAILABLE`、`INVALID_CONFIG`、`SANDBOX_INCOMPATIBLE` 或有界的 `PREFLIGHT_FAILED`；截止时间可通过 `preflightTimeoutMs` 配置，超时后不会留下 probe 子进程或状态目录。Codex 账户仍由用户自行登录，该 profile patch 永远不会保存账户信息。
 
 ## 产品兼容性与证据
 
