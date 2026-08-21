@@ -13,6 +13,7 @@ import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 import { createScope, scopeOf } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ClientSessionContext, ConsumeTokenRequest, InputTriggerPick, InputTriggerSource } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { CommandContribution, CommandDecoration, CommandUiSpec, SelectOption } from '../src/client/contract.ts'
 import type { CommandDescriptor } from '../src/client/directory.ts'
 import { CommandUiRuntime } from '../src/client/service.ts'
@@ -39,6 +40,10 @@ interface BenchOptions {
   commands?: (payload: { sessionId: SessionId }) => Promise<{ commands: CommandDescriptor[] }>
   execute?: (payload: { sessionId: SessionId; line: string }) => Promise<ExecuteValue>
   addressed?: SessionId
+  external?: {
+    mode: string
+    command: (line: string) => Promise<RemoteResult<{ matched: boolean }>>
+  }
 }
 
 /**
@@ -103,6 +108,12 @@ async function bench(opts: BenchOptions = {}) {
   ctx.provide('sessions', {
     scope: (id: SessionId) => scopes.get(id)?.ctx,
     scopeOf: (c: Context) => scopeOf(c),
+    sessionOf: () => opts.external === undefined
+      ? undefined
+      : {
+        mode: opts.external.mode,
+        command: opts.external.command,
+      },
     subagentAddress: (id: SessionId) => id === opts.addressed
       ? { parentSessionId: sid('parent'), childSessionId: id, mode: 'continuable' as const }
       : undefined,
@@ -205,6 +216,13 @@ describe('registration', () => {
 })
 
 describe('candidates', () => {
+  it('does not fetch a native command catalog for an external session', async () => {
+    const b = await bench({ external: { mode: 'codex', command: async () => ({ ok: true, value: { matched: true } }) } })
+    b.mint('external')
+    await expect(b.source.candidates(proj('external'), req(''))).resolves.toEqual([])
+    expect(b.listCalls).toEqual([])
+  })
+
   it('does not fetch Agent-bound commands for an addressed child', async () => {
     const b = await bench({ addressed: sid('child') })
     await expect(b.warm(proj('child'))).resolves.toBeUndefined()
@@ -434,6 +452,25 @@ describe('matchSpace (space column)', () => {
 
 describe('matchEnter (enter column)', () => {
   const signal = () => new AbortController().signal
+
+  it('routes an external slash line through session.command without warming native commands', async () => {
+    const command = vi.fn(async (_line: string): Promise<RemoteResult<{ matched: boolean }>> => ({
+      ok: true,
+      value: { matched: true },
+    }))
+    const b = await bench({ external: { mode: 'codex', command } })
+    const scope = b.mint('external')
+    const consumes: ConsumeTokenRequest[] = []
+    scope.ctx.on('slash/input-consume-token', (request) => {
+      consumes.push(request)
+      return true
+    })
+
+    await expect(b.source.matchEnter!(proj('external'), '/compact', signal())).resolves.toBe('handled')
+    await vi.waitFor(() => expect(command).toHaveBeenCalledWith('/compact'))
+    expect(consumes).toEqual([{ guard: { kind: 'bare-token', token: '/compact' } }])
+    expect(b.listCalls).toEqual([])
+  })
 
   it('strong-waits a cold key before adjudicating', async () => {
     let release!: (value: { commands: CommandDescriptor[] }) => void

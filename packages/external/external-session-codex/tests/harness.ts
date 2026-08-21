@@ -288,7 +288,13 @@ export async function startCodexHarness(
       timeoutMs,
     ),
     waitDelta: (needle, timeoutMs = 120_000) => poll(
-      () => recorded.deltas.some(delta => delta.delta.includes(needle)),
+      () => {
+        const byTurn = new Map<string, string>()
+        for (const delta of recorded.deltas) {
+          byTurn.set(delta.turnId, `${byTurn.get(delta.turnId) ?? ''}${delta.delta}`)
+        }
+        return [...byTurn.values()].some(text => text.includes(needle))
+      },
       `delta ${JSON.stringify(needle)}`,
       timeoutMs,
     ),

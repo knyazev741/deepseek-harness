@@ -10,6 +10,7 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -30,6 +31,8 @@ export interface AskUserQuestionRequest {
   questions: AskUserQuestionItem[]
   /** Exact live calling agent, when the request came from an agent tool call. */
   agent?: Agent
+  /** Live external session posing the question when no native Agent exists. */
+  sessionId?: SessionId
   /** Abort signal for the owning tool/step. */
   signal?: AbortSignal
 }

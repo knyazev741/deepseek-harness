@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-20-opt-in-codex-web-mode.md
-2026-08-20-opt-in-codex-web-mode.md: a5bf8b0fa7978b57d8e9b08886a18c2bb2b93dcb
-2026-08-20-opt-in-codex-web-mode.zh.md: ddc46c2c70c30bd84c8d37ef52236ec7fb7f3bf9
+2026-08-20-opt-in-codex-web-mode.md: 66e6163336407539570676cf67f769e6fe61e3fd
+2026-08-20-opt-in-codex-web-mode.zh.md: 4e0eec77eef327c531b62e32906b766264836284

@@ -26,4 +26,8 @@ The browser stores the durable mode on each session object and list row. Externa
 
 ## Consequences
 
-The local profile command is documented in the bundle README, and profile resolution fails loud when a required bundle dependency is absent. The Codex provider remains an explicit local-login product; credentials stay outside YAML, logs, events, URLs, and snapshots. Model-visible parent DSH requests are unchanged because the external transcript is projected from log-only events. Browser E2E, assembled transcript snapshots, and the final local authenticated acceptance proof remain Task 9 work.
+The local profile command and the user-owned Codex authentication step are documented in the bundle README and the published Web guide. Profile resolution fails loud when a required bundle dependency is absent. The Codex provider remains an explicit local-login product; credentials stay outside YAML, logs, events, URLs, and snapshots. Model-visible parent DSH requests are unchanged because the external transcript is projected from log-only events. ACP, Claude Code, agent-started external sessions, and remote multi-user hosting are not mounted by this profile.
+
+## Verification
+
+The assembled Web proof runs `DSH_SNAPSHOT=replay perl -e 'alarm 180; exec @ARGV' pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/external-codex-session.e2e.ts`. It proves opt-in Loader composition, the real pinned Codex app-server over a loopback Responses fixture, mode/model/effort selection, live and committed transcript output, approval and MCP policy, compaction, same-thread host restart, accessibility snapshots, complete fixture consumption, and empty browser/page/console/request-failure tripwires. A real deployment still requires the user to authenticate the configured Codex executable before preflight can list Codex.

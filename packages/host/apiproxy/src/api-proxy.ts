@@ -371,6 +371,18 @@ async function buildExternalSessionCatalog(
       id: model.id,
       name: model.name,
       ...model.description === undefined ? {} : { description: model.description },
+      ...model.reasoning === undefined ? {} : {
+        reasoning: {
+          efforts: model.reasoning.efforts.map(effort => ({
+            id: effort.id,
+            name: effort.name,
+            ...effort.description === undefined ? {} : { description: effort.description },
+          })),
+          ...model.reasoning.defaultEffort === undefined
+            ? {}
+            : { defaultEffort: model.reasoning.defaultEffort },
+        },
+      },
     }))
     return {
       groups: [{ id: provider, name: descriptor.label, models: entries }],
@@ -1462,10 +1474,17 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
   const disposeProvider = ctx.userQuestions.registerProvider({
     ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer> {
-      const sessionId = request.agent?.id
+      const sessionId = request.agent?.id ?? request.sessionId
       if (sessionId === undefined) {
         return Promise.reject(new UserQuestionError(
-          'web user interaction requires an agent-owned session', 'ASK_MISSING_AGENT'))
+          'web user interaction requires an agent-owned or external session', 'ASK_MISSING_AGENT'))
+      }
+      if (request.agent === undefined) {
+        const session = ctx.sessions.get(sessionId)
+        if (session === undefined || session.header.mode === undefined || session.header.mode === 'dsh') {
+          return Promise.reject(new UserQuestionError(
+            'web user interaction requires a live external session', 'SESSION_NOT_EXTERNAL'))
+        }
       }
       return new Promise<AskUserQuestionAnswer>((resolve, reject) => {
         const rpcId = RpcId(randomUUID())
@@ -2590,6 +2609,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
                 id: model.id,
                 name: model.name,
                 ...model.description === undefined ? {} : { description: model.description },
+                ...model.reasoning === undefined ? {} : {
+                  reasoning: {
+                    efforts: model.reasoning.efforts.map(effort => ({
+                      id: effort.id,
+                      name: effort.name,
+                      ...effort.description === undefined ? {} : { description: effort.description },
+                    })),
+                    ...model.reasoning.defaultEffort === undefined
+                      ? {}
+                      : { defaultEffort: model.reasoning.defaultEffort },
+                  },
+                },
               })),
             }
             return { kind: 'group' as const, group }

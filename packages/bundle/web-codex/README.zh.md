@@ -15,6 +15,8 @@ dsh --profile codex-web
 
 overlay 可以把 `external-session-codex.config.command` 设置为经过审查的可执行文件路径，也可以设置 `allowedTools`、`preflightTimeoutMs` 或 gateway 上限；不要把 API key、bearer token 或其他凭证写进 `cordis.patch.yml`。缺少依赖，或把没有 `dsh.bundle.patch` manifest 声明的包列为 bundle，都会在 profile 解析时直接报错。
 
+Provider 会清除环境中凭证形状的变量。如果 preflight 报告 `AUTH_UNAVAILABLE`，请用 `codex login` 为配置的 Codex 可执行文件完成认证，在它打开的 ChatGPT 浏览器流程中登录，然后重启 `dsh --profile codex-web`；使用 API key 的部署必须通过 profile 的显式 `env` 条目传入。Preflight 成功后，选择 workspace，在 mode picker 中选择 `Codex`，再选择 model 与 reasoning effort。
+
 ## 模型体验
 
 间接通过独立的 Codex 进程与 Web 对其持久化 transcript 的投影产生影响；该 bundle 不向父 Harness 的 model prompt 或原生 DSH model request 添加内容。
@@ -27,4 +29,5 @@ overlay 可以把 `external-session-codex.config.command` 设置为经过审查�
 
 - **该 bundle 默认关闭**——随附的 `web` profile 只有在用户加入这一层后才会启用外部 provider。
 - **外部输入目前仅支持文本**——图片、排队 prompt、steering 与原生 goals 会返回明确的不支持错误；`/compact` 与 `/model` 保留提供方专用路由，其他 slash 行通过 `session.command` 传递。
-- **浏览器验收仍属于 Task 9**——本任务覆盖 service、client 与组合 smoke 测试；组装浏览器 E2E 与面向用户的快照仍然延后。
+- **本地认证由部署负责**——无密钥浏览器 fixture 使用 loopback Responses provider 与本地账户探测；真实部署必须先为配置的 Codex 可执行文件完成认证，`Codex` 才会出现在 mode picker 中。
+- **不包含 ACP 与 Claude Code 交互模式**——该 bundle 只提供 Codex provider；智能体启动的外部会话与远程多用户托管仍不在此 profile 范围内。

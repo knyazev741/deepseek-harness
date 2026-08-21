@@ -23,6 +23,7 @@ import type {
   ReasoningEffort,
   SandboxMode,
 } from '@deepseek-ai/dsh-external-session'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { JsonRpcLineTransport } from '@deepseek-ai/dsh-sdk-protocol'
 
 /** A JSON object carried by the app-server protocol. */
@@ -279,14 +280,45 @@ export class CodexExternalWire {
     if (!Array.isArray(data)) {
       throw new Error('external-session-codex: app-server returned invalid model/list data')
     }
+    type ReasoningEffortEntry = {
+      id: ReturnType<typeof ReasoningEffortId>
+      name: string
+      description?: string
+    }
     const models: ExternalModelInfo[] = []
     for (const entry of data) {
       const model = object(entry, 'model/list entry')
       const id = string(model.id, 'model/list id')
       const name = string(model.displayName ?? model.model, 'model/list name')
-      const described: ExternalModelInfo = typeof model.description === 'string'
-        ? { id, name, description: model.description }
-        : { id, name }
+      const effortEntries = Array.isArray(model.supportedReasoningEfforts)
+        ? model.supportedReasoningEfforts.flatMap((entry): ReasoningEffortEntry[] => {
+          if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) return []
+          const value = entry as Record<string, unknown>
+          const rawId = value.reasoningEffort ?? value.id
+          if (typeof rawId !== 'string' || rawId.length === 0) return []
+          const rawName = typeof value.name === 'string' && value.name.length > 0 ? value.name : rawId
+          const rawDescription = typeof value.description === 'string' ? value.description : undefined
+          return [{
+            id: ReasoningEffortId(rawId),
+            name: rawName,
+            ...rawDescription === undefined ? {} : { description: rawDescription },
+          }]
+        })
+        : []
+      const reasoning = effortEntries.length === 0
+        ? undefined
+        : {
+          efforts: effortEntries,
+          ...typeof model.defaultReasoningEffort === 'string' && model.defaultReasoningEffort.length > 0
+            ? { defaultEffort: ReasoningEffortId(model.defaultReasoningEffort) }
+            : {},
+        }
+      const described: ExternalModelInfo = {
+        id,
+        name,
+        ...typeof model.description === 'string' ? { description: model.description } : {},
+        ...reasoning === undefined ? {} : { reasoning },
+      }
       models.push(described)
     }
     return models

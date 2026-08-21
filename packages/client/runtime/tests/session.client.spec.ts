@@ -247,6 +247,20 @@ describe('open', () => {
     // Overlapping seq-15 frame (== page tail turn/end) was dropped; 16 appended once.
     expect(seqs).toEqual([11, 13, 16])
   })
+
+  it('retains an external delta arriving while history is pending', async () => {
+    const { api, session } = makeSession()
+    const gate = deferred<Awaited<ReturnType<FakeApiClient['onHistory']>>>()
+    api.onHistory = () => gate.promise
+    const opening = session.open()
+    session.handleMuxEnvelope('delta' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-opening'), delta: 'partial',
+    })
+    expect(session.getSnapshot().externalLive).toBeNull()
+    gate.resolve(ok({ events: entries([]) as never[], hasMore: false }))
+    await opening
+    expect(session.getSnapshot().externalLive).toEqual({ turnId: 'turn-opening', text: 'partial' })
+  })
 })
 
 

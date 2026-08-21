@@ -112,6 +112,7 @@ describe('external-permission decision mapping', () => {
     expect(qp.seen[0]?.questions).toEqual([
       { id: 'ask-1', question: 'proceed?', options: [{ label: 'allow' }, { label: 'reject' }] },
     ])
+    expect(qp.seen[0]).toMatchObject({ sessionId })
   })
 })
 

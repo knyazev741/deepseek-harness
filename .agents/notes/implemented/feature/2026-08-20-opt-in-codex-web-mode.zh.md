@@ -26,4 +26,8 @@ External provider 暴露类型化 preflight 结果。Host 在 `session.externalM
 
 ## Consequences
 
-Bundle README 记录了本地 profile 命令；缺少必要 bundle 依赖时，profile resolution 会直接失败。Codex provider 仍然要求用户自行完成本地登录；凭证不会进入 YAML、日志、事件、URL 或快照。External transcript 由仅日志事件投影，因此不会改变父 DSH 的 model-visible request。浏览器 E2E、组装 transcript 快照以及最终的本地认证验收仍属于 Task 9。
+Bundle README 与已发布的 Web 指南记录本地 profile 命令以及由用户完成的 Codex 认证步骤；缺少必要 bundle 依赖时，profile resolution 会直接失败。Codex provider 仍然要求用户自行完成本地登录；凭证不会进入 YAML、日志、事件、URL 或快照。External transcript 由仅日志事件投影，因此不会改变父 DSH 的 model-visible request。该 profile 不挂载 ACP、Claude Code、智能体启动的外部会话或远程多用户托管。
+
+## Verification
+
+组装 Web 证明使用 `DSH_SNAPSHOT=replay perl -e 'alarm 180; exec @ARGV' pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/external-codex-session.e2e.ts`。它证明 opt-in Loader 组合、经 loopback Responses fixture 运行的固定版本 Codex app-server、mode/model/effort 选择、实时与已提交 transcript、审批与 MCP 策略、压缩、宿主重启后的同线程恢复、可访问性快照、fixture 完全消费，以及浏览器／页面／控制台／请求失败探针为空。真实部署仍需用户在 preflight 公告 Codex 前为配置的 Codex 可执行文件完成认证。

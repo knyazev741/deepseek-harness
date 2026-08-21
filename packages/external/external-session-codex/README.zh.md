@@ -87,7 +87,7 @@ MCP bearer 不会放入 Codex URL、TOML、argv、session 事件、日志或快�
 - **无流式持久性保证**——实时增量只沿实时 frame 路径上的 `streamDelta` 传输，绝不写入持久日志；回放仅重建已提交的 `external/*` 单元。
 - **审批依赖权限通道**——在宿主插件接线 ask-user 通道之前，`requestPermission` 会故障关闭（`PERMISSION_UNWIRED`）；随后提供方映射到安全的 decline 与 `cancelled`。
 - **app-server 子进程关闭会先结算再恢复**——意外的子进程死亡会把活动轮次结算为 `error`，随后下一次操作重启并恢复内存中的线程 id；冷宿主会话通过显式 `resume` 使用持久化的提供方线程 id，死亡的 app-server 本身不会再发出终态 `turn/completed`。
-- **组装应用验收证据延后**——Loader 组合、浏览器可访问性与面向用户的无密钥快照证据属于 Task 9；本程序包测试仅覆盖提供方 seam 与固定的无密钥 fixture。
+- **本地认证仍由部署负责**——无密钥的组装 Web fixture 提供 loopback Responses provider 与本地账户探测；真实部署必须先为配置的 Codex 可执行文件完成认证，preflight 才会公告该 mode。
 - **启动失败可能留下空的哈希状态目录**——该目录是私有的并由提供方拥有；进程回滚不会删除它，因为后续显式恢复可能仍需保留的 Codex rollout 状态。
 - **压缩通知文本是固定摘要，而非线上压缩详情**——0.147.0 证据显示 `thread/compact/start` 立即返回 `{}`，压缩作为后台轮次运行；持久通知由提供方撰写。
 - **兼容性由开发证据固定**——从已验证的 0.147.0 协议基线升级，需要重新生成上游 schema 证据并重跑无密钥的真实产品测试。

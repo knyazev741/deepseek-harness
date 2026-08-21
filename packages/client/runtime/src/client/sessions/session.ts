@@ -100,6 +100,8 @@ export class Session implements SessionFace {
   private readonly queueMirror = new SessionQueueMirror()
   /** Transient external-agent output; reset at every connection/subscription generation. */
   private readonly externalLive = new ExternalLiveAccumulator()
+  /** External deltas received while the history window is opening or repairing. */
+  private externalDeltaBuffer: { turnId: string; delta: string }[] = []
   /** Session-owned business Context engine over the contiguous raw window. */
   private readonly conversation: ConversationNodeAssembler
   private running = false
@@ -757,6 +759,7 @@ export class Session implements SessionFace {
       if (!result.ok) {
         this.openState = 'error'
         this.openError = result.error
+        this.externalDeltaBuffer = []
         return
       }
       this.installWindow(result.value.events, result.value.hasMore, result.value.projections)
@@ -771,6 +774,7 @@ export class Session implements SessionFace {
     } catch (error) {
       if (generation !== this.openGeneration) return
       this.openState = 'error'
+      this.externalDeltaBuffer = []
       const folded = transportError<never>(error)
       /* v8 ignore next -- the `? null` arm is unreachable: transportError always returns ok:false. */
       this.openError = folded.ok ? null : folded.error
@@ -794,6 +798,13 @@ export class Session implements SessionFace {
     if (this.events.some(event => event.type === 'turn/start')) this.firstPromptPendingTurn = false
     this.conversation.replaceWindow(entries.map(conversationInput), hasMore)
     if (projections !== undefined) this.projections.seed(projections)
+    // A prompt can start as soon as the composer is enabled, before the first
+    // history request settles. Apply those transient deltas before durable
+    // history so a committed agent message retires the matching live turn
+    // instead of allowing a stale delta to resurrect after the baseline lands.
+    const externalDeltas = this.externalDeltaBuffer
+    this.externalDeltaBuffer = []
+    for (const item of externalDeltas) this.externalLive.push(item.turnId, item.delta)
     const buffered = this.liveBuffer
     this.liveBuffer = []
     for (const item of buffered) this.appendLive(item.event, item.view)
@@ -841,7 +852,12 @@ export class Session implements SessionFace {
 
   /** Accept one transient external delta only for an open, healthy session. */
   private acceptExternalDelta(turnId: string, delta: string): void {
-    if (this.openState !== 'open' || this.removed || this.lastAgentError !== null) return
+    if (this.removed || this.lastAgentError !== null) return
+    if (this.openState === 'loading' || this.stitching) {
+      this.externalDeltaBuffer.push({ turnId, delta })
+      return
+    }
+    if (this.openState !== 'open') return
     if (this.externalLive.push(turnId, delta)) this.notifier.markFrameDirty()
   }
 
@@ -962,7 +978,9 @@ export class Session implements SessionFace {
 
   /** Reset the live accumulator and publish a lifecycle edge when needed. */
   private resetExternalLive(): void {
-    if (!this.externalLive.clear()) return
+    const buffered = this.externalDeltaBuffer.length > 0
+    this.externalDeltaBuffer = []
+    if (!this.externalLive.clear() && !buffered) return
     this.notifier.markDirty()
   }
 

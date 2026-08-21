@@ -1,0 +1,23 @@
+# Deterministic values for the assembled Web acceptance lane. The shipped
+# web-codex patch is loaded immediately before this overlay; replacing these
+# two rows keeps its opt-in package composition while supplying only the local
+# loopback fixture's command, MCP allowlist, and bounded child environment.
+- id: external-session-codex
+  config:
+    command: !!js process.env.DSH_CODEX_COMMAND
+    args: ['app-server', '--stdio']
+    env:
+      OPENAI_API_KEY: dsh-fixture-key
+      DSH_CODEX_RESPONSES_URL: !!js process.env.DSH_CODEX_RESPONSES_URL
+      DSH_CODEX_BIN: !!js process.env.DSH_CODEX_BIN
+    allowedTools: ['fixture_allowed']
+    stateRoot: !!js dshHomePath('external-codex')
+    disposeGraceMs: 3000
+    preflightTimeoutMs: 30000
+
+- id: mcp-gateway
+  config:
+    allowlist: ['fixture_allowed']
+    maxRequestBytes: 65536
+    maxResponseBytes: 65536
+    executionTimeoutMs: 60000

@@ -269,6 +269,14 @@ class CodexProvider implements ExternalSessionProvider {
     }
     const sessionId = SessionId(`external-codex-preflight-${randomUUID()}`)
     const stateRoot = codexStateRoot(this.config.stateRoot, String(sessionId))
+    // Codex initializes a private SQLite runtime and model cache even during
+    // a read-only availability probe. Keep the requested workspace outside
+    // the probe policy, but grant the provider-owned state directory itself;
+    // the probe must be able to start the real app-server without granting it
+    // writes to the user's workspace.
+    const preflightPolicy: SandboxExecutionPolicy = mode === 'danger-full-access'
+      ? { mode, workspaceRoot: request.cwd, sessionId }
+      : { mode: 'workspace-write', workspaceRoot: stateRoot, sessionId }
     const controller = new AbortController()
     const timeoutReason = new Error('external-session-codex: preflight deadline exceeded')
     const timer = setTimeout(() => {
@@ -276,11 +284,7 @@ class CodexProvider implements ExternalSessionProvider {
     }, this.config.preflightTimeoutMs)
     try {
       await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))
-      await preflightCodexServer(this.spec(request.cwd, {
-        mode,
-        workspaceRoot: request.cwd,
-        sessionId,
-      }, stateRoot), controller.signal)
+      await preflightCodexServer(this.spec(request.cwd, preflightPolicy, stateRoot), controller.signal)
       return { ok: true }
     } catch (error: unknown) {
       const timedOut = controller.signal.reason === timeoutReason
@@ -437,6 +441,7 @@ class CodexProvider implements ExternalSessionProvider {
       if (session.isLive()) return session.listModels(signal)
     }
     const sessionId = SessionId(`external-codex-bare-${randomUUID()}`)
+    const stateRoot = await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))
     const inertBridge: ExternalBridgeContext = {
       appendEvent: () => {},
       requestPermission: () => throwable('bare model listing has no permission channel'),
@@ -452,11 +457,15 @@ class CodexProvider implements ExternalSessionProvider {
         approvalPolicy: 'ask',
       },
       inertBridge,
+      // The catalog request starts the real app-server, which initializes its
+      // private SQLite runtime even though no workspace turn is issued. Give
+      // that temporary state root a writable policy while keeping the host
+      // workspace outside the bare listing's grant.
       this.spec(process.cwd(), {
-        mode: 'read-only',
-        workspaceRoot: process.cwd(),
+        mode: 'workspace-write',
+        workspaceRoot: stateRoot,
         sessionId,
-      }, await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))),
+      }, stateRoot),
     )
     try {
       await session.start(signal)

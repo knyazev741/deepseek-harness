@@ -1,0 +1,10 @@
+# Built-profile smoke overlay: pin the shipped browse picker so a headless
+# browser can create the workspace required before external modes are listed.
+- id: directory-picker
+  disabled: true
+
+- insert:
+    - id: directory-picker-browse
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+    - id: ui-directory-picker-browse
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'

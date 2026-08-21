@@ -194,6 +194,8 @@ export interface ExternalModelView {
   name: string
   /** Optional user-facing distinction from otherwise similar models. */
   description?: string
+  /** Provider-owned reasoning levels for this exact model, when disclosed. */
+  reasoning?: ModelReasoning
 }
 
 /** One registered external mode and its disclosed model catalog. */

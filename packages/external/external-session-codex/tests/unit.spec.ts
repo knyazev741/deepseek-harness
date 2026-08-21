@@ -30,6 +30,7 @@ import {
   mapExternalStopReason,
   offeredApprovalDecision,
 } from '../src/wire.ts'
+import { startResponsesFixture } from './responses-fixture.ts'
 
 async function nextFrame(output: PassThrough): Promise<Record<string, unknown>> {
   return await new Promise((resolve, reject) => {
@@ -79,6 +80,36 @@ describe('offeredApprovalDecision', () => {
     expect(offeredApprovalDecision(undefined, 'cancel')).toBe('cancel')
     expect(offeredApprovalDecision(['accept', { acceptWithExecpolicyAmendment: {} }], 'decline'))
       .toBe('decline')
+  })
+})
+
+describe('Responses fixture tool advertisements', () => {
+  it('recognizes function tools nested in Codex additional_tools input', async () => {
+    const fixture = await startResponsesFixture([{
+      kind: 'advertisedFunctionCall',
+      choices: [{ name: 'exec_command', arguments: {} }],
+    }])
+    try {
+      const response = await fetch(`${fixture.baseUrl}/responses`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-5.6-sol',
+          input: [{
+            type: 'additional_tools',
+            tools: [{
+              type: 'namespace',
+              name: 'functions',
+              tools: [{ type: 'custom', name: 'exec' }],
+            }],
+          }],
+        }),
+      })
+      expect(response.status).toBe(200)
+      fixture.assertConsumed()
+    } finally {
+      await fixture.close()
+    }
   })
 })
 

@@ -253,6 +253,48 @@ describe('connection client apply', () => {
     fetch.mockRestore()
   })
 
+  it('lets an external delta render before the next durable frame', async () => {
+    ;(globalThis as Win).location = {
+      hostname: 'localhost', search: '', origin: 'http://localhost:3080',
+    }
+    ;(globalThis as WebSocketGlobal).WebSocket = FakeWebSocket as unknown as typeof WebSocket
+    const client = (await mount()).api as WebApiClient
+    const abort = new AbortController()
+    const mux = client.events.mux({}, abort.signal)[Symbol.asyncIterator]()
+    const delta = mux.next()
+    await vi.waitFor(() => { expect(sockets).toHaveLength(1) })
+    sockets[0]!.receive(JSON.stringify({
+      type: 'server-request',
+      rpcId: 'mux-delta',
+      method: 'session/subscribed',
+      payload: {
+        type: 'external/delta', sessionId: 'session-browser', turnId: 'turn-1', delta: 'partial',
+      },
+    }))
+    await expect(delta).resolves.toMatchObject({ value: { payload: { type: 'external/delta' } } })
+
+    const next = mux.next()
+    let settled = false
+    void next.then(() => { settled = true })
+    sockets[0]!.receive(JSON.stringify({
+      type: 'server-request',
+      rpcId: 'mux-commit',
+      method: 'session/event',
+      payload: {
+        type: 'session/event',
+        sessionId: 'session-browser',
+        event: {
+          type: 'external/turn-ended', seq: 1, time: 1,
+          data: { turnId: 'turn-1', stopReason: 'completed' },
+        },
+      },
+    }))
+    for (let i = 0; i < 5; i += 1) await Promise.resolve()
+    expect(settled).toBe(false)
+    await expect(next).resolves.toMatchObject({ value: { payload: { type: 'session/event' } } })
+    abort.abort()
+  })
+
   it('maps an HTTPS page origin to a secure WebSocket URL', async () => {
     ;(globalThis as Win).location = {
       hostname: 'harness.example', search: '', origin: 'https://harness.example',

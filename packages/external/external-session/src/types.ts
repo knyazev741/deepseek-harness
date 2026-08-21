@@ -15,7 +15,7 @@
  */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import type { LlmModelReasoningInfo, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import type { JsonValue, SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/dsh-session'
@@ -240,6 +240,8 @@ export interface ExternalModelInfo {
   readonly name: string
   /** Optional user-facing distinction from otherwise similar models. */
   readonly description?: string
+  /** Provider-owned reasoning levels for this exact model, when disclosed. */
+  readonly reasoning?: LlmModelReasoningInfo
 }
 
 /** A permission request an external agent poses to the human. */

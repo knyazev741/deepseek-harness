@@ -62,6 +62,15 @@ function agentMessageTexts(harness: CodexTestHarness): string[] {
     .map(event => (event.data as { text: string }).text)
 }
 
+/** Join streamed delta fragments by provider turn before asserting text. */
+function streamedDeltaTexts(harness: CodexTestHarness): string[] {
+  const byTurn = new Map<string, string>()
+  for (const delta of harness.recorded.deltas) {
+    byTurn.set(delta.turnId, `${byTurn.get(delta.turnId) ?? ''}${delta.delta}`)
+  }
+  return [...byTurn.values()]
+}
+
 /** Let the session's process-death bookkeeping settle after a kill. */
 async function settle(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 150))
@@ -250,7 +259,10 @@ describe('external-session-codex registration', () => {
     const harness = await startCodexHarness([])
     try {
       await harness.ctx.externalSessions.listModels('codex')
-      expect(harness.confinedPolicies[0]).toMatchObject({ mode: 'read-only' })
+      // Codex initializes its private SQLite/model cache while listing models.
+      // The provider grants write access only to that provider-owned state root;
+      // the user's workspace remains outside the policy.
+      expect(harness.confinedPolicies[0]).toMatchObject({ mode: 'workspace-write' })
       expect(harness.confinedPolicies[0]?.stateRoot).toContain(harness.codexHome)
       expect(harness.spawnSpecs[0]?.env?.CODEX_HOME).toContain(harness.codexHome)
     } finally {
@@ -440,7 +452,7 @@ describe('external-session-codex persistent turns', () => {
       await harness.waitCount('external/message-added', 1)
       await harness.waitTurns(1)
 
-      expect(harness.recorded.deltas.some(delta => delta.delta.includes(sentinel))).toBe(true)
+      expect(streamedDeltaTexts(harness)).toContain(sentinel)
       expect(agentMessageTexts(harness)).toContain(sentinel)
       expect(harness.recorded.events.some(event => event.type === 'external/turn-started')).toBe(true)
       expect(harness.recorded.events.some(event => event.type === 'external/turn-ended')).toBe(true)

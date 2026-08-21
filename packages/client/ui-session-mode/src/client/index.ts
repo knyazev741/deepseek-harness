@@ -60,9 +60,10 @@ export function apply(ctx: ClientContext): void {
     const controller = new ModeSeatController(api, async (mode, model) => {
       // Creation carries the staged mode; the model applies as the initial
       // model for an external mode. Target the current/recent workspace so the
-      // hero flow lands where the workspace picker would. The ISessions face
-      // does not expose creation, so this rides the connection api directly
-      // and the next list refresh (below) folds the new row in.
+      // hero flow lands where the workspace picker would. Use the sessions
+      // service rather than the raw connection: it projects the created row
+      // into the list before resolving, so the new session can be opened while
+      // this fiber still owns the hero flow.
       const sessionsState = scope.sessions.list.getSnapshot()
       const current = sessionsState.current
       const workspaceId = current === undefined
@@ -70,14 +71,12 @@ export function apply(ctx: ClientContext): void {
         : scope.workspaces.list.getSnapshot().items
           .find(item => item.sessionIds.includes(current))?.workspaceId
         ?? scope.workspaces.list.getSnapshot().recentWorkspaceId
-      const response = await api.sessions.create({
+      const sessionId = await scope.sessions.create({
         ...(workspaceId === undefined ? {} : { workspaceId }),
         mode,
         ...(model === undefined ? {} : { model }),
       })
-      if (!response.result.ok) {
-        throw new Error(response.result.error.message)
-      }
+      scope.sessions.open(sessionId)
     })
 
     const injected = (): ModePickerInjected => ({
