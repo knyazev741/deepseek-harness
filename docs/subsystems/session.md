@@ -600,11 +600,12 @@ The hook bridges' `hook/invoked` / `hook/result` pairs (from `@deepseek-ai/dsh-h
 
 ### `external/*` events
 
-External console agents (Codex, ACP clients) write the log-only `external/*` event family into the owning session's log through the host bridge (`@deepseek-ai/dsh-external-session`). Every member is standalone (it may appear between `turn/end` and the next `turn/start`), carries the envelope's `ignorable: true` — a harness build that predates the vocabulary skips it on read instead of refusing the log — and is never a `SurfaceEventType`. Live transcript deltas are not logged; only committed units are. The `external/session-started` record keeps the provider-owned opaque `providerThreadId` returned by a successful start; cold attachment passes that identity to explicit `resume` and never renders it as transcript content. `@deepseek-ai/dsh-session-projection` folds the family into the transcript-shaped `external/transcript` projection while retaining that identity for host attachment.
+External console agents (Codex, ACP clients) write the log-only `external/*` event family into the owning session's log through the host bridge (`@deepseek-ai/dsh-external-session`). Every member is standalone (it may appear between `turn/end` and the next `turn/start`), carries the envelope's `ignorable: true` — a harness build that predates the vocabulary skips it on read instead of refusing the log — and is never a `SurfaceEventType`. Live transcript deltas are not logged; only committed units are. The `external/session-started` record keeps the provider-owned opaque `providerThreadId` returned by a successful start; cold attachment passes that identity to explicit `resume` and never renders it as transcript content. If provider startup rejects after publication, the bridge appends bounded `external/session-start-failed` facts followed by `external/session-ended` with `stopReason: error`; raw provider diagnostics remain host-only. `@deepseek-ai/dsh-session-projection` folds the family into the transcript-shaped `external/transcript` projection while retaining that identity for host attachment and exposing the safe startup failure to history/client renderers.
 
 | Event | Payload | Meaning |
 |---|---|---|
 | `external/session-started` | `{ provider, cwd, model?, providerThreadId }` | opened the external session on `provider` in `cwd`, optionally on `model`, and recorded the provider-owned thread identity |
+| `external/session-start-failed` | `{ provider, code, message }` | a published external session failed to attach its provider; bounded safe facts only |
 | `external/turn-started` | `{ turnId }` | opened one external turn |
 | `external/message-added` | `{ turnId, role: 'user' \| 'agent', text }` | one committed message in a turn |
 | `external/tool-activity` | `{ turnId, kind: 'call' \| 'update' \| 'result', title, detail? }` | one tool activity in a turn |
@@ -762,7 +763,7 @@ dispose(sessionId: SessionId): Promise<void>
 
 Types: [SessionId](core.md)
 
-Source: [`packages/external/external-session/src/index.ts:146`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:147`](../../packages/external/external-session/src/index.ts)
 
 <a id="ctxsessions--sessionstore"></a>
 
@@ -919,7 +920,7 @@ A provider became resolvable in the registry.
 'external/provider-added'(descriptor: ExternalAgentDescriptor): void
 ```
 
-Source: [`packages/external/external-session/src/index.ts:116`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:117`](../../packages/external/external-session/src/index.ts)
 
 <a id="externalprovider-removed--emit"></a>
 
@@ -937,20 +938,21 @@ A provider left the registry. Live sessions it already started remain owner-held
 'external/provider-removed'(provider: string): void
 ```
 
-Source: [`packages/external/external-session/src/index.ts:123`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:124`](../../packages/external/external-session/src/index.ts)
 
 <a id="externalsession-bridgeerror--emit"></a>
 
 #### `external/session-bridge/error` — emit
 
-An external provider's `start` rejected for a session already published in an external mode, so no live external process is running. A later phase decides the durable/UI surface; here it is the loud host signal that the create-time mode choice did not come up.
+An external provider's `start` rejected for a session already published in an external mode, so no live external process is running. A later phase also records bounded `external/session-start-failed` and terminal `external/session-ended` events; this signal carries the raw host error only for diagnostics and is not the client-facing failure surface.
 
 ```ts cordis-catalog
 /**
  * An external provider's `start` rejected for a session already published
  * in an external mode, so no live external process is running. A later
- * phase decides the durable/UI surface; here it is the loud host signal
- * that the create-time mode choice did not come up.
+ * phase also records bounded `external/session-start-failed` and terminal
+ * `external/session-ended` events; this signal carries the raw host error
+ * only for diagnostics and is not the client-facing failure surface.
  * @param payload - the session, its chosen provider, and the rejection reason.
  * @mode emit
  */
@@ -959,7 +961,7 @@ An external provider's `start` rejected for a session already published in an ex
 
 Types: [SessionId](core.md)
 
-Source: [`packages/external/external-session-bridge/src/index.ts:46`](../../packages/external/external-session-bridge/src/index.ts)
+Source: [`packages/external/external-session-bridge/src/index.ts:48`](../../packages/external/external-session-bridge/src/index.ts)
 
 <a id="externalsession-delta--emit"></a>
 
@@ -980,7 +982,7 @@ One transient external-agent transcript delta. The host mux projects this event 
 
 Types: [SessionId](core.md)
 
-Source: [`packages/external/external-session/src/index.ts:131`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:132`](../../packages/external/external-session/src/index.ts)
 
 <a id="mcp-gateway-events"></a>
 

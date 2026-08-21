@@ -248,6 +248,8 @@ type ToolExecutionInput = {
   readonly parent?: ToolExecutionToken
   /** Required caller-owned cancellation for this invocation. */
   readonly signal: AbortSignal
+  /** Registry-owned scope key used to route scoped pipeline events. */
+  readonly scope?: ScopeKey
 } & import('./execution-subject.ts').ToolExecutionIdentity
 ```
 
@@ -309,6 +311,8 @@ Code Mode's bridge additionally exposes each settled sub-dispatch to the `tools/
 interface CodeDispatchLog {
   /** The outer `run_code` execution. */
   readonly exec: ToolExecution
+  /** Registry-owned scope key used to route this log-shaping event. */
+  readonly scope: ScopeKey | undefined
   /** The calling native Agent, when the outer call has one. */
   readonly agent?: Agent
   /** The calling external principal, when the outer call has one. */
@@ -632,7 +636,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:834`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:838`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 

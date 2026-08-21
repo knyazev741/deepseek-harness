@@ -593,6 +593,7 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   ExternalTurnId: 'external-session provider turn identity is owned by packages/external/external-session/README.md',
   ExternalSessionProvider: 'external-session provider contract is owned by packages/external/external-session/README.md',
   ExternalPermissionAnswerer: 'external-session permission channel is owned by packages/external/external-session/README.md',
+  ExternalApprovalEventCarrier: 'phantom scope carrier for external approval events is owned by packages/interaction/user-approval/README.md',
   ExternalSessionStartRequest: 'external-session start request is owned by packages/external/external-session/README.md',
   ExternalProviderThreadId: 'external-session provider thread identity is owned by packages/external/external-session/README.md',
   ExternalModelInfo: 'external-session model directory entry is owned by packages/external/external-session/README.md',

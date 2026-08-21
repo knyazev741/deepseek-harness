@@ -629,7 +629,7 @@ Requires: `externalSessions` · `sessionProjections`
 export interface Config {}
 ```
 
-Source: [`packages/external/external-session-bridge/src/index.ts:58`](../packages/external/external-session-bridge/src/index.ts)
+Source: [`packages/external/external-session-bridge/src/index.ts:60`](../packages/external/external-session-bridge/src/index.ts)
 
 <a id="deepseek-aidsh-external-session-codex"></a>
 
@@ -2909,7 +2909,7 @@ export interface Config {
 export type ToolPresentationMode = 'native' | 'code' | 'both'
 ```
 
-Source: [`packages/core/tools/src/index.ts:701`](../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:705`](../packages/core/tools/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 
@@ -2956,7 +2956,7 @@ export interface Config {
 export type ApprovalPolicy = 'ask' | 'never'
 ```
 
-Source: [`packages/interaction/user-approval/src/index.ts:204`](../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:214`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="deepseek-aidsh-web"></a>
 

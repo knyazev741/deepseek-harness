@@ -8664,6 +8664,9 @@ importers:
       '@deepseek-ai/dsh-credentials':
         specifier: workspace:^
         version: link:../../packages/credentials/credentials
+      '@deepseek-ai/dsh-external-session':
+        specifier: workspace:^
+        version: link:../../packages/external/external-session
       '@deepseek-ai/dsh-fs':
         specifier: workspace:^
         version: link:../../packages/fs/fs

@@ -503,6 +503,17 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/session/session-projection/src/external-transcript.ts:88`](../packages/session/session-projection/src/external-transcript.ts)
 
+<a id="externalsession-start-failed--log-only"></a>
+
+#### `external/session-start-failed` — log-only
+
+```ts persistence-catalog
+/** A published external session whose provider failed before attachment. Log-only and user-visible. */
+'external/session-start-failed': ExternalSessionStartFailedData
+```
+
+来源：[`packages/session/session-projection/src/external-transcript.ts:47`](../packages/session/session-projection/src/external-transcript.ts)
+
 <a id="externalsession-started--log-only"></a>
 
 #### `external/session-started` — log-only

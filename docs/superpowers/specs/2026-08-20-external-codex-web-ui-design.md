@@ -1,5 +1,7 @@
 # External Codex Web UI Design
 
+English | [中文](2026-08-20-external-codex-web-ui-design.zh.md)
+
 ## Goal
 
 The local single-user Web profile can create a `codex` session and use the official Codex app-server through the normal DeepSeek Harness conversation UI. The session streams assistant text, persists and resumes the same Codex thread, uses the selected model and reasoning effort, routes approvals through Harness, runs the Codex process under Harness file confinement, and exposes an explicit allowlist of Harness tools to Codex through an authenticated local MCP gateway.

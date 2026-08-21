@@ -22,13 +22,17 @@ Harness 运行自己的 agent loop，而 console coding agent 仍属于独立的
 
 使用已注册提供方的 external-mode 会话创建会启动 bridge，绝不会启动原生 Agent；未知 mode 在创建时大声失败。无 mode（`dsh`）的会话不受影响。
 
+带显式 session id 的请求只有在持久化 driver mode 与绝对 cwd 都和请求一致时才是幂等的。native 与 external mode、不同的 external provider 以及不同 cwd 都返回类型化的 `session-conflict` 错误；改变 external model 不会重写持久化身份。冷 external materialization 使用 `SessionPersistence.prepare`，恢复完全相同的 stored header 后再由 bridge announce。
+
 Codex 提供方把实时会话的 sandbox 与 approval fold 合并到每次 external start 或 resume。受限子进程收到精确的 app-server argv 与配置 state root 下的私有 `CODEX_HOME`；默认使用打包的 `@openai/codex` launcher，显式 command 是覆盖项。launcher 环境清洗环境中的凭证形状变量，同时保留显式提供的凭证。稳定的 `model` 与 reasoning `effort` 字段发送到 thread start/resume 与每轮；模型切换只有在原生目录中时才接受，并在下一轮前记录。成功的 `thread/start` 会把品牌化的不透明 `providerThreadId` 写入 `external/session-started`；可信 wire 输出在该边界构造成类型化值，持久输入解析后，冷会话使用显式的 `resume`/`thread/resume`，绝不回退到替代线程。宿主只在实时操作需要时通过 `SessionPersistence.prepare`、`SessionStore.enter` 与 `SessionStore.announce` 物化冷外部会话；history 与 list 保持无进程。start/resume 按会话去重，挂接失败会回滚实时路由，同时让持久日志保持可读。启动生命周期记录在第一次 await 前即可取消；dispose 会先 abort、等待挂接结算，并在共享的 quiescence Promise 上只 teardown 一次，因此不合作的延迟启动不会解析已 dispose 的会话。并发 prompt 串行化，待处理审批在 `external/session-ended` 前取消，清理失败保留在 quiescence 屏障上。子进程死亡会结算活动轮次、在终止前关闭 wire listener、等待进程树，然后使用内存线程 id 在同一提供方实例内重启子进程。会话创建前的模型目录使用明确的 read-only policy；read-only 忽略 state-root 的写授权。
+
+如果提供方在 external session 发布后拒绝启动，bridge 会追加有界的 `external/session-start-failed` 事实，随后追加 `stopReason: error` 的 `external/session-ended`。projection 与 UI 显示固定的安全消息并关闭临时 live seat；原始提供方错误只存在于类型化宿主诊断事件中，不会进入持久日志、client payload 或 snapshot。
 
 ### The `external/*` session events
 
 Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全部为 `ignorable: true`（读取时未知 `external/*` 不会破坏 replay）。实时 frame 增量通过 frame channel 传递，不持久化（`streamDelta` 永不写日志）。只提交以下单元：
 
-`external/session-started`（包含不透明的提供方线程身份）、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/tool-call`、`external/tool-result`、`external/approval-asked`、`external/approval-decided`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
+`external/session-started`（包含不透明的提供方线程身份）、`external/session-start-failed`（有界的提供方失败事实）、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/tool-call`、`external/tool-result`、`external/approval-asked`、`external/approval-decided`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
 
 `/compact` 与 `/model` 按 session mode 路由：压缩调用提供方原生 compact 并记录 notice；模型切换调用 `setModel` 并记录切换。外部 mode 中未知 slash command 作为 prompt 文本传递。
 

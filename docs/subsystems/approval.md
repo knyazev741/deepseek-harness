@@ -157,7 +157,7 @@ overrideOf(session: Session): ApprovalPolicy | undefined
 
 Types: [Agent](core.md) · [Session](session.md)
 
-Source: [`packages/interaction/user-approval/src/index.ts:219`](../../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:229`](../../packages/interaction/user-approval/src/index.ts)
 
 <a id="approval-events"></a>
 
@@ -188,20 +188,21 @@ Source: [`packages/interaction/user-approval/src/index.ts:30`](../../packages/in
 
 #### `approval/request-external` — waterfall
 
-Ask composed answerers for an external principal's tool decision. The principal is the scope key; listeners must return an outcome or call `next()` to delegate, and failures resolve to `unavailable`.
+Ask composed answerers for an external principal's tool decision. The principal is the scope key; listeners must return an outcome or call `next()` to delegate, and failures resolve to `unavailable`. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): external-principal-scoped listeners receive only that principal.
 
 ```ts cordis-catalog
 /**
  * Ask composed answerers for an external principal's tool decision. The
  * principal is the scope key; listeners must return an outcome or call
  * `next()` to delegate, and failures resolve to `unavailable`.
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): external-principal-scoped listeners receive only that principal.
  * @param req - the external principal, tool, call id, reason, and signal.
  * @mode waterfall
  */
-'approval/request-external'(this: Scoped<ApprovalService>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>
+'approval/request-external'(this: Scoped<ExternalApprovalEventCarrier>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>
 ```
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/interaction/user-approval/src/index.ts:38`](../../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:39`](../../packages/interaction/user-approval/src/index.ts)
 <!-- END GENERATED cordis-surface -->

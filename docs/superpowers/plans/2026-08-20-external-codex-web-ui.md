@@ -1,5 +1,7 @@
 # External Codex Web UI Implementation Plan
 
+English | [中文](2026-08-20-external-codex-web-ui.zh.md)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Complete the native Codex external-session path so a local user can create, converse with, approve, resume, and use allowlisted Harness tools from Codex entirely inside the DeepSeek Harness Web UI.
@@ -49,6 +51,9 @@
   Add cases equivalent to:
 
   ```ts
+  import { expect } from 'vitest'
+  import { canonicalPath, writableRoots } from '@deepseek-ai/dsh-sandbox'
+
   expect(writableRoots({
     mode: 'workspace-write',
     workspaceRoot: '/workspace',
@@ -105,6 +110,9 @@
   Cover the following request fields and exact mappings:
 
   ```ts
+  import type { SessionId } from '@deepseek-ai/dsh-session'
+  import type { ApprovalPolicy, ReasoningEffort, SandboxMode } from '@deepseek-ai/dsh-external-session'
+
   interface ExternalSessionStart {
     sessionId: SessionId
     provider: string
@@ -228,7 +236,7 @@
   Assert a provider delta emits and serializes as:
 
   ```ts
-  { type: 'external/delta', sessionId, turnId, delta }
+  const frame = { type: 'external/delta', sessionId: 'session-id', turnId: 'turn-id', delta: 'text' }
   ```
 
   Invalid ids/data must fail the schema; no session event is appended.
@@ -273,6 +281,10 @@
 - Produces:
 
   ```ts
+  import type { Context } from '@deepseek-ai/cordis'
+  import type { Session } from '@deepseek-ai/dsh-session'
+  import type { ExternalToolPrincipalId, ToolExecutionRecorder } from '@deepseek-ai/dsh-tools'
+
   interface ExternalToolPrincipal {
     readonly kind: 'external'
     readonly id: ExternalToolPrincipalId
@@ -368,6 +380,8 @@
 - Produces:
 
   ```ts
+  import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
+
   interface McpGatewayLease extends AsyncDisposable {
     readonly url: string
     readonly bearerToken: string

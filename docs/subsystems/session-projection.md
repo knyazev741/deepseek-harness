@@ -258,5 +258,5 @@ restore(checkpoint: ProjectionCheckpoint, events: readonly SessionEvent[], baseS
 
 Types: [Session](session.md) · [SessionEvent](session.md)
 
-Source: [`packages/session/session-projection/src/index.ts:195`](../../packages/session/session-projection/src/index.ts)
+Source: [`packages/session/session-projection/src/index.ts:196`](../../packages/session/session-projection/src/index.ts)
 <!-- END GENERATED cordis-surface -->

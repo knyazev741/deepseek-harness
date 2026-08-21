@@ -69,10 +69,11 @@ interface SessionHeader {
    */
   readonly seedLength?: number
   /**
-   * Coarse product classification for a session created as a subagent child.
-   * This is presentation metadata, not proof that the child is continuable.
+   * Coarse durable product classification for a session's creation context —
+   * a subagent child or a headless CI-review run. This is presentation
+   * metadata, not proof of continuability.
    */
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'github-actions'
   /**
    * Delegation depth: absent (zero) for a top-level session, parent depth + 1
    * for a subagent child. Persisted so a recursion budget survives restart and
@@ -86,6 +87,20 @@ interface SessionHeader {
    * would replay history the model can no longer act on.
    */
   readonly agentPreset?: string
+  /**
+   * Which driver owns this session: absent means the native agent loop
+   * (`dsh`), while a registered external-provider name means an external
+   * console agent (Codex, an ACP client) drives it. Presented as a
+   * client-plane choice at session creation; durable so the driver stays
+   * resolvable across restart.
+   */
+  readonly mode?: string
+  /**
+   * Initial model for an external-mode session: a provider id from that mode's
+   * catalog/roster, stamped at creation so the bridge driver can hand it to
+   * the provider at start. Absent lets the provider/default apply.
+   */
+  readonly model?: string
 }
 ```
 
@@ -95,7 +110,7 @@ A backend refuses a log it cannot faithfully interpret with `SessionFormatUnsupp
 
 ## `CreateSessionOptions` — seeding and metadata
 
-Creating a `Session` through the store takes a `seed` (initial replay or fork history) and `meta` (the storage-level fields the store folds into a `SessionHeader`). The store fills in `version`/`id` and defaults `createdAt`; the caller may supply the validated absolute `cwd`, the `parentSession` lineage, the `seedLength` seed boundary, the optional coarse `origin`, the `delegationDepth`, the `agentPreset` the agent was composed from, and an existing `createdAt`. `origin: 'subagent'` lets product navigation hide duplicate child rows; it does not prove that a descriptor is valid or that the child can resume.
+Creating a `Session` through the store takes a `seed` (initial replay or fork history) and `meta` (the storage-level fields the store folds into a `SessionHeader`). The store fills in `version`/`id` and defaults `createdAt`; the caller may supply the validated absolute `cwd`, the `parentSession` lineage, the `seedLength` seed boundary, the optional coarse `origin`, the `delegationDepth`, the `agentPreset` the agent was composed from, the external driver `mode`, the initial external `model`, and an existing `createdAt`. `origin: 'subagent'` lets product navigation hide duplicate child rows; it does not prove that a descriptor is valid or that the child can resume. `mode` and `model` persist the external-session driver choice and provider model used when the bridge starts or resumes that session.
 
 ```ts type-equiv
 /**
@@ -115,9 +130,13 @@ interface CreateSessionOptions {
     readonly parentSession?: SessionId
     readonly createdAt?: number
     readonly seedLength?: number
-    readonly origin?: 'subagent'
+    readonly origin?: 'subagent' | 'github-actions'
     readonly delegationDepth?: number
     readonly agentPreset?: string
+    /** Driver name; absent uses the native `dsh` agent loop. */
+    readonly mode?: string
+    /** Initial provider model for an external-mode session. */
+    readonly model?: string
   }
 }
 ```

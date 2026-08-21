@@ -90,7 +90,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }[T]
 ```
 
-Sources: [`packages/core/session/src/types.ts:353`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:360`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:389`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:421`](../packages/core/session/src/types.ts)
+Sources: [`packages/core/session/src/types.ts:355`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:362`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:391`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:423`](../packages/core/session/src/types.ts)
 
 ## Events
 
@@ -160,7 +160,7 @@ Source: [`packages/preset/agent-presets/src/session.ts:26`](../packages/preset/a
 
 Types: [CallId](subsystems/core.md)
 
-Source: [`packages/interaction/user-approval/src/index.ts:52`](../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:53`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="approvaldecided--log-only"></a>
 
@@ -178,7 +178,7 @@ Source: [`packages/interaction/user-approval/src/index.ts:52`](../packages/inter
 }
 ```
 
-Source: [`packages/interaction/user-approval/src/index.ts:63`](../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:64`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="approvalpolicy--log-only"></a>
 
@@ -200,7 +200,7 @@ Source: [`packages/interaction/user-approval/src/index.ts:63`](../packages/inter
 }
 ```
 
-Source: [`packages/interaction/user-approval/src/index.ts:75`](../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:76`](../packages/interaction/user-approval/src/index.ts)
 
 ### `assistant/*`
 
@@ -215,7 +215,7 @@ Source: [`packages/interaction/user-approval/src/index.ts:75`](../packages/inter
 
 Types: [StreamChunk](subsystems/llm-streaming.md)
 
-Source: [`packages/core/session/src/types.ts:283`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:285`](../packages/core/session/src/types.ts)
 
 <a id="assistantmessage--surface"></a>
 
@@ -233,7 +233,7 @@ Source: [`packages/core/session/src/types.ts:283`](../packages/core/session/src/
 
 Types: [TokenUsage](subsystems/llm-streaming.md)
 
-Source: [`packages/core/session/src/types.ts:290`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:292`](../packages/core/session/src/types.ts)
 
 ### `command/*`
 
@@ -403,7 +403,7 @@ Source: [`packages/compaction/compaction/src/types.ts:33`](../packages/compactio
 'external/approval-asked': ExternalApprovalAskedData
 ```
 
-Source: [`packages/interaction/user-approval/src/index.ts:84`](../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:85`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="externalapproval-decided--log-only"></a>
 
@@ -414,7 +414,7 @@ Source: [`packages/interaction/user-approval/src/index.ts:84`](../packages/inter
 'external/approval-decided': ExternalApprovalDecidedData
 ```
 
-Source: [`packages/interaction/user-approval/src/index.ts:86`](../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:87`](../packages/interaction/user-approval/src/index.ts)
 
 <a id="externalcompaction-noticed--log-only"></a>
 
@@ -428,7 +428,7 @@ Source: [`packages/interaction/user-approval/src/index.ts:86`](../packages/inter
 'external/compaction-noticed': ExternalCompactionNoticedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:81`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:83`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalmessage-added--log-only"></a>
 
@@ -442,7 +442,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:81`](..
 'external/message-added': ExternalMessageAddedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:55`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:57`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalmodel-switched--log-only"></a>
 
@@ -456,7 +456,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:55`](..
 'external/model-switched': ExternalModelSwitchedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:76`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:78`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalpermission-asked--log-only"></a>
 
@@ -471,7 +471,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:76`](..
 'external/permission-asked': ExternalPermissionAskedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:66`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:68`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalpermission-decided--log-only"></a>
 
@@ -485,7 +485,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:66`](..
 'external/permission-decided': ExternalPermissionDecidedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:71`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:73`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalsession-ended--log-only"></a>
 
@@ -499,7 +499,18 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:71`](..
 'external/session-ended': ExternalSessionEndedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:91`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:93`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalsession-start-failed--log-only"></a>
+
+#### `external/session-start-failed` — log-only
+
+```ts persistence-catalog
+/** A published external session whose provider failed before attachment. Log-only and user-visible. */
+'external/session-start-failed': ExternalSessionStartFailedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:47`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalsession-started--log-only"></a>
 
@@ -529,7 +540,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:45`](..
 'external/tool-activity': ExternalToolActivityData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:60`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:62`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externaltool-call--log-only"></a>
 
@@ -540,7 +551,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:60`](..
 'external/tool-call': ExternalToolCallData
 ```
 
-Source: [`packages/external/external-session/src/types.ts:161`](../packages/external/external-session/src/types.ts)
+Source: [`packages/external/external-session/src/types.ts:181`](../packages/external/external-session/src/types.ts)
 
 <a id="externaltool-result--log-only"></a>
 
@@ -551,7 +562,7 @@ Source: [`packages/external/external-session/src/types.ts:161`](../packages/exte
 'external/tool-result': ExternalToolResultData
 ```
 
-Source: [`packages/external/external-session/src/types.ts:163`](../packages/external/external-session/src/types.ts)
+Source: [`packages/external/external-session/src/types.ts:183`](../packages/external/external-session/src/types.ts)
 
 <a id="externalturn-ended--log-only"></a>
 
@@ -565,7 +576,7 @@ Source: [`packages/external/external-session/src/types.ts:163`](../packages/exte
 'external/turn-ended': ExternalTurnEndedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:86`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:88`](../packages/session/session-projection/src/external-transcript.ts)
 
 <a id="externalturn-started--log-only"></a>
 
@@ -579,7 +590,7 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:86`](..
 'external/turn-started': ExternalTurnStartedData
 ```
 
-Source: [`packages/session/session-projection/src/external-transcript.ts:50`](../packages/session/session-projection/src/external-transcript.ts)
+Source: [`packages/session/session-projection/src/external-transcript.ts:52`](../packages/session/session-projection/src/external-transcript.ts)
 
 ### `feedback/*`
 
@@ -735,7 +746,7 @@ Source: [`packages/plan/plan-mode/src/index.ts:53`](../packages/plan/plan-mode/s
 'request/context': RequestContext
 ```
 
-Source: [`packages/core/session/src/types.ts:326`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:328`](../packages/core/session/src/types.ts)
 
 <a id="requestheader--log-only"></a>
 
@@ -749,7 +760,7 @@ Source: [`packages/core/session/src/types.ts:326`](../packages/core/session/src/
 'request/header': { header: EpochHeader; reason: RequestHeaderReason }
 ```
 
-Source: [`packages/core/session/src/types.ts:321`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:323`](../packages/core/session/src/types.ts)
 
 ### `sandbox/*`
 
@@ -824,7 +835,7 @@ Source: [`packages/schedule/schedule/src/types.ts:219`](../packages/schedule/sch
 'session/end-seed': Record<string, never>
 ```
 
-Source: [`packages/core/session/src/types.ts:349`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:351`](../packages/core/session/src/types.ts)
 
 <a id="sessiontitle--log-only"></a>
 
@@ -866,7 +877,7 @@ Source: [`packages/session/session-title-llm/src/index.ts:43`](../packages/sessi
 'step/end': { turn: number; step: number }
 ```
 
-Source: [`packages/core/session/src/types.ts:273`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:275`](../packages/core/session/src/types.ts)
 
 <a id="stepstart--log-only"></a>
 
@@ -877,7 +888,7 @@ Source: [`packages/core/session/src/types.ts:273`](../packages/core/session/src/
 'step/start': { turn: number; step: number }
 ```
 
-Source: [`packages/core/session/src/types.ts:271`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:273`](../packages/core/session/src/types.ts)
 
 ### `subagent/*`
 
@@ -911,7 +922,7 @@ Source: [`packages/subagent/subagent/src/descriptor.ts:37`](../packages/subagent
 
 Types: [TodoItem](subsystems/session.md)
 
-Source: [`packages/core/session/src/types.ts:316`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:318`](../packages/core/session/src/types.ts)
 
 ### `tool/*`
 
@@ -930,7 +941,7 @@ Source: [`packages/core/session/src/types.ts:316`](../packages/core/session/src/
 
 Types: [CallId](subsystems/core.md)
 
-Source: [`packages/core/session/src/types.ts:296`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:298`](../packages/core/session/src/types.ts)
 
 <a id="toolcode-dispatch--log-only"></a>
 
@@ -1005,7 +1016,7 @@ Source: [`packages/core/tools/src/types.ts:40`](../packages/core/tools/src/types
 }
 ```
 
-Source: [`packages/core/session/src/types.ts:308`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:310`](../packages/core/session/src/types.ts)
 
 ### `tool-workflow/*`
 
@@ -1085,7 +1096,7 @@ Source: [`packages/workflow/tool-workflow/src/types.ts:47`](../packages/workflow
 
 Types: [TurnEndReason](subsystems/session.md)
 
-Source: [`packages/core/session/src/types.ts:269`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:271`](../packages/core/session/src/types.ts)
 
 <a id="turnstart--log-only"></a>
 
@@ -1101,7 +1112,7 @@ Source: [`packages/core/session/src/types.ts:269`](../packages/core/session/src/
 'turn/start': { turn: number }
 ```
 
-Source: [`packages/core/session/src/types.ts:260`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:262`](../packages/core/session/src/types.ts)
 
 ### `user/*`
 
@@ -1120,7 +1131,7 @@ Source: [`packages/core/session/src/types.ts:260`](../packages/core/session/src/
 'user/message': UserMessage
 ```
 
-Source: [`packages/core/session/src/types.ts:281`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:283`](../packages/core/session/src/types.ts)
 
 ### `web/*`
 
