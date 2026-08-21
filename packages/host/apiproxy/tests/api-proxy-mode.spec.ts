@@ -7,7 +7,7 @@
  * by the other api-proxy create suites.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
@@ -33,13 +33,19 @@ class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   selected: { model: string; reasoningEffort?: string } | undefined
   preflightResult: ExternalModePreflightResult = { ok: true }
+  preflightCalls = 0
+  preflightGate: Promise<void> | undefined
   constructor(
     readonly provider: string,
     readonly label: string,
   ) {}
   async start(_request: ExternalSessionStart, _bridge: ExternalBridgeContext) {}
   async resume(_request: ExternalSessionStart, _bridge: ExternalBridgeContext, _providerThreadId: ExternalProviderThreadId) {}
-  async preflight() { return this.preflightResult }
+  async preflight() {
+    this.preflightCalls += 1
+    await this.preflightGate
+    return this.preflightResult
+  }
   async prompt() { return { turnId: ExternalTurnId('t1') } }
   interrupt() {}
   async compact() {}
@@ -106,6 +112,132 @@ describe('session.create mode arms', () => {
     expect(first.result.ok).toBe(true)
     expect(second.result).toEqual({ ok: true, value: { sessionId } })
     expect(ctx.sessions.get(sessionId)?.header.model).toBeUndefined()
+  })
+
+  it('resolves a matching retry before a later provider preflight failure', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    const sessionId = SessionId('external-preflight-retry')
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(first.result.ok).toBe(true)
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'AUTH_UNAVAILABLE', message: 'Codex account is not authenticated.' },
+    }
+
+    const retry = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+
+    expect(retry.result).toEqual({ ok: true, value: { sessionId } })
+    expect(provider.preflightCalls).toBe(1)
+  })
+
+  it('reports an existing identity conflict before an unhealthy provider preflight', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    const sessionId = SessionId('external-conflict-before-preflight')
+    ctx.sessions.create(sessionId, { meta: { cwd: '/tmp' } })
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'AUTH_UNAVAILABLE', message: 'Codex account is not authenticated.' },
+    }
+
+    const result = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedMode: 'alpha', existingMode: 'dsh' } },
+    })
+    expect(provider.preflightCalls).toBe(0)
+  })
+
+  it('coalesces concurrent external creates across a yielding persistence list', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    const sessionId = SessionId('external-concurrent-idempotent')
+    let releaseList!: () => void
+    const listReady = new Promise<void>((resolve) => { releaseList = resolve })
+    const list = vi.fn(async () => {
+      await listReady
+      return []
+    })
+    ctx.provide('sessionPersistence', { list } as never)
+
+    const first = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    const second = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    await Promise.resolve()
+    releaseList()
+    const results = await Promise.all([first, second])
+
+    expect(results.every(result => result.result.ok)).toBe(true)
+    expect(ctx.sessions.list().filter(session => session.id === sessionId)).toHaveLength(1)
+    expect(list).toHaveBeenCalledOnce()
+    expect(provider.preflightCalls).toBe(1)
+  })
+
+  it('returns a typed conflict for a concurrent external identity mismatch', async () => {
+    const ctx = await harness()
+    const alpha = ctx.externalSessions.getProvider('alpha') as StubProvider
+    const beta = new StubProvider('beta', 'Beta')
+    ctx.externalSessions.registerProvider(beta)
+    let releaseBeta!: () => void
+    const betaReady = new Promise<void>((resolve) => { releaseBeta = resolve })
+    beta.preflightGate = betaReady
+    const sessionId = SessionId('external-concurrent-conflict')
+
+    const winner = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    const conflict = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'beta' }))
+    const winnerResult = await winner
+    releaseBeta()
+    const conflictResult = await conflict
+
+    expect(winnerResult.result.ok).toBe(true)
+    expect(conflictResult.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedMode: 'beta', existingMode: 'alpha' } },
+    })
+    expect(alpha.preflightCalls).toBe(1)
+    expect(beta.preflightCalls).toBe(0)
+  })
+
+  it('returns a typed cwd conflict for a concurrent external create', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    let releasePreflight!: () => void
+    const preflightReady = new Promise<void>((resolve) => { releasePreflight = resolve })
+    provider.preflightGate = preflightReady
+    const sessionId = SessionId('external-concurrent-cwd-conflict')
+
+    const winner = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    await Promise.resolve()
+    const conflict = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp/other', mode: 'alpha' }))
+    releasePreflight()
+    const [winnerResult, conflictResult] = await Promise.all([winner, conflict])
+
+    expect(winnerResult.result.ok).toBe(true)
+    expect(conflictResult.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedCwd: '/tmp/other', existingCwd: '/tmp' } },
+    })
+    expect(provider.preflightCalls).toBe(1)
+  })
+
+  it('cleans a failed creation barrier so a later new id can retry', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    const sessionId = SessionId('external-failed-then-retry')
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'PREFLIGHT_FAILED', message: 'provider is starting' },
+    }
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(first.result.ok).toBe(false)
+    provider.preflightResult = { ok: true }
+
+    const retry = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+
+    expect(retry.result).toEqual({ ok: true, value: { sessionId } })
+    expect(ctx.sessions.get(sessionId)?.header.mode).toBe('alpha')
+    expect(provider.preflightCalls).toBe(2)
   })
 
   it('rejects an external create when the existing id is native', async () => {

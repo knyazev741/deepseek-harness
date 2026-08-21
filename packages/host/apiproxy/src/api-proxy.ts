@@ -62,7 +62,7 @@ import type {} from '@deepseek-ai/dsh-session-projection'
 // Type-only: resolves `ctx.get('externalSessions')` for external-mode session
 // creation and provider resolution (optional composition; the external
 // session seams are not mounted in every deployment).
-import type {} from '@deepseek-ai/dsh-external-session'
+import type { ExternalModePreflightCode } from '@deepseek-ai/dsh-external-session'
 import { parseExternalProviderThreadId } from '@deepseek-ai/dsh-external-session'
 // Value edge: the host-side external-mode command router reuses the canonical
 // slash-line parser so its `/compact` and `/model` arms and the pass-through
@@ -1095,6 +1095,24 @@ class SessionDriverConflict extends Error {
   }
 }
 
+/** A new external session cannot pass its provider-owned preflight. */
+class ExternalModeUnavailable extends Error {
+  constructor(
+    readonly mode: string,
+    readonly reason: ExternalModePreflightCode,
+    message: string,
+  ) {
+    super(message)
+  }
+}
+
+/** A new external session names a provider that is not registered. */
+class ExternalModeUnknown extends Error {
+  constructor(readonly mode: string) {
+    super(`no external session provider registered for mode "${mode}"`)
+  }
+}
+
 /** Normalize the durable native-driver sentinel used by the create API. */
 function sessionDriverMode(session: Pick<Session, 'header'>): string {
   return session.header.mode ?? 'dsh'
@@ -1251,6 +1269,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   const presetSwitches = new Map<SessionId, Promise<unknown>>()
   /** Client-chosen identity creation/resume, deduplicated across concurrent retries. */
   const sessionCreations = new Map<SessionId, Promise<Agent>>()
+  /** Shared identity publication barrier across native and external create arms. */
+  const sessionCreationBarriers = new Map<SessionId, Promise<Session>>()
   /** Cold external-session attachment, shared across concurrent first actions. */
   const externalAttachments = new Map<SessionId, Promise<Session>>()
   /** Serializes path ownership and explicit title checks with Workspace mutations. */
@@ -1865,7 +1885,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   }
 
   /** Resolve one requested identity to a live agent, creating or resuming it once. */
-  async function ensureSession(
+  async function ensureNativeSession(
     sessionId: SessionId,
     cwd: string,
     checkPersistedIdentity: boolean,
@@ -1943,11 +1963,50 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       })
       sessionCreations.set(sessionId, creation)
     }
-    const agent = await creation
+    return creation
+  }
+
+  /**
+   * Share one native/external identity operation, including all asynchronous
+   * persistence and provider work, so concurrent callers observe one result.
+   * @param sessionId - the identity being created or adopted.
+   * @param operation - the operation that may publish or resume the identity.
+   * @returns the shared session promise.
+   */
+  function shareSessionCreation(
+    sessionId: SessionId,
+    operation: () => Promise<Session>,
+  ): Promise<Session> {
+    const pending = sessionCreationBarriers.get(sessionId)
+    if (pending !== undefined) return pending
+    const creation = Promise.resolve().then(operation).finally(() => {
+      if (sessionCreationBarriers.get(sessionId) === creation) {
+        sessionCreationBarriers.delete(sessionId)
+      }
+    })
+    sessionCreationBarriers.set(sessionId, creation)
+    return creation
+  }
+
+  /** Resolve one requested native identity through the shared publication barrier. */
+  async function ensureSession(
+    sessionId: SessionId,
+    cwd: string,
+    checkPersistedIdentity: boolean,
+    presetId?: string,
+  ): Promise<Agent> {
+    const session = await shareSessionCreation(sessionId, async () => {
+      const agent = await ensureNativeSession(sessionId, cwd, checkPersistedIdentity, presetId)
+      return agent.session
+    })
+    const agent = ctx.agents.get(sessionId)
+    if (agent === undefined) {
+      // A concurrent external create owns this identity; report its durable
+      // driver/cwd conflict before any native fallback or duplicate error.
+      assertSessionIdentity(session, 'dsh', cwd)
+      throw new Error(`session "${sessionId}" has no native agent`)
+    }
     if (hasSubagentOwner(agent.session, agent)) throw new SubagentSessionOwnership(sessionId)
-    // Beside the cwd check for the same reason, and after the await so it
-    // covers every path that yields a live agent — freshly created, adopted
-    // live, resumed from disk, or recovered by the concurrent-creation catch.
     assertPresetUnchanged(sessionId, presetId, resolveSessionPreset(agent.session))
     if (agent.session.header.cwd !== cwd) {
       throw new SessionCwdConflict(sessionId, cwd, agent.session.header.cwd)
@@ -1965,37 +2024,51 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * @param cwd - the absolute project directory the external agent runs in.
    * @param mode - the registered external provider name driving this session.
    * @param model - optional initial model id from the mode's catalog/roster.
+   * @param preflight - provider health check run only for a new identity.
    * @returns the entered session (a pre-existing one is returned unchanged).
    */
-  async function ensureExternalSession(sessionId: SessionId, cwd: string, mode: string, model?: string): Promise<Session> {
-    const existing = ctx.sessions.get(sessionId)
-    if (existing !== undefined) {
-      assertSessionIdentity(existing, mode, cwd)
-      return existing
-    }
-    const persistence = ctx.get('sessionPersistence')
-    if (persistence !== undefined) {
-      const stored = (await persistence.list()).find(header => header.id === sessionId)
-      if (stored !== undefined) {
-        const preparation = await persistence.prepare(sessionId)
-        try {
-          assertSessionIdentity(preparation.session, mode, cwd)
-          const detach = ctx.sessions.enter(preparation.session)
+  async function ensureExternalSession(
+    sessionId: SessionId,
+    cwd: string,
+    mode: string,
+    model: string | undefined,
+    preflight: () => Promise<void>,
+  ): Promise<Session> {
+    const session = await shareSessionCreation(sessionId, async () => {
+      const existing = ctx.sessions.get(sessionId)
+      if (existing !== undefined) {
+        assertSessionIdentity(existing, mode, cwd)
+        return existing
+      }
+      const persistence = ctx.get('sessionPersistence')
+      if (persistence !== undefined) {
+        const stored = (await persistence.list()).find(header => header.id === sessionId)
+        if (stored !== undefined) {
+          const preparation = await persistence.prepare(sessionId)
           try {
-            ctx.sessions.announce(preparation.session)
-            return preparation.session
-          } catch (error: unknown) {
-            detach()
-            throw error
+            assertSessionIdentity(preparation.session, mode, cwd)
+            const detach = ctx.sessions.enter(preparation.session)
+            try {
+              ctx.sessions.announce(preparation.session)
+              return preparation.session
+            } catch (error: unknown) {
+              detach()
+              throw error
+            }
+          } finally {
+            preparation[Symbol.dispose]()
           }
-        } finally {
-          preparation[Symbol.dispose]()
         }
       }
-    }
-    return ctx.sessions.create(sessionId, {
-      meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
+      // A new id is the only path allowed to query provider health. Keeping
+      // this inside the shared barrier also prevents duplicate preflights.
+      await preflight()
+      return ctx.sessions.create(sessionId, {
+        meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
+      })
     })
+    assertSessionIdentity(session, mode, cwd)
+    return session
   }
 
   /** Resolve or create one path while holding the Host's workspace-create chain. */
@@ -2449,27 +2522,37 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const mode = request.payload.mode ?? 'dsh'
         if (mode !== 'dsh') {
           const external = ctx.get('externalSessions')
-          if (external === undefined || external.getProvider(mode) === undefined) {
-            return err(request, {
-              code: 'unknown-mode',
-              message: `no external session provider registered for mode "${mode}"`,
-              details: { mode },
-            })
-          }
-          // The decisive provider check happens before SessionStore.create:
-          // an unavailable binary/auth/sandbox must not publish a stranded
-          // external row that has no live driver behind it.
-          const preflight = await external.preflight(mode, { cwd, sandbox: 'read-only' })
-          if (!preflight.ok) {
-            return err(request, {
-              code: 'external-mode-unavailable',
-              message: preflight.failure.message,
-              details: { mode, reason: preflight.failure.code },
-            })
-          }
           try {
-            await ensureExternalSession(sessionId, cwd, mode, request.payload.model)
+            await ensureExternalSession(
+              sessionId,
+              cwd,
+              mode,
+              request.payload.model,
+              async () => {
+                if (external === undefined || external.getProvider(mode) === undefined) {
+                  throw new ExternalModeUnknown(mode)
+                }
+                const preflight = await external.preflight(mode, { cwd, sandbox: 'read-only' })
+                if (!preflight.ok) {
+                  throw new ExternalModeUnavailable(mode, preflight.failure.code, preflight.failure.message)
+                }
+              },
+            )
           } catch (error: unknown) {
+            if (error instanceof ExternalModeUnknown) {
+              return err(request, {
+                code: 'unknown-mode',
+                message: error.message,
+                details: { mode: error.mode },
+              })
+            }
+            if (error instanceof ExternalModeUnavailable) {
+              return err(request, {
+                code: 'external-mode-unavailable',
+                message: error.message,
+                details: { mode: error.mode, reason: error.reason },
+              })
+            }
             if (error instanceof SessionDriverConflict) {
               return err(request, {
                 code: 'session-conflict',
