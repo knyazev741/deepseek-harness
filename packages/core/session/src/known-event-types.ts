@@ -38,6 +38,7 @@ export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'external/permission-asked',
   'external/permission-decided',
   'external/session-ended',
+  'external/session-start-failed',
   'external/session-started',
   'external/tool-activity',
   'external/tool-call',

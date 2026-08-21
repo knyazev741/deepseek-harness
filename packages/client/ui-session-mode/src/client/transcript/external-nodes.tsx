@@ -100,3 +100,13 @@ export const ExternalModelRow = memo(function ExternalModelRow({ node }: ChatNod
     </div>
   )
 })
+
+/** One safe provider-start failure row after the external session was published. */
+export const ExternalSessionFailureRow = memo(function ExternalSessionFailureRow({ node }: ChatNodeViewProps<'external-session-failure'>) {
+  return (
+    <div className={css.noticeRow} role="alert" data-provider={node.data.provider} data-code={node.data.code}>
+      <span className={css.kicker}>外部智能体</span>
+      <span className={css.body}>{node.data.message}</span>
+    </div>
+  )
+})

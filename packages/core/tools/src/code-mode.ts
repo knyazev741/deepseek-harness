@@ -509,7 +509,13 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
               // locator; the program's value and model-visible result are
               // untouched.
               const logged = await shapeDispatchLog({
-                exec, agent, ...principal !== undefined ? { principal } : {}, subCallId, name, isError: result.isError,
+                exec,
+                scope: executionScope(exec),
+                agent,
+                ...principal !== undefined ? { principal } : {},
+                subCallId,
+                name,
+                isError: result.isError,
                 // The registry deep-froze this projection at result
                 // finalization; append snapshots the final copy again, so
                 // the log stays detached.

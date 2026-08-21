@@ -6,7 +6,7 @@ Host-plane bridge driver for external interactive agent sessions ([`external-ses
 
 The mode-aware creation decision (stamp `mode` on the durable header and create the session *without* a native Agent for an external mode) lives in the session-create gateway, [`dsh-host-apiproxy`](../../host/apiproxy/README.md). This plugin only reacts to already-stamped sessions, so it composes wherever the external-session family is mounted.
 
-Live transcript deltas leave the provider through the external-session service's typed `external/session-delta` event. The API gateway projects that transient event to open mux subscriptions as `external/delta`; this driver does not append a synthetic session event and therefore cannot reconstruct a lost partial after reconnect.
+Live transcript deltas leave the provider through the external-session service's typed `external/session-delta` event. The API gateway projects that transient event to open mux subscriptions as `external/delta`; this driver does not append a synthetic session event and therefore cannot reconstruct a lost partial after reconnect. Committed transcript events, including the terminal `external/session-start-failed` and `external/session-ended` pair described below, remain durable.
 
 ## Lifecycle
 
@@ -15,15 +15,15 @@ Loading the plugin registers the transcript projection and reacts to two lifecyc
 - `session/created` — when a session's header `mode` names a registered provider (and is not `dsh`, the native-agent default), the driver reads the durable `external/session-started` identity. A new session uses `start`; a prepared cold session with a provider thread id uses explicit `resume`, never a replacement `thread/start`. A session created in a mode with no registered provider fails loud at creation (the driver refuses to strand the session).
 - `session/disposed` — the driver disposes the provider for sessions it started, tearing down the external process tree.
 
-A provider's `start` rejection is an asynchronous, post-publication failure it cannot unwind, so it surfaces on the typed host event `external/session-bridge/error` rather than being silently dropped.
+A provider's `start` rejection is an asynchronous, post-publication failure it cannot unwind. The driver appends bounded, secret-free `external/session-start-failed` facts followed by `external/session-ended` with `stopReason: error`; the projection serves those facts to history and the client renders an alert while closing the transient live seat. It also emits the typed host event `external/session-bridge/error` with the raw error for host diagnostics only. The raw error never enters the session log or client payload.
 
 ## Model Experience
 
-None in parent `dsh` sessions: the activity projected here is external-agent activity recorded as log-only `external/*` events, and nothing reaches a parent model request. The external agent it drives is outside the parent's agent loop.
+None, as the host bridge drives an external agent outside the parent DSH model loop and registers no parent model context.
 
 #### KV Cache effect
 
-None; the driver appends nothing to any request prefix.
+None; the driver appends durable external events but nothing to a parent request prefix.
 
 ## Known Limitations and Deferred Work
 

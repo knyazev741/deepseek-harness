@@ -126,7 +126,7 @@ function responseObject(text: string, suffix = '', previousResponseId: string | 
  * @param previousResponseId - prior response id for a chained request.
  * @returns ordered response lifecycle events.
  */
-export function completeResponsesEvents(
+function completeResponsesEvents(
   text: string,
   suffix = '',
   previousResponseId: string | null = null,

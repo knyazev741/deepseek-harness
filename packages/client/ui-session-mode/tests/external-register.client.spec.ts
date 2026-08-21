@@ -19,7 +19,7 @@ interface RegisterMeta {
 }
 
 describe('external transcript registration', () => {
-  it('registers all five definitions through conversationEvents', () => {
+  it('registers all six definitions through conversationEvents', () => {
     const definitions: string[] = []
     const ctx = {
       conversationEvents: {
@@ -30,11 +30,11 @@ describe('external transcript registration', () => {
     registerExternalTranscriptNodes(ctx)
     expect(definitions.sort()).toEqual([
       'external-compaction', 'external-message', 'external-model',
-      'external-permission', 'external-tool',
+      'external-permission', 'external-session-failure', 'external-tool',
     ])
   })
 
-  it('registers five durable rows and one transient live seat', () => {
+  it('registers six durable rows and one transient live seat', () => {
     const metas: RegisterMeta[] = []
     const liveMetas: RegisterMeta[] = []
     let activeSlot: string | undefined
@@ -48,7 +48,7 @@ describe('external transcript registration', () => {
     registerExternalTranscriptRenderers(ctx)
     expect(metas.map(meta => meta.key).sort()).toEqual([
       'external-compaction', 'external-message', 'external-model',
-      'external-permission', 'external-tool',
+      'external-permission', 'external-session-failure', 'external-tool',
     ])
     for (const meta of metas) {
       expect(meta.name).toBe('conversation.chat.node')

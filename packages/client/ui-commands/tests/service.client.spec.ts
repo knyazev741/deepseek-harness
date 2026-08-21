@@ -467,7 +467,7 @@ describe('matchEnter (enter column)', () => {
     })
 
     await expect(b.source.matchEnter!(proj('external'), '/compact', signal())).resolves.toBe('handled')
-    await vi.waitFor(() => expect(command).toHaveBeenCalledWith('/compact'))
+    await vi.waitFor(() => { expect(command).toHaveBeenCalledWith('/compact') })
     expect(consumes).toEqual([{ guard: { kind: 'bare-token', token: '/compact' } }])
     expect(b.listCalls).toEqual([])
   })

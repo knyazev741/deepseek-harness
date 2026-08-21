@@ -83,7 +83,7 @@ export class WebApiClient extends AbstractApiClient {
           if (item.envelope.payload.type === 'external/delta') {
             await new Promise<void>((resolve) => {
               if (typeof globalThis.requestAnimationFrame === 'function') {
-                globalThis.requestAnimationFrame(() => resolve())
+                globalThis.requestAnimationFrame(() => { resolve() })
               } else {
                 setTimeout(resolve, 0)
               }

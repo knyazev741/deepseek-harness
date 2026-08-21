@@ -3,9 +3,33 @@
 
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import type { ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { ExternalLiveSeat, ExternalMessageRow } from '../src/client/transcript/external-nodes.tsx'
 
 afterEach(cleanup)
+
+const rowProps: Omit<ChatNodeViewProps<'external-message'>, 'node'> = {
+  openFile: () => {},
+  inspectCall: () => {},
+  forkAt: () => {},
+  loadImage: async () => '',
+  fileMentions: () => undefined,
+  useSession: (() => undefined) as ChatNodeViewProps<'external-message'>['useSession'],
+  sessionId: '' as ChatNodeViewProps<'external-message'>['sessionId'],
+  useProjection: () => undefined,
+  useInput: (() => undefined) as ChatNodeViewProps<'external-message'>['useInput'],
+  inputActions: {
+    setDraft: () => {},
+    addImages: () => true,
+    removeImage: () => {},
+    pruneImages: () => {},
+    submit: () => {},
+  },
+  useTurnData: () => undefined,
+  useSessions: (() => undefined) as ChatNodeViewProps<'external-message'>['useSessions'],
+  useWorkspaces: (() => undefined) as ChatNodeViewProps<'external-message'>['useWorkspaces'],
+  t: key => key,
+}
 
 describe('external live seat', () => {
   it('renders the current partial as Markdown and removes the seat when it is committed', () => {
@@ -28,7 +52,7 @@ describe('external live seat', () => {
   })
 
   it('keeps committed agent Markdown presentation continuous with the live seat', () => {
-    render(<ExternalMessageRow node={{
+    render(<ExternalMessageRow {...rowProps} node={{
       kind: 'external-message',
       data: { role: 'agent', text: '**bold** [docs](https://example.com/docs)' },
     } as never} />)
@@ -38,7 +62,7 @@ describe('external live seat', () => {
   })
 
   it('keeps committed user text literal', () => {
-    render(<ExternalMessageRow node={{
+    render(<ExternalMessageRow {...rowProps} node={{
       kind: 'external-message',
       data: { role: 'user', text: '**literal** [docs](https://example.com/docs)' },
     } as never} />)

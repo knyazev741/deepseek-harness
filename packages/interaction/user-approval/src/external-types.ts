@@ -35,6 +35,16 @@ export interface ExternalApprovalPrincipal {
   readonly disposal?: AbortSignal
 }
 
+/**
+ * Static carrier identity for the external approval event family. The runtime
+ * receiver is still the ApprovalService; this phantom member keeps the
+ * scoped-event generator's external routing key separate from native Agent
+ * requests while preserving the service's Cordis filter.
+ */
+export interface ExternalApprovalEventCarrier {
+  readonly __externalApprovalEventCarrier: never
+}
+
 /** External approval request routed through the principal's scoped context. */
 export interface ExternalApprovalRequest {
   /** External execution identity; no native Agent is created. */

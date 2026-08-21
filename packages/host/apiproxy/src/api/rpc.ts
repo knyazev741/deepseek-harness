@@ -34,7 +34,9 @@ export interface RpcErrorDetailsMap {
   'cancelled': {}
   'session-not-found': { sessionId: SessionId }
   'model-unavailable': { provider: string; model: string }
-  'session-conflict': { sessionId: SessionId; requestedCwd: string; existingCwd?: string }
+  'session-conflict':
+    | { sessionId: SessionId; requestedCwd: string; existingCwd?: string }
+    | { sessionId: SessionId; requestedMode: string; existingMode: string }
   /**
    * A session.create named a driver mode that is neither `dsh` nor a
    * registered external provider, so no session was created.

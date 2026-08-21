@@ -496,7 +496,7 @@ export class CodexExternalSession {
 
   /** Ask the human through the bridge and answer the app-server approval. */
   private async answerApproval(ask: CodexApprovalAsk, generation: number): Promise<string> {
-    if (this.disposed || this.bridge.disposal.aborted || this.live?.generation !== generation) return 'cancel'
+    if (!this.isCurrentGeneration(generation)) return 'cancel'
     const askId = ask.itemId.length > 0 ? ask.itemId : `ask-${randomUUID()}`
     const title = ask.reason ?? 'Run a command in the workspace'
     const options = this.approvalOptions(ask.availableDecisions)
@@ -521,7 +521,7 @@ export class CodexExternalSession {
       this.bridge.disposal.removeEventListener('abort', onDispose)
       this.pendingApprovals.delete(cancellation)
     }
-    if (this.disposed || this.bridge.disposal.aborted || this.live?.generation !== generation) return 'cancel'
+    if (!this.isCurrentGeneration(generation)) return 'cancel'
     const requested = outcome === 'allowed' ? 'accept' : outcome === 'rejected' ? 'decline' : 'cancel'
     const decision = offeredApprovalDecision(ask.availableDecisions, requested)
     this.append('external/permission-decided', { askId, outcome })
@@ -574,7 +574,7 @@ export class CodexExternalSession {
     processFailure.catch(() => {})
     void handle.done.then(
       (outcome) => {
-        if (live !== undefined && this.live?.handle === handle) {
+        if (this.live?.handle === handle) {
           this.handleProcessClosed(live, new Error(
             'external-session-codex: app-server exited before the operation settled '
             + `(code ${String(outcome.exitCode)}, signal ${String(outcome.signal)})`,
@@ -582,7 +582,7 @@ export class CodexExternalSession {
         }
       },
       (error: unknown) => {
-        if (live !== undefined && this.live?.handle === handle) this.handleProcessClosed(live, thrown(error))
+        if (this.live?.handle === handle) this.handleProcessClosed(live, thrown(error))
       },
     )
     this.live = live
@@ -596,10 +596,22 @@ export class CodexExternalSession {
         await Promise.race([wire.resumeThread(this.threadId, signal, this.settings), processFailure])
       }
     } catch (error: unknown) {
-      if (this.live?.handle === handle) this.live = undefined
+      const current = this.currentLive()
+      if (current !== undefined && current.handle === handle) this.live = undefined
       await this.cleanupLive(live)
       throw thrown(error)
     }
+  }
+
+  /** Read the live generation across an async callback without retaining a stale narrowing. */
+  private isCurrentGeneration(generation: number): boolean {
+    const live = this.live
+    return !this.disposed && !this.bridge.disposal.aborted && live !== undefined && live.generation === generation
+  }
+
+  /** Read the current child after an async startup operation. */
+  private currentLive(): LiveProcess | undefined {
+    return this.live
   }
 
   /** Handle one process failure for the exact child that owned the wire. */

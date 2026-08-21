@@ -32,10 +32,11 @@ declare module '@deepseek-ai/cordis' {
      * Ask composed answerers for an external principal's tool decision. The
      * principal is the scope key; listeners must return an outcome or call
      * `next()` to delegate, and failures resolve to `unavailable`.
+     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): external-principal-scoped listeners receive only that principal.
      * @param req - the external principal, tool, call id, reason, and signal.
      * @mode waterfall
      */
-    'approval/request-external'(this: Scoped<ApprovalService>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>
+    'approval/request-external'(this: Scoped<ExternalApprovalEventCarrier>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>
   }
 }
 
@@ -93,7 +94,11 @@ import type {
   ExternalApprovalAskedData,
   ExternalApprovalDecidedData,
 } from './types.ts'
-import type { ExternalApprovalPrincipal, ExternalApprovalRequest } from './external-types.ts'
+import type {
+  ExternalApprovalEventCarrier,
+  ExternalApprovalPrincipal,
+  ExternalApprovalRequest,
+} from './external-types.ts'
 
 export { ApprovalRequestId } from './types.ts'
 export type {
@@ -103,7 +108,12 @@ export type {
   ExternalToolCallId,
   ExternalToolPrincipalId,
 } from './types.ts'
-export type { ExternalApprovalPrincipal, ExternalApprovalRecorder, ExternalApprovalRequest } from './external-types.ts'
+export type {
+  ExternalApprovalEventCarrier,
+  ExternalApprovalPrincipal,
+  ExternalApprovalRecorder,
+  ExternalApprovalRequest,
+} from './external-types.ts'
 
 /** Every {@link ApprovalOutcome}, for runtime normalization of answerer returns. */
 const OUTCOMES: readonly ApprovalOutcome[] = ['allowed-once', 'rejected', 'cancelled', 'unavailable']
@@ -422,7 +432,7 @@ export class ApprovalService extends Service {
     if (this.effectivePolicy(session) === 'never') return 'rejected'
     const answer: Promise<ApprovalOutcome> = Promise.resolve().then(
       () => this.ctx.waterfall(
-        scopeTarget(this, req.principal), 'approval/request-external', req,
+        scopeTarget(this as unknown as ExternalApprovalEventCarrier, req.principal), 'approval/request-external', req,
         () => Promise.resolve<ApprovalOutcome>('unavailable'),
       ),
     ).then(

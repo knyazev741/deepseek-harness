@@ -44,6 +44,7 @@ export type {
   ExternalMessageRole,
   ExternalToolActivityKind,
   ExternalSessionStartedData,
+  ExternalSessionStartFailedData,
   ExternalTurnStartedData,
   ExternalMessageAddedData,
   ExternalToolActivityData,

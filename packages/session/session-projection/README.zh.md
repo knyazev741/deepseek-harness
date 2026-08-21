@@ -27,6 +27,7 @@
 - **本层没有协议词汇。** 注册表只暴露变更流与快照读取面；载体（api-proxy）据此自铸各自的帧（`session/projection`）与块。
 - **可选能力。** 领域插件在 `ctx.inject(['sessionProjections'], …)` 下注册，因此不带注册表的 headless 组装完全不受影响；载体使用 `ctx.get('sessionProjections')`，注册表缺席时完全省略自己的块与帧。
 - **运行身份不进入转写渲染。** external-transcript 单元在回放值中保留 `external/session-started` 的不透明 `providerThreadId` 供宿主挂接，但转写呈现器只渲染外部对话与活动字段。
+- **发布后的启动失败保持持久且有界。** 提供方在会话发布后拒绝时，external-transcript 单元会从 `external/session-start-failed` 折叠出 `startupFailure`；事件只携带提供方、稳定失败类别和固定的安全消息。宿主随后追加 `stopReason: error` 的 `external/session-ended`，因此历史和客户端可以显示失败而不会暴露提供方原始诊断。
 - **外部工具记录在回放中保持配对。** external-transcript 单元把每个已提交的 `external/tool-call` 暴露为 `toolCalls` 节点，并按 branded call id 将恰好一个匹配的 `external/tool-result` 附加到它，保留 JSON 结果或有界的 `{ message, code? }` 错误。未匹配、格式错误、名称错误、重复、冲突或有歧义的记录会被忽略，不会凭空创建或重新指派转写节点。
 
 ## 职责

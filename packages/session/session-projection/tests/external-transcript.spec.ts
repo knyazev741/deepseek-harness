@@ -139,6 +139,26 @@ describe('external/* event vocabulary', () => {
     })
   })
 
+  it('folds bounded startup failure facts and the terminal stop reason', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-start-failed', {
+      provider: 'codex',
+      code: 'startup-failed',
+      message: 'External provider failed to start; check the provider configuration.',
+    })
+    session.append('external/session-ended', { stopReason: 'error' })
+
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      startupFailure: {
+        provider: 'codex',
+        code: 'startup-failed',
+        message: 'External provider failed to start; check the provider configuration.',
+      },
+      stopReason: 'error',
+    })
+  })
+
   it('folds a scripted external turn sequence into transcript-shaped state', async () => {
     const { ctx, session } = await harness()
     ctx.sessionProjections.register(externalTranscriptProjectionDefinition)

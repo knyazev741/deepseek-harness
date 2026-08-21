@@ -22,6 +22,7 @@ class StubProvider implements ExternalSessionProvider {
   started: boolean | undefined
   resumed: ExternalProviderThreadId | undefined
   disposeError: Error | undefined
+  startError: Error | undefined
 
   constructor(
     readonly provider: string,
@@ -30,6 +31,7 @@ class StubProvider implements ExternalSessionProvider {
 
   async start(request: ExternalSessionStart, bridgeCtx: ExternalBridgeContext): Promise<void> {
     this.started = true
+    if (this.startError !== undefined) throw this.startError
     bridgeCtx.appendEvent(request.sessionId, {
       type: 'external/session-started',
       data: { provider: this.provider, cwd: request.cwd, providerThreadId: ExternalProviderThreadId('opaque-thread-started') },
@@ -101,6 +103,33 @@ describe('external-session-bridge driver', () => {
     detach()
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(errors).toEqual([provider.disposeError])
+  })
+
+  it('records a bounded terminal failure when provider startup rejects after publication', async () => {
+    const { ctx: loaded, provider } = await setup()
+    const raw = Object.assign(new Error('secret credential and command details'), { code: 'START_FAILED' })
+    provider.startError = raw
+    const session = loaded.sessions.create(SessionId('start-error'), { meta: { cwd: '/tmp', mode: 'alpha' } })
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(session.events.map(event => event.type)).toEqual([
+      'external/session-start-failed',
+      'external/session-ended',
+    ])
+    expect(session.events[0]?.data).toEqual({
+      provider: 'alpha',
+      code: 'startup-failed',
+      message: '外部智能体启动失败，请检查提供方配置。',
+    })
+    expect(JSON.stringify(session.events)).not.toContain('secret credential')
+    expect(loaded.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      startupFailure: {
+        provider: 'alpha',
+        code: 'startup-failed',
+        message: '外部智能体启动失败，请检查提供方配置。',
+      },
+      stopReason: 'error',
+    })
   })
 
   it('resumes a cold external session from its durable provider thread id', async () => {

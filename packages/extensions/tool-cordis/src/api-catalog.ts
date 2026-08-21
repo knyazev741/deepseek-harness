@@ -2404,9 +2404,9 @@ export const EVENT_API: readonly EventApiEntry[] = [
   {
     name: 'approval/request-external',
     mode: 'waterfall',
-    signature: '\'approval/request-external\'(this: Scoped<ApprovalService>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>',
+    signature: '\'approval/request-external\'(this: Scoped<ExternalApprovalEventCarrier>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>',
     summary: 'Ask composed answerers for an external principal\'s tool decision.',
-    description: 'Ask composed answerers for an external principal\'s tool decision. The principal is the scope key; listeners must return an outcome or call `next()` to delegate, and failures resolve to `unavailable`.',
+    description: 'Ask composed answerers for an external principal\'s tool decision. The principal is the scope key; listeners must return an outcome or call `next()` to delegate, and failures resolve to `unavailable`. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): external-principal-scoped listeners receive only that principal.',
     parameters: [{ name: 'req', description: 'the external principal, tool, call id, reason, and signal.' }],
   },
   {
@@ -2502,7 +2502,7 @@ export const EVENT_API: readonly EventApiEntry[] = [
     mode: 'emit',
     signature: '\'external/session-bridge/error\'(payload: { sessionId: SessionId provider: string error: unknown }): void',
     summary: 'An external provider\'s `start` rejected for a session already published in an external mode, so no live external process is running.',
-    description: 'An external provider\'s `start` rejected for a session already published in an external mode, so no live external process is running. A later phase decides the durable/UI surface; here it is the loud host signal that the create-time mode choice did not come up.',
+    description: 'An external provider\'s `start` rejected for a session already published in an external mode, so no live external process is running. A later phase also records bounded `external/session-start-failed` and terminal `external/session-ended` events; this signal carries the raw host error only for diagnostics and is not the client-facing failure surface.',
     parameters: [{ name: 'payload', description: 'the session, its chosen provider, and the rejection reason.' }],
   },
   {
@@ -2959,7 +2959,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'CodeDispatchLog',
-    declaration: 'export interface CodeDispatchLog {\n    readonly exec: ToolExecution;\n    readonly agent?: Agent;\n    readonly principal?: ExternalToolPrincipal;\n    readonly subCallId: CallId;\n    readonly name: string;\n    readonly isError: boolean;\n    readonly content: ContentBlock[];\n}',
+    declaration: 'export interface CodeDispatchLog {\n    readonly exec: ToolExecution;\n    readonly scope: ScopeKey | undefined;\n    readonly agent?: Agent;\n    readonly principal?: ExternalToolPrincipal;\n    readonly subCallId: CallId;\n    readonly name: string;\n    readonly isError: boolean;\n    readonly content: ContentBlock[];\n}',
   },
   {
     name: 'CodeJsonValue',
@@ -3236,6 +3236,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ExternalAgentDescriptor',
     declaration: 'export interface ExternalAgentDescriptor {\n    readonly provider: string;\n    readonly label: string;\n    readonly modelDirectory: ExternalModelDirectory;\n}',
+  },
+  {
+    name: 'ExternalApprovalEventCarrier',
+    declaration: 'export interface ExternalApprovalEventCarrier {\n    readonly __externalApprovalEventCarrier: never;\n}',
   },
   {
     name: 'ExternalApprovalPrincipal',
@@ -3935,7 +3939,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RpcErrorDetailsMap',
-    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'unknown-mode\': {\n        mode: string;\n    };\n    \'external-mode-unavailable\': {\n        mode: string;\n        reason: \'BINARY_MISSING\' | \'AUTH_UNAVAILABLE\' | \'INVALID_CONFIG\' | \'SANDBOX_INCOMPATIBLE\' | \'PREFLIGHT_FAILED\';\n    };\n    \'invalid-mode\': {\n        sessionId: SessionId;\n    };\n    \'external-session\': {\n        sessionId: SessionId;\n        mode: string;\n    };\n    \'external-images-unsupported\': {\n        mode: string;\n    };\n    \'external-steer-unsupported\': {\n        mode: string;\n    };\n    \'external-queue-unsupported\': {\n        mode?: string;\n        itemId?: MessageId;\n        action?: string;\n    };\n    \'external-goals-unsupported\': {\n        command: string;\n    };\n    \'external-command-failed\': {\n        sessionId: SessionId;\n        line: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        nam /* …truncated — full shape in source */',
+    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    } | {\n        sessionId: SessionId;\n        requestedMode: string;\n        existingMode: string;\n    };\n    \'unknown-mode\': {\n        mode: string;\n    };\n    \'external-mode-unavailable\': {\n        mode: string;\n        reason: \'BINARY_MISSING\' | \'AUTH_UNAVAILABLE\' | \'INVALID_CONFIG\' | \'SANDBOX_INCOMPATIBLE\' | \'PREFLIGHT_FAILED\';\n    };\n    \'invalid-mode\': {\n        sessionId: SessionId;\n    };\n    \'external-session\': {\n        sessionId: SessionId;\n        mode: string;\n    };\n    \'external-images-unsupported\': {\n        mode: string;\n    };\n    \'external-steer-unsupported\': {\n        mode: string;\n    };\n    \'external-queue-unsupported\': {\n        mode?: string;\n        itemId?: MessageId;\n        action?: string;\n    };\n    \'external-goals-unsupported\': {\n        command: string;\n    };\n    \'external-command-failed\': {\n        sessionId: SessionId;\n        line: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n     /* …truncated — full shape in source */',
   },
   {
     name: 'RpcId',
@@ -4675,7 +4679,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolExecutionInput',
-    declaration: 'export type ToolExecutionInput = {\n    readonly callId: CallId;\n    readonly rootCallId?: CallId;\n    readonly name: string;\n    readonly arguments: unknown;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n} & import(\'./execution-subject.ts\').ToolExecutionIdentity;',
+    declaration: 'export type ToolExecutionInput = {\n    readonly callId: CallId;\n    readonly rootCallId?: CallId;\n    readonly name: string;\n    readonly arguments: unknown;\n    readonly parent?: ToolExecutionToken;\n    readonly signal: AbortSignal;\n    readonly scope?: ScopeKey;\n} & import(\'./execution-subject.ts\').ToolExecutionIdentity;',
   },
   {
     name: 'ToolExecutionMode',

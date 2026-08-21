@@ -43,6 +43,8 @@ declare module '@deepseek-ai/dsh-session/types' {
      * `SurfaceEventType`. Standalone: the bridge appends it before any turn.
      */
     'external/session-started': ExternalSessionStartedData
+    /** A published external session whose provider failed before attachment. Log-only and user-visible. */
+    'external/session-start-failed': ExternalSessionStartFailedData
     /**
      * One external turn opened, identified by the provider-issued `turnId`.
      * Log-only `ignorable: true`; not a `SurfaceEventType`.
@@ -108,6 +110,15 @@ export interface ExternalSessionStartedData {
   readonly model?: string
   /** Opaque provider-owned thread identity used for an explicit cold resume. */
   readonly providerThreadId: ExternalProviderThreadIdValue
+}
+/** Safe, bounded facts for a provider failure after the host published a session. */
+export interface ExternalSessionStartFailedData {
+  /** Provider/mode selected by the session header. */
+  readonly provider: string
+  /** Stable category; raw subprocess and credential details are excluded. */
+  readonly code: 'startup-failed' | 'startup-aborted'
+  /** Fixed safe user-facing diagnostic, never the provider's raw error. */
+  readonly message: string
 }
 /** Opens one external turn, identified by the provider-issued id. */
 export interface ExternalTurnStartedData {
@@ -208,6 +219,8 @@ export interface ExternalTranscriptProjection {
   readonly turns: readonly ExternalTranscriptTurn[]
   /** The session's end stop reason, once ended. */
   readonly stopReason?: string
+  /** Safe startup failure facts, when publication succeeded but attachment failed. */
+  readonly startupFailure?: ExternalSessionStartFailedData
 }
 
 /**
@@ -223,6 +236,7 @@ interface ExternalTranscriptState {
   turns: ExternalTranscriptTurn[]
   open: ExternalTranscriptTurn | null
   stopReason: string | null
+  startupFailure: ExternalSessionStartFailedData | null
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
@@ -277,6 +291,11 @@ const externalTranscriptSchema = z.object({
   sessionModel: z.string().optional(),
   turns: z.array(turnSchema),
   stopReason: z.string().optional(),
+  startupFailure: z.object({
+    provider: z.string(),
+    code: z.enum(['startup-failed', 'startup-aborted']),
+    message: z.string().min(1),
+  }).strict().optional(),
 }).strict()
 
 /** The index of the LAST permission in `permissions` matching `askId`, or -1. */
@@ -459,6 +478,8 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
         providerThreadId: parseExternalProviderThreadId(event.data.providerThreadId) ?? null,
         sessionModel: event.data.model ?? state.sessionModel,
       }
+    case 'external/session-start-failed':
+      return { ...state, startupFailure: event.data }
     case 'external/turn-started':
       if (event.data.turnId.length === 0) return state
       return {
@@ -576,6 +597,7 @@ function view(state: ExternalTranscriptState): ExternalTranscriptProjection {
     ...(state.providerThreadId === null ? {} : { providerThreadId: state.providerThreadId }),
     ...(state.sessionModel === null ? {} : { sessionModel: state.sessionModel }),
     ...(state.stopReason === null ? {} : { stopReason: state.stopReason }),
+    ...(state.startupFailure === null ? {} : { startupFailure: state.startupFailure }),
   }
 }
 
@@ -603,8 +625,9 @@ ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
     turns: [],
     open: null,
     stopReason: null,
+    startupFailure: null,
   }),
   apply,
   view,
-  stateVersion: 4,
+  stateVersion: 5,
 }

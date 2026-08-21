@@ -6,7 +6,7 @@
 
 模式感知的创建决策（在持久化头部上打上 `mode` 标记，并对外部模式创建*不带*原生 Agent 的会话）位于会话创建网关 [`dsh-host-apiproxy`](../../host/apiproxy/README.md)。本插件只对已经打上标记的会话作出反应，因此它可随 external-session 家族挂载到任何组合中。
 
-实时转写增量通过 external-session 服务的类型化 `external/session-delta` 事件离开提供方。API 网关会把这个临时事件投影为 `external/delta` mux 帧并发送给已打开的 mux 订阅；本驱动不会追加合成会话事件，因此重连后无法重建丢失的 partial。
+实时转写增量通过 external-session 服务的类型化 `external/session-delta` 事件离开提供方。API 网关会把这个临时事件投影为 `external/delta` mux 帧并发送给已打开的 mux 订阅；本驱动不会追加合成会话事件，因此重连后无法重建丢失的 partial。已提交的转写事件（包括下述终止性的 `external/session-start-failed` 与 `external/session-ended` 成对事件）会持久化。
 
 ## 生命周期
 
@@ -15,15 +15,15 @@
 - `session/created` ——当会话头部 `mode` 命名了某个已注册提供方（且不是原生 Agent 默认的 `dsh`）时，驱动读取持久化的 `external/session-started` 身份。新会话使用 `start`；带有提供方线程 id 的预备冷会话使用显式 `resume`，绝不替换为 `thread/start`。若会话以没有已注册提供方的模式创建，在创建时会大声失败（驱动拒绝让会话悬空）。
 - `session/disposed` ——驱动为它启动过的会话销毁提供方，从而拆除外部进程树。
 
-提供方 `start` 被拒绝属于无法回退的异步「发布后失败」，因此它会落到类型化的宿主事件 `external/session-bridge/error` 上大声暴露，而不是被静默丢弃。
+提供方 `start` 被拒绝属于无法回退的异步「发布后失败」。驱动会追加有界且不含 secret 的 `external/session-start-failed` 事实，随后追加 `stopReason: error` 的 `external/session-ended`；投影会把这些事实提供给历史，客户端渲染告警并关闭临时 live seat。同时它会通过类型化宿主事件 `external/session-bridge/error` 携带原始错误供宿主诊断。原始错误不会进入会话日志或客户端 payload。
 
 ## 模型体验
 
-父级 `dsh` 会话无影响：这里投影的活动是作为仅日志 `external/*` 事件记录的外部 agent 活动，不会到达任何父级模型请求。它所驱动的外部 agent 位于父级 agent 循环之外。
+无，因为宿主 bridge 在父 DSH 模型循环之外驱动外部 agent，不注册父会话的模型上下文。
 
 #### KV Cache 影响
 
-无；驱动不会向任何请求前缀追加内容。
+无；driver 会追加 durable external events，但不会追加到父会话的请求前缀。
 
 ## 已知限制与暂缓事项
 

@@ -1081,6 +1081,36 @@ class SessionCwdConflict extends Error {
   }
 }
 
+/** Requested session driver differs from the durable driver of an existing id. */
+class SessionDriverConflict extends Error {
+  constructor(
+    readonly sessionId: SessionId,
+    readonly requestedMode: string,
+    readonly existingMode: string,
+  ) {
+    super(
+      `session "${sessionId}" already uses driver ${JSON.stringify(existingMode)}; `
+      + `requested ${JSON.stringify(requestedMode)}`,
+    )
+  }
+}
+
+/** Normalize the durable native-driver sentinel used by the create API. */
+function sessionDriverMode(session: Pick<Session, 'header'>): string {
+  return session.header.mode ?? 'dsh'
+}
+
+/** Check the durable driver and project cwd before adopting an existing id. */
+function assertSessionIdentity(session: Pick<Session, 'id' | 'header'>, requestedMode: string, requestedCwd: string): void {
+  const existingMode = sessionDriverMode(session)
+  if (existingMode !== requestedMode) {
+    throw new SessionDriverConflict(session.id, requestedMode, existingMode)
+  }
+  if (session.header.cwd !== requestedCwd) {
+    throw new SessionCwdConflict(session.id, requestedCwd, session.header.cwd)
+  }
+}
+
 /** An explicit Host naming operation would duplicate another Workspace title. */
 class WorkspaceNameConflictError extends Error {
   constructor(readonly workspaceName: string) {
@@ -1849,6 +1879,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         if (attached !== undefined && hasSubagentOwner(attached, live)) {
           throw new SubagentSessionOwnership(sessionId)
         }
+        if (attached !== undefined) assertSessionIdentity(attached, 'dsh', cwd)
         if (live !== undefined) return live
 
         const persistence = checkPersistedIdentity ? ctx.get('sessionPersistence') : undefined
@@ -1863,9 +1894,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           if (hasSubagentOwner({ header: inspected.meta }, undefined)) {
             throw new SubagentSessionOwnership(sessionId)
           }
-          if (inspected.meta.cwd !== cwd) {
-            throw new SessionCwdConflict(sessionId, cwd, inspected.meta.cwd)
-          }
+          assertSessionIdentity({ id: inspected.meta.id, header: inspected.meta }, 'dsh', cwd)
           // Resolved from the log, not the header: a session that switched
           // while blank ran every turn under the newer composition.
           const storedPreset = resolveSessionPreset({ header: inspected.meta, events: inspected.events })
@@ -1938,9 +1967,32 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * @param model - optional initial model id from the mode's catalog/roster.
    * @returns the entered session (a pre-existing one is returned unchanged).
    */
-  function ensureExternalSession(sessionId: SessionId, cwd: string, mode: string, model?: string): Session {
+  async function ensureExternalSession(sessionId: SessionId, cwd: string, mode: string, model?: string): Promise<Session> {
     const existing = ctx.sessions.get(sessionId)
-    if (existing !== undefined) return existing
+    if (existing !== undefined) {
+      assertSessionIdentity(existing, mode, cwd)
+      return existing
+    }
+    const persistence = ctx.get('sessionPersistence')
+    if (persistence !== undefined) {
+      const stored = (await persistence.list()).find(header => header.id === sessionId)
+      if (stored !== undefined) {
+        const preparation = await persistence.prepare(sessionId)
+        try {
+          assertSessionIdentity(preparation.session, mode, cwd)
+          const detach = ctx.sessions.enter(preparation.session)
+          try {
+            ctx.sessions.announce(preparation.session)
+            return preparation.session
+          } catch (error: unknown) {
+            detach()
+            throw error
+          }
+        } finally {
+          preparation[Symbol.dispose]()
+        }
+      }
+    }
     return ctx.sessions.create(sessionId, {
       meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
     })
@@ -2416,8 +2468,30 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             })
           }
           try {
-            ensureExternalSession(sessionId, cwd, mode, request.payload.model)
+            await ensureExternalSession(sessionId, cwd, mode, request.payload.model)
           } catch (error: unknown) {
+            if (error instanceof SessionDriverConflict) {
+              return err(request, {
+                code: 'session-conflict',
+                message: error.message,
+                details: {
+                  sessionId: error.sessionId,
+                  requestedMode: error.requestedMode,
+                  existingMode: error.existingMode,
+                },
+              })
+            }
+            if (error instanceof SessionCwdConflict) {
+              return err(request, {
+                code: 'session-conflict',
+                message: error.message,
+                details: {
+                  sessionId: error.sessionId,
+                  requestedCwd: error.requestedCwd,
+                  ...error.existingCwd === undefined ? {} : { existingCwd: error.existingCwd },
+                },
+              })
+            }
             return err(request, {
               code: 'internal',
               message: `failed to create external session "${sessionId}": ${String(error)}`,
@@ -2441,6 +2515,17 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           await ensureSession(sessionId, cwd, request.payload.sessionId !== undefined, requestedPreset)
         } catch (error: unknown) {
+          if (error instanceof SessionDriverConflict) {
+            return err(request, {
+              code: 'session-conflict',
+              message: error.message,
+              details: {
+                sessionId: error.sessionId,
+                requestedMode: error.requestedMode,
+                existingMode: error.existingMode,
+              },
+            })
+          }
           if (error instanceof AgentPresetConflict) {
             return err(request, {
               code: 'agent-preset-conflict',

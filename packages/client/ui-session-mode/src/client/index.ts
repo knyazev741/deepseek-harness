@@ -82,8 +82,8 @@ export function apply(ctx: ClientContext): void {
     const injected = (): ModePickerInjected => ({
       hooks: { modeSeat: controller.store },
       load: () => controller.load(),
-      select: (mode: string) => controller.select(mode),
-      selectModel: (model: string) => controller.selectModel(model),
+      select: (mode: string) => { controller.select(mode) },
+      selectModel: (model: string) => { controller.selectModel(model) },
       create: () => controller.create(),
     })
 

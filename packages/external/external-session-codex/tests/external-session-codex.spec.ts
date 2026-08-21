@@ -76,6 +76,21 @@ async function settle(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 150))
 }
 
+/** Assert that an operation settled with the provider's safe cancellation error. */
+function expectCancellation(value: unknown): void {
+  expect(value).toBeInstanceOf(Error)
+  if (!(value instanceof Error)) return
+  expect(value.message).toMatch(/abort|disposed/u)
+}
+
+/** Assert the small result identity returned by one external prompt. */
+function expectTurnResult(value: unknown): void {
+  expect(value).not.toBeNull()
+  expect(typeof value).toBe('object')
+  if (value === null || typeof value !== 'object') return
+  expect(typeof (value as Record<string, unknown>).turnId).toBe('string')
+}
+
 describe('external-session-codex registration', () => {
   it('registers the codex provider with a native model directory', async () => {
     const harness = await startCodexHarness([])
@@ -94,13 +109,13 @@ describe('external-session-codex registration', () => {
     const harness = await startCodexHarness([])
     try {
       const opening = harness.start()
-      const openingOutcome = opening.then(() => undefined, error => error)
+      const openingOutcome = opening.then(() => undefined, (error: unknown) => error)
       const closingOutcome = harness.provider.dispose(harness.sessionId).then(
         () => undefined,
-        error => error,
+        (error: unknown) => error,
       )
       await expect(closingOutcome).resolves.toBeUndefined()
-      await expect(openingOutcome).resolves.toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
+      await openingOutcome.then(expectCancellation)
       expect(harness.handles).toHaveLength(0)
     } finally {
       await harness.close()
@@ -122,15 +137,15 @@ describe('external-session-codex registration', () => {
       const closing = harness.provider.dispose(harness.sessionId)
 
       const [closingOutcome, openingOutcome, promptOutcome, modelOutcome] = await Promise.all([
-        closing.then(() => undefined, error => error),
-        opening.then(() => undefined, error => error),
-        prompt.then(value => value, error => error),
-        model.then(() => undefined, error => error),
+        closing.then(() => undefined, (error: unknown) => error),
+        opening.then(() => undefined, (error: unknown) => error),
+        prompt.then(value => value, (error: unknown) => error),
+        model.then(() => undefined, (error: unknown) => error),
       ])
       expect(closingOutcome).toBeUndefined()
-      expect(openingOutcome).toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
-      expect(promptOutcome).toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
-      expect(modelOutcome).toMatchObject({ message: expect.stringMatching(/abort|disposed/u) })
+      expectCancellation(openingOutcome)
+      expectCancellation(promptOutcome)
+      expectCancellation(modelOutcome)
       expect(interruptError).toBeUndefined()
       expect(harness.recorded.events).not.toContainEqual(expect.objectContaining({
         type: 'external/turn-started',
@@ -154,13 +169,13 @@ describe('external-session-codex registration', () => {
       }
 
       const [openingOutcome, modelOutcome, promptOutcome] = await Promise.all([
-        opening.then(() => undefined, error => error),
-        model.then(() => undefined, error => error),
-        prompt.then(value => value, error => error),
+        opening.then(() => undefined, (error: unknown) => error),
+        model.then(() => undefined, (error: unknown) => error),
+        prompt.then(value => value, (error: unknown) => error),
       ])
       expect(openingOutcome).toBeUndefined()
       expect(modelOutcome).toBeUndefined()
-      expect(promptOutcome).toMatchObject({ turnId: expect.any(String) })
+      expectTurnResult(promptOutcome)
       expect(interruptError).toBeUndefined()
       await harness.waitTurns(1)
 
@@ -215,15 +230,16 @@ describe('external-session-codex registration', () => {
     try {
       await harness.start('fixture-model')
       await harness.waitCount('external/session-started', 1)
-      expect(harness.recorded.events).toContainEqual({
-        type: 'external/session-started',
-        data: {
-          provider: 'codex',
-          cwd: harness.workspace,
-          model: 'fixture-model',
-          providerThreadId: expect.any(String),
-        },
-      })
+      const started = harness.recorded.events.find(event => event.type === 'external/session-started')
+      expect(started).toBeDefined()
+      if (started === undefined || started.data === null || typeof started.data !== 'object') {
+        throw new Error('external/session-started event was not recorded')
+      }
+      const startedData = started.data as Record<string, unknown>
+      expect(startedData.provider).toBe('codex')
+      expect(startedData.cwd).toBe(harness.workspace)
+      expect(startedData.model).toBe('fixture-model')
+      expect(typeof startedData.providerThreadId).toBe('string')
       await harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol', ReasoningEffortId('high'))
       await harness.provider.prompt(harness.sessionId, 'switch model')
       await harness.waitTurns(1)
@@ -618,8 +634,11 @@ describe('external-session-codex child respawn', () => {
 
       await expect(Promise.race([
         harness.provider.prompt(harness.sessionId, 'second'),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('second prompt timed out')), 5_000)),
-      ])).resolves.toMatchObject({ turnId: expect.any(String) })
+        new Promise<never>((_, reject) => { setTimeout(() => { reject(new Error('second prompt timed out')) }, 5_000) }),
+      ])).resolves.toSatisfy((value) => {
+        expectTurnResult(value)
+        return true
+      })
       await harness.waitTurns(2, 10_000)
       expect(harness.recorded.events
         .filter(event => event.type === 'external/turn-ended')

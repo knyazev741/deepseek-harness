@@ -970,6 +970,7 @@ export class Session implements SessionFace {
         return this.externalLive.commit(turnId)
       }
       case 'external/session-ended':
+      case 'external/session-start-failed':
         return this.externalLive.close()
       default:
         return false

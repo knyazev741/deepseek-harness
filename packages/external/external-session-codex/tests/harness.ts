@@ -41,7 +41,7 @@ const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const codexBinDir = join(packageRoot, 'node_modules', '.bin')
 
 /** One appended session event or live delta captured by the recorded bridge. */
-export interface CodexRecorded {
+interface CodexRecorded {
   readonly events: Array<{ type: string; data: unknown }>
   readonly deltas: Array<{ turnId: string; delta: string }>
   readonly permissionAsks: Array<{ askId: string; title: string; options: readonly string[] }>

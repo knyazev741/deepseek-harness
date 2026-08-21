@@ -41,6 +41,7 @@
       "@deepseek-ai/dsh-invariants": ["./packages/runtime-diagnostics/invariants/src/index.ts"],
       "@deepseek-ai/dsh-external-session": ["./packages/external/external-session/src/index.ts"],
       "@deepseek-ai/dsh-external-session/invariant": ["./packages/external/external-session/src/invariant.ts"],
+      "@deepseek-ai/dsh-external-session/protocol": ["./packages/external/external-session/src/protocol.ts"],
       "@deepseek-ai/dsh-external-session-codex": ["./packages/external/external-session-codex/src/index.ts"],
       "@deepseek-ai/dsh-external-session-codex/invariant": ["./packages/external/external-session-codex/src/invariant.ts"],
       "@deepseek-ai/dsh-external-session-bridge": ["./packages/external/external-session-bridge/src/index.ts"],

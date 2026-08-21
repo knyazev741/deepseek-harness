@@ -16,7 +16,7 @@ import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools/presen
 import type { RpcError, RpcId, RpcRequest } from './rpc.ts'
 import type { JobView } from './jobs.ts'
 import type { WorkspaceView } from './workspace.ts'
-import type { ExternalTurnId } from '@deepseek-ai/dsh-external-session'
+import type { ExternalTurnId } from '@deepseek-ai/dsh-external-session/protocol'
 
 // Client-side consumers take the render-intent vocabulary from the contract;
 // dsh-tools remains its owner.

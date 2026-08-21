@@ -108,7 +108,7 @@ describe('tool-pipeline invariants', () => {
     const ctx = await setup()
     const agent = { id: SessionId('native-invariant') } as Agent
     const exec = Object.freeze(execution({ agent, principal: externalPrincipal() }))
-    expect(() => emitResult(ctx, exec, outcome())).toThrow(/exactly one.*agent.*principal/i)
+    expect(() => { emitResult(ctx, exec, outcome()) }).toThrow(/exactly one.*agent.*principal/i)
   })
 
   it('requires code-dispatch records to be turn-enclosed', async () => {

@@ -20,7 +20,8 @@ function validateResult(
   result: Readonly<ToolExecutionResult>,
   fail: InvariantFailure,
 ): void {
-  if (exec.agent !== undefined && exec.principal !== undefined) {
+  const identity = exec as unknown as { readonly agent?: unknown; readonly principal?: unknown }
+  if (identity.agent !== undefined && identity.principal !== undefined) {
     fail('tools/result execution must provide exactly one of agent or principal')
   }
   if (!Object.isFrozen(exec)) fail('tools/result execution must be frozen before publication')

@@ -263,7 +263,7 @@ describe('JsonRpcLineTransport', () => {
     const writes: string[] = []
     const output = new Writable({
       write(chunk, _encoding, callback) {
-        writes.push(chunk.toString())
+        writes.push(String(chunk))
         callback()
       },
     })

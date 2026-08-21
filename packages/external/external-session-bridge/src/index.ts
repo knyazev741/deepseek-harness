@@ -26,6 +26,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { externalTranscriptProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { ExternalSessionStartFailedData } from '@deepseek-ai/dsh-session-projection'
 import { ExternalProviderThreadId, parseExternalProviderThreadId } from '@deepseek-ai/dsh-external-session'
 // Type-only: brings in external-session's `Context.externalSessions` merge.
 import type {} from '@deepseek-ai/dsh-external-session'
@@ -38,8 +39,9 @@ declare module '@deepseek-ai/cordis' {
     /**
      * An external provider's `start` rejected for a session already published
      * in an external mode, so no live external process is running. A later
-     * phase decides the durable/UI surface; here it is the loud host signal
-     * that the create-time mode choice did not come up.
+     * phase also records bounded `external/session-start-failed` and terminal
+     * `external/session-ended` events; this signal carries the raw host error
+     * only for diagnostics and is not the client-facing failure surface.
      * @param payload - the session, its chosen provider, and the rejection reason.
      * @mode emit
      */
@@ -80,6 +82,31 @@ function externalModel(session: Session): string | undefined {
   return session.header.model
 }
 
+/** Convert a provider start rejection into bounded facts safe for the session log and UI. */
+function startupFailure(provider: string, error: unknown): ExternalSessionStartFailedData {
+  const code = typeof error === 'object' && error !== null
+    && 'code' in error && (error as { readonly code?: unknown }).code === 'SESSION_DISPOSED'
+    ? 'startup-aborted'
+    : 'startup-failed'
+  return {
+    provider,
+    code,
+    message: code === 'startup-aborted'
+      ? '外部智能体启动已取消。'
+      : '外部智能体启动失败，请检查提供方配置。',
+  }
+}
+
+/** Append one terminal startup failure exactly once after publication. */
+function appendStartupFailure(session: Session, provider: string, error: unknown): void {
+  if (!session.events.some(event => event.type === 'external/session-start-failed')) {
+    session.append('external/session-start-failed', startupFailure(provider, error))
+  }
+  if (!session.events.some(event => event.type === 'external/session-ended')) {
+    session.append('external/session-ended', { stopReason: 'error' })
+  }
+}
+
 /**
  * Start or resume the provider's live session for an already-stamped external
  * session. The provider's name is the session's durable header `mode`; the
@@ -111,8 +138,9 @@ function startOnProvider(ctx: Context, session: Session, mode: string): void {
   void operation.catch((error: unknown) => {
     // A provider that rejects start (e.g. an unavailable child process) must
     // surface: the session is already published, so the failure cannot unwind
-    // the creation dispatch. Emit the loud host signal rather than an
-    // unhandled rejection.
+    // the creation dispatch. Record bounded facts for replay/UI, then emit the
+    // raw host signal for diagnostics rather than an unhandled rejection.
+    appendStartupFailure(session, mode, error)
     ctx.emit('external/session-bridge/error', { sessionId: session.id, provider: mode, error })
   })
 }

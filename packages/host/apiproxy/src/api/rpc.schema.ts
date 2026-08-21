@@ -36,7 +36,10 @@ export const rpcErrorSchema: z.ZodType<RpcError> = z.discriminatedUnion('code', 
   z.object({ code: z.literal('cancelled'), message: z.string(), details: z.object({}) }),
   z.object({ code: z.literal('session-not-found'), message: z.string(), details: z.object({ sessionId: z.string() }) }),
   z.object({ code: z.literal('model-unavailable'), message: z.string(), details: z.object({ provider: z.string(), model: z.string() }) }),
-  z.object({ code: z.literal('session-conflict'), message: z.string(), details: z.object({ sessionId: z.string(), requestedCwd: z.string(), existingCwd: z.string().optional() }) }),
+  z.object({ code: z.literal('session-conflict'), message: z.string(), details: z.union([
+    z.object({ sessionId: z.string(), requestedCwd: z.string(), existingCwd: z.string().optional() }),
+    z.object({ sessionId: z.string(), requestedMode: z.string(), existingMode: z.string() }),
+  ]) }),
   z.object({ code: z.literal('external-mode-unavailable'), message: z.string(), details: z.object({
     mode: z.string(),
     reason: z.union([

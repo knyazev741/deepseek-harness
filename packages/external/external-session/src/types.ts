@@ -20,6 +20,9 @@ import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import type { JsonValue, SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/dsh-session'
 import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
+import type { ExternalTurnId } from './protocol.ts'
+
+export { ExternalTurnId } from './protocol.ts'
 
 /** Model reasoning level accepted by an external provider's stable wire. */
 export type ReasoningEffort = ReasoningEffortId
@@ -61,18 +64,6 @@ export interface ExternalModePreflightFailure {
 export type ExternalModePreflightResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly failure: ExternalModePreflightFailure }
-
-/** Identifies one submitted turn inside an external session. */
-export type ExternalTurnId = Branded<'ExternalTurnId'>
-
-/**
- * Brand a string as an {@link ExternalTurnId}.
- * @param id - the raw turn id.
- * @returns the same string, branded.
- */
-export function ExternalTurnId(id: string): ExternalTurnId {
-  return id as ExternalTurnId
-}
 
 /** Identifies one provider-owned persistent thread across a host restart. */
 export type ExternalProviderThreadId = Branded<'ExternalProviderThreadId'>

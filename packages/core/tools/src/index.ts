@@ -377,6 +377,8 @@ export type ToolExecutionInput = {
   readonly parent?: ToolExecutionToken
   /** Required caller-owned cancellation for this invocation. */
   readonly signal: AbortSignal
+  /** Registry-owned scope key used to route scoped pipeline events. */
+  readonly scope?: ScopeKey
 } & import('./execution-subject.ts').ToolExecutionIdentity
 
 /**
@@ -399,6 +401,8 @@ export type ToolExecutionMode =
 export interface CodeDispatchLog {
   /** The outer `run_code` execution. */
   readonly exec: ToolExecution
+  /** Registry-owned scope key used to route this log-shaping event. */
+  readonly scope: ScopeKey | undefined
   /** The calling native Agent, when the outer call has one. */
   readonly agent?: Agent
   /** The calling external principal, when the outer call has one. */
@@ -1446,6 +1450,7 @@ export class ToolRuntime extends Service {
       name,
       arguments: undefined,
       signal,
+      scope,
       ...agent !== undefined ? { agent } : {},
       ...principal !== undefined ? { principal } : {},
       ...parent !== undefined ? { parent } : {},
@@ -1453,7 +1458,7 @@ export class ToolRuntime extends Service {
         deferredContexts.push(context)
       },
       concludeTurn(): void {
-        concludingExecutions.add(this as unknown as ToolExecution)
+        concludingExecutions.add(this)
       },
     } as MutableToolRunContext
     // Capture the finalizer BEFORE argument materialization: the

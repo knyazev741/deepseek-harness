@@ -36,7 +36,8 @@ import * as bridge from '@deepseek-ai/dsh-external-session-bridge'
 const providerState: {
   disposed: boolean
   bridge: ExternalBridgeContext | undefined
-} = { disposed: false, bridge: undefined }
+  failStart: boolean
+} = { disposed: false, bridge: undefined, failStart: false }
 
 /** A keyless stub external provider: no child process, writes the transcript through its bridge. */
 const stubProvider: ExternalSessionProvider = {
@@ -45,6 +46,7 @@ const stubProvider: ExternalSessionProvider = {
   modelDirectory: 'config',
   async start(request: ExternalSessionStart, bridgeCtx: ExternalBridgeContext): Promise<void> {
     providerState.bridge = bridgeCtx
+    if (providerState.failStart) throw Object.assign(new Error('secret loader startup details'), { code: 'START_FAILED' })
     bridgeCtx.appendEvent(request.sessionId, {
       type: 'external/session-started',
       data: { provider: 'stub', cwd: request.cwd, providerThreadId: ExternalProviderThreadId('opaque-thread-stub') },
@@ -104,6 +106,7 @@ afterEach(async () => {
   context = undefined
   providerState.disposed = false
   providerState.bridge = undefined
+  providerState.failStart = false
   if (root !== undefined) await rm(root, { recursive: true, force: true })
   root = undefined
 })
@@ -201,5 +204,22 @@ describe('external-session-bridge REAL composition', () => {
     // No external activity recorded, no error, and the provider was never started.
     expect(session.events).toEqual([])
     expect(providerState.bridge).toBeUndefined()
+  })
+
+  it('replays a post-publication provider failure through the assembled projection', async () => {
+    const ctx = await loadYaml(COMPOSITION)
+    providerState.failStart = true
+    const session = ctx.sessions.create(SessionId('e-start-failed'), { meta: { cwd: '/tmp', mode: 'stub' } })
+    await flush()
+
+    expect(session.events.map(event => event.type)).toEqual([
+      'external/session-start-failed',
+      'external/session-ended',
+    ])
+    expect(JSON.stringify(session.events)).not.toContain('secret loader startup details')
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      startupFailure: { provider: 'stub', code: 'startup-failed' },
+      stopReason: 'error',
+    })
   })
 })

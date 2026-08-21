@@ -24,7 +24,8 @@ import { createScope } from '@deepseek-ai/dsh-scope'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
 import type { ExternalToolPrincipal, ToolExecutionRecorder } from '@deepseek-ai/dsh-tools'
-import { ExternalToolCallId as brandExternalToolCallId, ExternalTurnId } from './types.ts'
+import { ExternalToolCallId as brandExternalToolCallId } from './types.ts'
+import { ExternalTurnId } from './protocol.ts'
 import type { ExternalToolCallId as ExternalToolCallIdValue } from './types.ts'
 import type {
   ExternalAgentDescriptor,

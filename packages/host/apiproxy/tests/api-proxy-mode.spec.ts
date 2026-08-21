@@ -98,6 +98,75 @@ describe('session.create mode arms', () => {
     expect(session?.header.model).toBe('gpt-5')
   })
 
+  it('allows an existing external idempotent create with the same mode and cwd', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('external-idempotent')
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    const second = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha', model: 'gpt-5' }))
+    expect(first.result.ok).toBe(true)
+    expect(second.result).toEqual({ ok: true, value: { sessionId } })
+    expect(ctx.sessions.get(sessionId)?.header.model).toBeUndefined()
+  })
+
+  it('rejects an external create when the existing id is native', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('external-native-conflict')
+    ctx.sessions.create(sessionId, { meta: { cwd: '/tmp' } })
+    const result = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedMode: 'alpha', existingMode: 'dsh' } },
+    })
+  })
+
+  it('rejects an external create when the existing provider differs', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('external-provider-conflict')
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(first.result.ok).toBe(true)
+    ctx.externalSessions.registerProvider(new StubProvider('beta', 'Beta'))
+    const result = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'beta' }))
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedMode: 'beta', existingMode: 'alpha' } },
+    })
+  })
+
+  it('rejects an external create when the existing cwd differs', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('external-cwd-conflict')
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(first.result.ok).toBe(true)
+    const result = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp/other', mode: 'alpha' }))
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedCwd: '/tmp/other', existingCwd: '/tmp' } },
+    })
+  })
+
+  it('rejects a native create when the existing id is externally driven', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('native-external-conflict')
+    const first = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+    expect(first.result.ok).toBe(true)
+    const result = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp' }))
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedMode: 'dsh', existingMode: 'alpha' } },
+    })
+  })
+
+  it('rejects a native create when the existing cwd differs', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('native-cwd-conflict')
+    ctx.sessions.create(sessionId, { meta: { cwd: '/tmp' } })
+    const result = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp/other' }))
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedCwd: '/tmp/other', existingCwd: '/tmp' } },
+    })
+  })
+
   it('routes model and reasoning selection to a live external provider', async () => {
     const ctx = await harness()
     const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
