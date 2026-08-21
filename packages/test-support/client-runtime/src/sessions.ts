@@ -23,6 +23,9 @@ import type { SessionFixture, Stabilizer } from './fixtures.ts'
  * fixture methods are grafted verbatim for feature-side casts.
  */
 export class FixtureSession implements SessionFace {
+  /** Fixture-facing durable driver mode; absent keeps the native session route. */
+  readonly mode: string | undefined = undefined
+
   /**
    * The useProjection seat: identity-stable per-key faces over the fixture's
    * projection values (set via {@link TestSessions.setProjection}).

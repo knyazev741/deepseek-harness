@@ -29,6 +29,15 @@ import { resolvedClientTimeZone } from '../time-zone.ts'
 import { SessionQueueMirror } from './queue-mirror.ts'
 import { ExternalLiveAccumulator } from './external-live.ts'
 
+/** One external command waiting for the next durable provider turn terminal. */
+interface ExternalTurnWaiter {
+  readonly minimumSeq: number
+  readonly promise: Promise<void>
+  settle(): void
+  fail(error: unknown): void
+  cancel(): void
+}
+
 /** Messages requested per history page. */
 export const PAGE_MESSAGES = 50
 
@@ -94,7 +103,9 @@ export class Session implements SessionFace {
   private address: SubagentAddress | undefined
   private parentAvailable = false
   private sessionMode: string | undefined
-  private readonly externalTurnWaiters: Array<() => void> = []
+  private readonly externalTurnWaiters: ExternalTurnWaiter[] = []
+  /** Highest terminal event already observed; protects a loading-buffer replay from settling twice. */
+  private lastObservedExternalTerminalSeq = -1
   /**
    * Sticky send marker, private input of the composerPhase derivation: set
    * synchronously before prompt()'s first await, never reset — the blank →
@@ -418,7 +429,10 @@ export class Session implements SessionFace {
         }
       }
       const waitsForTurn = commandName !== 'compact' && commandName !== 'model'
-      const wait = waitsForTurn && this.openState === 'open' ? this.waitForExternalTurnEnd() : undefined
+      // Register before the RPC for every open state. External providers may
+      // emit the terminal event while a cold session is being attached or its
+      // history window is loading.
+      const wait = waitsForTurn ? this.waitForExternalTurnEnd() : undefined
       try {
         const response = (await this.api.sessions.command({ sessionId: this.sessionId, line })).result
         if (!response.ok) {
@@ -677,6 +691,7 @@ export class Session implements SessionFace {
   /** host/session-removed relay: flag the snapshot (instance survives — resident-instance rule). */
   handleRemoved(): void {
     this.removed = true
+    this.failExternalTurnWaiters(new Error(`session ${this.sessionId} was removed`))
     this.resetExternalLive()
     this.notifier.markDirty()
   }
@@ -687,6 +702,7 @@ export class Session implements SessionFace {
    */
   handleAgentError(message: string): void {
     this.lastAgentError = message
+    this.failExternalTurnWaiters(new Error(message))
     this.resetExternalLive()
     this.notifier.markDirty()
   }
@@ -696,8 +712,10 @@ export class Session implements SessionFace {
     this.resetExternalLive()
   }
 
-  /** No-op because session instances remain resident. */
-  dispose(): void {}
+  /** Release command barriers when scope pruning disposes a resident instance. */
+  dispose(): void {
+    this.failExternalTurnWaiters(new Error(`session ${this.sessionId} was disposed`))
+  }
 
   /** Rebuild the current window after a low-frequency Definition or view registration change. */
   rebuildConversationRegistry(): void {
@@ -779,7 +797,7 @@ export class Session implements SessionFace {
     const externalChanged = this.retireExternalLive(event)
     const tailSeq = this.windowTailSeq()
     if (tailSeq !== null && event.seq <= tailSeq) return externalChanged ? 'immediate' : 'none' // replay overlap, drop
-    if ((event as unknown as { type: string }).type === 'external/turn-ended') this.settleExternalTurnWaiter()
+    this.observeExternalTurnEnd(event)
     this.events.push(event)
     this.views.push(view)
     if (event.type === 'turn/start') this.firstPromptPendingTurn = false
@@ -794,6 +812,11 @@ export class Session implements SessionFace {
    *  raw range, which lets Conversation Definitions correlate every recorded event between its
    *  ends and lets a compaction checkpoint resolve its cited summary event. */
   private acceptLiveEvent(event: SessionEvent, view?: ToolEventView): void {
+    // Terminal events can arrive before a Session has opened or while its
+    // history request is in flight. Observe them before the state gate; the
+    // append path repeats the call for buffered/history entries and the
+    // sequence guard makes that replay idempotent.
+    this.observeExternalTurnEnd(event)
     if (this.openState === 'loading' || this.stitching) {
       this.liveBuffer.push({ event, view })
       return
@@ -815,30 +838,69 @@ export class Session implements SessionFace {
   }
 
   /** Register a wait for the next durable external turn terminal event. */
-  private waitForExternalTurnEnd(): { promise: Promise<void>; cancel: () => void } {
+  private waitForExternalTurnEnd(): ExternalTurnWaiter {
     let resolveWaiter!: () => void
+    let rejectWaiter!: (error: unknown) => void
     let settled = false
-    const waiter = (): void => {
-      if (settled) return
-      settled = true
-      resolveWaiter()
+    const minimumSeq = this.highestKnownSeq()
+    const remove = (): void => {
+      const index = this.externalTurnWaiters.indexOf(waiter)
+      if (index !== -1) this.externalTurnWaiters.splice(index, 1)
     }
-    const promise = new Promise<void>((resolve) => { resolveWaiter = resolve })
-    this.externalTurnWaiters.push(waiter)
-    return {
+    const promise = new Promise<void>((resolve, reject) => {
+      resolveWaiter = resolve
+      rejectWaiter = reject
+    })
+    // A removal/error can reject before the command RPC itself returns. The
+    // command attaches its awaited handler after that RPC, so install a
+    // no-op observer now to keep that early rejection handled.
+    void promise.catch(() => {})
+    const waiter: ExternalTurnWaiter = {
+      minimumSeq,
       promise,
+      settle: () => {
+        if (settled) return
+        settled = true
+        remove()
+        resolveWaiter()
+      },
+      fail: (error: unknown) => {
+        if (settled) return
+        settled = true
+        remove()
+        rejectWaiter(error)
+      },
       cancel: () => {
         if (settled) return
         settled = true
-        const index = this.externalTurnWaiters.indexOf(waiter)
-        if (index !== -1) this.externalTurnWaiters.splice(index, 1)
+        remove()
+        resolveWaiter()
       },
     }
+    this.externalTurnWaiters.push(waiter)
+    return waiter
   }
 
-  /** Settle one FIFO external command wait when its durable terminal event lands. */
-  private settleExternalTurnWaiter(): void {
-    this.externalTurnWaiters.shift()?.()
+  /** Observe a durable terminal once, including events received before open. */
+  private observeExternalTurnEnd(event: SessionEvent): void {
+    if ((event as unknown as { type: string }).type !== 'external/turn-ended') return
+    if (event.seq <= this.lastObservedExternalTerminalSeq) return
+    this.lastObservedExternalTerminalSeq = event.seq
+    const waiter = this.externalTurnWaiters[0]
+    if (waiter !== undefined && event.seq > waiter.minimumSeq) waiter.settle()
+  }
+
+  /** Reject all barriers when their Session can no longer produce a terminal event. */
+  private failExternalTurnWaiters(error: unknown): void {
+    for (const waiter of [...this.externalTurnWaiters]) waiter.fail(error)
+  }
+
+  /** Highest durable sequence known to this Session at barrier creation time. */
+  private highestKnownSeq(): number {
+    let highest = this.subscribedLastSeq ?? -1
+    for (const event of this.events) highest = Math.max(highest, event.seq)
+    for (const item of this.liveBuffer) highest = Math.max(highest, item.event.seq)
+    return highest
   }
 
   /** Whether this session is driven by a registered external provider. */

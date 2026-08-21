@@ -273,6 +273,8 @@ export class SessionManager {
    * @param sessionId - the session to drop.
    */
   drop(sessionId: SessionId): void {
+    const session = this.sessions.get(sessionId)
+    session?.dispose()
     this.sessions.delete(sessionId)
   }
 
@@ -648,6 +650,14 @@ export class SessionManager {
   private recordMutation(mutation: SessionListMutation): void {
     this.listMutations?.push(mutation)
     this.summaries = applyMutation(this.summaries, mutation)
+    if (mutation.kind === 'upsert') {
+      // The list mutation and the resident routing mode commit as one local
+      // transaction. A host/session-added frame can race the first prompt,
+      // so configuring only during the next list pull would route that prompt
+      // through the native Agent before the durable mode is visible.
+      const summary = this.summaries.find(candidate => candidate.sessionId === mutation.summary.sessionId)
+      this.sessions.get(mutation.summary.sessionId)?.configureMode(summary?.mode)
+    }
     // Eager edge reconciliation — a snapshot-build-time pass would miss consecutive status frames.
     this.syncCompletedNotifications()
     this.notifier.markDirty()
