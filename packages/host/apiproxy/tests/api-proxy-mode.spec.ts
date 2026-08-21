@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, type Fiber } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry, { type Agent, type AgentFactory } from '@deepseek-ai/dsh-agent'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
@@ -20,7 +20,7 @@ import ExternalSessions, {
   type ExternalSessionProvider,
   type ExternalSessionStart,
 } from '@deepseek-ai/dsh-external-session'
-import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { ApiProxy, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
 
@@ -56,7 +56,7 @@ class StubProvider implements ExternalSessionProvider {
   async dispose() {}
 }
 
-function harness({ external = true }: { external?: boolean } = {}): Promise<Context> {
+function harness({ external = true, withApi = true }: { external?: boolean; withApi?: boolean } = {}): Promise<Context> {
   return (async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
@@ -66,9 +66,45 @@ function harness({ external = true }: { external?: boolean } = {}): Promise<Cont
       await ctx.plugin(ExternalSessions)
       ctx.externalSessions.registerProvider(new StubProvider('alpha', 'Alpha'))
     }
-    ctx.apiProxy = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+    if (withApi) {
+      ctx.apiProxy = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+    }
     return ctx
   })()
+}
+
+/** Create a child-owned API proxy for disposal tests without a root proxy. */
+function childApi(ctx: Context): { getApi: () => ApiProxy; fiber: Fiber } {
+  let api!: ApiProxy
+  const fiber = ctx.plugin(Object.assign((fiberCtx: Context) => {
+    api = createApiProxy(fiberCtx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+  }, { inject: ['sessions', 'agents', 'userQuestions', 'externalSessions', 'sessionPersistence'] }))
+  return { getApi: () => api, fiber }
+}
+
+/** Publish one minimal native handle whose cleanup can be independently gated. */
+function publishGatedNativeHandle(
+  ctx: Context,
+  sessionId: SessionId,
+  disposeStarted: PromiseWithResolvers<undefined>,
+  releaseDispose: PromiseWithResolvers<undefined>,
+  disposeCalls: { value: number },
+): ReturnType<AgentFactory['resume']> {
+  const session = ctx.sessions.prepare(sessionId, { meta: { cwd: '/tmp' } })
+  const detachSession = ctx.sessions.enter(session)
+  ctx.sessions.announce(session)
+  const agent = { id: session.id, session, status: 'idle', ctx } as unknown as Agent
+  const unregister = ctx.agents.register(agent)
+  return Promise.resolve({
+    agent,
+    dispose: async () => {
+      disposeCalls.value += 1
+      disposeStarted.resolve(undefined)
+      await releaseDispose.promise
+      unregister()
+      detachSession()
+    },
+  })
 }
 
 /** Install the smallest native factory needed to race native and external creates. */
@@ -219,6 +255,107 @@ describe('session.create mode arms', () => {
     })
     expect(matchingResult.result).toEqual({ ok: true, value: { sessionId } })
     expect(resumes).toBe(1)
+  })
+
+  it('keeps API disposal pending until a cold native resume and its handle dispose settle', async () => {
+    const ctx = await harness({ withApi: false })
+    const sessionId = SessionId('cold-native-disposal')
+    const meta = { version: 0, id: sessionId, createdAt: 1, cwd: '/tmp' }
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events: [] }),
+    } as never)
+    const resumeStarted = Promise.withResolvers<undefined>()
+    const releaseResume = Promise.withResolvers<undefined>()
+    const disposeStarted = Promise.withResolvers<undefined>()
+    const releaseDispose = Promise.withResolvers<undefined>()
+    const disposeCalls = { value: 0 }
+    ctx.agents.setFactory({
+      async createAgent() {
+        throw new Error('native disposal probe only resumes persisted sessions')
+      },
+      async resume(_ownerCtx, options) {
+        const handle = await publishGatedNativeHandle(ctx, options.resumeSessionId, disposeStarted, releaseDispose, disposeCalls)
+        resumeStarted.resolve(undefined)
+        await releaseResume.promise
+        return handle
+      },
+    })
+    const { getApi, fiber } = childApi(ctx)
+    await fiber.await()
+    const api = getApi()
+
+    const create = api.sessions.create(request({ sessionId, cwd: '/tmp' }))
+    await resumeStarted.promise
+    const disposal = fiber.dispose()
+    let disposalDone = false
+    const disposalCompletion = disposal.then(() => { disposalDone = true })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(disposalDone).toBe(false)
+    expect(ctx.sessions.get(sessionId)).toBeDefined()
+    expect(ctx.agents.get(sessionId)).toBeDefined()
+
+    releaseResume.resolve(undefined)
+    await disposeStarted.promise
+    expect(disposalDone).toBe(false)
+    expect(disposeCalls.value).toBe(1)
+    releaseDispose.resolve(undefined)
+    await disposalCompletion
+    const result = await create
+    expect(result.result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+    expect(ctx.agents.get(sessionId)).toBeUndefined()
+    expect(disposeCalls.value).toBe(1)
+  })
+
+  it('keeps API disposal pending until a native create source and late handle dispose settle', async () => {
+    const ctx = await harness({ withApi: false })
+    const sessionId = SessionId('native-create-disposal')
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([]),
+      inspect: () => Promise.reject(new Error('native create probe has no persisted session')),
+    } as never)
+    const createStarted = Promise.withResolvers<undefined>()
+    const releaseCreate = Promise.withResolvers<undefined>()
+    const disposeStarted = Promise.withResolvers<undefined>()
+    const releaseDispose = Promise.withResolvers<undefined>()
+    const disposeCalls = { value: 0 }
+    ctx.agents.setFactory({
+      async createAgent(_ownerCtx, options) {
+        const handle = await publishGatedNativeHandle(ctx, options.sessionId, disposeStarted, releaseDispose, disposeCalls)
+        createStarted.resolve(undefined)
+        await releaseCreate.promise
+        return handle
+      },
+      async resume() {
+        throw new Error('native disposal probe only creates new sessions')
+      },
+    })
+    const { getApi, fiber } = childApi(ctx)
+    await fiber.await()
+    const api = getApi()
+
+    const create = api.sessions.create(request({ sessionId, cwd: '/tmp' }))
+    await createStarted.promise
+    const disposal = fiber.dispose()
+    let disposalDone = false
+    const disposalCompletion = disposal.then(() => { disposalDone = true })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(disposalDone).toBe(false)
+
+    releaseCreate.resolve(undefined)
+    await disposeStarted.promise
+    expect(disposalDone).toBe(false)
+    expect(disposeCalls.value).toBe(1)
+    releaseDispose.resolve(undefined)
+    await disposalCompletion
+    const result = await create
+    expect(result.result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+    expect(ctx.agents.get(sessionId)).toBeUndefined()
+    expect(disposeCalls.value).toBe(1)
   })
 
 

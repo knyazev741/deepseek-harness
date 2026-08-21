@@ -55,6 +55,8 @@ class CommandProvider implements ExternalSessionProvider {
   preflightResult: ExternalModePreflightResult = { ok: true }
   resumeGate: Promise<void> | undefined
   resumeStarted: PromiseWithResolvers<undefined> | undefined
+  disposeGate: Promise<void> | undefined
+  disposeStarted: PromiseWithResolvers<undefined> | undefined
 
   constructor(
     readonly provider: string,
@@ -99,7 +101,10 @@ class CommandProvider implements ExternalSessionProvider {
     this.switched.push({ sessionId, model })
     this.lastBridge!.appendEvent(sessionId, { type: 'external/model-switched', data: { model } })
   }
-  async dispose() {}
+  async dispose() {
+    this.disposeStarted?.resolve(undefined)
+    await this.disposeGate
+  }
 }
 
 /** Keyless harness: external-session registry + a stub provider on `alpha`. */
@@ -540,10 +545,15 @@ describe('session.command external-mode routing', () => {
 
     const command = api.sessions.command(request({ sessionId, line: 'cancel before publish' }))
     await prepareStarted.promise
-    await fiber.dispose()
+    let disposalDone = false
+    const disposal = fiber.dispose().then(() => { disposalDone = true })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(disposalDone).toBe(false)
     expect(ctx.sessions.get(sessionId)).toBeUndefined()
 
     releasePrepare.resolve(undefined)
+    await disposal
     const result = await command
     expect(result.result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
     expect(ctx.sessions.get(sessionId)).toBeUndefined()
@@ -579,6 +589,9 @@ describe('session.command external-mode routing', () => {
     provider.resumeStarted = Promise.withResolvers<undefined>()
     const releaseResume = Promise.withResolvers<undefined>()
     provider.resumeGate = releaseResume.promise
+    provider.disposeStarted = Promise.withResolvers<undefined>()
+    const releaseDispose = Promise.withResolvers<undefined>()
+    provider.disposeGate = releaseDispose.promise
     let api!: ApiProxy
     const fiber = ctx.plugin(Object.assign((fiberCtx: Context) => {
       api = createApiProxy(fiberCtx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
@@ -588,11 +601,21 @@ describe('session.command external-mode routing', () => {
     const command = api.sessions.command(request({ sessionId, line: 'cancel during resume' }))
     await provider.resumeStarted.promise
     const disposal = fiber.dispose()
-    await disposal
+    await Promise.resolve()
+    await Promise.resolve()
     expect(ctx.sessions.get(sessionId)).toBeUndefined()
     await expect(ctx.externalSessions.prompt(sessionId, 'late')).rejects.toThrow(/no live external session/)
+    let disposalDone = false
+    const disposalCompletion = disposal.then(() => { disposalDone = true })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(disposalDone).toBe(false)
 
     releaseResume.resolve(undefined)
+    await provider.disposeStarted.promise
+    expect(disposalDone).toBe(false)
+    releaseDispose.resolve(undefined)
+    await disposalCompletion
     const result = await command
     expect(result.result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
     expect(ctx.sessions.get(sessionId)).toBeUndefined()

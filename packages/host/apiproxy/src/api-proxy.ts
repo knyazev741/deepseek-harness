@@ -1275,9 +1275,22 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * not enforcement: the wire is reachable directly.
    */
   const presetSwitches = new Map<SessionId, Promise<unknown>>()
+  type SessionOperationTracker = {
+    /** Retain a source-owned promise until it settles without propagating its rejection. */
+    retain(source: PromiseLike<unknown>): void
+    /** Race a source against cancellation while retaining its eventual cleanup. */
+    track<T>(
+      source: PromiseLike<T>,
+      signal: AbortSignal,
+      onLate?: (value: T) => PromiseLike<void> | void,
+    ): Promise<T>
+  }
   type SessionOperation<T> = {
     controller: AbortController
+    /** Caller-facing promise; cancellation may settle this before source cleanup. */
     promise: Promise<T>
+    /** Owner-facing drain; includes every original source and late cleanup promise. */
+    drain: Promise<void>
   }
   const apiProxyController = new AbortController()
   let apiProxyDisposed = false
@@ -1298,32 +1311,70 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     sessionMaterializationDetachers.delete(sessionId)
   }
 
-  /** Make a late result harmless after its operation has been cancelled. */
-  function cancelOwnedPromise<T>(
-    source: PromiseLike<T>,
-    signal: AbortSignal,
-    onLate?: (value: T) => void,
-  ): Promise<T> {
-    const promise = Promise.resolve(source)
-    if (signal.aborted) {
-      void promise.then(value => onLate?.(value), () => {})
-      return Promise.reject(new ApiProxySessionOperationCancelled())
+  /**
+   * Build one owner operation whose caller promise may cancel independently
+   * from the original source promises it started. `drain` is the lifecycle
+   * obligation: disposal does not resolve until each source and any cleanup
+   * handle it yields has settled.
+   * @param run - operation body receiving its cancellation signal and tracker.
+   * @returns caller and owner promises for the operation.
+   */
+  function createSessionOperation<T>(
+    run: (signal: AbortSignal, tracker: SessionOperationTracker) => Promise<T>,
+  ): SessionOperation<T> {
+    const controller = new AbortController()
+    let activeSources = 0
+    let operationSettled = false
+    let resolveDrain!: () => void
+    const drain = new Promise<void>((resolve) => { resolveDrain = resolve })
+    const settleDrain = (): void => {
+      if (operationSettled && activeSources === 0) resolveDrain()
     }
-    let cancelled = false
-    let rejectCancelled!: (reason: unknown) => void
-    const cancelledPromise = new Promise<never>((_, reject) => { rejectCancelled = reject })
-    const onAbort = (): void => {
-      cancelled = true
-      rejectCancelled(new ApiProxySessionOperationCancelled())
+    const retain = (source: PromiseLike<unknown>): void => {
+      activeSources += 1
+      const settled = Promise.resolve(source).then(() => undefined, () => undefined)
+      settled.then(() => {
+        activeSources -= 1
+        settleDrain()
+      }, () => {
+        activeSources -= 1
+        settleDrain()
+      })
     }
-    signal.addEventListener('abort', onAbort, { once: true })
-    void promise.then(
-      (value) => { if (cancelled) onLate?.(value) },
-      () => {},
-    )
-    return Promise.race([promise, cancelledPromise]).finally(() => {
-      signal.removeEventListener('abort', onAbort)
+    const track = <TValue>(
+      source: PromiseLike<TValue>,
+      signal: AbortSignal,
+      onLate?: (value: TValue) => PromiseLike<void> | void,
+    ): Promise<TValue> => {
+      const promise = Promise.resolve(source)
+      let cancelled = signal.aborted
+      const cleanup = promise.then(
+        value => cancelled ? onLate?.(value) : undefined,
+        () => undefined,
+      )
+      retain(cleanup)
+      if (cancelled) return Promise.reject(new ApiProxySessionOperationCancelled())
+      let rejectCancelled!: (reason: unknown) => void
+      const cancelledPromise = new Promise<never>((_, reject) => { rejectCancelled = reject })
+      const onAbort = (): void => {
+        cancelled = true
+        rejectCancelled(new ApiProxySessionOperationCancelled())
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+      return Promise.race([promise, cancelledPromise]).finally(() => {
+        signal.removeEventListener('abort', onAbort)
+      })
+    }
+    const tracker: SessionOperationTracker = { retain, track }
+    const promise = Promise.resolve().then(() => run(controller.signal, tracker))
+    promise.then(() => {
+      operationSettled = true
+      settleDrain()
+    }, () => {
+      operationSettled = true
+      settleDrain()
     })
+    return { controller, promise, drain }
   }
 
   /** Throw before an owned operation can publish or complete after disposal. */
@@ -1345,7 +1396,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       if (ctx.sessions.get(sessionId) === record.session) record.detach()
     }
     sessionMaterializationDetachers.clear()
-    await Promise.allSettled(operations.map(operation => operation.promise))
+    await Promise.allSettled(operations.map(operation => operation.drain))
     sessionDiscoveries.clear()
     sessionMaterializations.clear()
     externalAttachments.clear()
@@ -1757,11 +1808,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     sessionId: SessionId,
     persistence: SessionPersistence,
     signal: AbortSignal,
+    tracker: SessionOperationTracker,
   ): Promise<PersistedSessionDiscovery | undefined> {
     assertSessionOperationActive(signal)
     const attached = ctx.sessions.get(sessionId)
     if (attached !== undefined) return { kind: 'live', session: attached }
-    const stored = (await cancelOwnedPromise(persistence.list(signal), signal)).find(header => header.id === sessionId)
+    const stored = (await tracker.track(persistence.list(signal), signal)).find(header => header.id === sessionId)
     assertSessionOperationActive(signal)
     const afterList = ctx.sessions.get(sessionId)
     if (afterList !== undefined) return { kind: 'live', session: afterList }
@@ -1769,7 +1821,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     if (stored.mode !== undefined && stored.mode !== 'dsh') {
       return { kind: 'cold', header: stored }
     }
-    const inspected = await cancelOwnedPromise(persistence.inspect(sessionId, signal), signal)
+    const inspected = await tracker.track(persistence.inspect(sessionId, signal), signal)
     assertSessionOperationActive(signal)
     const afterInspect = ctx.sessions.get(sessionId)
     if (afterInspect !== undefined) return { kind: 'live', session: afterInspect }
@@ -1784,20 +1836,16 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     const pending = sessionDiscoveries.get(sessionId)
     if (pending !== undefined) return pending.promise
     assertSessionOperationActive(apiProxyController.signal)
-    const controller = new AbortController()
-    const discovery = Promise.resolve().then(() => readPersistedSessionDiscovery(sessionId, persistence, controller.signal))
-    const operation = { controller, promise: discovery }
+    const operation = createSessionOperation((signal, tracker) => (
+      readPersistedSessionDiscovery(sessionId, persistence, signal, tracker)
+    ))
     sessionDiscoveries.set(sessionId, operation)
-    void discovery.then(() => {
-      queueMicrotask(() => {
-        if (sessionDiscoveries.get(sessionId) === operation) sessionDiscoveries.delete(sessionId)
-      })
+    operation.drain.then(() => {
+      if (sessionDiscoveries.get(sessionId) === operation) sessionDiscoveries.delete(sessionId)
     }, () => {
-      queueMicrotask(() => {
-        if (sessionDiscoveries.get(sessionId) === operation) sessionDiscoveries.delete(sessionId)
-      })
+      if (sessionDiscoveries.get(sessionId) === operation) sessionDiscoveries.delete(sessionId)
     })
-    return discovery
+    return operation.promise
   }
 
   /** Return the identity fields a caller must validate before materialization. */
@@ -1844,9 +1892,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     if (live !== undefined) return live
     const pending = externalAttachments.get(sessionId)
     if (pending !== undefined) return pending.promise
-    const controller = new AbortController()
-    const operation = Promise.resolve().then(async (): Promise<Session> => {
-      const session = await materializeSession(sessionId, async (signal) => {
+    const operation = createSessionOperation(async (signal, tracker): Promise<Session> => {
+      const session = await materializeSession(sessionId, async (signal, tracker) => {
         const attached = ctx.sessions.get(sessionId)
         if (attached !== undefined) return attached
         const persistence = ctx.get('sessionPersistence')
@@ -1854,11 +1901,11 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           throw new Error('external session cannot resume: session persistence is not configured')
         }
         const discovery = await discoverPersistedSession(sessionId, persistence)
-        const materialized = await materializePersistedSession(sessionId, persistence, discovery, true, signal)
+        const materialized = await materializePersistedSession(sessionId, persistence, signal, tracker, discovery, true)
         if (materialized !== undefined) return materialized
         throw new Error(`external session "${sessionId}" was not found in persistence`)
       })
-      assertSessionOperationActive(controller.signal)
+      assertSessionOperationActive(signal)
       const mode = session.header.mode
       if (mode === undefined || mode === 'dsh') {
         throw new Error(`session "${sessionId}" is not an external-mode session`)
@@ -1877,18 +1924,19 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       }
       const model = externalModel(session.events, session.header)
       const abortExternal = (): void => {
-        void external.dispose(sessionId).catch(() => {})
+        const disposal = Promise.resolve().then(() => external.dispose(sessionId))
+        tracker.retain(disposal)
       }
-      controller.signal.addEventListener('abort', abortExternal, { once: true })
+      signal.addEventListener('abort', abortExternal, { once: true })
       try {
-        assertSessionOperationActive(controller.signal)
-        await cancelOwnedPromise(external.resume({
+        assertSessionOperationActive(signal)
+        await tracker.track(external.resume({
           sessionId,
           provider: mode,
           cwd,
           ...model === undefined ? {} : { model },
-        }, providerThreadId), controller.signal)
-        assertSessionOperationActive(controller.signal)
+        }, providerThreadId), signal)
+        assertSessionOperationActive(signal)
       } catch (error: unknown) {
         if (error instanceof ApiProxySessionOperationCancelled) {
           detachOwnedSession(sessionId, session)
@@ -1901,22 +1949,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const code = error instanceof Error && 'code' in error ? error.code : undefined
         if (code !== 'DUPLICATE_SESSION') throw error
       } finally {
-        controller.signal.removeEventListener('abort', abortExternal)
+        signal.removeEventListener('abort', abortExternal)
       }
       return session
     })
-    const attachment = { controller, promise: operation }
+    const attachment = operation
     externalAttachments.set(sessionId, attachment)
-    void operation.then(() => {
+    operation.drain.then(() => {
       if (externalAttachments.get(sessionId) === attachment) externalAttachments.delete(sessionId)
     }, () => {
       if (externalAttachments.get(sessionId) === attachment) externalAttachments.delete(sessionId)
     })
-    try {
-      return await operation
-    } finally {
-      if (externalAttachments.get(sessionId) === attachment) externalAttachments.delete(sessionId)
-    }
+    return operation.promise
   }
 
   /**
@@ -1932,10 +1976,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       return attached.header.mode === undefined || attached.header.mode === 'dsh' ? undefined : attached
     }
     if (ctx.get('externalSessions') === undefined) return undefined
-    if (ctx.get('sessionPersistence') === undefined) return undefined
+    const persistence = ctx.get('sessionPersistence')
+    if (persistence === undefined) return undefined
     try {
-      const inspected = await cancelOwnedPromise(inspectServable(sessionId), apiProxyController.signal)
-      if (inspected.meta.mode === undefined || inspected.meta.mode === 'dsh') return undefined
+      const discovered = await discoverPersistedSession(sessionId, persistence)
+      if (discovered === undefined) return undefined
+      const identity = discoveredIdentity(sessionId, discovered)
+      if (identity.header.mode === undefined || identity.header.mode === 'dsh') return undefined
       return await ensureExternalSessionAttached(sessionId)
     } catch (error: unknown) {
       if (error instanceof SessionNotFound) return undefined
@@ -2055,13 +2102,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * session became live; the owner never retries its own request, so a failed
    * preflight cannot create an unbounded retry loop.
    * @param sessionId - identity being materialized.
-   * @param operation - request-owned preparation that publishes the identity.
+   * @param run - request-owned preparation that publishes the identity and tracks its sources.
    * @param retryOnFailure - whether this caller may retry after a failed waiter.
    * @returns the live session published by the owner or this caller.
    */
   async function materializeSession(
     sessionId: SessionId,
-    operation: (signal: AbortSignal) => Promise<Session>,
+    run: (signal: AbortSignal, tracker: SessionOperationTracker) => Promise<Session>,
     retryOnFailure = true,
   ): Promise<Session> {
     assertSessionOperationActive(apiProxyController.signal)
@@ -2076,23 +2123,22 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       } catch (error: unknown) {
         if (error instanceof ApiProxySessionOperationCancelled) throw error
         assertSessionOperationActive(apiProxyController.signal)
+        await pending.drain
         const published = ctx.sessions.get(sessionId)
         if (published !== undefined) return published
         if (!retryOnFailure) throw error
-        return materializeSession(sessionId, operation, false)
+        return materializeSession(sessionId, run, false)
       }
     }
-    const controller = new AbortController()
-    const creation = Promise.resolve().then(() => operation(controller.signal))
-    const materialization = { controller, promise: creation }
+    const materialization = createSessionOperation(run)
     sessionMaterializations.set(sessionId, materialization)
-    void creation.then(() => {
+    materialization.drain.then(() => {
       if (sessionMaterializations.get(sessionId) === materialization) sessionMaterializations.delete(sessionId)
     }, () => {
       if (sessionMaterializations.get(sessionId) === materialization) sessionMaterializations.delete(sessionId)
     })
     try {
-      const session = await creation
+      const session = await materialization.promise
       assertSessionOperationActive(apiProxyController.signal)
       return session
     } catch (error: unknown) {
@@ -2115,9 +2161,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   async function materializePersistedSession(
     sessionId: SessionId,
     persistence: SessionPersistence,
+    signal: AbortSignal,
+    tracker: SessionOperationTracker,
     discovery?: PersistedSessionDiscovery,
     discoveryComplete = false,
-    signal = apiProxyController.signal,
   ): Promise<Session | undefined> {
     assertSessionOperationActive(signal)
     const attached = ctx.sessions.get(sessionId)
@@ -2139,15 +2186,20 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       assertSessionOperationActive(signal)
       const beforeResume = ctx.sessions.get(sessionId)
       if (beforeResume !== undefined) return beforeResume
+      let handle: Awaited<ReturnType<typeof ctx.agents.resume>> | undefined
       try {
-        const handle = await cancelOwnedPromise(ctx.agents.resume({
+        handle = await tracker.track(ctx.agents.resume({
           resumeSessionId: sessionId,
           agentOptions: agentOptions(),
+          signal,
           setup: composition.setup,
-        }), signal, (lateHandle) => { void lateHandle.dispose().catch(() => {}) })
+        }), signal, lateHandle => lateHandle.dispose())
         assertSessionOperationActive(signal)
         return handle.agent.session
       } catch (error: unknown) {
+        if (handle !== undefined && error instanceof ApiProxySessionOperationCancelled) {
+          tracker.retain(handle.dispose())
+        }
         if (error instanceof ApiProxySessionOperationCancelled) throw error
         const published = ctx.sessions.get(sessionId)
         if (published !== undefined) return published
@@ -2155,7 +2207,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       }
     }
 
-    const preparation = await cancelOwnedPromise(persistence.prepare(sessionId, signal), signal, (latePreparation) => {
+    const preparation = await tracker.track(persistence.prepare(sessionId, signal), signal, (latePreparation) => {
       latePreparation[Symbol.dispose]()
     })
     try {
@@ -2188,11 +2240,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   async function createNativeSession(
     sessionId: SessionId,
     cwd: string,
+    signal: AbortSignal,
+    tracker: SessionOperationTracker,
     presetId?: string,
-    signal = apiProxyController.signal,
   ): Promise<Session> {
     try {
-      await cancelOwnedPromise(mkdir(cwd, { recursive: true }), signal)
+      await tracker.track(mkdir(cwd, { recursive: true }), signal)
     } catch (error: unknown) {
       if (error instanceof ApiProxySessionOperationCancelled) throw error
       throw new Error(`failed to ensure project directory "${cwd}": ${String(error)}`, { cause: error })
@@ -2204,19 +2257,24 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     assertSessionOperationActive(signal)
     const afterCompose = ctx.sessions.get(sessionId)
     if (afterCompose !== undefined) return afterCompose
+    let handle: Awaited<ReturnType<typeof ctx.agents.create>> | undefined
     try {
-      const handle = await cancelOwnedPromise(ctx.agents.create({
+      handle = await tracker.track(ctx.agents.create({
         sessionId,
         agentOptions: agentOptions(),
+        signal,
         meta: {
           cwd,
           ...composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset },
         },
         setup: composition.setup,
-      }), signal, (lateHandle) => { void lateHandle.dispose().catch(() => {}) })
+      }), signal, lateHandle => lateHandle.dispose())
       assertSessionOperationActive(signal)
       return handle.agent.session
     } catch (error: unknown) {
+      if (handle !== undefined && error instanceof ApiProxySessionOperationCancelled) {
+        tracker.retain(handle.dispose())
+      }
       if (error instanceof ApiProxySessionOperationCancelled) throw error
       const published = ctx.sessions.get(sessionId)
       if (published !== undefined) return published
@@ -2240,17 +2298,17 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         if (discovery !== undefined) assertSessionIdentity(discoveredIdentity(sessionId, discovery), 'dsh', cwd)
       }
     }
-    const session = await materializeSession(sessionId, async (signal) => {
+    const session = await materializeSession(sessionId, async (signal, tracker) => {
       const attached = ctx.sessions.get(sessionId)
       if (attached !== undefined) return attached
       if (checkPersistedIdentity) {
         const persistence = ctx.get('sessionPersistence')
         if (persistence !== undefined) {
-          const materialized = await materializePersistedSession(sessionId, persistence, discovery, true, signal)
+          const materialized = await materializePersistedSession(sessionId, persistence, signal, tracker, discovery, true)
           if (materialized !== undefined) return materialized
         }
       }
-      return createNativeSession(sessionId, cwd, presetId, signal)
+      return createNativeSession(sessionId, cwd, signal, tracker, presetId)
     })
     assertSessionOperationActive(apiProxyController.signal)
     const liveAgent = ctx.agents.get(sessionId)
@@ -2289,16 +2347,16 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       ? undefined
       : await discoverPersistedSession(sessionId, persistence)
     if (discovery !== undefined) assertSessionIdentity(discoveredIdentity(sessionId, discovery), mode, cwd)
-    const session = await materializeSession(sessionId, async (signal) => {
+    const session = await materializeSession(sessionId, async (signal, tracker) => {
       const existing = ctx.sessions.get(sessionId)
       if (existing !== undefined) return existing
       if (persistence !== undefined) {
-        const materialized = await materializePersistedSession(sessionId, persistence, discovery, true, signal)
+        const materialized = await materializePersistedSession(sessionId, persistence, signal, tracker, discovery, true)
         if (materialized !== undefined) return materialized
       }
       // A new id is the only path allowed to query provider health. Keeping
       // this inside the publication coordinator prevents duplicate preflights.
-      await cancelOwnedPromise(preflight(), signal)
+      await tracker.track(preflight(), signal)
       assertSessionOperationActive(signal)
       const afterPreflight = ctx.sessions.get(sessionId)
       if (afterPreflight !== undefined) return afterPreflight
