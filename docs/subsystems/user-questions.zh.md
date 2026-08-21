@@ -176,5 +176,5 @@ registerProvider(provider: UserQuestionProvider): () => void
 async ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer>
 ```
 
-Source: [`packages/interaction/user-questions/src/index.ts:51`](../../packages/interaction/user-questions/src/index.ts)
+Source: [`packages/interaction/user-questions/src/index.ts:54`](../../packages/interaction/user-questions/src/index.ts)
 <!-- END GENERATED cordis-surface -->

@@ -2891,7 +2891,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AskUserQuestionRequest',
-    declaration: 'export interface AskUserQuestionRequest {\n    questions: AskUserQuestionItem[];\n    agent?: Agent;\n    signal?: AbortSignal;\n}',
+    declaration: 'export interface AskUserQuestionRequest {\n    questions: AskUserQuestionItem[];\n    agent?: Agent;\n    sessionId?: SessionId;\n    signal?: AbortSignal;\n}',
   },
   {
     name: 'AssembleContext',
@@ -3255,7 +3255,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ExternalModelInfo',
-    declaration: 'export interface ExternalModelInfo {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
+    declaration: 'export interface ExternalModelInfo {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n    readonly reasoning?: LlmModelReasoningInfo;\n}',
   },
   {
     name: 'ExternalModePreflightCode',
