@@ -30,7 +30,7 @@ import ExternalSessions, {
   type ExternalSessionStart,
 } from '@deepseek-ai/dsh-external-session'
 import * as ExternalSessionBridge from '@deepseek-ai/dsh-external-session-bridge'
-import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { ApiProxy, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
 
@@ -53,6 +53,8 @@ class CommandProvider implements ExternalSessionProvider {
   listModelsCalls = 0
   models: Array<{ id: string; name: string; description?: string }> = []
   preflightResult: ExternalModePreflightResult = { ok: true }
+  resumeGate: Promise<void> | undefined
+  resumeStarted: PromiseWithResolvers<undefined> | undefined
 
   constructor(
     readonly provider: string,
@@ -65,8 +67,12 @@ class CommandProvider implements ExternalSessionProvider {
   }
   async preflight() { return this.preflightResult }
   async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void> {
-    this.resumed.push(providerThreadId)
+    if (bridge.disposal.aborted) return
     this.lastBridge = bridge
+    this.resumeStarted?.resolve(undefined)
+    await this.resumeGate
+    if (bridge.disposal.aborted) return
+    this.resumed.push(providerThreadId)
   }
   async prompt(sessionId: SessionId, text: string) {
     this.prompts.push(text)
@@ -97,7 +103,7 @@ class CommandProvider implements ExternalSessionProvider {
 }
 
 /** Keyless harness: external-session registry + a stub provider on `alpha`. */
-async function harness(): Promise<{ ctx: Context; provider: CommandProvider }> {
+async function harness({ withApi = true }: { withApi?: boolean } = {}): Promise<{ ctx: Context; provider: CommandProvider }> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjection)
@@ -106,7 +112,9 @@ async function harness(): Promise<{ ctx: Context; provider: CommandProvider }> {
   await ctx.plugin(ExternalSessions)
   const provider = new CommandProvider('alpha', 'Alpha')
   ctx.externalSessions.registerProvider(provider)
-  ctx.apiProxy = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+  if (withApi) {
+    ctx.apiProxy = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+  }
   return { ctx, provider }
 }
 
@@ -488,6 +496,107 @@ describe('session.command external-mode routing', () => {
     expect(prepare).toHaveBeenCalledOnce()
     expect(provider.resumed).toEqual([ExternalProviderThreadId('cold-race-thread')])
     expect(ctx.sessions.list().filter(session => session.id === sessionId)).toHaveLength(1)
+  })
+
+  it('cancels a cold attachment blocked before publication when its API fiber is disposed', async () => {
+    const { ctx } = await harness({ withApi: false })
+    context = ctx
+    const sessionId = SessionId('cold-disposal-before-publication')
+    const meta = {
+      version: SESSION_FORMAT_VERSION,
+      id: sessionId,
+      createdAt: 1,
+      cwd: '/tmp',
+      mode: 'alpha',
+    }
+    const events = [{
+      type: 'external/session-started' as const,
+      seq: 0,
+      time: 1,
+      data: { provider: 'alpha', cwd: '/tmp', providerThreadId: ExternalProviderThreadId('dispose-before') },
+      ignorable: true as const,
+    }]
+    const prepareStarted = Promise.withResolvers<undefined>()
+    const releasePrepare = Promise.withResolvers<undefined>()
+    const prepare = vi.fn(async () => {
+      prepareStarted.resolve(undefined)
+      await releasePrepare.promise
+      return SessionPreparation.create(ctx.sessions.prepare(sessionId, {
+        seed: events,
+        meta,
+        seedSource: 'persistence',
+      }))
+    })
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events }),
+      prepare,
+    } as never)
+    let api!: ApiProxy
+    const fiber = ctx.plugin(Object.assign((fiberCtx: Context) => {
+      api = createApiProxy(fiberCtx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+    }, { inject: ['sessions', 'agents', 'userQuestions', 'externalSessions', 'sessionPersistence'] }))
+    await fiber.await()
+
+    const command = api.sessions.command(request({ sessionId, line: 'cancel before publish' }))
+    await prepareStarted.promise
+    await fiber.dispose()
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+
+    releasePrepare.resolve(undefined)
+    const result = await command
+    expect(result.result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+  })
+
+  it('cancels and quiesces a cold attachment blocked in external resume on API disposal', async () => {
+    const { ctx, provider } = await harness({ withApi: false })
+    context = ctx
+    const sessionId = SessionId('cold-disposal-during-resume')
+    const meta = {
+      version: SESSION_FORMAT_VERSION,
+      id: sessionId,
+      createdAt: 1,
+      cwd: '/tmp',
+      mode: 'alpha',
+    }
+    const events = [{
+      type: 'external/session-started' as const,
+      seq: 0,
+      time: 1,
+      data: { provider: 'alpha', cwd: '/tmp', providerThreadId: ExternalProviderThreadId('dispose-during') },
+      ignorable: true as const,
+    }]
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events }),
+      prepare: () => Promise.resolve(SessionPreparation.create(ctx.sessions.prepare(sessionId, {
+        seed: events,
+        meta,
+        seedSource: 'persistence',
+      }))),
+    } as never)
+    provider.resumeStarted = Promise.withResolvers<undefined>()
+    const releaseResume = Promise.withResolvers<undefined>()
+    provider.resumeGate = releaseResume.promise
+    let api!: ApiProxy
+    const fiber = ctx.plugin(Object.assign((fiberCtx: Context) => {
+      api = createApiProxy(fiberCtx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+    }, { inject: ['sessions', 'agents', 'userQuestions', 'externalSessions', 'sessionPersistence'] }))
+    await fiber.await()
+
+    const command = api.sessions.command(request({ sessionId, line: 'cancel during resume' }))
+    await provider.resumeStarted.promise
+    const disposal = fiber.dispose()
+    await disposal
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+    await expect(ctx.externalSessions.prompt(sessionId, 'late')).rejects.toThrow(/no live external session/)
+
+    releaseResume.resolve(undefined)
+    const result = await command
+    expect(result.result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+    expect(provider.resumed).toEqual([])
   })
 
   it('routes /compact to the provider native compact and records the notice', async () => {

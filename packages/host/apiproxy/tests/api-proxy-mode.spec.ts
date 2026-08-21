@@ -72,7 +72,9 @@ function harness({ external = true }: { external?: boolean } = {}): Promise<Cont
 }
 
 /** Install the smallest native factory needed to race native and external creates. */
-function installNativeFactory(ctx: Context): void {
+function installNativeFactory(ctx: Context, resume: AgentFactory['resume'] = async () => {
+  throw new Error('native test factory has no persisted sessions')
+}): void {
   const factory: AgentFactory = {
     async createAgent(_ownerCtx, options) {
       const session = ctx.sessions.create(options.sessionId, {
@@ -82,11 +84,17 @@ function installNativeFactory(ctx: Context): void {
       const unregister = ctx.agents.register(agent)
       return { agent, dispose: async () => { unregister() } }
     },
-    async resume() {
-      throw new Error('native test factory has no persisted sessions')
-    },
+    resume,
   }
   ctx.agents.setFactory(factory)
+}
+
+/** Publish the smallest resumed native Agent for identity/coalescing tests. */
+function resumeNativeTestAgent(ctx: Context, sessionId: SessionId, cwd: string): ReturnType<AgentFactory['resume']> {
+  const session = ctx.sessions.create(sessionId, { meta: { cwd } })
+  const agent = { id: session.id, session, status: 'idle', ctx } as unknown as Agent
+  const unregister = ctx.agents.register(agent)
+  return Promise.resolve({ agent, dispose: async () => { unregister() } })
 }
 
 describe('session.create mode arms', () => {
@@ -166,6 +174,53 @@ describe('session.create mode arms', () => {
     })
     expect(matchingResult.result).toEqual({ ok: true, value: { sessionId } })
   })
+
+  it('checks a cold native identity before external mode resume without a factory', async () => {
+    const ctx = await harness()
+    const sessionId = SessionId('cold-native-external-conflict')
+    const meta = { version: 0, id: sessionId, createdAt: 1, cwd: '/tmp' }
+    const inspect = vi.fn(async () => ({ meta, events: [] }))
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      inspect,
+    } as never)
+
+    const result = await ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp', mode: 'alpha' }))
+
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedMode: 'alpha', existingMode: 'dsh' } },
+    })
+    expect(inspect).toHaveBeenCalledOnce()
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+  })
+
+  it('checks a cold native cwd before resuming and coalesces matching callers', async () => {
+    const ctx = await harness()
+    let resumes = 0
+    installNativeFactory(ctx, async (_ownerCtx, options) => {
+      resumes += 1
+      return resumeNativeTestAgent(ctx, options.resumeSessionId, '/tmp')
+    })
+    const sessionId = SessionId('cold-native-cwd-conflict')
+    const meta = { version: 0, id: sessionId, createdAt: 1, cwd: '/tmp' }
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events: [] }),
+    } as never)
+
+    const wrong = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp/wrong' }))
+    const matching = ctx.apiProxy.sessions.create(request({ sessionId, cwd: '/tmp' }))
+    const [wrongResult, matchingResult] = await Promise.all([wrong, matching])
+
+    expect(wrongResult.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-conflict', details: { requestedCwd: '/tmp/wrong', existingCwd: '/tmp' } },
+    })
+    expect(matchingResult.result).toEqual({ ok: true, value: { sessionId } })
+    expect(resumes).toBe(1)
+  })
+
 
   it('resolves a matching retry before a later provider preflight failure', async () => {
     const ctx = await harness()

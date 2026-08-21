@@ -1095,6 +1095,14 @@ class SessionDriverConflict extends Error {
   }
 }
 
+/** Stable cancellation raised when the ApiProxy owner is being unloaded. */
+class ApiProxySessionOperationCancelled extends Error {
+  constructor() {
+    super('the API proxy session operation was cancelled during disposal')
+    this.name = 'AbortError'
+  }
+}
+
 /** A new external session cannot pass its provider-owned preflight. */
 class ExternalModeUnavailable extends Error {
   constructor(
@@ -1267,11 +1275,78 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * not enforcement: the wire is reachable directly.
    */
   const presetSwitches = new Map<SessionId, Promise<unknown>>()
+  type SessionOperation<T> = {
+    controller: AbortController
+    promise: Promise<T>
+  }
+  const apiProxyController = new AbortController()
+  let apiProxyDisposed = false
   /** Shared identity materialization barrier across every live publication path. */
-  const sessionMaterializations = new Map<SessionId, Promise<Session>>()
+  const sessionMaterializations = new Map<SessionId, SessionOperation<Session>>()
+  /** Shared durable identity discovery preceding any live materialization. */
+  const sessionDiscoveries = new Map<SessionId, SessionOperation<PersistedSessionDiscovery | undefined>>()
   /** Cold external-session attachment, shared across concurrent first actions. */
-  const externalAttachments = new Map<SessionId, Promise<Session>>()
-  ctx.effect(() => () => {
+  const externalAttachments = new Map<SessionId, SessionOperation<Session>>()
+  /** Detachers for cold sessions published by this proxy before provider work. */
+  const sessionMaterializationDetachers = new Map<SessionId, { session: Session; detach: () => void }>()
+
+  /** Detach one exact cold publication owned by this proxy, if still live. */
+  function detachOwnedSession(sessionId: SessionId, expected?: Session): void {
+    const record = sessionMaterializationDetachers.get(sessionId)
+    if (record === undefined || (expected !== undefined && record.session !== expected)) return
+    if (ctx.sessions.get(sessionId) === record.session) record.detach()
+    sessionMaterializationDetachers.delete(sessionId)
+  }
+
+  /** Make a late result harmless after its operation has been cancelled. */
+  function cancelOwnedPromise<T>(
+    source: PromiseLike<T>,
+    signal: AbortSignal,
+    onLate?: (value: T) => void,
+  ): Promise<T> {
+    const promise = Promise.resolve(source)
+    if (signal.aborted) {
+      void promise.then(value => onLate?.(value), () => {})
+      return Promise.reject(new ApiProxySessionOperationCancelled())
+    }
+    let cancelled = false
+    let rejectCancelled!: (reason: unknown) => void
+    const cancelledPromise = new Promise<never>((_, reject) => { rejectCancelled = reject })
+    const onAbort = (): void => {
+      cancelled = true
+      rejectCancelled(new ApiProxySessionOperationCancelled())
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+    void promise.then(
+      (value) => { if (cancelled) onLate?.(value) },
+      () => {},
+    )
+    return Promise.race([promise, cancelledPromise]).finally(() => {
+      signal.removeEventListener('abort', onAbort)
+    })
+  }
+
+  /** Throw before an owned operation can publish or complete after disposal. */
+  function assertSessionOperationActive(signal: AbortSignal): void {
+    if (apiProxyDisposed || signal.aborted) throw new ApiProxySessionOperationCancelled()
+  }
+
+  /** Abort every owner and detach any cold Session this proxy published. */
+  ctx.effect(() => async () => {
+    apiProxyDisposed = true
+    apiProxyController.abort()
+    const operations = [
+      ...sessionDiscoveries.values(),
+      ...sessionMaterializations.values(),
+      ...externalAttachments.values(),
+    ]
+    for (const operation of operations) operation.controller.abort()
+    for (const [sessionId, record] of sessionMaterializationDetachers) {
+      if (ctx.sessions.get(sessionId) === record.session) record.detach()
+    }
+    sessionMaterializationDetachers.clear()
+    await Promise.allSettled(operations.map(operation => operation.promise))
+    sessionDiscoveries.clear()
     sessionMaterializations.clear()
     externalAttachments.clear()
   }, 'apiProxy.session-materializations')
@@ -1659,6 +1734,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     events: SessionEvent[]
   }
 
+  type PersistedSessionDiscovery =
+    | { kind: 'live'; session: Session }
+    | { kind: 'cold'; header: SessionHeader; events?: readonly SessionEvent[] }
+
   /** Read one stable session prefix without acquiring an Agent owner. */
   async function readSessionState(sessionId: SessionId): Promise<SessionReadState> {
     const attached = ctx.sessions.get(sessionId)
@@ -1671,6 +1750,64 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     }
     const inspected = await inspectServable(sessionId)
     return { id: inspected.meta.id, header: inspected.meta, events: inspected.events }
+  }
+
+  /** Discover one durable identity without publishing or resuming it. */
+  async function readPersistedSessionDiscovery(
+    sessionId: SessionId,
+    persistence: SessionPersistence,
+    signal: AbortSignal,
+  ): Promise<PersistedSessionDiscovery | undefined> {
+    assertSessionOperationActive(signal)
+    const attached = ctx.sessions.get(sessionId)
+    if (attached !== undefined) return { kind: 'live', session: attached }
+    const stored = (await cancelOwnedPromise(persistence.list(signal), signal)).find(header => header.id === sessionId)
+    assertSessionOperationActive(signal)
+    const afterList = ctx.sessions.get(sessionId)
+    if (afterList !== undefined) return { kind: 'live', session: afterList }
+    if (stored === undefined) return undefined
+    if (stored.mode !== undefined && stored.mode !== 'dsh') {
+      return { kind: 'cold', header: stored }
+    }
+    const inspected = await cancelOwnedPromise(persistence.inspect(sessionId, signal), signal)
+    assertSessionOperationActive(signal)
+    const afterInspect = ctx.sessions.get(sessionId)
+    if (afterInspect !== undefined) return { kind: 'live', session: afterInspect }
+    return { kind: 'cold', header: inspected.meta, events: inspected.events }
+  }
+
+  /** Coalesce durable identity reads without coupling them to any caller's request. */
+  async function discoverPersistedSession(
+    sessionId: SessionId,
+    persistence: SessionPersistence,
+  ): Promise<PersistedSessionDiscovery | undefined> {
+    const pending = sessionDiscoveries.get(sessionId)
+    if (pending !== undefined) return pending.promise
+    assertSessionOperationActive(apiProxyController.signal)
+    const controller = new AbortController()
+    const discovery = Promise.resolve().then(() => readPersistedSessionDiscovery(sessionId, persistence, controller.signal))
+    const operation = { controller, promise: discovery }
+    sessionDiscoveries.set(sessionId, operation)
+    void discovery.then(() => {
+      queueMicrotask(() => {
+        if (sessionDiscoveries.get(sessionId) === operation) sessionDiscoveries.delete(sessionId)
+      })
+    }, () => {
+      queueMicrotask(() => {
+        if (sessionDiscoveries.get(sessionId) === operation) sessionDiscoveries.delete(sessionId)
+      })
+    })
+    return discovery
+  }
+
+  /** Return the identity fields a caller must validate before materialization. */
+  function discoveredIdentity(
+    sessionId: SessionId,
+    discovery: PersistedSessionDiscovery,
+  ): Pick<Session, 'id' | 'header'> {
+    return discovery.kind === 'live'
+      ? discovery.session
+      : { id: sessionId, header: discovery.header }
   }
 
   /** Return the latest durable provider thread id, or undefined when absent. */
@@ -1702,22 +1839,26 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    * @returns the exact Session published through prepare/enter/announce.
    */
   async function ensureExternalSessionAttached(sessionId: SessionId): Promise<Session> {
+    assertSessionOperationActive(apiProxyController.signal)
     const live = ctx.sessions.get(sessionId)
     if (live !== undefined) return live
     const pending = externalAttachments.get(sessionId)
-    if (pending !== undefined) return pending
-    const operation = (async (): Promise<Session> => {
-      const session = await materializeSession(sessionId, async () => {
+    if (pending !== undefined) return pending.promise
+    const controller = new AbortController()
+    const operation = Promise.resolve().then(async (): Promise<Session> => {
+      const session = await materializeSession(sessionId, async (signal) => {
         const attached = ctx.sessions.get(sessionId)
         if (attached !== undefined) return attached
         const persistence = ctx.get('sessionPersistence')
         if (persistence === undefined) {
           throw new Error('external session cannot resume: session persistence is not configured')
         }
-        const materialized = await materializePersistedSession(sessionId, persistence)
+        const discovery = await discoverPersistedSession(sessionId, persistence)
+        const materialized = await materializePersistedSession(sessionId, persistence, discovery, true, signal)
         if (materialized !== undefined) return materialized
         throw new Error(`external session "${sessionId}" was not found in persistence`)
       })
+      assertSessionOperationActive(controller.signal)
       const mode = session.header.mode
       if (mode === undefined || mode === 'dsh') {
         throw new Error(`session "${sessionId}" is not an external-mode session`)
@@ -1735,28 +1876,46 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         throw new Error(`external session "${sessionId}" has no cwd`)
       }
       const model = externalModel(session.events, session.header)
+      const abortExternal = (): void => {
+        void external.dispose(sessionId).catch(() => {})
+      }
+      controller.signal.addEventListener('abort', abortExternal, { once: true })
       try {
-        await external.resume({
+        assertSessionOperationActive(controller.signal)
+        await cancelOwnedPromise(external.resume({
           sessionId,
           provider: mode,
           cwd,
           ...model === undefined ? {} : { model },
-        }, providerThreadId)
+        }, providerThreadId), controller.signal)
+        assertSessionOperationActive(controller.signal)
       } catch (error: unknown) {
+        if (error instanceof ApiProxySessionOperationCancelled) {
+          detachOwnedSession(sessionId, session)
+          throw error
+        }
         // A composed external-session bridge may have observed the same
         // announce and already attached the provider. Treat that exact
         // idempotent race as success; all other provider failures remain
         // visible to the action caller.
         const code = error instanceof Error && 'code' in error ? error.code : undefined
         if (code !== 'DUPLICATE_SESSION') throw error
+      } finally {
+        controller.signal.removeEventListener('abort', abortExternal)
       }
       return session
-    })()
-    externalAttachments.set(sessionId, operation)
+    })
+    const attachment = { controller, promise: operation }
+    externalAttachments.set(sessionId, attachment)
+    void operation.then(() => {
+      if (externalAttachments.get(sessionId) === attachment) externalAttachments.delete(sessionId)
+    }, () => {
+      if (externalAttachments.get(sessionId) === attachment) externalAttachments.delete(sessionId)
+    })
     try {
       return await operation
     } finally {
-      if (externalAttachments.get(sessionId) === operation) externalAttachments.delete(sessionId)
+      if (externalAttachments.get(sessionId) === attachment) externalAttachments.delete(sessionId)
     }
   }
 
@@ -1775,7 +1934,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     if (ctx.get('externalSessions') === undefined) return undefined
     if (ctx.get('sessionPersistence') === undefined) return undefined
     try {
-      const inspected = await inspectServable(sessionId)
+      const inspected = await cancelOwnedPromise(inspectServable(sessionId), apiProxyController.signal)
       if (inspected.meta.mode === undefined || inspected.meta.mode === 'dsh') return undefined
       return await ensureExternalSessionAttached(sessionId)
     } catch (error: unknown) {
@@ -1902,29 +2061,43 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
    */
   async function materializeSession(
     sessionId: SessionId,
-    operation: () => Promise<Session>,
+    operation: (signal: AbortSignal) => Promise<Session>,
     retryOnFailure = true,
   ): Promise<Session> {
+    assertSessionOperationActive(apiProxyController.signal)
     const live = ctx.sessions.get(sessionId)
     if (live !== undefined) return live
     const pending = sessionMaterializations.get(sessionId)
     if (pending !== undefined) {
       try {
-        return await pending
+        const session = await pending.promise
+        assertSessionOperationActive(apiProxyController.signal)
+        return session
       } catch (error: unknown) {
+        if (error instanceof ApiProxySessionOperationCancelled) throw error
+        assertSessionOperationActive(apiProxyController.signal)
         const published = ctx.sessions.get(sessionId)
         if (published !== undefined) return published
         if (!retryOnFailure) throw error
         return materializeSession(sessionId, operation, false)
       }
     }
-    const creation = Promise.resolve().then(operation).finally(() => {
-      if (sessionMaterializations.get(sessionId) === creation) sessionMaterializations.delete(sessionId)
+    const controller = new AbortController()
+    const creation = Promise.resolve().then(() => operation(controller.signal))
+    const materialization = { controller, promise: creation }
+    sessionMaterializations.set(sessionId, materialization)
+    void creation.then(() => {
+      if (sessionMaterializations.get(sessionId) === materialization) sessionMaterializations.delete(sessionId)
+    }, () => {
+      if (sessionMaterializations.get(sessionId) === materialization) sessionMaterializations.delete(sessionId)
     })
-    sessionMaterializations.set(sessionId, creation)
     try {
-      return await creation
+      const session = await creation
+      assertSessionOperationActive(apiProxyController.signal)
+      return session
     } catch (error: unknown) {
+      if (error instanceof ApiProxySessionOperationCancelled) throw error
+      assertSessionOperationActive(apiProxyController.signal)
       const published = ctx.sessions.get(sessionId)
       if (published !== undefined) return published
       throw error
@@ -1942,49 +2115,66 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   async function materializePersistedSession(
     sessionId: SessionId,
     persistence: SessionPersistence,
+    discovery?: PersistedSessionDiscovery,
+    discoveryComplete = false,
+    signal = apiProxyController.signal,
   ): Promise<Session | undefined> {
+    assertSessionOperationActive(signal)
     const attached = ctx.sessions.get(sessionId)
     if (attached !== undefined) return attached
-    const stored = (await persistence.list()).find(header => header.id === sessionId)
-    const afterList = ctx.sessions.get(sessionId)
-    if (afterList !== undefined) return afterList
-    if (stored === undefined) return undefined
+    const discovered = discoveryComplete
+      ? discovery
+      : await discoverPersistedSession(sessionId, persistence)
+    assertSessionOperationActive(signal)
+    if (discovered === undefined) return undefined
+    if (discovered.kind === 'live') return discovered.session
 
-    if (stored.mode === undefined || stored.mode === 'dsh') {
-      const inspected = await persistence.inspect(sessionId)
-      const afterInspect = ctx.sessions.get(sessionId)
-      if (afterInspect !== undefined) return afterInspect
+    if (discovered.events !== undefined) {
+      const inspected = { meta: discovered.header, events: discovered.events }
       if (hasSubagentOwner({ header: inspected.meta }, undefined)) {
         throw new SubagentSessionOwnership(sessionId)
       }
       const storedPreset = resolveSessionPreset({ header: inspected.meta, events: inspected.events })
       const composition = await composeAgent(storedPreset)
+      assertSessionOperationActive(signal)
       const beforeResume = ctx.sessions.get(sessionId)
       if (beforeResume !== undefined) return beforeResume
       try {
-        return (await ctx.agents.resume({
+        const handle = await cancelOwnedPromise(ctx.agents.resume({
           resumeSessionId: sessionId,
           agentOptions: agentOptions(),
           setup: composition.setup,
-        })).agent.session
+        }), signal, (lateHandle) => { void lateHandle.dispose().catch(() => {}) })
+        assertSessionOperationActive(signal)
+        return handle.agent.session
       } catch (error: unknown) {
+        if (error instanceof ApiProxySessionOperationCancelled) throw error
         const published = ctx.sessions.get(sessionId)
         if (published !== undefined) return published
         throw error
       }
     }
 
-    const preparation = await persistence.prepare(sessionId)
+    const preparation = await cancelOwnedPromise(persistence.prepare(sessionId, signal), signal, (latePreparation) => {
+      latePreparation[Symbol.dispose]()
+    })
     try {
+      assertSessionOperationActive(signal)
       const beforeEnter = ctx.sessions.get(sessionId)
       if (beforeEnter !== undefined) return beforeEnter
       let detach: (() => void) | undefined
       try {
         detach = ctx.sessions.enter(preparation.session)
         ctx.sessions.announce(preparation.session)
+        sessionMaterializationDetachers.set(sessionId, { session: preparation.session, detach })
+        assertSessionOperationActive(signal)
         return preparation.session
       } catch (error: unknown) {
         detach?.()
+        if (sessionMaterializationDetachers.get(sessionId)?.session === preparation.session) {
+          sessionMaterializationDetachers.delete(sessionId)
+        }
+        if (error instanceof ApiProxySessionOperationCancelled) throw error
         const published = ctx.sessions.get(sessionId)
         if (published !== undefined) return published
         throw error
@@ -1999,19 +2189,23 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     sessionId: SessionId,
     cwd: string,
     presetId?: string,
+    signal = apiProxyController.signal,
   ): Promise<Session> {
     try {
-      await mkdir(cwd, { recursive: true })
+      await cancelOwnedPromise(mkdir(cwd, { recursive: true }), signal)
     } catch (error: unknown) {
+      if (error instanceof ApiProxySessionOperationCancelled) throw error
       throw new Error(`failed to ensure project directory "${cwd}": ${String(error)}`, { cause: error })
     }
+    assertSessionOperationActive(signal)
     const afterMkdir = ctx.sessions.get(sessionId)
     if (afterMkdir !== undefined) return afterMkdir
     const composition = await composeAgent(presetId)
+    assertSessionOperationActive(signal)
     const afterCompose = ctx.sessions.get(sessionId)
     if (afterCompose !== undefined) return afterCompose
     try {
-      return (await ctx.agents.create({
+      const handle = await cancelOwnedPromise(ctx.agents.create({
         sessionId,
         agentOptions: agentOptions(),
         meta: {
@@ -2019,8 +2213,11 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           ...composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset },
         },
         setup: composition.setup,
-      })).agent.session
+      }), signal, (lateHandle) => { void lateHandle.dispose().catch(() => {}) })
+      assertSessionOperationActive(signal)
+      return handle.agent.session
     } catch (error: unknown) {
+      if (error instanceof ApiProxySessionOperationCancelled) throw error
       const published = ctx.sessions.get(sessionId)
       if (published !== undefined) return published
       throw error
@@ -2034,18 +2231,28 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     checkPersistedIdentity: boolean,
     presetId?: string,
   ): Promise<Agent> {
-    const session = await materializeSession(sessionId, async () => {
+    assertSessionOperationActive(apiProxyController.signal)
+    let discovery: PersistedSessionDiscovery | undefined
+    if (checkPersistedIdentity) {
+      const persistence = ctx.get('sessionPersistence')
+      if (persistence !== undefined) {
+        discovery = await discoverPersistedSession(sessionId, persistence)
+        if (discovery !== undefined) assertSessionIdentity(discoveredIdentity(sessionId, discovery), 'dsh', cwd)
+      }
+    }
+    const session = await materializeSession(sessionId, async (signal) => {
       const attached = ctx.sessions.get(sessionId)
       if (attached !== undefined) return attached
       if (checkPersistedIdentity) {
         const persistence = ctx.get('sessionPersistence')
         if (persistence !== undefined) {
-          const materialized = await materializePersistedSession(sessionId, persistence)
+          const materialized = await materializePersistedSession(sessionId, persistence, discovery, true, signal)
           if (materialized !== undefined) return materialized
         }
       }
-      return createNativeSession(sessionId, cwd, presetId)
+      return createNativeSession(sessionId, cwd, presetId, signal)
     })
+    assertSessionOperationActive(apiProxyController.signal)
     const liveAgent = ctx.agents.get(sessionId)
     if (hasSubagentOwner(session, liveAgent)) throw new SubagentSessionOwnership(sessionId)
     assertSessionIdentity(session, 'dsh', cwd)
@@ -2076,29 +2283,38 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     model: string | undefined,
     preflight: () => Promise<void>,
   ): Promise<Session> {
-    const session = await materializeSession(sessionId, async () => {
+    assertSessionOperationActive(apiProxyController.signal)
+    const persistence = ctx.get('sessionPersistence')
+    const discovery = persistence === undefined
+      ? undefined
+      : await discoverPersistedSession(sessionId, persistence)
+    if (discovery !== undefined) assertSessionIdentity(discoveredIdentity(sessionId, discovery), mode, cwd)
+    const session = await materializeSession(sessionId, async (signal) => {
       const existing = ctx.sessions.get(sessionId)
       if (existing !== undefined) return existing
-      const persistence = ctx.get('sessionPersistence')
       if (persistence !== undefined) {
-        const materialized = await materializePersistedSession(sessionId, persistence)
+        const materialized = await materializePersistedSession(sessionId, persistence, discovery, true, signal)
         if (materialized !== undefined) return materialized
       }
       // A new id is the only path allowed to query provider health. Keeping
       // this inside the publication coordinator prevents duplicate preflights.
-      await preflight()
+      await cancelOwnedPromise(preflight(), signal)
+      assertSessionOperationActive(signal)
       const afterPreflight = ctx.sessions.get(sessionId)
       if (afterPreflight !== undefined) return afterPreflight
       try {
-        return ctx.sessions.create(sessionId, {
+        const created = ctx.sessions.create(sessionId, {
           meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
         })
+        assertSessionOperationActive(signal)
+        return created
       } catch (error: unknown) {
         const published = ctx.sessions.get(sessionId)
         if (published !== undefined) return published
         throw error
       }
     })
+    assertSessionOperationActive(apiProxyController.signal)
     assertSessionIdentity(session, mode, cwd)
     return session
   }
@@ -2571,6 +2787,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
               },
             )
           } catch (error: unknown) {
+            if (error instanceof ApiProxySessionOperationCancelled) {
+              return err(request, {
+                code: 'cancelled',
+                message: 'external session creation was cancelled during API disposal',
+                details: { sessionId },
+              })
+            }
             if (error instanceof ExternalModeUnknown) {
               return err(request, {
                 code: 'unknown-mode',
@@ -2630,6 +2853,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           await ensureSession(sessionId, cwd, request.payload.sessionId !== undefined, requestedPreset)
         } catch (error: unknown) {
+          if (error instanceof ApiProxySessionOperationCancelled) {
+            return err(request, {
+              code: 'cancelled',
+              message: 'session creation was cancelled during API disposal',
+              details: { sessionId },
+            })
+          }
           if (error instanceof SessionDriverConflict) {
             return err(request, {
               code: 'session-conflict',
@@ -2734,6 +2964,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           externalSession = await externalSessionForAction(sessionId)
         } catch (error: unknown) {
+          if (error instanceof ApiProxySessionOperationCancelled) {
+            return err(request, {
+              code: 'cancelled',
+              message: 'external session attachment was cancelled during API disposal',
+              details: { sessionId },
+            })
+          }
           return err(request, {
             code: 'internal',
             message: error instanceof Error ? error.message : String(error),
@@ -2845,6 +3082,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           externalSession = await externalSessionForAction(sessionId)
         } catch (error: unknown) {
+          if (error instanceof ApiProxySessionOperationCancelled) {
+            return err(request, {
+              code: 'cancelled',
+              message: 'external session attachment was cancelled during API disposal',
+              details: { sessionId },
+            })
+          }
           return err(request, {
             code: 'model-unavailable',
             message: error instanceof Error ? error.message : String(error),
@@ -3083,6 +3327,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           externalSession = await externalSessionForAction(sessionId)
         } catch (error: unknown) {
+          if (error instanceof ApiProxySessionOperationCancelled) {
+            return err(request, {
+              code: 'cancelled',
+              message: 'external session attachment was cancelled during API disposal',
+              details: { sessionId },
+            })
+          }
           return err(request, {
             code: 'internal',
             message: `external session attachment failed: ${renderFailure(error)}`,
@@ -3172,6 +3423,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           session = await externalSessionForAction(sessionId)
         } catch (error: unknown) {
+          if (error instanceof ApiProxySessionOperationCancelled) {
+            return err(request, {
+              code: 'cancelled',
+              message: 'external session attachment was cancelled during API disposal',
+              details: { sessionId },
+            })
+          }
           return err(request, {
             code: 'internal',
             message: `external session attachment failed: ${renderFailure(error)}`,
@@ -3198,6 +3456,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           const result = await routeExternalSessionCommand(ctx, session, line)
           return ok(request, result)
         } catch (error: unknown) {
+          if (error instanceof ApiProxySessionOperationCancelled) {
+            return err(request, {
+              code: 'cancelled',
+              message: 'external session command was cancelled during API disposal',
+              details: { sessionId },
+            })
+          }
           return err(request, {
             code: 'internal',
             message: `external session command failed: ${renderFailure(error)}`,
@@ -3318,6 +3583,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           externalSession = await externalSessionForAction(sessionId)
         } catch (error: unknown) {
+          if (error instanceof ApiProxySessionOperationCancelled) {
+            return err(request, {
+              code: 'cancelled',
+              message: 'external session attachment was cancelled during API disposal',
+              details: { sessionId },
+            })
+          }
           return err(request, {
             code: 'internal',
             message: `external session attachment failed: ${renderFailure(error)}`,
