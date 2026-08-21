@@ -17,6 +17,7 @@ import {
   coverageTestTimeoutArgs,
   parseCoveragePartitionCount,
 } from './coverage-partitions.ts'
+import { pnpmInvocation } from './pnpm-invocation.ts'
 
 /** A named aggregate exposed by the gate runner. */
 export type Mode =
@@ -193,15 +194,6 @@ function pnpmExec(id: string, args: string[], options: Partial<Gate> = {}): Gate
     ...pnpmInvocation(['exec', ...args]),
     ...options,
   }
-}
-
-function pnpmInvocation(args: string[]): Pick<Gate, 'command' | 'args'> {
-  const entrypoint = process.env.npm_execpath
-  if (entrypoint === undefined || entrypoint === '') {
-    throw new Error('run-gates: npm_execpath is unavailable; invoke the runner through a pnpm package script.')
-  }
-  // Windows cannot spawn the pnpm.cmd shim directly; the JavaScript entrypoint keeps every host shell-free.
-  return { command: process.execPath, args: [entrypoint, ...args] }
 }
 
 /**
