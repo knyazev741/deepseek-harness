@@ -27,11 +27,11 @@ DSH_CODEX_COMMAND=/absolute/path/to/codex dsh --profile codex-web
 
 ## 运行任务
 
-启动一个会话并发送：
+启动一个原生 DSH Agent 会话并发送：
 
 > Summarize this repository and identify its main packages.
 
-Agent（智能体）可以读取和编辑工作区文件、运行命令、委派工作并维护计划。如果根据当前权限策略，某项操作需要审批，Web UI 会先询问你。
+原生 DSH Agent 可以读取和编辑工作区文件、运行命令、委派工作并维护计划。Codex 会话只提供其配置的外部 app-server 能力，不会挂载原生 Agent 的委派或计划服务。如果根据当前权限策略，某项操作需要审批，Web UI 会先询问你。
 
 ## 继续使用
 

@@ -27,11 +27,11 @@ Click **Choose workspace**, add the project directory where you started `dsh`, a
 
 ## Run a task
 
-Start a session and send:
+Start a native DSH Agent session and send:
 
 > Summarize this repository and identify its main packages.
 
-The agent can read and edit workspace files, run commands, delegate work, and maintain a plan. The Web UI asks before operations that require approval under the active permission policy.
+The native DSH Agent can read and edit workspace files, run commands, delegate work, and maintain a plan. Codex sessions expose the capabilities of their configured external app-server; they do not mount the native Agent delegation or planning services. The Web UI asks before operations that require approval under the active permission policy.
 
 ## Continue
 

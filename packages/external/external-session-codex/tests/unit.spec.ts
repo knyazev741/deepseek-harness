@@ -30,7 +30,7 @@ import {
   mapExternalStopReason,
   offeredApprovalDecision,
 } from '../src/wire.ts'
-import { startResponsesFixture } from './responses-fixture.ts'
+import { startResponsesFixture, type ResponsesFixture } from './responses-fixture.ts'
 
 async function nextFrame(output: PassThrough): Promise<Record<string, unknown>> {
   return await new Promise((resolve, reject) => {
@@ -49,6 +49,14 @@ async function nextFrame(output: PassThrough): Promise<Record<string, unknown>> 
 
 function response(input: PassThrough, frame: Record<string, unknown>, result: unknown): void {
   input.write(`${JSON.stringify({ jsonrpc: '2.0', id: frame.id, result })}\n`)
+}
+
+function postResponse(fixture: ResponsesFixture, body: Record<string, unknown>): Promise<Response> {
+  return fetch(`${fixture.baseUrl}/responses`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
 }
 
 describe('mapExternalStopReason', () => {
@@ -104,6 +112,117 @@ describe('Responses fixture tool advertisements', () => {
             }],
           }],
         }),
+      })
+      expect(response.status).toBe(200)
+      fixture.assertConsumed()
+    } finally {
+      await fixture.close()
+    }
+  })
+})
+
+describe('Responses fixture response chains', () => {
+  it('rejects a request whose previous_response_id does not continue the fixture response', async () => {
+    const fixture = await startResponsesFixture([
+      { kind: 'complete', text: 'CHAIN_FIRST' },
+      { kind: 'complete', text: 'CHAIN_SECOND' },
+    ])
+    try {
+      await expect(postResponse(fixture, { model: 'fixture-model', input: [] }))
+        .resolves.toMatchObject({ status: 200 })
+      await expect(postResponse(fixture, {
+        model: 'fixture-model',
+        input: [],
+        previous_response_id: 'resp_fixture_wrong',
+      })).resolves.toMatchObject({ status: 400 })
+      await expect(postResponse(fixture, {
+        model: 'fixture-model',
+        input: [],
+        previous_response_id: 'resp_fixture_request1',
+      })).resolves.toMatchObject({ status: 200 })
+      fixture.assertConsumed()
+    } finally {
+      await fixture.close()
+    }
+  })
+
+  it('accepts Codex stateless continuation only when explicitly enabled', async () => {
+    const fixture = await startResponsesFixture([
+      { kind: 'complete', text: 'CHAIN_FIRST' },
+      { kind: 'complete', text: 'CHAIN_SECOND' },
+    ], { allowStatelessContinuation: true })
+    try {
+      await expect(postResponse(fixture, { model: 'fixture-model', input: [] }))
+        .resolves.toMatchObject({ status: 200 })
+      await expect(postResponse(fixture, { model: 'fixture-model', input: [] }))
+        .resolves.toMatchObject({ status: 200 })
+      fixture.assertConsumed()
+    } finally {
+      await fixture.close()
+    }
+  })
+})
+
+describe('Responses fixture MCP events', () => {
+  it('emits the pinned MCP call lifecycle in order', async () => {
+    const fixture = await startResponsesFixture([{
+      kind: 'mcpCall',
+      serverLabel: 'dsh_harness',
+      name: 'fixture_allowed',
+      arguments: {},
+    }])
+    try {
+      const response = await fetch(`${fixture.baseUrl}/responses`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'fixture-model', input: [] }),
+      })
+      const events = (await response.text()).split('\n')
+        .filter(line => line.startsWith('data: {'))
+        .map(line => JSON.parse(line.slice('data: '.length)) as Record<string, unknown>)
+      expect(events.map(event => event.type)).toEqual([
+        'response.created',
+        'response.output_item.added',
+        'response.mcp_call.in_progress',
+        'response.mcp_call_arguments.delta',
+        'response.mcp_call_arguments.done',
+        'response.mcp_call.completed',
+        'response.output_item.done',
+        'response.completed',
+      ])
+      expect(events[1]).toMatchObject({
+        item: { type: 'mcp_call', server_label: 'dsh_harness', name: 'fixture_allowed' },
+      })
+      expect(response.status).toBe(200)
+      fixture.assertConsumed()
+    } finally {
+      await fixture.close()
+    }
+  })
+
+  it('emits regular Codex MCP calls as namespaced Responses function calls', async () => {
+    const fixture = await startResponsesFixture([{
+      kind: 'codexMcpCall',
+      namespace: 'mcp__dsh_harness',
+      name: 'fixture_allowed',
+      arguments: {},
+    }])
+    try {
+      const response = await fetch(`${fixture.baseUrl}/responses`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'fixture-model', input: [] }),
+      })
+      const events = (await response.text()).split('\n')
+        .filter(line => line.startsWith('data: {'))
+        .map(line => JSON.parse(line.slice('data: '.length)) as Record<string, unknown>)
+      expect(events.at(-2)).toMatchObject({
+        type: 'response.output_item.done',
+        item: {
+          type: 'function_call',
+          namespace: 'mcp__dsh_harness',
+          name: 'fixture_allowed',
+        },
       })
       expect(response.status).toBe(200)
       fixture.assertConsumed()

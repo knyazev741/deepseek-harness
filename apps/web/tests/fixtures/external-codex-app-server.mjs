@@ -4,13 +4,26 @@
 // a private CODEX_HOME from the Harness provider; this wrapper writes the
 // fixture model provider into that home and forwards JSONL stdio unchanged.
 import { spawn } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
 const codexHome = process.env.CODEX_HOME
 const responsesUrl = process.env.DSH_CODEX_RESPONSES_URL
 const codexBin = process.env.DSH_CODEX_BIN
+const traceFile = process.env.DSH_CODEX_TRACE_FILE
 if (codexHome === undefined || responsesUrl === undefined || codexBin === undefined) {
   throw new Error('external-codex fixture wrapper requires CODEX_HOME, DSH_CODEX_RESPONSES_URL, and DSH_CODEX_BIN')
+}
+
+function traceFrame(direction, line) {
+  if (traceFile === undefined || line.length === 0) return
+  try {
+    const frame = JSON.parse(line)
+    if (frame === null || typeof frame !== 'object') return
+    appendFileSync(traceFile, `${JSON.stringify({ direction, frame })}\n`)
+  } catch {
+    // The app-server protocol is JSONL; malformed diagnostics are forwarded
+    // but are not method evidence.
+  }
 }
 // The provider grants this private state root to the child sandbox. Write the
 // same explicit fixture configuration used by the pinned app-server evidence,
@@ -26,7 +39,7 @@ try {
 }
 existingConfig = existingConfig.replace(
   '[mcp_servers.dsh_harness]\n',
-  '[mcp_servers.dsh_harness]\nenabled = true\n',
+  '[mcp_servers.dsh_harness]\nenabled = true\ndefault_tools_approval_mode = "approve"\n',
 )
 if (!existingConfig.includes('model_provider = "fixture"')) {
   const fixtureConfig = [
@@ -69,14 +82,17 @@ process.stdin.on('data', (chunk) => {
   while ((newline = input.indexOf('\n')) !== -1) {
     const line = input.slice(0, newline)
     input = input.slice(newline + 1)
+    traceFrame('request', line)
     try {
       const frame = JSON.parse(line)
       if (frame?.method === 'account/read' && frame.id !== undefined) {
-        process.stdout.write(`${JSON.stringify({
+        const response = JSON.stringify({
           jsonrpc: '2.0',
           id: frame.id,
           result: { account: { authenticated: true }, requiresOpenaiAuth: false },
-        })}\n`)
+        })
+        traceFrame('response', response)
+        process.stdout.write(`${response}\n`)
         continue
       }
     } catch {
@@ -86,8 +102,17 @@ process.stdin.on('data', (chunk) => {
     child.stdin.write(`${line}\n`)
   }
 })
+let output = ''
 child.stdout.on('data', (chunk) => {
-  process.stdout.write(chunk)
+  const text = chunk.toString()
+  process.stdout.write(text)
+  output += text
+  let newline
+  while ((newline = output.indexOf('\n')) !== -1) {
+    const line = output.slice(0, newline)
+    output = output.slice(newline + 1)
+    traceFrame('response', line)
+  }
 })
 process.stdin.on('end', () => { child.stdin.end() })
 child.once('error', (error) => {

@@ -17,7 +17,7 @@ Harness 运行自己的 agent loop，而 console coding agent 仍属于独立的
 - `packages/external/external-session`——`ctx.externalSessions` Service Definition（类似 `ctx.subagents` 的命名提供方注册表）以及 `ExternalSessionProvider` 与 `ExternalBridgeContext` 约定。`compact()` 属于提供方约定，Harness 不会跨 wire 重做 agent 原生压缩。
 - `packages/external/external-session-bridge`——宿主侧 driver：按外部会话拥有提供方生命周期，通过 Task 1 bridge 追加仅日志的 `external/*` 事件，投影 transcript，并在会话关闭时 dispose 提供方。
 - `packages/external/external-session-codex`——Codex 提供方，持久驱动 `codex app-server --stdio`（证据固定为 `@openai/codex@0.147.0`）。
-- `packages/interaction/external-permission`——Phase 1 权限 bridge：把 `bridge.requestPermission` 路由到 ask-user/user-questions 通道，使用权限形状的询问；关闭、超时、无 answerer 时故障关闭。
+- `packages/interaction/external-permission`——Phase 1 权限 bridge：把 `bridge.requestPermission` 与所属 external `sessionId` 路由到 ask-user/user-questions 通道，使用权限形状的询问；关闭、超时、无 answerer 时故障关闭。
 - `packages/client/ui-session-mode`——客户端插件：带 model seat 的 mode picker 与外部 transcript conversation nodes。
 
 使用已注册提供方的 external-mode 会话创建会启动 bridge，绝不会启动原生 Agent；未知 mode 在创建时大声失败。无 mode（`dsh`）的会话不受影响。
@@ -42,7 +42,7 @@ Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全�
 
 ## Verification
 
-组装 Web 证明使用 `DSH_SNAPSHOT=replay perl -e 'alarm 180; exec @ARGV' pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/external-codex-session.e2e.ts`。它通过 opt-in Loader 层组合、经 loopback Responses fixture 驱动固定版本的 Codex app-server，并固定 mode picker、实时与已提交文本、命令活动、审批、允许与拒绝的 MCP 调用、压缩和恢复后的轮次；同时断言 fixture 已完全消费，浏览器、页面、控制台与请求失败探针为空。真实部署仍需要用户为配置的 Codex 可执行文件完成认证；ACP、Claude Code、智能体启动的外部会话与远程多用户托管仍不在本阶段内。
+组装 Web 证明使用 `DSH_SNAPSHOT=replay perl -e 'alarm 280; exec @ARGV' pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/external-codex-session.e2e.ts`。它通过 opt-in Loader 层组合、经 loopback Responses fixture 驱动固定版本的 Codex app-server，并固定 mode picker、实时与已提交文本、命令活动、审批、经配置的 `dsh_harness` MCP 调用及其持久化工具记录、直接网关对未列出调用的补充拒绝、压缩和恢复后的轮次。trace 断言真实 `thread/start` 与 `thread/resume` 方法使用同一个提供方线程 id；fixture 校验非空的 `previous_response_id`，并显式建模 Codex 的无状态延续。证明也会断言 fixture 已完全消费，浏览器、页面、控制台与请求失败探针为空。真实部署仍需要用户为配置的 Codex 可执行文件完成认证；Codex mode 不挂载原生 DSH 的委派与计划服务，ACP、Claude Code、智能体启动的外部会话与远程多用户托管仍不在本阶段内。
 
 ## Phase 1 vs the approval seam
 
@@ -50,6 +50,6 @@ Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全�
 
 ## Consequences
 
-用户可以在 opt-in Web GUI 中打开由 Codex 驱动的会话：流式轮次显示在同一 conversation UI，并从持久日志 replay；mode picker 列出带原生模型目录的 Codex mode；模型切换驱动子进程；渲染出的权限询问在故障关闭的关闭／失败路径上门控子进程；子进程在 Harness sandbox 下运行，并在会话关闭时回收进程树。组装 Loader、浏览器、transcript 与可访问性证明由 Web E2E 固定；ACP、Claude Code、智能体启动的外部会话与远程多用户托管仍不在本阶段内。
+用户可以在 opt-in Web GUI 中打开由 Codex 驱动的会话：流式轮次显示在同一 conversation UI，并从持久日志 replay；mode picker 列出带原生模型目录的 Codex mode；模型切换驱动子进程；渲染出的权限询问在故障关闭的关闭／失败路径上门控子进程；子进程在 Harness sandbox 下运行，并在会话关闭时回收进程树。Codex mode 不挂载原生 DSH 的委派或计划服务。组装 Loader、浏览器、transcript 与可访问性证明由 Web E2E 固定；ACP、Claude Code、智能体启动的外部会话与远程多用户托管仍不在本阶段内。
 
 External 事件仅写日志且为 `ignorable: true`，因此 replay 在 reload 后仍正确，读取未知 `external/*` 不会破坏它；model-visible ⟺ logged 规则成立，因为没有外部内容进入父会话的 model 请求，也没有 parent-context effect。流式增量不持久化。固定的 Codex fixture 防止 wire 漂移。外部工具调用与结果按 branded call id 严格成对提交，每对记录限制为有界 JSON，并投影到 external transcript；格式错误、名称错误、重复、冲突、无匹配或有歧义的记录由 session invariant 拒绝或由防御性 projection 忽略，不会进入父 agent 的 model context。外部审批审计对同样只写日志，不是原生轮次或 Agent 状态。

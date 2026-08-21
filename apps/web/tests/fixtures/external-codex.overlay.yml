@@ -10,6 +10,7 @@
       OPENAI_API_KEY: dsh-fixture-key
       DSH_CODEX_RESPONSES_URL: !!js process.env.DSH_CODEX_RESPONSES_URL
       DSH_CODEX_BIN: !!js process.env.DSH_CODEX_BIN
+      DSH_CODEX_TRACE_FILE: !!js process.env.DSH_CODEX_TRACE_FILE
     allowedTools: ['fixture_allowed']
     stateRoot: !!js dshHomePath('external-codex')
     disposeGraceMs: 3000

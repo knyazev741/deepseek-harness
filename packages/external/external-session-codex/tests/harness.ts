@@ -155,7 +155,7 @@ export async function startCodexHarness(
   const sessionId = SessionId('external-codex-test-session')
   mkdirSync(workspace)
   mkdirSync(codexHome)
-  const fixture = await startResponsesFixture(script)
+  const fixture = await startResponsesFixture(script, { allowStatelessContinuation: true })
   const sessionHome = codexStateRoot(codexHome, String(sessionId))
   mkdirSync(sessionHome, { recursive: true })
   writeFileSync(join(sessionHome, 'config.toml'), [

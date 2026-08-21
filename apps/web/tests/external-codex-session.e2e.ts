@@ -7,9 +7,10 @@
  * approval, MCP, compaction, and resume traffic all use the real products.
  */
 import { existsSync } from 'node:fs'
-import { mkdir, readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 import type { Browser, BrowserContext, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -60,6 +61,12 @@ const APPROVAL_ARGS = {
 }
 const FIXTURE_SCRIPT = [
   { kind: 'advertisedFunctionCall' as const, choices: [{ name: 'exec_command', arguments: APPROVAL_ARGS }] },
+  {
+    kind: 'codexMcpCall' as const,
+    namespace: 'mcp__dsh_harness',
+    name: 'fixture_allowed',
+    arguments: {},
+  },
   { kind: 'complete' as const, text: 'FIRST_TURN_COMMITTED' },
   { kind: 'complete' as const, text: 'COMPACTION_SUMMARY' },
   { kind: 'complete' as const, text: 'SECOND_TURN_COMMITTED' },
@@ -80,11 +87,16 @@ function launchOptions(shared: Partial<LaunchOptions> = {}): LaunchOptions {
   }
 }
 
-async function withCodexEnvironment<T>(fixture: ResponsesFixture, run: () => Promise<T>): Promise<T> {
+async function withCodexEnvironment<T>(
+  fixture: ResponsesFixture,
+  traceFile: string,
+  run: () => Promise<T>,
+): Promise<T> {
   const environment = {
     DSH_CODEX_COMMAND: CODEX_WRAPPER,
     DSH_CODEX_RESPONSES_URL: fixture.baseUrl,
     DSH_CODEX_BIN: CODEX_BIN,
+    DSH_CODEX_TRACE_FILE: traceFile,
   }
   const original = Object.fromEntries(Object.keys(environment).map(key => [key, process.env[key]]))
   Object.assign(process.env, environment)
@@ -96,6 +108,53 @@ async function withCodexEnvironment<T>(fixture: ResponsesFixture, run: () => Pro
       else process.env[key] = value
     }
   }
+}
+
+interface CodexTraceFrame {
+  readonly direction: 'request' | 'response'
+  readonly frame: Record<string, unknown>
+}
+
+async function readCodexTrace(traceFile: string): Promise<CodexTraceFrame[]> {
+  const contents = await readFile(traceFile, 'utf8')
+  return contents.split('\n').filter(line => line.length > 0).map((line) => {
+    const frame = JSON.parse(line) as unknown
+    if (frame === null || typeof frame !== 'object') throw new Error('Codex trace frame is not an object')
+    const record = frame as Record<string, unknown>
+    if (record.direction !== 'request' && record.direction !== 'response') {
+      throw new Error('Codex trace frame has an invalid direction')
+    }
+    if (record.frame === null || typeof record.frame !== 'object') {
+      throw new Error('Codex trace frame payload is not an object')
+    }
+    return {
+      direction: record.direction,
+      frame: record.frame as Record<string, unknown>,
+    }
+  })
+}
+
+function nestedRecord(value: unknown, key: string): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== 'object') return undefined
+  const nested = (value as Record<string, unknown>)[key]
+  return nested !== null && typeof nested === 'object'
+    ? nested as Record<string, unknown>
+    : undefined
+}
+
+function providerThreadIdFromStart(
+  trace: readonly CodexTraceFrame[],
+  start: CodexTraceFrame,
+): string | undefined {
+  const requestId = start.frame.id
+  if (typeof requestId !== 'string') return undefined
+  for (const entry of trace) {
+    if (entry.direction !== 'response' || entry.frame.id !== requestId) continue
+    const resultThread = nestedRecord(nestedRecord(entry.frame, 'result'), 'thread')
+    const candidate = resultThread?.id
+    if (typeof candidate === 'string') return candidate
+  }
+  return undefined
 }
 
 function registerFixtureTool(context: Context): void {
@@ -149,7 +208,7 @@ function transcriptProjection(session: ReturnType<typeof codexSession>): string 
       default:
         return []
     }
-  }).join('\n') + '\n'
+  }).join('\n')
 }
 
 async function mcpClientFor(
@@ -211,12 +270,19 @@ describe('web e2e: interactive Codex mode', () => {
   let sessionId: SessionId
   let spawnSpecs: SubprocessSpawnSpec[]
   let tripwire: Tripwire
+  let traceRoot: string
+  let traceFile: string
   const tripwires: Tripwire[] = []
 
   beforeAll(async () => {
     await mkdir(SNAPSHOT_DIR, { recursive: true })
-    fixture = await startResponsesFixture(FIXTURE_SCRIPT, { eventDelayMs: 1_000 })
-    await withCodexEnvironment(fixture, async () => {
+    traceRoot = await mkdtemp(join(tmpdir(), 'dsh-external-codex-web-trace-'))
+    traceFile = join(traceRoot, 'app-server.jsonl')
+    fixture = await startResponsesFixture(FIXTURE_SCRIPT, {
+      eventDelayMs: 1_000,
+      allowStatelessContinuation: true,
+    })
+    await withCodexEnvironment(fixture, traceFile, async () => {
       scaffold = await launchWebScaffold(launchOptions({ retainWorld: true }))
     })
     registerFixtureTool(scaffold.ctx)
@@ -240,6 +306,7 @@ describe('web e2e: interactive Codex mode', () => {
     await scaffold?.close().catch((error: unknown) => failures.push(error))
     try { assertNoBrowserErrors(tripwires) } catch (error: unknown) { failures.push(error) }
     await fixture?.close().catch((error: unknown) => failures.push(error))
+    await rm(traceRoot, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
     if (failures.length === 1) throw failures[0]
     if (failures.length > 1) throw new AggregateError(failures, 'Codex Web e2e cleanup failed')
   })
@@ -295,6 +362,7 @@ describe('web e2e: interactive Codex mode', () => {
     await input.fill('Run the fixture command, then report the completed marker.')
     await input.press('Enter')
     await answerExternalPermission(page, 'Allow')
+    await expect.poll(() => fixture.requests.length, { timeout: 30_000 }).toBeGreaterThan(1)
     const liveSeat = page.locator('[data-testid="external-live-seat"]')
     await liveSeat.waitFor({ state: 'attached', timeout: 60_000 })
     if (MODE !== 'record') {
@@ -311,17 +379,15 @@ describe('web e2e: interactive Codex mode', () => {
     expect(fixture.requests[0]?.body).toMatchObject({ reasoning: { effort: 'high' } })
   }, 180_000)
 
-  it('calls only the allowlisted MCP tool and rejects an unlisted call', async () => {
+  it('routes the allowlisted MCP call through Codex and rejects an unlisted gateway call', async () => {
     const client = await mcpClientFor(scaffold, sessionId, spawnSpecs)
     try {
       await expect(client.listTools()).resolves.toMatchObject({ tools: [{ name: 'fixture_allowed' }] })
-      const allowed = client.callTool({ name: 'fixture_allowed', arguments: {} })
-      await expect(allowed).resolves.toMatchObject({ content: [{ type: 'text', text: 'FIXTURE_MCP_ALLOWED' }] })
       await expect(client.callTool({ name: 'fixture_unlisted', arguments: {} })).rejects.toThrow()
-      await expect.poll(
-        () => scaffold.ctx.sessions.get(sessionId)?.events.filter(event => event.type === 'external/tool-call').length,
-        { timeout: 30_000 },
-      ).toBeGreaterThan(0)
+      const events = scaffold.ctx.sessions.get(sessionId)?.events ?? []
+      expect(events.some(event => event.type === 'external/tool-call' && event.data.name === 'fixture_allowed')).toBe(true)
+      expect(events.some(event => event.type === 'external/tool-result'
+        && event.data.name === 'fixture_allowed' && !event.data.isError)).toBe(true)
     } finally {
       await client.close()
     }
@@ -347,14 +413,24 @@ describe('web e2e: interactive Codex mode', () => {
     }
     await page.close()
     await scaffold.close()
-    await withCodexEnvironment(fixture, async () => {
+    await withCodexEnvironment(fixture, traceFile, async () => {
       scaffold = await launchWebScaffold(launchOptions(shared))
     })
     registerFixtureTool(scaffold.ctx)
     spawnSpecs = captureSpawnSpecs(scaffold)
     page = await browserContext.newPage()
+    tripwire = watchConsole(page)
+    tripwires.push(tripwire)
     await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+    const restartedTripwire = tripwires.at(-1)
+    if (restartedTripwire === undefined) throw new Error('restarted page tripwire was not retained')
+    await page.evaluate(() => { console.error('__task9_restarted_page_tripwire__') })
+    expect(restartedTripwire.consoleErrors).toContain('__task9_restarted_page_tripwire__')
+    restartedTripwire.consoleErrors.splice(
+      restartedTripwire.consoleErrors.indexOf('__task9_restarted_page_tripwire__'),
+      1,
+    )
     const workspaceChooser = page.getByRole('textbox', { name: 'Choose workspace' })
     if (await workspaceChooser.count() > 0 && await workspaceChooser.first().isVisible()) {
       await connectFreshWorkspace(page, scaffold.workspaceCwd)
@@ -370,8 +446,49 @@ describe('web e2e: interactive Codex mode', () => {
     await page.locator('[data-testid="external-live-seat"]').waitFor({ state: 'attached', timeout: 60_000 })
     await page.getByText('SECOND_TURN_COMMITTED', { exact: true }).waitFor({ timeout: 60_000 })
     await settled
-    expect(fixture.requests).toHaveLength(4)
+    expect(fixture.requests).toHaveLength(5)
     expect(transcriptProjection(codexSession(scaffold))).toContain('SECOND_TURN_COMMITTED')
+    const trace = await readCodexTrace(traceFile)
+    const resumedSession = codexSession(scaffold)
+    const sessionCwd = resumedSession?.header.cwd
+    if (sessionCwd === undefined) throw new Error('resumed Codex session has no workspace cwd')
+    const threadStarts = trace.filter((entry) => {
+      if (entry.direction !== 'request' || entry.frame.method !== 'thread/start') return false
+      return nestedRecord(entry.frame, 'params')?.cwd === sessionCwd
+    })
+    const threadResumes = trace.filter(entry => entry.direction === 'request' && entry.frame.method === 'thread/resume')
+    expect(threadStarts).toHaveLength(1)
+    expect(threadResumes).toHaveLength(1)
+    const providerThreadId = providerThreadIdFromStart(trace, threadStarts[0]!)
+    if (providerThreadId === undefined) throw new Error('thread/start response did not return a provider thread id')
+    expect(nestedRecord(threadResumes[0]!.frame, 'params')).toMatchObject({ threadId: providerThreadId })
+    const resumedEvents = codexSession(scaffold)?.events ?? []
+    expect(resumedEvents.some(event => event.type === 'external/session-started'
+      && event.data.providerThreadId === providerThreadId)).toBe(true)
+    const mcpStarted = trace.filter((entry) => {
+      if (entry.direction !== 'response' || entry.frame.method !== 'item/started') return false
+      return nestedRecord(nestedRecord(entry.frame, 'params'), 'item')?.type === 'mcpToolCall'
+    })
+    expect(mcpStarted).toHaveLength(1)
+    expect(nestedRecord(nestedRecord(mcpStarted[0]!.frame, 'params'), 'item')).toMatchObject({
+      server: 'dsh_harness',
+      tool: 'fixture_allowed',
+    })
+    const mcpCompleted = trace.filter((entry) => {
+      if (entry.direction !== 'response' || entry.frame.method !== 'item/completed') return false
+      return nestedRecord(nestedRecord(entry.frame, 'params'), 'item')?.type === 'mcpToolCall'
+    })
+    expect(mcpCompleted).toHaveLength(1)
+    expect(nestedRecord(nestedRecord(mcpCompleted[0]!.frame, 'params'), 'item')).toMatchObject({
+      server: 'dsh_harness',
+      tool: 'fixture_allowed',
+      status: 'completed',
+    })
+    expect(trace.some((entry) => {
+      if (entry.direction !== 'response' || entry.frame.method !== 'mcpServer/startupStatus/updated') return false
+      const params = nestedRecord(entry.frame, 'params')
+      return params?.name === 'dsh_harness' && params.status === 'ready'
+    })).toBe(true)
 
     await compareOrRefreshGolden(
       UI_EXPECTED,

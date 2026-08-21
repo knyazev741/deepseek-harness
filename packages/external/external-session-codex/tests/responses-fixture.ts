@@ -35,6 +35,13 @@ export type ResponsesBehavior =
     readonly name: string
     readonly arguments: Record<string, unknown>
   }
+  | {
+    /** A Responses function_call with the namespace Codex uses for regular MCP tools. */
+    readonly kind: 'codexMcpCall'
+    readonly namespace: string
+    readonly name: string
+    readonly arguments: Record<string, unknown>
+  }
   | { readonly kind: 'hold' }
 
 /** Running package-private Responses fixture. */
@@ -51,6 +58,12 @@ export interface ResponsesFixture {
 export interface ResponsesFixtureOptions {
   /** Delay between SSE events; zero keeps the fixture as fast as possible. */
   readonly eventDelayMs?: number
+  /**
+   * Accept a null previous_response_id after the first response. The pinned
+   * Codex app-server uses this stateless Responses continuation for its local
+   * provider; non-null ids are still required to match the preceding response.
+   */
+  readonly allowStatelessContinuation?: boolean
 }
 
 function responseObject(text: string, suffix = '', previousResponseId: string | null = null): Record<string, unknown> {
@@ -177,12 +190,14 @@ function functionCallEvents(
   argumentsValue: Record<string, unknown>,
   suffix = '',
   previousResponseId: string | null = null,
+  namespace?: string,
 ): Record<string, unknown>[] {
   const argumentsText = JSON.stringify(argumentsValue)
   const item = {
     id: `fc_fixture${suffix}`,
     type: 'function_call',
     status: 'completed',
+    ...namespace === undefined ? {} : { namespace },
     name,
     arguments: argumentsText,
     call_id: `call_fixture${suffix}`,
@@ -244,7 +259,7 @@ function mcpCallEvents(
     server_label: serverLabel,
     name,
     arguments: argumentsText,
-    output: undefined,
+    output: '',
   }
   const completed = {
     ...responseObject('', suffix, previousResponseId),
@@ -266,6 +281,11 @@ function mcpCallEvents(
       type: 'response.output_item.added',
       output_index: 0,
       item: { ...item, status: 'in_progress', arguments: '' },
+    },
+    {
+      type: 'response.mcp_call.in_progress',
+      output_index: 0,
+      item_id: item.id,
     },
     {
       type: 'response.mcp_call_arguments.delta',
@@ -373,6 +393,7 @@ export async function startResponsesFixture(
 ): Promise<ResponsesFixture> {
   const behaviors = [...script]
   const eventDelayMs = options.eventDelayMs ?? 0
+  const allowStatelessContinuation = options.allowStatelessContinuation ?? false
   if (!Number.isFinite(eventDelayMs) || eventDelayMs < 0) {
     throw new Error(`responses fixture eventDelayMs must be a non-negative finite number, got ${String(eventDelayMs)}`)
   }
@@ -397,6 +418,22 @@ export async function startResponsesFixture(
         body: parsedBody,
       })
       started.resolve(undefined)
+      const previousResponseId = parsedBody.previous_response_id
+      const previousResponseMatches = lastResponseId === null
+        ? previousResponseId === undefined || previousResponseId === null
+        : previousResponseId === lastResponseId
+          || (allowStatelessContinuation && (previousResponseId === undefined || previousResponseId === null))
+      if (!previousResponseMatches) {
+        response.writeHead(400, { 'content-type': 'application/json' })
+        response.end(JSON.stringify({
+          error: {
+            message: 'fixture request did not continue the previous response',
+            expected_previous_response_id: lastResponseId,
+            received_previous_response_id: previousResponseId ?? null,
+          },
+        }))
+        return
+      }
       const behavior = behaviors.shift()
       if (behavior === undefined) {
         response.writeHead(500, { 'content-type': 'application/json' })
@@ -424,6 +461,14 @@ export async function startResponsesFixture(
         events = completeResponsesEvents(behavior.text, suffix, lastResponseId)
       } else if (behavior.kind === 'mcpCall') {
         events = mcpCallEvents(behavior.serverLabel, behavior.name, behavior.arguments, suffix, lastResponseId)
+      } else if (behavior.kind === 'codexMcpCall') {
+        events = functionCallEvents(
+          behavior.name,
+          behavior.arguments,
+          suffix,
+          lastResponseId,
+          behavior.namespace,
+        )
       } else {
         const call = behavior.kind === 'functionCall'
           ? behavior

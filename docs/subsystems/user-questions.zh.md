@@ -70,7 +70,7 @@ interface AskUserQuestionItem {
 
 ## 提问请求
 
-`AskUserQuestionRequest` 是跨包请求。`questions` 是数组，这样 UI 可以在一个流程中呈现相关提示，同时保持每个回答有稳定的 id。如提供 `agent`，它必须与存活调用方是同一实例；只有当当前注册表将该实例识别为运行时根时，交互 seam 才会接纳该 agent。
+`AskUserQuestionRequest` 是跨包请求。`questions` 是数组，这样 UI 可以在一个流程中呈现相关提示，同时保持每个回答有稳定的 id。如提供 `agent`，它必须与存活调用方是同一实例；只有当当前注册表将该实例识别为运行时根时，交互 seam 才会接纳该 agent。没有原生 Agent 时，`sessionId` 标识拥有该问题的活跃外部会话。
 
 ```ts type-equiv
 /** Request for a human answer. */
@@ -79,6 +79,8 @@ interface AskUserQuestionRequest {
   questions: AskUserQuestionItem[]
   /** Exact live calling agent, when the request came from an agent tool call. */
   agent?: Agent
+  /** Live external session posing the question when no native Agent exists. */
+  sessionId?: SessionId
   /** Abort signal for the owning tool/step. */
   signal?: AbortSignal
 }
