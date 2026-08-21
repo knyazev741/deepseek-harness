@@ -611,6 +611,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the descriptors in insertion order.',
       },
       {
+        signature: 'async preflight( providerName: string, request: ExternalSessionPreflightRequest, ): Promise<ExternalModePreflightResult>',
+        description: 'Run one provider\'s typed pre-session check. A legacy provider without a preflight operation is allowed through for compatibility with older providers; their normal model/catalog operation remains the availability check exposed by the caller.',
+        parameters: [{ name: 'providerName', description: 'registered provider name.' }, { name: 'request', description: 'workspace and sandbox inputs.' }],
+        returns: 'the typed availability result.',
+      },
+      {
         signature: 'async start(request: ExternalSessionStartRequest): Promise<void>',
         description: 'Begin a live external session on the named provider, handing it a bridge. Records the session-to-provider route before awaiting the provider so a later prompt/interrupt/setModel/dispose resolves during startup, then removes the route when startup rejects.',
         parameters: [{ name: 'request', description: 'the start request with a pre-reserved session id.' }],
@@ -3252,6 +3258,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ExternalModelInfo {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
   },
   {
+    name: 'ExternalModePreflightCode',
+    declaration: 'export type ExternalModePreflightCode = \'BINARY_MISSING\' | \'AUTH_UNAVAILABLE\' | \'INVALID_CONFIG\' | \'SANDBOX_INCOMPATIBLE\' | \'PREFLIGHT_FAILED\';',
+  },
+  {
+    name: 'ExternalModePreflightFailure',
+    declaration: 'export interface ExternalModePreflightFailure {\n    readonly code: ExternalModePreflightCode;\n    readonly message: string;\n}',
+  },
+  {
+    name: 'ExternalModePreflightResult',
+    declaration: 'export type ExternalModePreflightResult = {\n    readonly ok: true;\n} | {\n    readonly ok: false;\n    readonly failure: ExternalModePreflightFailure;\n};',
+  },
+  {
     name: 'ExternalPermissionAnswerer',
     declaration: 'export type ExternalPermissionAnswerer = (sessionId: SessionId, ask: ExternalPermissionAsk) => Promise<ExternalPermissionDecision>;',
   },
@@ -3272,8 +3290,12 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ExternalSessionEvent<T extends SessionEventType = SessionEventType> {\n    type: T;\n    data: SessionEventMap[T];\n}',
   },
   {
+    name: 'ExternalSessionPreflightRequest',
+    declaration: 'export interface ExternalSessionPreflightRequest {\n    readonly cwd: string;\n    readonly sandbox?: SandboxMode;\n}',
+  },
+  {
     name: 'ExternalSessionProvider',
-    declaration: 'export interface ExternalSessionProvider extends ExternalAgentDescriptor {\n    start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void>;\n    resume(request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void>;\n    prompt(sessionId: SessionId, text: string): Promise<{\n        turnId: ExternalTurnId;\n    }>;\n    interrupt(sessionId: SessionId): void;\n    compact(sessionId: SessionId): Promise<void>;\n    listModels(): Promise<ExternalModelInfo[]>;\n    setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>;\n    dispose(sessionId: SessionId): Promise<void>;\n}',
+    declaration: 'export interface ExternalSessionProvider extends ExternalAgentDescriptor {\n    preflight?(request: ExternalSessionPreflightRequest): Promise<ExternalModePreflightResult>;\n    start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void>;\n    resume(request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void>;\n    prompt(sessionId: SessionId, text: string): Promise<{\n        turnId: ExternalTurnId;\n    }>;\n    interrupt(sessionId: SessionId): void;\n    compact(sessionId: SessionId): Promise<void>;\n    listModels(): Promise<ExternalModelInfo[]>;\n    setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>;\n    dispose(sessionId: SessionId): Promise<void>;\n}',
   },
   {
     name: 'ExternalSessionStart',
@@ -3913,7 +3935,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RpcErrorDetailsMap',
-    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'unknown-mode\': {\n        mode: string;\n    };\n    \'invalid-mode\': {\n        sessionId: SessionId;\n    };\n    \'external-session\': {\n        sessionId: SessionId;\n        mode: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'agent-preset-read-only\': {\n        agentPreset: string;\n        reason: string;\n    };\n    \'agent-preset-locked\': {\n        sessionId: SessionId;\n        agentPreset: string;\n    };\n    \' /* …truncated — full shape in source */',
+    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'unknown-mode\': {\n        mode: string;\n    };\n    \'external-mode-unavailable\': {\n        mode: string;\n        reason: \'BINARY_MISSING\' | \'AUTH_UNAVAILABLE\' | \'INVALID_CONFIG\' | \'SANDBOX_INCOMPATIBLE\' | \'PREFLIGHT_FAILED\';\n    };\n    \'invalid-mode\': {\n        sessionId: SessionId;\n    };\n    \'external-session\': {\n        sessionId: SessionId;\n        mode: string;\n    };\n    \'external-images-unsupported\': {\n        mode: string;\n    };\n    \'external-steer-unsupported\': {\n        mode: string;\n    };\n    \'external-queue-unsupported\': {\n        mode?: string;\n        itemId?: MessageId;\n        action?: string;\n    };\n    \'external-goals-unsupported\': {\n        command: string;\n    };\n    \'external-command-failed\': {\n        sessionId: SessionId;\n        line: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        nam /* …truncated — full shape in source */',
   },
   {
     name: 'RpcId',

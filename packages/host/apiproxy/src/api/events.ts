@@ -112,7 +112,7 @@ export type MuxFrame =
 
 /**
  * Host stream frames. session-added carries the lineage anchor, product
- * origin, project cwd, and blank bit (the list-summary fields a client cannot
+ * origin, project cwd, durable driver mode, and blank bit (the list-summary fields a client cannot
  * wait for a refresh to learn); the frame fires at session/created, so blank is
  * constantly true — clients flip it on the session's first
  * `host/session-status(running:true)` (a blank session never runs), and a
@@ -136,6 +136,7 @@ export type HostFrame =
     origin?: 'subagent' | 'github-actions'
     cwd?: string
     agentPreset?: string
+    mode?: string
   }
   | { type: 'host/session-removed'; sessionId: SessionId }
   | { type: 'host/session-status'; sessionId: SessionId; running: boolean }

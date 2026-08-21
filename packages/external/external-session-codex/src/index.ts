@@ -13,10 +13,10 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {
@@ -24,7 +24,9 @@ import type {
   ExternalBridgeContext,
   ExternalModelDirectory,
   ExternalModelInfo,
+  ExternalModePreflightResult,
   ExternalProviderThreadId,
+  ExternalSessionPreflightRequest,
   ExternalSessionProvider,
   ExternalSessionStart,
   ExternalTurnId,
@@ -38,7 +40,12 @@ import { effectiveApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import type { McpGatewayLease } from '@deepseek-ai/dsh-mcp-gateway'
-import { appServerArgv, CodexExternalSession, type CodexSessionSpec } from './run.ts'
+import {
+  appServerArgv,
+  CodexExternalSession,
+  preflightCodexServer,
+  type CodexSessionSpec,
+} from './run.ts'
 
 export const name = 'external-session-codex'
 export const inject = ['externalSessions', 'subprocess']
@@ -77,6 +84,8 @@ export interface Config {
   disposeGraceMs?: number
   /** Tool names requested from the optional authenticated Harness MCP gateway. */
   mcpTools?: string[]
+  /** Alias for mcpTools used by deployment profiles to state the allowlist explicitly. */
+  allowedTools?: string[]
 }
 
 export const Config = z.object({
@@ -87,6 +96,7 @@ export const Config = z.object({
   reasoningEffort: z.union([z.string(), undefined]) as unknown as z<ReasoningEffort | undefined>,
   disposeGraceMs: z.number().default(DEFAULT_DISPOSE_GRACE_MS),
   mcpTools: z.array(z.string()).default([]),
+  allowedTools: z.union([z.array(z.string()), undefined]),
 }) as unknown as z<Config>
 
 type ResolvedConfig = Config & {
@@ -225,6 +235,58 @@ class CodexProvider implements ExternalSessionProvider {
     private readonly ctx: Context,
     private readonly config: ResolvedConfig,
   ) {}
+
+  /**
+   * Probe the configured executable and account/sandbox availability without
+   * creating a persistent Codex thread or publishing a Harness session.
+   * @param request - workspace and requested sandbox policy.
+   * @returns a typed availability result suitable for `session.externalModes`.
+   */
+  async preflight(request: ExternalSessionPreflightRequest): Promise<ExternalModePreflightResult> {
+    if (request.cwd.length === 0 || !isAbsolute(request.cwd)) {
+      return {
+        ok: false,
+        failure: { code: 'INVALID_CONFIG', message: 'Codex preflight requires an absolute workspace path.' },
+      }
+    }
+    const mode = request.sandbox ?? 'read-only'
+    const sandbox = this.ctx.get('sandbox')
+    if (mode !== 'danger-full-access' && sandbox === undefined) {
+      return {
+        ok: false,
+        failure: {
+          code: 'SANDBOX_INCOMPATIBLE',
+          message: `Codex sandbox mode "${mode}" is unavailable in this deployment.`,
+        },
+      }
+    }
+    const sessionId = SessionId(`external-codex-preflight-${randomUUID()}`)
+    const stateRoot = await ensurePrivateStateRoot(this.config.stateRoot, String(sessionId))
+    const signal = new AbortController().signal
+    try {
+      await preflightCodexServer(this.spec(request.cwd, {
+        mode,
+        workspaceRoot: request.cwd,
+        sessionId,
+      }, stateRoot), signal)
+      return { ok: true }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      const lowered = message.toLowerCase()
+      const code = lowered.includes('enoent') || lowered.includes('not found')
+        ? 'BINARY_MISSING' as const
+        : lowered.includes('account') || lowered.includes('auth') || lowered.includes('login')
+          ? 'AUTH_UNAVAILABLE' as const
+          : lowered.includes('sandbox') || lowered.includes('confin')
+            ? 'SANDBOX_INCOMPATIBLE' as const
+            : lowered.includes('config') || lowered.includes('invalid')
+              ? 'INVALID_CONFIG' as const
+              : 'PREFLIGHT_FAILED' as const
+      return { ok: false, failure: { code, message } }
+    } finally {
+      await rm(stateRoot, { recursive: true, force: true })
+    }
+  }
 
   async start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void> {
     return this.open(request, bridge)
@@ -485,13 +547,18 @@ class CodexProvider implements ExternalSessionProvider {
  * @param config - explicit command, arguments, child environment, and disposal grace.
  */
 export function apply(ctx: Context, config: Config): void {
+  const configuredTools = config.allowedTools !== undefined
+    ? config.allowedTools
+    : config.mcpTools ?? []
   const resolved: ResolvedConfig = {
-    ...config,
+    ...config.command === undefined ? {} : { command: config.command },
+    ...config.reasoningEffort === undefined ? {} : { reasoningEffort: config.reasoningEffort },
+    ...config.allowedTools === undefined ? {} : { allowedTools: config.allowedTools },
     args: config.args ?? ['app-server', '--stdio'],
     env: config.env ?? {},
     stateRoot: config.stateRoot ?? join(tmpdir(), 'dsh-external-codex'),
     disposeGraceMs: config.disposeGraceMs ?? DEFAULT_DISPOSE_GRACE_MS,
-    mcpTools: config.mcpTools ?? [],
+    mcpTools: configuredTools,
   }
   if (!Number.isFinite(resolved.disposeGraceMs) || resolved.disposeGraceMs <= 0) {
     throwable(`disposeGraceMs must be a positive finite number, got ${resolved.disposeGraceMs}`)
@@ -504,9 +571,18 @@ export function apply(ctx: Context, config: Config): void {
       throwable('app-server args must not contain an empty string')
     }
   }
-  if (resolved.command !== undefined && resolved.command.length === 0) {
+  if (resolved.args.length === 0) throwable('app-server args must contain at least one argument')
+  if (resolved.command !== undefined && resolved.command.trim().length === 0) {
     throwable('command must be non-empty when configured')
   }
-  if (resolved.stateRoot.length === 0) throwable('stateRoot must be non-empty')
+  if (resolved.stateRoot.length === 0 || !isAbsolute(resolved.stateRoot)) {
+    throwable('stateRoot must be an absolute path')
+  }
+  const toolNames = new Set<string>()
+  for (const tool of resolved.mcpTools) {
+    if (tool.trim().length === 0) throwable('allowed tools must not contain an empty name')
+    if (toolNames.has(tool)) throwable(`allowed tools must not contain duplicate "${tool}"`)
+    toolNames.add(tool)
+  }
   ctx.externalSessions.registerProvider(new CodexProvider(ctx, resolved))
 }

@@ -267,6 +267,13 @@ export const sessionExternalModesValueSchema = z.object({
   failures: z.array(z.object({
     provider: z.string().min(1),
     label: z.string().min(1),
+    code: z.union([
+      z.literal('BINARY_MISSING'),
+      z.literal('AUTH_UNAVAILABLE'),
+      z.literal('INVALID_CONFIG'),
+      z.literal('SANDBOX_INCOMPATIBLE'),
+      z.literal('PREFLIGHT_FAILED'),
+    ]).optional(),
     message: z.string(),
   })),
 }) satisfies z.ZodType<Wire<ResponseValue<'session.externalModes'>>>

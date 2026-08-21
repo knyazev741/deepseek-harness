@@ -34,6 +34,8 @@ export const PAGE_MESSAGES = 50
 
 /** Manager-owned observers of a Session object's local state edges. */
 export interface SessionOptions {
+  /** Durable driver mode from the host summary; `dsh`/absent uses native remotes. */
+  mode?: string
   /** Catalog-discovered address selecting non-activating subagent transport. */
   address?: SubagentAddress
   /** Whether the exact direct parent Agent was live at the latest catalog read. */
@@ -91,6 +93,8 @@ export class Session implements SessionFace {
   private running = false
   private address: SubagentAddress | undefined
   private parentAvailable = false
+  private sessionMode: string | undefined
+  private readonly externalTurnWaiters: Array<() => void> = []
   /**
    * Sticky send marker, private input of the composerPhase derivation: set
    * synchronously before prompt()'s first await, never reset — the blank →
@@ -149,6 +153,7 @@ export class Session implements SessionFace {
     private readonly options: SessionOptions = {},
   ) {
     this.projections = options.projections ?? new ProjectionValueStore()
+    this.sessionMode = options.mode
     this.address = options.address
     this.parentAvailable = options.parentAvailable ?? false
     this.conversation = options.conversation === undefined
@@ -162,6 +167,11 @@ export class Session implements SessionFace {
       this.snapshotCache = this.buildSnapshot()
     })
     this.snapshotCache = this.buildSnapshot()
+  }
+
+  /** Durable driver mode used by client routing and mode-aware presentations. */
+  get mode(): string | undefined {
+    return this.sessionMode
   }
 
   /**
@@ -185,9 +195,10 @@ export class Session implements SessionFace {
   // ---- Operations ----
 
   /**
-   * Send (queue/steer passed through 1:1); failures land in the snapshot's promptError.
+   * Send through the native Agent or, for an external mode, forward text through
+   * `session.command`; failures land in the snapshot's promptError.
    * @param content - text plus browser-owned temporary image uploads.
-   * @param mode - queue appends after the current turn; steer interrupts it.
+   * @param mode - native queue appends after the current turn; native steer interrupts it.
    * @returns the prompt result (also mirrored into promptError on failure).
    */
   async prompt(content: PromptContentPart[], mode: 'queue' | 'steer'): Promise<RpcResult<{ accepted: true }>> {
@@ -201,7 +212,32 @@ export class Session implements SessionFace {
     this.notifier.markDirty()
     let result: RpcResult<{ accepted: true }>
     try {
-      if (this.address === undefined) {
+      if (this.isExternalMode()) {
+        if (content.some(part => part.type === 'image')) {
+          result = {
+            ok: false,
+            error: {
+              code: 'external-images-unsupported',
+              message: 'External sessions do not accept image input yet.',
+              details: { mode: this.sessionMode ?? 'external' },
+            },
+          }
+        } else if (mode === 'steer') {
+          result = {
+            ok: false,
+            error: {
+              code: 'external-steer-unsupported',
+              message: 'External sessions do not support steering yet.',
+              details: { mode: this.sessionMode ?? 'external' },
+            },
+          }
+        } else {
+          const command = await this.command(content.flatMap(part => part.type === 'text' ? [part.text] : []).join(''))
+          result = command.ok
+            ? { ok: true, value: { accepted: true } }
+            : { ok: false, error: command.error as RpcError }
+        }
+      } else if (this.address === undefined) {
         result = (await this.api.sessions.prompt({
           sessionId: this.sessionId,
           mode,
@@ -286,6 +322,16 @@ export class Session implements SessionFace {
 
   /** Apply one operation to a still-pending queue occurrence. */
   async updateQueue(itemId: MessageId, action: QueueAction): Promise<RpcResult<{ accepted: true }>> {
+    if (this.isExternalMode()) {
+      return {
+        ok: false,
+        error: {
+          code: 'external-queue-unsupported',
+          message: 'External sessions do not expose queued-message operations yet.',
+          details: { itemId, action: action.kind },
+        },
+      }
+    }
     try {
       return (await this.api.sessions.updateQueue({ sessionId: this.sessionId, itemId, action })).result
     } catch (error) {
@@ -352,13 +398,51 @@ export class Session implements SessionFace {
   }
 
   /**
-   * Execute one slash-command line against this session's agent — pure
-   * admission semantics (the host executor durably logs the lifecycle;
-   * outcomes render as flow nodes, never as a response echo).
+   * Execute one command line. Native sessions use the command registry; external
+   * sessions forward plain and provider-specific lines through `session.command`
+   * and wait for the durable external turn terminal when a turn is started.
    * @param line - the full command line, leading slash included.
    * @returns the admission result, or the error branch on transport failure.
    */
   async command(line: string): Promise<RemoteResult<{ matched: boolean }>> {
+    if (this.isExternalMode()) {
+      const commandName = /^\/([a-z0-9_-]+)/iu.exec(line.trim())?.[1]?.toLowerCase()
+      if (commandName === 'goal' || commandName === 'goals' || commandName === 'plan') {
+        return {
+          ok: false,
+          error: {
+            code: 'external-goals-unsupported',
+            message: 'Native goals are unavailable for external sessions.',
+            details: { command: commandName },
+          },
+        }
+      }
+      const waitsForTurn = commandName !== 'compact' && commandName !== 'model'
+      const wait = waitsForTurn && this.openState === 'open' ? this.waitForExternalTurnEnd() : undefined
+      try {
+        const response = (await this.api.sessions.command({ sessionId: this.sessionId, line })).result
+        if (!response.ok) {
+          wait?.cancel()
+          return response
+        }
+        if (response.value.kind === 'error') {
+          wait?.cancel()
+          return {
+            ok: false,
+            error: {
+              code: 'external-command-failed',
+              message: response.value.text,
+              details: { sessionId: this.sessionId, line },
+            },
+          }
+        }
+        if (wait !== undefined) await wait.promise
+        return { ok: true, value: { matched: true } }
+      } catch (error: unknown) {
+        wait?.cancel()
+        return transportError(error)
+      }
+    }
     const result = await this.remote.commands.execute(this.sessionId, line)
     if (!result.ok) return result
     return { ok: true, value: { matched: result.value !== undefined } }
@@ -557,6 +641,16 @@ export class Session implements SessionFace {
   }
 
   /**
+   * Update the durable driver mode from a refreshed list summary.
+   * @param mode - current mode from the host summary, or undefined for native sessions.
+   */
+  configureMode(mode: string | undefined): void {
+    if (this.sessionMode === mode) return
+    this.sessionMode = mode
+    this.notifier.markDirty()
+  }
+
+  /**
    * Update only the parent availability hint from a catalog refresh.
    * @param available - whether the exact direct parent is live.
    */
@@ -685,6 +779,7 @@ export class Session implements SessionFace {
     const externalChanged = this.retireExternalLive(event)
     const tailSeq = this.windowTailSeq()
     if (tailSeq !== null && event.seq <= tailSeq) return externalChanged ? 'immediate' : 'none' // replay overlap, drop
+    if ((event as unknown as { type: string }).type === 'external/turn-ended') this.settleExternalTurnWaiter()
     this.events.push(event)
     this.views.push(view)
     if (event.type === 'turn/start') this.firstPromptPendingTurn = false
@@ -717,6 +812,38 @@ export class Session implements SessionFace {
   private acceptExternalDelta(turnId: string, delta: string): void {
     if (this.openState !== 'open' || this.removed || this.lastAgentError !== null) return
     if (this.externalLive.push(turnId, delta)) this.notifier.markFrameDirty()
+  }
+
+  /** Register a wait for the next durable external turn terminal event. */
+  private waitForExternalTurnEnd(): { promise: Promise<void>; cancel: () => void } {
+    let resolveWaiter!: () => void
+    let settled = false
+    const waiter = (): void => {
+      if (settled) return
+      settled = true
+      resolveWaiter()
+    }
+    const promise = new Promise<void>((resolve) => { resolveWaiter = resolve })
+    this.externalTurnWaiters.push(waiter)
+    return {
+      promise,
+      cancel: () => {
+        if (settled) return
+        settled = true
+        const index = this.externalTurnWaiters.indexOf(waiter)
+        if (index !== -1) this.externalTurnWaiters.splice(index, 1)
+      },
+    }
+  }
+
+  /** Settle one FIFO external command wait when its durable terminal event lands. */
+  private settleExternalTurnWaiter(): void {
+    this.externalTurnWaiters.shift()?.()
+  }
+
+  /** Whether this session is driven by a registered external provider. */
+  private isExternalMode(): boolean {
+    return this.sessionMode !== undefined && this.sessionMode !== 'dsh'
   }
 
   /** Retire transient output when its durable message/turn boundary arrives. */

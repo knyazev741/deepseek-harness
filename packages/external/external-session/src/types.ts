@@ -33,6 +33,35 @@ export type { ApprovalPolicy, SandboxMode }
  */
 export type ExternalModelDirectory = 'provider' | 'config'
 
+/** Stable availability categories returned by an external provider preflight. */
+export type ExternalModePreflightCode =
+  | 'BINARY_MISSING'
+  | 'AUTH_UNAVAILABLE'
+  | 'INVALID_CONFIG'
+  | 'SANDBOX_INCOMPATIBLE'
+  | 'PREFLIGHT_FAILED'
+
+/** Inputs that may affect a provider's pre-session availability check. */
+export interface ExternalSessionPreflightRequest {
+  /** Working directory used for sandbox and app-server checks. */
+  readonly cwd: string
+  /** Requested Harness file policy; defaults to `read-only` at the registry. */
+  readonly sandbox?: SandboxMode
+}
+
+/** A typed provider availability failure that is safe to expose to the mode picker. */
+export interface ExternalModePreflightFailure {
+  /** Stable category used by client surfaces and tests. */
+  readonly code: ExternalModePreflightCode
+  /** Human-readable diagnostic with no credential material. */
+  readonly message: string
+}
+
+/** Result of checking whether an external mode can be selected or created. */
+export type ExternalModePreflightResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly failure: ExternalModePreflightFailure }
+
 /** Identifies one submitted turn inside an external session. */
 export type ExternalTurnId = Branded<'ExternalTurnId'>
 
@@ -314,6 +343,14 @@ export interface ExternalBridgeContext {
  */
 export interface ExternalSessionProvider extends ExternalAgentDescriptor {
   /**
+   * Check executable, authentication, and sandbox compatibility before a
+   * session is published. Providers that predate this optional operation are
+   * conservatively checked through their model catalog by the registry.
+   * @param request - workspace and policy inputs for the check.
+   * @returns a typed availability result.
+   */
+  preflight?(request: ExternalSessionPreflightRequest): Promise<ExternalModePreflightResult>
+  /**
    * Begin driving one live external session.
    * @param request - the resolved start request, including sandbox and approval policy.
    * @param bridge - the live conduit the provider writes transcripts through.
@@ -378,6 +415,14 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
 export interface ExternalSessionsService {
   /** List the registered agents' descriptors. */
   listAgents(): ExternalAgentDescriptor[]
+  /**
+   * Check one registered provider before exposing it as selectable or
+   * publishing a session. Unknown provider names reject with a typed error.
+   * @param provider - registry name / session mode.
+   * @param request - workspace and policy inputs.
+   * @returns the provider's typed availability result.
+   */
+  preflight(provider: string, request: ExternalSessionPreflightRequest): Promise<ExternalModePreflightResult>
   /**
    * Begin a live external session on the named provider, handing it a bridge.
    * @param request - the start request with a pre-reserved session id.

@@ -2383,8 +2383,19 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
               details: { mode },
             })
           }
+          // The decisive provider check happens before SessionStore.create:
+          // an unavailable binary/auth/sandbox must not publish a stranded
+          // external row that has no live driver behind it.
+          const preflight = await external.preflight(mode, { cwd, sandbox: 'read-only' })
+          if (!preflight.ok) {
+            return err(request, {
+              code: 'external-mode-unavailable',
+              message: preflight.failure.message,
+              details: { mode, reason: preflight.failure.code },
+            })
+          }
           try {
-            await ensureExternalSession(sessionId, cwd, mode, request.payload.model)
+            ensureExternalSession(sessionId, cwd, mode, request.payload.model)
           } catch (error: unknown) {
             return err(request, {
               code: 'internal',
@@ -2555,6 +2566,19 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const agents = external.listAgents()
         const settled = await Promise.all(agents.map(async (agent) => {
           try {
+            const preflight = await external.preflight(agent.provider, {
+              cwd: defaults.cwd,
+              sandbox: 'read-only',
+            })
+            if (!preflight.ok) {
+              const failure: ExternalModeFailure = {
+                provider: agent.provider,
+                label: agent.label,
+                code: preflight.failure.code,
+                message: preflight.failure.message,
+              }
+              return { kind: 'failure' as const, failure }
+            }
             const models = await external.listModels(agent.provider)
             const group: ExternalModeGroup = {
               provider: agent.provider,

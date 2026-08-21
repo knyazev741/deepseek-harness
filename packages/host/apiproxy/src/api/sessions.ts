@@ -209,6 +209,8 @@ export interface ExternalModeFailure {
   provider: string
   /** Mode display label. */
   label: string
+  /** Typed preflight category when the provider supplied one. */
+  code?: 'BINARY_MISSING' | 'AUTH_UNAVAILABLE' | 'INVALID_CONFIG' | 'SANDBOX_INCOMPATIBLE' | 'PREFLIGHT_FAILED'
   /** Lookup failure diagnostic. */
   message: string
 }

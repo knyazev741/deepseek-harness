@@ -89,6 +89,30 @@ describe('appServerArgv', () => {
 })
 
 describe('CodexExternalWire stable settings', () => {
+  it('reads only the account authentication state for preflight', async () => {
+    const input = new PassThrough()
+    const output = new PassThrough()
+    const wire = new CodexExternalWire(input, output, {
+      onTurnStarted: () => {},
+      onItemStarted: () => {},
+      onCommittedItem: () => {},
+      onDelta: () => {},
+      onTurnEnded: () => {},
+      onProcessClosed: () => {},
+      answerApproval: async () => 'decline',
+    })
+    const signal = new AbortController().signal
+    wire.start()
+    const account = wire.readAccount(signal)
+    const frame = await nextFrame(output)
+    expect(frame.method).toBe('account/read')
+    response(input, frame, { account: { type: 'none' } })
+    await expect(account).resolves.toBe(false)
+    wire.close()
+    input.destroy()
+    output.destroy()
+  })
+
   it('maps sandbox, approval, model, and effort onto stable app-server requests', async () => {
     const input = new PassThrough()
     const output = new PassThrough()
@@ -338,6 +362,15 @@ describe('external-session-codex config validation', () => {
   it('rejects an empty app-server arg', () => {
     const ctx = new Context()
     expect(() => { apply(ctx, fullConfig({ args: ['app-server', ''] })) }).toThrow(/empty string/)
+  })
+
+  it('rejects an empty argument list, blank command, relative state root, and invalid tool names', () => {
+    expect(() => { apply(new Context(), fullConfig({ args: [] })) }).toThrow(/at least one argument/)
+    expect(() => { apply(new Context(), fullConfig({ command: '  ' })) }).toThrow(/command must be non-empty/)
+    expect(() => { apply(new Context(), fullConfig({ stateRoot: 'codex-state' })) }).toThrow(/stateRoot must be an absolute path/)
+    expect(() => { apply(new Context(), fullConfig({ allowedTools: ['  '] })) }).toThrow(/empty name/)
+    expect(() => { apply(new Context(), fullConfig({ allowedTools: ['read_file', 'read_file'] })) })
+      .toThrow(/duplicate/)
   })
 
   it('registers the codex provider with valid config', async () => {

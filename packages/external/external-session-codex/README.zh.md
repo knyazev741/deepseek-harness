@@ -38,6 +38,7 @@
 | `sandbox` / `approvalPolicy` | `read-only` / `ask` | 从会话启动请求与会话 policy fold 解析；Codex 接收 `read-only` / `workspace-write` / `danger-full-access` 以及 `on-request` / `never`。 |
 | `disposeGraceMs` | `3000` | 正有限毫秒宽限，不大于 [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md)，介于共享进程树所有者的各终止层级之间。 |
 | `mcpTools` | `[]` | 传给可选 MCP 网关的 Harness 工具名称；网关会与固定 allowlist 以及定义级别的 external opt-in 求交集。 |
+| `allowedTools` | 未设置 | 面向 Profile 的 `mcpTools` 别名；存在时替代旧键，并继续与网关 allowlist 以及定义级别的 external opt-in 求交集。 |
 
 生产环境默认使用固定版本的打包启动器，除非显式配置 `command` 覆盖。本插件不登录，也不探测版本。subprocess seam 会移除凭证形状的环境变量，因此为子进程准备的 API 密钥必须显式提供在 `env` 中；普通的 `PATH`、`HOME` 等环境值在未覆盖时保持可用。受限模式会把准确的启动器 argv 与 `{ ...sandboxPolicy, stateRoot }` 交给 `ctx.sandbox.confine`；`read-only` 下沙盒不会从 `stateRoot` 授予任何可写根目录；缺失 confinement provider 时故障关闭。会话创建前的 model 目录使用明确的 `read-only` policy 与同一私有状态根目录处理，绝不会使用裸的 `danger-full-access` 预检。
 
@@ -52,9 +53,12 @@ MCP bearer 不会放入 Codex URL、TOML、argv、session 事件、日志或快�
 - id: external-session-codex
   name: '@deepseek-ai/dsh-external-session-codex'
   config:
-    env:
-      OPENAI_API_KEY: !!js process.env.OPENAI_API_KEY
+    command: !!js process.env.DSH_CODEX_COMMAND
+    stateRoot: !!js dshHomePath('external-codex')
+    allowedTools: []
 ```
+
+提供方会在该行被公告或 session 被发布前执行 preflight。如果本地部署无法启动它，mode 会报告 `BINARY_MISSING`、`AUTH_UNAVAILABLE`、`INVALID_CONFIG` 或 `SANDBOX_INCOMPATIBLE`；Codex 账户仍由用户自行登录，该 profile patch 永远不会保存账户信息。
 
 ## 产品兼容性与证据
 

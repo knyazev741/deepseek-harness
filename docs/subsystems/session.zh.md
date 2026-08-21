@@ -678,6 +678,17 @@ list(): string[]
 listAgents(): ExternalAgentDescriptor[]
 
 /**
+ * Run one provider's typed pre-session check. A legacy provider without a
+ * preflight operation is allowed through for compatibility with older
+ * providers; their normal model/catalog operation remains the availability
+ * check exposed by the caller.
+ * @param providerName - registered provider name.
+ * @param request - workspace and sandbox inputs.
+ * @returns the typed availability result.
+ */
+async preflight( providerName: string, request: ExternalSessionPreflightRequest, ): Promise<ExternalModePreflightResult>
+
+/**
  * Begin a live external session on the named provider, handing it a bridge.
  * Records the session-to-provider route before awaiting the provider so a
  * later prompt/interrupt/setModel/dispose resolves during startup, then
@@ -753,7 +764,7 @@ dispose(sessionId: SessionId): Promise<void>
 
 Types: [SessionId](core.md)
 
-Source: [`packages/external/external-session/src/index.ts:125`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:146`](../../packages/external/external-session/src/index.ts)
 
 <a id="ctxsessions--sessionstore"></a>
 
@@ -910,7 +921,7 @@ A provider became resolvable in the registry.
 'external/provider-added'(descriptor: ExternalAgentDescriptor): void
 ```
 
-Source: [`packages/external/external-session/src/index.ts:95`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:116`](../../packages/external/external-session/src/index.ts)
 
 <a id="externalprovider-removed--emit"></a>
 
@@ -928,7 +939,7 @@ A provider left the registry. Live sessions it already started remain owner-held
 'external/provider-removed'(provider: string): void
 ```
 
-Source: [`packages/external/external-session/src/index.ts:102`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:123`](../../packages/external/external-session/src/index.ts)
 
 <a id="externalsession-bridgeerror--emit"></a>
 
@@ -971,7 +982,7 @@ One transient external-agent transcript delta. The host mux projects this event 
 
 Types: [SessionId](core.md)
 
-Source: [`packages/external/external-session/src/index.ts:110`](../../packages/external/external-session/src/index.ts)
+Source: [`packages/external/external-session/src/index.ts:131`](../../packages/external/external-session/src/index.ts)
 
 <a id="mcp-gateway-events"></a>
 

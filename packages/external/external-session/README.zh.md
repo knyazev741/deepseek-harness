@@ -10,6 +10,8 @@
 
 `ExternalSessionStartRequest` 接受可选的 `sandbox` 与 `approvalPolicy`；注册表在调用提供方前将它们解析为 `read-only` 与 `ask`，而 `model` 与 `reasoningEffort` 仍是提供方侧的选择。注册表会在等待启动前发布提供方路由与 disposal 信号，启动拒绝时回滚两者，因此失败的启动不会留下陈旧的分发路由。dispose 会先 abort，再等待进行中的 start 或 resume 结算，然后销毁提供方、终结未完成 recorder call，最后销毁 external scope；并发 dispose 调用共享同一份 quiescence Promise。提供方的 `setModel` 必须只接受其 `listModels` 目录中的 id，或明确说明另一项权威目录。
 
+`preflight(provider, request)` 是宿主 mode 目录与会话创建使用的类型化可用性检查。`request` 携带工作区与请求的 sandbox；结果要么表示可用，要么携带有限的 `ExternalModePreflightFailure`，其分类为 `BINARY_MISSING`、`AUTH_UNAVAILABLE`、`INVALID_CONFIG`、`SANDBOX_INCOMPATIBLE` 或 `PREFLIGHT_FAILED`。宿主会在公告 mode 以及发布 external session 前各运行一次，因此失败检查不会创建 session 行。
+
 注册表按 effect 作用域实现 HMR 安全：`registerProvider(provider)` 返回确切的 Cordis effect disposer。移除提供方会阻止新的启动，但不会撤销已交给持有者的实时会话。
 
 `start` 与 `resume` 按会话 id 共享一个进行中的挂接操作。因此并发调用会收到同一份启动结果；操作拒绝时会移除路由与 disposal 信号，后续尝试可以重新开始。提供方只会在路由预留后收到已解析的请求，因此 prompt 与 dispose 竞态仍由同一生命周期拥有。
@@ -19,6 +21,7 @@
 - `listAgents()`——每个已注册提供方的描述符，按插入顺序（`provider`、`label`、`modelDirectory`）。label 供 mode 选择器使用；中文产品文案位于客户端。
 - `registerProvider(provider)` / `getProvider(name)` / `list()`——注册表表面；注册按 effect 作用域进行，并发出 `external/provider-added` / `external/provider-removed`。
 - `modelDirectory`——`'provider'`（原生目录）或 `'config'`（由提供方持有的已校验目录）。`listModels(provider)` 始终分发给指定提供方，由提供方从其目录所指向的任一表面作答。
+- `preflight(provider, request)`——在公告 mode 或发布 session 前检查可执行文件、认证、配置与 sandbox 的类型化可用性操作。
 
 Mode 不是预设：选择某一个 mode 会在同一宿主进程中组合，并固定该会话的后端驱动。带 `mode` 的会话创建属于后续宿主阶段；本程序包在 `start` 时接收预先保留的 [`SessionId`](../../core/session/)，绝不会自行编造。
 

@@ -596,6 +596,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   ExternalSessionStartRequest: 'external-session start request is owned by packages/external/external-session/README.md',
   ExternalProviderThreadId: 'external-session provider thread identity is owned by packages/external/external-session/README.md',
   ExternalModelInfo: 'external-session model directory entry is owned by packages/external/external-session/README.md',
+  ExternalSessionPreflightRequest: 'external-session preflight request is owned by packages/external/external-session/README.md',
+  ExternalModePreflightResult: 'external-session preflight result is owned by packages/external/external-session/README.md',
   ReasoningEffort: 'external-session reasoning selection is owned by packages/external/external-session/README.md',
 }
 

@@ -114,6 +114,55 @@ export function createCodexSpawnSpec(
   }
 }
 
+/**
+ * Probe one Codex app-server without creating a persistent thread. The probe
+ * owns and tears down its exact child, performs initialize/account/read and
+ * model/list, and leaves no provider session route behind.
+ * @param spec - resolved executable, sandbox, and subprocess settings.
+ * @param signal - cancellation for the probe.
+ * @returns completion after the handshake and availability checks succeed.
+ */
+export async function preflightCodexServer(spec: CodexSessionSpec, signal: AbortSignal): Promise<void> {
+  const handle = spec.spawn(createCodexSpawnSpec(spec, signal))
+  const wire = new CodexExternalWire(
+    handle.stdout as NonNullable<SubprocessHandle['stdout']>,
+    handle.stdin as NonNullable<SubprocessHandle['stdin']>,
+    {
+      onTurnStarted: () => {},
+      onItemStarted: () => {},
+      onCommittedItem: () => {},
+      onDelta: () => {},
+      onTurnEnded: () => {},
+      onProcessClosed: () => {},
+      answerApproval: () => Promise.resolve('decline'),
+    },
+  )
+  const processFailure: Promise<never> = handle.done.then(
+    outcome => Promise.reject(new Error(
+      'external-session-codex: app-server exited during preflight '
+      + `(code ${String(outcome.exitCode)}, signal ${String(outcome.signal)})`,
+    )),
+    (error: unknown) => Promise.reject(thrown(error)),
+  )
+  processFailure.catch(() => {})
+  try {
+    wire.start()
+    await Promise.race([wire.initialize(signal), processFailure])
+    const authenticated = await Promise.race([wire.readAccount(signal), processFailure])
+    if (!authenticated) throw new Error('external-session-codex: Codex account is not authenticated')
+    await Promise.race([wire.listModels(signal), processFailure])
+  } finally {
+    wire.close()
+    try {
+      handle.stdin?.end()
+    } catch {
+      // A preflight child that already exited has no stdin to close.
+    }
+    handle.terminate()
+    await handle.waitForExit()
+  }
+}
+
 /** One live app-server process and its interactive wire. */
 interface LiveProcess {
   readonly generation: number

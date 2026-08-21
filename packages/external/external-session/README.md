@@ -10,6 +10,8 @@ The contract in one line: a registry maps unique provider names (`provider`, als
 
 `ExternalSessionStartRequest` accepts optional `sandbox` and `approvalPolicy`; the registry resolves them to `read-only` and `ask` before calling the provider, while `model` and `reasoningEffort` remain provider-facing selections. The registry publishes the provider route and disposal signal before awaiting startup, and rolls both back when startup rejects, so a failed start cannot leave a stale dispatch route. Disposal aborts first, waits for an in-flight start or resume to settle, then disposes the provider, finalizes pending recorder calls, and disposes the external scope; concurrent disposal calls share that quiescence promise. A provider's `setModel` must accept only an id from its advertised `listModels` catalog or document a different authoritative catalog.
 
+`preflight(provider, request)` is the typed availability check used by host mode catalogs and session creation. `request` carries the workspace and requested sandbox; the result is either available or a bounded `ExternalModePreflightFailure` with `BINARY_MISSING`, `AUTH_UNAVAILABLE`, `INVALID_CONFIG`, `SANDBOX_INCOMPATIBLE`, or `PREFLIGHT_FAILED`. Hosts run it before advertising a mode and again before publishing an external session, so a failed check creates no session row.
+
 The registry is effect-scoped HMR-safe: `registerProvider(provider)` returns the exact Cordis effect disposer. Removing a provider blocks new starts but does not revoke live sessions already returned to their holders.
 
 `start` and `resume` share one in-flight attachment per session id. Concurrent callers therefore receive the same startup result; a rejected operation removes the route and disposal signal and lets a later attempt retry. Providers receive the resolved request only after the route is reserved, so prompt and disposal races remain owned by the same lifecycle.
@@ -19,6 +21,7 @@ The registry is effect-scoped HMR-safe: `registerProvider(provider)` returns the
 - `listAgents()` — descriptors of every registered provider, in insertion order (`provider`, `label`, `modelDirectory`). The label feeds the mode picker; Chinese product copy lives client-side.
 - `registerProvider(provider)` / `getProvider(name)` / `list()` — the registry surface; registration is effect-scoped and emits `external/provider-added` / `external/provider-removed`.
 - `modelDirectory` — `'provider'` (native catalog) or `'config'` (validated roster owned by the provider). `listModels(provider)` always dispatches to the named provider, which answers from whichever surface its directory names.
+- `preflight(provider, request)` — typed executable, authentication, configuration, and sandbox availability before a mode is advertised or a session is published.
 
 Modes are not presets: choosing one composes the same host process and fixes the driving backend. Session creation with a `mode` is a later host phase; this package pre-receives a reserved [`SessionId`](../../core/session/) at `start` and never invents one.
 

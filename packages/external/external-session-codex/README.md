@@ -38,6 +38,7 @@ Evidence confirms native `model/list` exists in 0.147.0 (`models.json`), so the 
 | `sandbox` / `approvalPolicy` | `read-only` / `ask` | Resolved from the session start request and folded session policy; Codex receives `read-only` / `workspace-write` / `danger-full-access` and `on-request` / `never`. |
 | `disposeGraceMs` | `3000` | Positive finite grace in milliseconds, no greater than [`MAX_TIMER_DELAY_MS`](../../util/timeout/README.md), between the shared process-tree owner's termination tiers. |
 | `mcpTools` | `[]` | Requested Harness tool names passed to the optional MCP gateway; the gateway intersects them with its fixed allowlist and definition-level external opt-in. |
+| `allowedTools` | unset | Profile-facing alias for `mcpTools`; when present it replaces that legacy key and is still intersected with the gateway allowlist and definition-level external opt-in. |
 
 Production uses the pinned packaged launcher unless `command` is explicitly configured. The plugin does not log in or probe a version. Credential-shaped ambient variables are removed by the subprocess seam, so an API key intended for the child must be supplied explicitly in `env`; ordinary ambient values such as `PATH` and `HOME` remain available unless overridden. Restricted modes pass the exact launcher argv and `{ ...sandboxPolicy, stateRoot }` through `ctx.sandbox.confine`; the sandbox grants no writable roots from `stateRoot` under `read-only`; a missing confinement provider fails closed. The pre-session model catalog uses an explicit `read-only` policy and the same private state-root handling, never a bare `danger-full-access` preflight.
 
@@ -52,9 +53,12 @@ Production `dsh` does not install or mount this optional provider. A Profile tha
 - id: external-session-codex
   name: '@deepseek-ai/dsh-external-session-codex'
   config:
-    env:
-      OPENAI_API_KEY: !!js process.env.OPENAI_API_KEY
+    command: !!js process.env.DSH_CODEX_COMMAND
+    stateRoot: !!js dshHomePath('external-codex')
+    allowedTools: []
 ```
+
+The provider runs a preflight before this row is advertised or a session is published. The mode reports `BINARY_MISSING`, `AUTH_UNAVAILABLE`, `INVALID_CONFIG`, or `SANDBOX_INCOMPATIBLE` when the local deployment cannot start it; the Codex account remains the user's own login action and is never stored in this profile patch.
 
 ## Product compatibility and evidence
 

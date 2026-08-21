@@ -30,11 +30,14 @@ import type {
   ExternalAgentDescriptor,
   ExternalBridgeContext,
   ExternalModelInfo,
+  ExternalModePreflightFailure,
+  ExternalModePreflightResult,
   ExternalPermissionAnswerer,
   ExternalPermissionDecision,
   ExternalProviderThreadId,
   ExternalSessionEvent,
   ExternalSessionStartRequest,
+  ExternalSessionPreflightRequest,
   ExternalSessionProvider,
   ExternalSessionStart,
   ReasoningEffort,
@@ -52,6 +55,9 @@ export type {
   ExternalBridgeContext,
   ExternalModelDirectory,
   ExternalModelInfo,
+  ExternalModePreflightCode,
+  ExternalModePreflightFailure,
+  ExternalModePreflightResult,
   ExternalPermissionAnswerer,
   ExternalPermissionAsk,
   ExternalPermissionDecision,
@@ -62,6 +68,7 @@ export type {
   ExternalSessionProvider,
   ExternalSessionStart,
   ExternalSessionStartRequest,
+  ExternalSessionPreflightRequest,
   ExternalSessionsService,
   ExternalToolCallData,
   ExternalToolCallRecord,
@@ -79,6 +86,20 @@ export class ExternalSessionError extends HarnessError {
     super(message, code, options)
     this.name = 'ExternalSessionError'
   }
+}
+
+/** Map a provider error to a bounded availability failure without exposing credentials. */
+function preflightFailure(error: unknown): ExternalModePreflightFailure {
+  const message = error instanceof Error ? error.message : String(error)
+  const candidate = error as { code?: unknown }
+  const code = candidate.code === 'BINARY_MISSING'
+    || candidate.code === 'AUTH_UNAVAILABLE'
+    || candidate.code === 'INVALID_CONFIG'
+    || candidate.code === 'SANDBOX_INCOMPATIBLE'
+    || candidate.code === 'PREFLIGHT_FAILED'
+    ? candidate.code
+    : 'PREFLIGHT_FAILED'
+  return { code, message }
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -220,6 +241,28 @@ export class ExternalSessions extends Service implements ExternalSessionsService
    */
   listAgents(): ExternalAgentDescriptor[] {
     return [...this.providers.values()].map(descriptorOf)
+  }
+
+  /**
+   * Run one provider's typed pre-session check. A legacy provider without a
+   * preflight operation is allowed through for compatibility with older
+   * providers; their normal model/catalog operation remains the availability
+   * check exposed by the caller.
+   * @param providerName - registered provider name.
+   * @param request - workspace and sandbox inputs.
+   * @returns the typed availability result.
+   */
+  async preflight(
+    providerName: string,
+    request: ExternalSessionPreflightRequest,
+  ): Promise<ExternalModePreflightResult> {
+    const provider = this.expectProvider(providerName)
+    try {
+      if (provider.preflight !== undefined) return await provider.preflight(request)
+      return { ok: true }
+    } catch (error: unknown) {
+      return { ok: false, failure: preflightFailure(error) }
+    }
   }
 
   /**

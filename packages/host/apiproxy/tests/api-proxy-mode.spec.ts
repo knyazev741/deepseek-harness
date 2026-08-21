@@ -31,12 +31,14 @@ function request<P>(payload: P): RpcRequest<P> {
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   selected: { model: string; reasoningEffort?: string } | undefined
+  preflightResult: { ok: true } | { ok: false; failure: { code: 'AUTH_UNAVAILABLE'; message: string } } = { ok: true }
   constructor(
     readonly provider: string,
     readonly label: string,
   ) {}
   async start(_request: ExternalSessionStart, _bridge: ExternalBridgeContext) {}
   async resume(_request: ExternalSessionStart, _bridge: ExternalBridgeContext, _providerThreadId: ExternalProviderThreadId) {}
+  async preflight() { return this.preflightResult }
   async prompt() { return { turnId: ExternalTurnId('t1') } }
   interrupt() {}
   async compact() {}
@@ -144,5 +146,25 @@ describe('session.create mode arms', () => {
     expect(result.result.ok).toBe(false)
     expect(result.result.ok ? undefined : result.result.error?.code).toBe('unknown-mode')
     expect(ctx.sessions.get(SessionId('e3'))).toBeUndefined()
+  })
+
+  it('rechecks provider preflight before publishing and leaves no session on failure', async () => {
+    const ctx = await harness()
+    const provider = ctx.externalSessions.getProvider('alpha') as StubProvider
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'AUTH_UNAVAILABLE', message: 'Codex account is not authenticated.' },
+    }
+    const result = await ctx.apiProxy.sessions.create(request({
+      sessionId: SessionId('preflight-failed'), cwd: '/tmp', mode: 'alpha',
+    }))
+    expect(result.result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'external-mode-unavailable',
+        details: { mode: 'alpha', reason: 'AUTH_UNAVAILABLE' },
+      },
+    })
+    expect(ctx.sessions.get(SessionId('preflight-failed'))).toBeUndefined()
   })
 })

@@ -51,6 +51,7 @@ class CommandProvider implements ExternalSessionProvider {
   rejectListModels: Error | undefined
   listModelsCalls = 0
   models: Array<{ id: string; name: string; description?: string }> = []
+  preflightResult: { ok: true } | { ok: false; failure: { code: 'AUTH_UNAVAILABLE'; message: string } } = { ok: true }
 
   constructor(
     readonly provider: string,
@@ -61,6 +62,7 @@ class CommandProvider implements ExternalSessionProvider {
     this.started += 1
     this.lastBridge = bridge
   }
+  async preflight() { return this.preflightResult }
   async resume(_request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void> {
     this.resumed.push(providerThreadId)
     this.lastBridge = bridge
@@ -580,6 +582,23 @@ describe('session.externalModes new-session mode catalog', () => {
       }],
     })
     provider.listModels = original
+  })
+
+  it('exposes typed provider preflight failures without a model group', async () => {
+    const { ctx, provider } = await harness()
+    context = ctx
+    provider.preflightResult = {
+      ok: false,
+      failure: { code: 'AUTH_UNAVAILABLE', message: 'Codex account is not authenticated.' },
+    }
+    const result = await ctx.apiProxy.sessions.externalModes(request({}))
+    expect(result.result).toMatchObject({
+      ok: true,
+      value: {
+        groups: [],
+        failures: [{ provider: 'alpha', label: 'Alpha', code: 'AUTH_UNAVAILABLE' }],
+      },
+    })
   })
 
   it('returns empty when no external-session registry is composed', async () => {

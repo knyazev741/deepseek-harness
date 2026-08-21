@@ -663,12 +663,14 @@ export interface Config {
   disposeGraceMs?: number
   /** Tool names requested from the optional authenticated Harness MCP gateway. */
   mcpTools?: string[]
+  /** Alias for mcpTools used by deployment profiles to state the allowlist explicitly. */
+  allowedTools?: string[]
 }
 ```
 
 Depends on: [`ReasoningEffort`](../packages/external/external-session/src/index.ts)
 
-Source: [`packages/external/external-session-codex/src/index.ts:56`](../packages/external/external-session-codex/src/index.ts)
+Source: [`packages/external/external-session-codex/src/index.ts:63`](../packages/external/external-session-codex/src/index.ts)
 
 <a id="deepseek-aidsh-fs-local"></a>
 
@@ -3262,3 +3264,4 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-typert-generator` ([`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts))
 - `@deepseek-ai/dsh-typert-protocol` ([`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts))
 - `@deepseek-ai/dsh-typert-registry` ([`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts))
+- `@deepseek-ai/dsh-web-codex` ([`packages/bundle/web-codex/src/index.ts`](../packages/bundle/web-codex/src/index.ts))

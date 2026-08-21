@@ -33,6 +33,9 @@
       "path": "../../packages/bundle/web-app"
     },
     {
+      "path": "../../packages/bundle/web-codex"
+    },
+    {
       "path": "../../packages/host/apiproxy"
     },
     {

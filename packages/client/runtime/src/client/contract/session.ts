@@ -30,6 +30,8 @@ export interface ProjectionsFace {
 export interface ISession {
   /** The session's host identity (agent id — same axis). */
   readonly sessionId: SessionId
+  /** Durable driver mode; `undefined` and `dsh` both select the native Agent path. */
+  readonly mode: string | undefined
   /** Host-computed projection values by key (the useProjection seat). */
   readonly projections: ProjectionsFace
   /**
@@ -73,8 +75,8 @@ export interface ISession {
    */
   loadOlder(): Promise<void>
   /**
-   * Execute one slash-command line against this session's agent — pure
-   * admission semantics (the host executor durably logs the lifecycle).
+   * Execute one command line against this session. External sessions forward
+   * plain and provider-specific lines through their host command route.
    * @param line - the full command line, leading slash included.
    * @returns the admission result, or the Remote face's error branch.
    */

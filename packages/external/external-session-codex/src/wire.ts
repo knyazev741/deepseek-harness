@@ -190,6 +190,25 @@ export class CodexExternalWire {
   }
 
   /**
+   * Read the app-server account state without echoing account identifiers or
+   * credential material. An absent or unauthenticated account is a typed
+   * provider-preflight failure at the caller.
+   * @param signal - operation cancellation.
+   * @returns whether the app-server reports an authenticated account.
+   */
+  async readAccount(signal: AbortSignal): Promise<boolean> {
+    const response = object(await this.guarded(this.transport.request('account/read', {}, signal), signal), 'account/read response')
+    const account = response.account
+    if (account === null || account === undefined) return false
+    if (typeof account !== 'object' || Array.isArray(account)) {
+      throw new Error('external-session-codex: app-server returned invalid account/read account')
+    }
+    const value = account as JsonObject
+    if (value.authenticated === false || value.type === 'none' || value.type === 'unauthenticated') return false
+    return true
+  }
+
+  /**
    * Create the session's persistent thread. Evidence line: `thread/start`
    * with `ephemeral: false` persists to a rollout `.jsonl`
    * (tests/evidence/README.md, thread-persistence.json).

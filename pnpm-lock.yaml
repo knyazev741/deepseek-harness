@@ -1458,6 +1458,37 @@ importers:
         specifier: workspace:^
         version: link:../../core/system-prompt
 
+  packages/bundle/web-codex:
+    dependencies:
+      '@deepseek-ai/dsh-external-permission':
+        specifier: workspace:^
+        version: link:../../interaction/external-permission
+      '@deepseek-ai/dsh-external-session':
+        specifier: workspace:^
+        version: link:../../external/external-session
+      '@deepseek-ai/dsh-external-session-bridge':
+        specifier: workspace:^
+        version: link:../../external/external-session-bridge
+      '@deepseek-ai/dsh-external-session-codex':
+        specifier: workspace:^
+        version: link:../../external/external-session-codex
+      '@deepseek-ai/dsh-mcp-gateway':
+        specifier: workspace:^
+        version: link:../../mcp/mcp-gateway
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: workspace:^
+        version: link:../../../vendor/include
+      '@deepseek-ai/dsh-app-boot':
+        specifier: workspace:^
+        version: link:../../boot/app-boot
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
   packages/client/connection:
     dependencies:
       '@deepseek-ai/dsh-attachment':
