@@ -1,10 +1,10 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createGitReader } from './git-reader.ts'
+import { createGitReader, decodeGitUtf8, GIT_OUTPUT_MAX_BYTES } from './git-reader.ts'
 
 const execFileAsync = promisify(execFile)
 const temporaryRepositories: string[] = []
@@ -38,6 +38,40 @@ async function createRepository(): Promise<{
   return { root, firstCommit, secondCommit }
 }
 
+async function createSubmoduleRepository(): Promise<{
+  readonly root: string
+  readonly firstCommit: string
+}> {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-overlay-submodule-root-'))
+  const source = await mkdtemp(join(tmpdir(), 'dsh-overlay-submodule-source-'))
+  temporaryRepositories.push(root, source)
+  await runGit(source, ['init', '--quiet'])
+  await runGit(source, ['config', 'user.name', 'Overlay Test'])
+  await runGit(source, ['config', 'user.email', 'overlay@example.test'])
+  await writeFile(join(source, 'file.txt'), 'one\n')
+  await runGit(source, ['add', '--all'])
+  await runGit(source, ['commit', '--quiet', '-m', 'submodule initial'])
+
+  await runGit(root, ['init', '--quiet'])
+  await runGit(root, ['config', 'user.name', 'Overlay Test'])
+  await runGit(root, ['config', 'user.email', 'overlay@example.test'])
+  await runGit(root, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '--quiet', source, 'nested'])
+  await runGit(root, ['commit', '--quiet', '-m', 'root initial'])
+  const firstCommit = (await runGit(root, ['rev-parse', 'HEAD'])).trim()
+  await writeFile(join(root, 'nested', 'file.txt'), 'two\n')
+  await runGit(root, ['config', 'submodule.nested.ignore', 'all'])
+  return { root, firstCommit }
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 afterEach(async () => {
   const roots = temporaryRepositories.splice(0)
   await Promise.all(roots.map(root => rm(root, { recursive: true, force: true })))
@@ -67,5 +101,52 @@ describe('createGitReader', () => {
     const reader = createGitReader(repository.root)
 
     expect(await reader.commitExists('f'.repeat(40))).toBe(false)
+  })
+
+  it('propagates operational failures instead of treating them as missing commits', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-overlay-not-a-repository-'))
+    temporaryRepositories.push(root)
+    const reader = createGitReader(root)
+
+    await expect(reader.commitExists('f'.repeat(40))).rejects.toThrow(/not a git repository/i)
+  })
+
+  it('does not allow Git helper configuration to run or hide submodule changes', async () => {
+    const repository = await createRepository()
+    const helper = join(repository.root, 'configured helper.sh')
+    const marker = join(repository.root, 'external-helper-ran')
+    const shellMarker = marker.replaceAll("'", "'\\''")
+    await writeFile(helper, `#!/bin/sh\nprintf ran > '${shellMarker}'\nexit 1\n`)
+    await chmod(helper, 0o755)
+    await runGit(repository.root, ['config', 'diff.external', helper])
+    await runGit(repository.root, ['config', 'core.fsmonitor', helper])
+    const reader = createGitReader(repository.root)
+
+    const diff = await reader.diff(repository.firstCommit)
+
+    expect(diff).toEqual([{
+      status: 'R',
+      oldPath: 'src/old name.spec.ts',
+      path: 'src/new name.spec.ts',
+      added: 1,
+      removed: 0,
+      binary: false,
+    }])
+    expect(await pathExists(marker)).toBe(false)
+
+    const submodule = await createSubmoduleRepository()
+    const submoduleDiff = await createGitReader(submodule.root).diff(submodule.firstCommit)
+    expect(submoduleDiff).toEqual([{
+      status: 'M',
+      path: 'nested',
+      added: 0,
+      removed: 0,
+      binary: false,
+    }])
+  })
+
+  it('uses a repository-sized output bound and rejects malformed UTF-8', () => {
+    expect(GIT_OUTPUT_MAX_BYTES).toBeGreaterThan(1024 * 1024)
+    expect(() => decodeGitUtf8(Uint8Array.of(0xff))).toThrow()
   })
 })

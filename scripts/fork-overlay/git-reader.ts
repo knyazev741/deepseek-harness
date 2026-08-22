@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { promisify, TextDecoder } from 'node:util'
 import type { DiffEntry } from './types.ts'
 
 /** Read-only Git facts for one repository root. */
@@ -24,7 +24,21 @@ export interface GitReader {
   diff(commit: string): Promise<readonly DiffEntry[]>
 }
 
+/** Maximum stdout or stderr captured from one repository Git command. */
+export const GIT_OUTPUT_MAX_BYTES = 64 * 1024 * 1024
+
 const execFileAsync = promisify(execFile)
+const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true })
+
+/**
+ * Decode bytes emitted by Git without replacing malformed UTF-8.
+ * @param output Git stdout bytes.
+ * @returns The decoded UTF-8 text.
+ * @throws TypeError when Git emits malformed UTF-8.
+ */
+export function decodeGitUtf8(output: Uint8Array): string {
+  return UTF8_DECODER.decode(output)
+}
 
 type NameStatusRecord = {
   readonly status: DiffEntry['status']
@@ -45,10 +59,10 @@ function nulSeparated(buffer: Buffer): readonly string[] {
   let start = 0
   for (let index = 0; index < buffer.length; index += 1) {
     if (buffer[index] !== 0) continue
-    if (index > start) values.push(buffer.subarray(start, index).toString('utf8'))
+    if (index > start) values.push(decodeGitUtf8(buffer.subarray(start, index)))
     start = index + 1
   }
-  if (start < buffer.length) values.push(buffer.subarray(start).toString('utf8'))
+  if (start < buffer.length) values.push(decodeGitUtf8(buffer.subarray(start)))
   return values
 }
 
@@ -139,8 +153,19 @@ function parseNumstat(buffer: Buffer): readonly NumstatRecord[] {
 }
 
 async function runGit(root: string, args: readonly string[]): Promise<Buffer> {
-  const result = await execFileAsync('git', [...args], { cwd: root, encoding: 'buffer' })
+  const result = await execFileAsync('git', ['-c', 'core.fsmonitor=false', ...args], {
+    cwd: root,
+    encoding: 'buffer',
+    env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', LANG: 'C', LC_ALL: 'C' },
+    maxBuffer: GIT_OUTPUT_MAX_BYTES,
+  })
   return Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout)
+}
+
+function exitCode(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
+  const code = error.code
+  return typeof code === 'number' ? code : undefined
 }
 
 function joinDiffs(
@@ -182,10 +207,11 @@ export function createGitReader(root: string): GitReader {
   return {
     async commitExists(commit: string): Promise<boolean> {
       try {
-        await runGit(root, ['cat-file', '-e', `${commit}^{commit}`])
+        await runGit(root, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${commit}^{commit}`])
         return true
-      } catch {
-        return false
+      } catch (error: unknown) {
+        if (exitCode(error) === 1) return false
+        throw error
       }
     },
 
@@ -196,8 +222,20 @@ export function createGitReader(root: string): GitReader {
 
     async diff(commit: string): Promise<readonly DiffEntry[]> {
       const [nameStatusOutput, numstatOutput] = await Promise.all([
-        runGit(root, ['diff', '--name-status', '-z', '-M', commit, '--']),
-        runGit(root, ['diff', '--numstat', '-z', '-M', commit, '--']),
+        runGit(root, [
+          'diff',
+          '--no-ext-diff',
+          '--no-textconv',
+          '--ignore-submodules=none',
+          '--name-status', '-z', '-M', commit, '--',
+        ]),
+        runGit(root, [
+          'diff',
+          '--no-ext-diff',
+          '--no-textconv',
+          '--ignore-submodules=none',
+          '--numstat', '-z', '-M', commit, '--',
+        ]),
       ])
       return joinDiffs(parseNameStatus(nameStatusOutput), parseNumstat(numstatOutput))
     },

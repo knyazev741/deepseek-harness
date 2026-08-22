@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -109,6 +109,43 @@ describe('verifyOverlay', () => {
       code: 'invalid-verification-target',
       entryId: 'missing-vitest',
       path: 'tests/missing.spec.ts',
+    }))
+  })
+
+  it('rejects a Vitest target that escapes through an ancestor symlink', async () => {
+    const repository = await createRepository({})
+    const outside = await mkdtemp(join(tmpdir(), 'dsh-overlay-outside-'))
+    temporaryRepositories.push(outside)
+    await mkdir(join(outside, 'tests'), { recursive: true })
+    await writeFile(join(outside, 'tests', 'escaped.spec.ts'), 'export {}\n')
+    await symlink(outside, join(repository.root, 'linked-tests'), 'dir')
+
+    const diagnostics = await verifyFixture(repository.root, makeManifest(repository.upstreamCommit, [makeEntry(
+      'ancestor-escape',
+      [{ kind: 'vitest', files: ['linked-tests/tests/escaped.spec.ts'] }],
+    )]))
+
+    expect(diagnostics).toContainEqual(expect.objectContaining({
+      code: 'invalid-verification-target',
+      entryId: 'ancestor-escape',
+      path: 'linked-tests/tests/escaped.spec.ts',
+    }))
+  })
+
+  it('rejects a final-component Vitest symlink even when it stays inside the root', async () => {
+    const repository = await createRepository({})
+    await writeFile(join(repository.root, 'tests', 'real.spec.ts'), 'export {}\n')
+    await symlink('real.spec.ts', join(repository.root, 'tests', 'linked.spec.ts'), 'file')
+
+    const diagnostics = await verifyFixture(repository.root, makeManifest(repository.upstreamCommit, [makeEntry(
+      'final-symlink',
+      [{ kind: 'vitest', files: ['tests/linked.spec.ts'] }],
+    )]))
+
+    expect(diagnostics).toContainEqual(expect.objectContaining({
+      code: 'invalid-verification-target',
+      entryId: 'final-symlink',
+      path: 'tests/linked.spec.ts',
     }))
   })
 })

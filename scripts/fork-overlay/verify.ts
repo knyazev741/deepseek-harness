@@ -1,5 +1,5 @@
-import { lstat, readFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { lstat, readFile, realpath } from 'node:fs/promises'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { classifyOverlay } from './classify.ts'
 import type { GitReader } from './git-reader.ts'
 import type { OverlayDiagnostic, OverlayManifest, OverlayEntry, VerificationTarget } from './types.ts'
@@ -46,9 +46,29 @@ function isSupportedVitestFile(path: string): boolean {
     || path.endsWith('.test.mjs')
 }
 
-async function isRegularFile(root: string, path: string): Promise<boolean> {
+async function canonicalRepositoryRoot(root: string): Promise<string | undefined> {
   try {
-    return (await lstat(resolve(root, path))).isFile()
+    return await realpath(root)
+  } catch {
+    return undefined
+  }
+}
+
+async function isRegularFileWithinRoot(
+  canonicalRoot: string | undefined,
+  root: string,
+  path: string,
+): Promise<boolean> {
+  if (canonicalRoot === undefined) return false
+  const candidate = resolve(root, path)
+  try {
+    if (!(await lstat(candidate)).isFile()) return false
+    const canonicalTarget = await realpath(candidate)
+    const relativeTarget = relative(canonicalRoot, canonicalTarget)
+    return relativeTarget.length > 0
+      && !isAbsolute(relativeTarget)
+      && relativeTarget !== '..'
+      && !relativeTarget.startsWith(`..${sep}`)
   } catch {
     return false
   }
@@ -75,6 +95,7 @@ async function verificationDiagnostics(
   packageJson: PackageJson | undefined,
 ): Promise<readonly OverlayDiagnostic[]> {
   const diagnostics: OverlayDiagnostic[] = []
+  const canonicalRoot = await canonicalRepositoryRoot(root)
   for (const entry of manifest.entries) {
     for (const target of entry.verify) {
       if (target.kind === 'script') {
@@ -94,7 +115,7 @@ async function verificationDiagnostics(
       for (const file of target.files) {
         if (!isRepositoryRelativeFile(file)
           || !isSupportedVitestFile(file)
-          || !(await isRegularFile(root, file))) {
+          || !(await isRegularFileWithinRoot(canonicalRoot, root, file))) {
           diagnostics.push(invalidTarget(
             entry,
             `Vitest target file ${JSON.stringify(file)} is not a repository-relative regular test file`,
