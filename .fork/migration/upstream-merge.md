@@ -222,6 +222,9 @@ The six `DU` entries are modify/delete conflicts: `packages/client/ui-brand-offi
 - The additional fix makes these six cleanly merged roots byte-identical to selected upstream: `packages/bundle/headless/`, `packages/core/agent/`, `packages/session/session-persistence-jsonl/`, `packages/test-support/llm-mock-server/`, `packages/util/timeout/`, and `packages/workspace/workspace/`.
 - The clean-merge package audit compares every remaining differing `packages/**` path with selected upstream: 548 paths remain, all 548 belong to Plan 3 client/client-runtime/Web-app surfaces or Task 7 external, external-permission, group README, session-projection, and app-boot surfaces; zero paths are unassigned.
 - Focused tests for the six additional roots pass (18 files, 485 tests); their package typecheck and targeted Oxlint pass. The broader Host typecheck and Oxlint remain limited by existing cross-package fork gaps recorded in the fix report.
+- ACP example-baseline fix commit: `f7ab5919f1254c58fc630246d8a96c19eeedba9f` (`fix(merge): align ACP example with upstream`).
+- The ACP example tree is byte-identical to selected upstream after the per-path fix. Its replay passes 90 of 93 tests with two skips; the single normal-environment failure is Node's SQLite `ExperimentalWarning` emitted on stderr, and the isolated scenario passes with `NODE_OPTIONS=--disable-warning=ExperimentalWarning`.
+- The remaining Host typecheck errors have only two owners: Plan 3 client/client-runtime/Web-app and client build-script paths, or Task 7 external, external-permission, and session-projection paths. No unowned Host or example source error remains.
 
 ## Merge-side preference
 
