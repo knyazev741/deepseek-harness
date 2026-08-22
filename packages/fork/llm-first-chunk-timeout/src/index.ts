@@ -31,93 +31,199 @@ export const Config: z<Config> = z.object({
 })
 
 type StreamIterator = AsyncIterator<StreamChunk>
+type StreamResult = IteratorResult<StreamChunk>
 type TimerHandle = ReturnType<typeof setTimeout>
 
-type FirstResult =
-  | { readonly timedOut: true }
-  | { readonly timedOut: false; readonly result: IteratorResult<StreamChunk> }
+interface PendingRead {
+  readonly resolve: (result: StreamResult) => void
+  readonly reject: (error: unknown) => void
+}
 
-/** Owns one stream's timer, caller-abort listener, and best-effort downstream close. */
-class StreamState {
+/** A custom iterator is required so consumer control is not queued behind a provider read. */
+class FirstChunkStream implements AsyncIterable<StreamChunk>, AsyncIterator<StreamChunk> {
+  private readonly waiters: PendingRead[] = []
+  private iterator: StreamIterator | undefined
+  private currentRead: PendingRead | undefined
+  private currentReadId = 0
+  private readGeneration = 0
   private timer: TimerHandle | undefined
   private abortListener: (() => void) | undefined
-  private firstSettled = false
-  private closed = false
-  private naturallyDone = false
-  private disposed = false
+  private phase: 'first' | 'open' | 'closed' = 'first'
+  private readInFlight = false
 
   constructor(
-    private readonly iterator: StreamIterator,
+    private readonly source: AsyncIterable<StreamChunk>,
     private readonly signal: AbortSignal | undefined,
+    private readonly timeoutMs: number,
+    private readonly onTerminal: () => void,
   ) {}
 
-  /** Arm the first-result timer and resolve once the first read settles or expires. */
-  waitForFirst(timeoutMs: number): Promise<FirstResult> {
-    return new Promise<FirstResult>((resolve, reject) => {
-      const settle = (result: FirstResult): void => {
-        if (this.firstSettled) return
-        this.firstSettled = true
-        this.clearDeadline()
-        resolve(result)
-      }
-      const fail = (error: unknown): void => {
-        this.firstSettled = true
-        this.clearDeadline()
-        reject(error)
-      }
+  [Symbol.asyncIterator](): AsyncIterator<StreamChunk> {
+    return this
+  }
 
-      if (!this.signal?.aborted) {
-        this.timer = setTimeout(() => {
-          if (this.firstSettled || this.disposed) return
-          this.firstSettled = true
-          this.clearDeadline()
-          this.closeDownstream()
-          settleTimeout(resolve)
-        }, timeoutMs)
-        this.abortListener = () => {
-          // The provider's cancellation result remains authoritative after a
-          // caller abort; this listener only removes our competing deadline.
-          this.clearDeadline()
-        }
-        this.signal?.addEventListener('abort', this.abortListener, { once: true })
-      }
-
-      let pending: Promise<IteratorResult<StreamChunk>>
-      try {
-        pending = Promise.resolve(this.iterator.next())
-      } catch (error) {
-        fail(error)
-        return
-      }
-
-      // The rejection handler deliberately consumes a read that settles after
-      // our timer won, because no consumer remains to observe that provider
-      // failure once the timeout chunk has been emitted.
-      pending.then(
-        result => settle({ timedOut: false, result }),
-        (error) => {
-          if (!this.firstSettled) fail(error)
-        },
-      )
+  next(): Promise<StreamResult> {
+    if (this.phase === 'closed') return Promise.resolve(doneResult())
+    const promise = new Promise<StreamResult>((resolve, reject) => {
+      this.waiters.push({ resolve, reject })
     })
+    this.pump()
+    return promise
   }
 
-  /** Record natural EOF so finalization does not call `return()` again. */
-  markDone(): void {
-    this.naturallyDone = true
+  return(value?: unknown): Promise<StreamResult> {
+    this.closeForConsumer()
+    return Promise.resolve({ done: true, value } as StreamResult)
   }
 
-  /** Stop plugin-owned state and close the provider without awaiting it. */
+  throw(error?: unknown): Promise<StreamResult> {
+    if (this.phase === 'closed') return rejected(error)
+    this.clearDeadline()
+    this.phase = 'closed'
+    this.readInFlight = false
+    this.invalidateRead()
+    this.resolvePendingReads()
+
+    let iterator: StreamIterator
+    try {
+      iterator = this.createIterator()
+    } catch (throwFailure) {
+      this.notifyTerminal()
+      return rejected(throwFailure)
+    }
+    if (iterator.throw === undefined) {
+      this.closeDownstream()
+      this.notifyTerminal()
+      return rejected(error)
+    }
+
+    let result: Promise<StreamResult>
+    try {
+      result = Promise.resolve(iterator.throw.call(iterator, error))
+    } catch (throwFailure) {
+      this.notifyTerminal()
+      return rejected(throwFailure)
+    }
+    return result.then(
+      (value) => {
+        if (value.done) {
+          this.notifyTerminal()
+        } else {
+          this.phase = 'open'
+        }
+        return value
+      },
+      (throwFailure: unknown) => {
+        this.notifyTerminal()
+        return rejected(throwFailure)
+      },
+    )
+  }
+
+  /** Dispose plugin-owned state and settle wrapper reads without waiting for the provider. */
   dispose(): void {
-    this.disposed = true
+    if (this.phase === 'closed') return
+    this.closeForConsumer()
+  }
+
+  private pump(): void {
+    if (this.readInFlight) return
+    const pending = this.waiters.shift()
+    if (pending === undefined) return
+    const iterator = this.getIterator(pending)
+    if (iterator === undefined) return
+
+    this.currentRead = pending
+    const readId = ++this.readGeneration
+    this.currentReadId = readId
+    this.readInFlight = true
+    const first = this.phase === 'first'
+    if (first) this.armDeadline()
+
+    let operation: Promise<StreamResult>
+    try {
+      operation = Promise.resolve(iterator.next())
+    } catch (error) {
+      operation = rejected(error)
+    }
+    operation.then(
+      (result) => { this.resolveRead(result, first, readId) },
+      (error: unknown) => { this.rejectRead(error, readId) },
+    )
+  }
+
+  private getIterator(pending: PendingRead): StreamIterator | undefined {
+    try {
+      return this.createIterator()
+    } catch (error) {
+      this.phase = 'closed'
+      this.readInFlight = false
+      pending.reject(error)
+      this.resolvePendingReads()
+      this.notifyTerminal()
+      return undefined
+    }
+  }
+
+  private createIterator(): StreamIterator {
+    if (this.iterator !== undefined) return this.iterator
+    this.iterator = this.source[Symbol.asyncIterator]()
+    return this.iterator
+  }
+
+  private resolveRead(result: StreamResult, first: boolean, readId: number): void {
+    if (readId !== this.currentReadId) return
+    this.readInFlight = false
+    this.currentReadId = 0
+    const pending = this.currentRead as PendingRead
+    this.currentRead = undefined
+    if (first) this.clearDeadline()
+    if (result.done) {
+      this.phase = 'closed'
+      pending.resolve(result)
+      this.resolvePendingReads()
+      this.notifyTerminal()
+      return
+    }
+    this.phase = 'open'
+    pending.resolve(result)
+    this.pump()
+  }
+
+  private rejectRead(error: unknown, readId: number): void {
+    if (readId !== this.currentReadId) return
+    this.readInFlight = false
+    this.currentReadId = 0
+    const pending = this.currentRead as PendingRead
+    this.currentRead = undefined
+    this.clearDeadline()
+    this.phase = 'closed'
+    pending.reject(error)
+    this.resolvePendingReads()
+    this.closeDownstream()
+    this.notifyTerminal()
+  }
+
+  private armDeadline(): void {
+    if (this.signal?.aborted) return
+    this.abortListener = () => { this.clearDeadline() }
+    this.signal?.addEventListener('abort', this.abortListener, { once: true })
+    this.timer = setTimeout(() => { this.expireDeadline() }, this.timeoutMs)
+  }
+
+  private expireDeadline(): void {
+    if (this.phase !== 'first' || !this.readInFlight) return
+    const pending = this.currentRead
+    this.phase = 'closed'
+    this.readInFlight = false
+    this.invalidateRead()
     this.clearDeadline()
     this.closeDownstream()
-  }
-
-  /** Close this wrapper after consumer return, an error, or natural completion. */
-  finish(): void {
-    this.clearDeadline()
-    if (!this.naturallyDone) this.closeDownstream()
+    const pendingRead = pending as PendingRead
+    pendingRead.resolve({ done: false, value: timeoutChunk(this.timeoutMs) })
+    this.currentRead = undefined
+    this.resolvePendingReads()
+    this.notifyTerminal()
   }
 
   private clearDeadline(): void {
@@ -131,36 +237,62 @@ class StreamState {
     }
   }
 
+  private closeForConsumer(): void {
+    if (this.phase === 'closed') return
+    this.phase = 'closed'
+    this.readInFlight = false
+    this.invalidateRead()
+    this.clearDeadline()
+    this.resolvePendingReads()
+    this.closeDownstream()
+    this.notifyTerminal()
+  }
+
+  private resolvePendingReads(): void {
+    const done = doneResult()
+    const pending = this.currentRead
+    this.currentRead = undefined
+    if (pending !== undefined) pending.resolve(done)
+    while (this.waiters.length > 0) this.waiters.shift()?.resolve(done)
+  }
+
+  private invalidateRead(): void {
+    this.readGeneration += 1
+    this.currentReadId = 0
+  }
+
   private closeDownstream(): void {
-    if (this.closed || this.naturallyDone) return
-    this.closed = true
+    const iterator = this.iterator
+    if (iterator === undefined || iterator.return === undefined) return
     try {
-      const close = this.iterator.return
-      if (close === undefined) return
-      // Do not await this operation: async iterator return can be queued
-      // behind the still-pending provider read that caused the timeout.
-      void Promise.resolve(close.call(this.iterator)).catch((error: unknown) => {
-        // Closing is best-effort after timeout or consumer disposal; the
-        // already-selected stream outcome remains authoritative.
+      void Promise.resolve(iterator.return.call(iterator)).catch((error: unknown) => {
         void error
       })
     } catch (error) {
-      // A synchronous close failure cannot replace the timeout or consumer
-      // result, so contain it for the same best-effort lifecycle reason.
       void error
     }
   }
+
+  private notifyTerminal(): void {
+    this.onTerminal()
+  }
+}
+
+function rejected<T>(error: unknown): Promise<T> {
+  return new Promise<T>((_resolve, reject) => {
+    const rejectValue: (reason: unknown) => void = reject
+    rejectValue(error)
+  })
+}
+
+function doneResult(): StreamResult {
+  return { done: true, value: undefined }
 }
 
 /** Build the terminal chunk emitted when this plugin's first-read timer wins. */
 function timeoutChunk(timeoutMs: number): StreamChunk {
   const failure = new LlmError(`first LLM chunk idle timeout after ${timeoutMs}ms`, 'TIMEOUT').failure
   return { type: 'finish', reason: { kind: 'error', failure } }
-}
-
-/** Resolve the timer winner without letting a late read race produce another value. */
-function settleTimeout(resolve: (result: FirstResult) => void): void {
-  resolve({ timedOut: true })
 }
 
 /** Validate the resolved timeout independently of loader schema normalization. */
@@ -175,52 +307,28 @@ function resolveTimeout(config: Config | undefined): number {
 }
 
 /** Wrap one downstream stream until its first iterator result. */
-async function* wrapStream(
+function wrapStream(
   source: AsyncIterable<StreamChunk>,
   options: GenerateOptions,
   timeoutMs: number,
-  active: Set<StreamState>,
+  active: Set<FirstChunkStream>,
 ): AsyncIterable<StreamChunk> {
-  const iterator = source[Symbol.asyncIterator]()
-  const state = new StreamState(iterator, options.signal)
-  active.add(state)
-  try {
-    const first = await state.waitForFirst(timeoutMs)
-    if (first.timedOut) {
-      yield timeoutChunk(timeoutMs)
-      return
-    }
-    const result = first.result
-    if (result.done) {
-      state.markDone()
-      return
-    }
-    yield result.value
-    for (;;) {
-      const next = await iterator.next()
-      if (next.done) {
-        state.markDone()
-        return
-      }
-      yield next.value
-    }
-  } finally {
-    state.finish()
-    active.delete(state)
-  }
+  const stream = new FirstChunkStream(source, options.signal, timeoutMs, () => active.delete(stream))
+  active.add(stream)
+  return stream
 }
 
 /** Register the first-result deadline around the `llm/stream` waterfall. */
 export function apply(ctx: Context, config?: Config): void {
   const timeoutMs = resolveTimeout(config)
-  const active = new Set<StreamState>()
+  const active = new Set<FirstChunkStream>()
   const disposeListener = ctx.on('llm/stream', (options, next) => {
     const source = next()
     return wrapStream(source, options, timeoutMs, active)
   })
 
   ctx.effect(() => () => {
-    for (const state of active) state.dispose()
+    for (const stream of active) stream.dispose()
     active.clear()
     disposeListener()
   }, 'fork-llm-first-chunk-timeout: clear active deadlines')

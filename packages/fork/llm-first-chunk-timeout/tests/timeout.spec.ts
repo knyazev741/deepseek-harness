@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import LlmRuntime, { type StreamChunk } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { resolveRetryPolicy, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import * as FirstChunkTimeout from '../src/index.ts'
 
@@ -137,7 +137,7 @@ describe('first-chunk idle timeout waterfall', () => {
     const first = await iterator.next()
     expect(first).toEqual({ done: false, value: FIRST })
     expect(first.value).toBe(FIRST)
-    const capturedTimer = timerSpy.mock.calls.at(-1)?.[0] as (() => void) | undefined
+    const capturedTimer = timerSpy.mock.calls.at(-1)?.[0]
     if (capturedTimer === undefined) throw new Error('first-result timer was not armed')
     capturedTimer()
     await vi.advanceTimersByTimeAsync(100)
@@ -175,13 +175,20 @@ describe('first-chunk idle timeout waterfall', () => {
 
     const read = iterator.next()
     await vi.advanceTimersByTimeAsync(10)
-    await expect(read).resolves.toMatchObject({
+    await expect(read).resolves.toEqual({
       done: false,
       value: {
         type: 'finish',
-        reason: { kind: 'error', failure: { code: 'TIMEOUT' } },
+        reason: {
+          kind: 'error',
+          failure: {
+            message: 'first LLM chunk idle timeout after 10ms',
+            code: 'TIMEOUT',
+          },
+        },
       },
     })
+    expect(resolveRetryPolicy(undefined, 'test').retryableCodes).toContain('TIMEOUT')
     expect(source.returnCalls).toBe(1)
     await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
 
@@ -226,11 +233,23 @@ describe('first-chunk idle timeout waterfall', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
+  it('propagates a synchronous downstream iterator-construction failure unchanged', async () => {
+    const failure = new Error('synchronous provider construction failure')
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        throw failure
+      },
+    }
+    const { ctx } = await setup(10)
+
+    await expect(firstResult(waterfall(ctx, source))).rejects.toBe(failure)
+  })
+
   it('lets caller cancellation win without emitting TIMEOUT', async () => {
     vi.useFakeTimers()
     const controller = new AbortController()
     const pending = deferred<IteratorResult<StreamChunk>>()
-    controller.signal.addEventListener('abort', () => pending.resolve({ done: false, value: ABORTED }), { once: true })
+    controller.signal.addEventListener('abort', () => { pending.resolve({ done: false, value: ABORTED }) }, { once: true })
     const source = scriptedStream([{ promise: pending.promise }])
     const { ctx } = await setup(10)
     const iterator = waterfall(ctx, source, controller.signal)[Symbol.asyncIterator]()
@@ -293,6 +312,256 @@ describe('first-chunk idle timeout waterfall', () => {
     await Promise.resolve()
   })
 
+  it('returns immediately while the first downstream read is pending', async () => {
+    vi.useFakeTimers()
+    const pending = deferred<IteratorResult<StreamChunk>>()
+    const source = scriptedStream([{ promise: pending.promise }])
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+    const read = iterator.next()
+
+    await expect(iterator.return?.()).resolves.toEqual({ done: true, value: undefined })
+    expect(source.returnCalls).toBe(1)
+    expect(vi.getTimerCount()).toBe(0)
+    await expect(read).resolves.toEqual({ done: true, value: undefined })
+
+    pending.resolve({ done: false, value: FIRST })
+    await Promise.resolve()
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
+  it('rejects a consumer throw after the wrapper has closed', async () => {
+    const thrown = new Error('consumer failed')
+    const source = scriptedStream([{ result: { done: true, value: undefined } }])
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+    await expect(iterator.throw?.(thrown)).rejects.toBe(thrown)
+  })
+
+  it('delegates consumer throw before the first read', async () => {
+    const thrown = new Error('consumer stopped')
+    const throwResult = { done: true, value: undefined }
+    let received: unknown
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => Promise.resolve({ done: true, value: undefined }),
+          throw: (error: unknown) => {
+            received = error
+            return Promise.resolve(throwResult)
+          },
+        }
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.throw?.(thrown)).resolves.toBe(throwResult)
+    expect(received).toBe(thrown)
+  })
+
+  it('propagates iterator construction failure from consumer throw', async () => {
+    const failure = new Error('throw construction failure')
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        throw failure
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.throw?.(new Error('consumer failed'))).rejects.toBe(failure)
+  })
+
+  it('settles a concurrently queued next without starting another downstream read', async () => {
+    vi.useFakeTimers()
+    const pending = deferred<IteratorResult<StreamChunk>>()
+    const source = scriptedStream([{ promise: pending.promise }])
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+    const firstRead = iterator.next()
+    const queuedRead = iterator.next()
+
+    await expect(iterator.return?.()).resolves.toEqual({ done: true, value: undefined })
+    await expect(firstRead).resolves.toEqual({ done: true, value: undefined })
+    await expect(queuedRead).resolves.toEqual({ done: true, value: undefined })
+    expect(source.nextCalls).toBe(1)
+    pending.resolve({ done: false, value: FIRST })
+    await Promise.resolve()
+  })
+
+  it('returns immediately while a later downstream read is pending', async () => {
+    vi.useFakeTimers()
+    const pending = deferred<IteratorResult<StreamChunk>>()
+    const source = scriptedStream([
+      { result: { done: false, value: FIRST } },
+      { promise: pending.promise },
+    ])
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.next()).resolves.toEqual({ done: false, value: FIRST })
+    const read = iterator.next()
+    await expect(iterator.return?.()).resolves.toEqual({ done: true, value: undefined })
+    expect(source.returnCalls).toBe(1)
+    await expect(read).resolves.toEqual({ done: true, value: undefined })
+
+    pending.resolve({ done: false, value: SECOND })
+    await Promise.resolve()
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
+  it('delegates consumer throw and preserves its result after the first chunk', async () => {
+    const thrown = new Error('consumer stopped')
+    const throwResult = { done: true, value: undefined }
+    let received: unknown
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: vi.fn()
+            .mockResolvedValueOnce({ done: false, value: FIRST })
+            .mockResolvedValueOnce({ done: true, value: undefined }),
+          throw(error: unknown) {
+            received = error
+            return Promise.resolve(throwResult)
+          },
+          return: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+        }
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.next()).resolves.toEqual({ done: false, value: FIRST })
+    await expect(iterator.throw?.(thrown)).resolves.toBe(throwResult)
+    expect(received).toBe(thrown)
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
+  it('keeps a downstream throw value transparent and ignores the interrupted read', async () => {
+    vi.useFakeTimers()
+    const pending = deferred<IteratorResult<StreamChunk>>()
+    let nextCalls = 0
+    const throwResult = { done: false, value: SECOND }
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => {
+            nextCalls += 1
+            return nextCalls === 1
+              ? pending.promise
+              : Promise.resolve({ done: true, value: undefined })
+          },
+          throw: () => Promise.resolve(throwResult),
+        }
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+    const read = iterator.next()
+
+    await expect(iterator.throw?.(new Error('recover'))).resolves.toBe(throwResult)
+    await expect(read).resolves.toEqual({ done: true, value: undefined })
+    pending.resolve({ done: false, value: FIRST })
+    await Promise.resolve()
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
+  it('preserves a downstream throw rejection', async () => {
+    const thrown = new Error('consumer failed')
+    const downstreamFailure = new Error('downstream throw failed')
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => Promise.resolve({ done: false, value: FIRST }),
+          throw: () => Promise.reject(downstreamFailure),
+        }
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.next()).resolves.toEqual({ done: false, value: FIRST })
+    await expect(iterator.throw?.(thrown)).rejects.toBe(downstreamFailure)
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
+  it('preserves a synchronous downstream throw failure', async () => {
+    const thrown = new Error('consumer failed')
+    const downstreamFailure = new Error('synchronous downstream throw failed')
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => Promise.resolve({ done: false, value: FIRST }),
+          throw: () => { throw downstreamFailure },
+        }
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.next()).resolves.toEqual({ done: false, value: FIRST })
+    await expect(iterator.throw?.(thrown)).rejects.toBe(downstreamFailure)
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
+  it('rejects consumer throw with the caller error when downstream has no throw', async () => {
+    const thrown = new Error('consumer failed')
+    let returnCalls = 0
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => Promise.resolve({ done: false, value: FIRST }),
+          return: () => {
+            returnCalls += 1
+            return Promise.resolve({ done: true, value: undefined })
+          },
+        }
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+
+    await expect(iterator.next()).resolves.toEqual({ done: false, value: FIRST })
+    await expect(iterator.throw?.(thrown)).rejects.toBe(thrown)
+    expect(returnCalls).toBe(1)
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
+  it('clears the first-result timer and delegates consumer throw while a read is pending', async () => {
+    vi.useFakeTimers()
+    const pending = deferred<IteratorResult<StreamChunk>>()
+    const thrown = new Error('consumer failed')
+    let throwCalls = 0
+    const throwResult = { done: true, value: undefined }
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => pending.promise,
+          throw: (error: unknown) => {
+            expect(error).toBe(thrown)
+            throwCalls += 1
+            return Promise.resolve(throwResult)
+          },
+        }
+      },
+    }
+    const { ctx } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+    const read = iterator.next()
+
+    await expect(iterator.throw?.(thrown)).resolves.toBe(throwResult)
+    expect(throwCalls).toBe(1)
+    expect(vi.getTimerCount()).toBe(0)
+    await expect(read).resolves.toEqual({ done: true, value: undefined })
+
+    pending.resolve({ done: false, value: FIRST })
+    await vi.advanceTimersByTimeAsync(100)
+    await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+  })
+
   it('removes its waterfall listener and clears active timers at disposal without waiting for provider reads', async () => {
     vi.useFakeTimers()
     const pending = deferred<IteratorResult<StreamChunk>>()
@@ -316,13 +585,13 @@ describe('first-chunk idle timeout waterfall', () => {
     expect(vi.getTimerCount()).toBe(1)
 
     await fiber.dispose()
-    const capturedTimer = timerSpy.mock.calls.at(-1)?.[0] as (() => void) | undefined
+    const capturedTimer = timerSpy.mock.calls.at(-1)?.[0]
     if (capturedTimer !== undefined) capturedTimer()
     expect(returnCalls).toBe(1)
     expect(vi.getTimerCount()).toBe(0)
 
     pending.resolve({ done: false, value: FIRST })
-    await expect(read).resolves.toEqual({ done: false, value: FIRST })
+    await expect(read).resolves.toEqual({ done: true, value: undefined })
     returnPending.resolve({ done: true, value: undefined })
     await expect(iterator.return?.()).resolves.toEqual({ done: true, value: undefined })
 
@@ -330,6 +599,26 @@ describe('first-chunk idle timeout waterfall', () => {
     const stream = waterfall(ctx, passthrough)
     expect(stream).toBe(passthrough)
     await expect(firstResult(stream)).resolves.toEqual({ done: false, value: SECOND })
+  })
+
+  it('does not re-enter a wrapper already waiting for downstream throw during disposal', async () => {
+    const throwPending = deferred<IteratorResult<StreamChunk>>()
+    const source: AsyncIterable<StreamChunk> = {
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => Promise.resolve({ done: false, value: FIRST }),
+          throw: () => throwPending.promise,
+        }
+      },
+    }
+    const { ctx, fiber } = await setup(10)
+    const iterator = waterfall(ctx, source)[Symbol.asyncIterator]()
+    await expect(iterator.next()).resolves.toEqual({ done: false, value: FIRST })
+    const control = iterator.throw?.(new Error('consumer failed'))
+
+    await fiber.dispose()
+    throwPending.resolve({ done: true, value: undefined })
+    await expect(control).resolves.toEqual({ done: true, value: undefined })
   })
 
   it('contains synchronous and asynchronous downstream close failures', async () => {
@@ -413,7 +702,7 @@ describe('first-chunk idle timeout configuration', () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
-    expect(() => FirstChunkTimeout.apply(ctx, { firstChunkIdleTimeoutMs: Number.NaN })).toThrow(/firstChunkIdleTimeoutMs/u)
+    expect(() => { FirstChunkTimeout.apply(ctx, { firstChunkIdleTimeoutMs: Number.NaN }) }).toThrow(/firstChunkIdleTimeoutMs/u)
   })
 })
 
@@ -470,8 +759,8 @@ describe('first-chunk idle timeout Loader composition', () => {
 
     const entry = [...ctx.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-fork-llm-first-chunk-timeout')
     if (entry === undefined) throw new Error('Loader did not mount first-chunk timeout')
-    expect(ctx.loader.entries().some(item => item.options.name === '@deepseek-ai/dsh-llm')).toBe(true)
+    expect([...ctx.loader.entries()].some(item => item.options.name === '@deepseek-ai/dsh-llm')).toBe(true)
     await entry.parent.remove(entry.options.id)
-    expect(ctx.loader.entries().some(item => item.options.name === '@deepseek-ai/dsh-fork-llm-first-chunk-timeout')).toBe(false)
+    expect([...ctx.loader.entries()].some(item => item.options.name === '@deepseek-ai/dsh-fork-llm-first-chunk-timeout')).toBe(false)
   })
 })
