@@ -3,8 +3,8 @@
  * The session-mode picker: a chip that names who drives the next session and,
  * for an external mode, opens a model seat. Behavior is driven through the
  * props: the store snapshot bound by `useModeSeat`, and plain callbacks for
- * `load`/`select`/`selectModel`/`create`. A pure-native host (no external modes,
- * no failures) renders nothing, and a model seat for an external mode that
+ * `load`/`select`/`selectModel`. A pure-native host (no external modes, no
+ * failures) renders nothing, and a model seat for an external mode that
  * discloses no models is disabled with the inline reason.
  */
 
@@ -124,7 +124,6 @@ describe('the session-mode picker', () => {
     fireEvent.click(screen.getByText('GPT-5'))
 
     expect(actions.selectModel).toHaveBeenCalledWith('gpt-5')
-    expect(actions.create).toHaveBeenCalledTimes(1)
   })
 
   it('shows a model description when the model publishes one', () => {

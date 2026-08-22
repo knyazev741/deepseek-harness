@@ -10,8 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
-import type { ExternalToolPrincipal, ToolExecution } from '@deepseek-ai/dsh-tools'
+import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 import { ShellEnvRegistry } from '@deepseek-ai/dsh-shell-env'
 import * as BashEnvPlugin from '@deepseek-ai/dsh-shell-env'
 
@@ -33,24 +32,6 @@ function execution(sessionId?: string): ToolExecution {
   }
 }
 
-function externalExecution(sessionId = 'external-session'): ToolExecution {
-  return {
-    signal: testToolSignal,
-    token: Symbol('bash-env-external-test') as ToolExecution['token'],
-    callId: CallId('bash-env-external-call'),
-    rootCallId: CallId('bash-env-external-call'),
-    name: 'bash',
-    arguments: { command: 'true' },
-    principal: {
-      kind: 'external',
-      id: ExternalToolPrincipalId('shell-env-external'),
-      session: { header: { version: 0, id: sessionId, createdAt: 0 } },
-      ctx: new Context(),
-      recorder: {},
-    } as unknown as ExternalToolPrincipal,
-  }
-}
-
 describe('ShellEnvRegistry', () => {
   it('collects unconditional shell facts and the current agent session id', () => {
     const ctx = new Context()
@@ -63,11 +44,6 @@ describe('ShellEnvRegistry', () => {
     expect(registry.collect(execution('session-a'))).toEqual({
       DSH_HOME: resolve('./test-dsh-home'),
       DSH_SESSION_ID: 'session-a',
-      DSH_SHELL: '1',
-    })
-    expect(registry.collect(externalExecution())).toEqual({
-      DSH_HOME: resolve('./test-dsh-home'),
-      DSH_SESSION_ID: 'external-session',
       DSH_SHELL: '1',
     })
   })
@@ -243,7 +219,6 @@ describe('ShellEnvRegistry', () => {
       locate: () => ({ kind: 'jsonl' as const, path: 'C:\\sessions\\s.jsonl' }),
     })
     expect(ctx.shellEnv.collect(execution('sess-p')).DSH_SESSION_JSONL).toBe('C:\\sessions\\s.jsonl')
-    expect(ctx.shellEnv.collect(externalExecution('external-p')).DSH_SESSION_JSONL).toBe('C:\\sessions\\s.jsonl')
   })
 
   it('the persistence contributor omits the variable for a non-jsonl backend', async () => {

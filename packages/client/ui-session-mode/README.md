@@ -15,13 +15,4 @@ The picker is presentation over those surfaces: it renders the mode rows from th
 
 ## Model Experience
 
-None, as this browser-side new-session mode picker renders no model-facing surface.
-
-#### KV Cache effect
-
-None; mode and model selection change host session metadata and external transcript presentation, not a parent model request.
-
-## Known Limitations and Deferred Work
-
-- **Provider-dependent rows** — an external mode appears only while its provider is registered in the current host composition.
-- **Creation-time selection** — changing mode or model after creation uses the session APIs; the picker does not rewrite an existing session's durable driver identity.
+This package has no model-visible effect in any parent session. It renders the new-session seat; the underlying session it helps create is either the native agent loop (unchanged behavior) or an external-mode session whose activity is projected as a log-only `external/*` event family (`packages/session/session-projection`). The picker itself never feeds a model request. All product copy is Chinese; code comments are English.

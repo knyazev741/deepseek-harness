@@ -29,16 +29,15 @@ class ObservedStateGate {
 
   /**
    * Derive the observed-state owner from the opaque event actor — normally the
-   * active agent or external session. `undefined` when no owner can be derived
-   * (e.g. a direct tool call with no session); such calls read freely but cannot satisfy
+   * active agent session. `undefined` when no owner can be derived (e.g. a
+   * direct tool call with no agent); such calls read freely but cannot satisfy
    * the write/edit prior-observation policy.
    */
   private owner(actor: object | undefined): object | undefined {
     // tsgolint treats object as assignable to weak FsObservationActor, while tsc still requires the structural cast for property access.
     // See the analyzer-divergence consequence in .agents/notes/implemented/process/2026-07-29-oxlint-linter.md.
     // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- The analyzers disagree on this weak type.
-    const execution = actor as FsObservationActor | undefined
-    return execution?.principal?.session ?? execution?.agent?.session
+    return (actor as FsObservationActor | undefined)?.agent?.session
   }
 
   private get(owner: object, targetKey: string): FsObservation | undefined {

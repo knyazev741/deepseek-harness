@@ -258,27 +258,6 @@ describe('JsonRpcLineTransport', () => {
     await expect(pending).rejects.toThrow('JSON-RPC transport closed')
   })
 
-  it('suppresses a late server response after the transport closes', async () => {
-    const input = new PassThrough()
-    const writes: string[] = []
-    const output = new Writable({
-      write(chunk, _encoding, callback) {
-        writes.push(String(chunk))
-        callback()
-      },
-    })
-    const transport = new JsonRpcLineTransport(input, output)
-    const response = Promise.withResolvers<Record<string, unknown>>()
-    transport.onRequest(async () => response.promise)
-    transport.start()
-    input.write('{"jsonrpc":"2.0","id":"approval","method":"requestApproval","params":{}}\n')
-    await new Promise(resolve => setTimeout(resolve, 0))
-    transport.close()
-    response.resolve({ decision: 'cancel' })
-    await new Promise(resolve => setTimeout(resolve, 0))
-    expect(writes).toEqual([])
-  })
-
   it('rejects a request when writing the frame throws', async () => {
     const input = new PassThrough()
     const output = {

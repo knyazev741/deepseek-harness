@@ -27,27 +27,12 @@ import { ProjectionValueStore } from './projection-store.ts'
 import type { ProjectionsBaseline } from './projection-store.ts'
 import { resolvedClientTimeZone } from '../time-zone.ts'
 import { SessionQueueMirror } from './queue-mirror.ts'
-import { ExternalLiveAccumulator } from './external-live.ts'
-
-/** One external command waiting for the next durable provider turn terminal. */
-interface ExternalTurnWaiter {
-  minimumSeq: number
-  armed: boolean
-  expectedTurnId: string | undefined
-  readonly promise: Promise<void>
-  arm(turnId: string | undefined): void
-  settle(): void
-  fail(error: unknown): void
-  cancel(): void
-}
 
 /** Messages requested per history page. */
 export const PAGE_MESSAGES = 50
 
 /** Manager-owned observers of a Session object's local state edges. */
 export interface SessionOptions {
-  /** Durable driver mode from the host summary; `dsh`/absent uses native remotes. */
-  mode?: string
   /** Catalog-discovered address selecting non-activating subagent transport. */
   address?: SubagentAddress
   /** Whether the exact direct parent Agent was live at the latest catalog read. */
@@ -98,21 +83,11 @@ export class Session implements SessionFace {
   private pendingCache: { rev: number; value: PendingInteraction[] } | null = null
   /** Authoritative stream-only inbox snapshot; pending work never hits history. */
   private readonly queueMirror = new SessionQueueMirror()
-  /** Transient external-agent output; reset at every connection/subscription generation. */
-  private readonly externalLive = new ExternalLiveAccumulator()
-  /** External deltas received while the history window is opening or repairing. */
-  private externalDeltaBuffer: { turnId: string; delta: string }[] = []
   /** Session-owned business Context engine over the contiguous raw window. */
   private readonly conversation: ConversationNodeAssembler
   private running = false
   private address: SubagentAddress | undefined
   private parentAvailable = false
-  private sessionMode: string | undefined
-  private readonly externalTurnWaiters: ExternalTurnWaiter[] = []
-  /** Highest terminal event already observed; protects a loading-buffer replay from settling twice. */
-  private lastObservedExternalTerminalSeq = -1
-  /** Recent terminal identities allow a provider response to arm after its terminal notification. */
-  private readonly recentExternalTerminals = new Map<string, number>()
   /**
    * Sticky send marker, private input of the composerPhase derivation: set
    * synchronously before prompt()'s first await, never reset — the blank →
@@ -171,7 +146,6 @@ export class Session implements SessionFace {
     private readonly options: SessionOptions = {},
   ) {
     this.projections = options.projections ?? new ProjectionValueStore()
-    this.sessionMode = options.mode
     this.address = options.address
     this.parentAvailable = options.parentAvailable ?? false
     this.conversation = options.conversation === undefined
@@ -185,11 +159,6 @@ export class Session implements SessionFace {
       this.snapshotCache = this.buildSnapshot()
     })
     this.snapshotCache = this.buildSnapshot()
-  }
-
-  /** Durable driver mode used by client routing and mode-aware presentations. */
-  get mode(): string | undefined {
-    return this.sessionMode
   }
 
   /**
@@ -213,10 +182,9 @@ export class Session implements SessionFace {
   // ---- Operations ----
 
   /**
-   * Send through the native Agent or, for an external mode, forward text through
-   * `session.command`; failures land in the snapshot's promptError.
+   * Send (queue/steer passed through 1:1); failures land in the snapshot's promptError.
    * @param content - text plus browser-owned temporary image uploads.
-   * @param mode - native queue appends after the current turn; native steer interrupts it.
+   * @param mode - queue appends after the current turn; steer interrupts it.
    * @returns the prompt result (also mirrored into promptError on failure).
    */
   async prompt(content: PromptContentPart[], mode: 'queue' | 'steer'): Promise<RpcResult<{ accepted: true }>> {
@@ -230,32 +198,7 @@ export class Session implements SessionFace {
     this.notifier.markDirty()
     let result: RpcResult<{ accepted: true }>
     try {
-      if (this.isExternalMode()) {
-        if (content.some(part => part.type === 'image')) {
-          result = {
-            ok: false,
-            error: {
-              code: 'external-images-unsupported',
-              message: 'External sessions do not accept image input yet.',
-              details: { mode: this.sessionMode ?? 'external' },
-            },
-          }
-        } else if (mode === 'steer') {
-          result = {
-            ok: false,
-            error: {
-              code: 'external-steer-unsupported',
-              message: 'External sessions do not support steering yet.',
-              details: { mode: this.sessionMode ?? 'external' },
-            },
-          }
-        } else {
-          const command = await this.command(content.flatMap(part => part.type === 'text' ? [part.text] : []).join(''))
-          result = command.ok
-            ? { ok: true, value: { accepted: true } }
-            : { ok: false, error: command.error as RpcError }
-        }
-      } else if (this.address === undefined) {
+      if (this.address === undefined) {
         result = (await this.api.sessions.prompt({
           sessionId: this.sessionId,
           mode,
@@ -340,16 +283,6 @@ export class Session implements SessionFace {
 
   /** Apply one operation to a still-pending queue occurrence. */
   async updateQueue(itemId: MessageId, action: QueueAction): Promise<RpcResult<{ accepted: true }>> {
-    if (this.isExternalMode()) {
-      return {
-        ok: false,
-        error: {
-          code: 'external-queue-unsupported',
-          message: 'External sessions do not expose queued-message operations yet.',
-          details: { itemId, action: action.kind },
-        },
-      }
-    }
     try {
       return (await this.api.sessions.updateQueue({ sessionId: this.sessionId, itemId, action })).result
     } catch (error) {
@@ -416,57 +349,13 @@ export class Session implements SessionFace {
   }
 
   /**
-   * Execute one command line. Native sessions use the command registry; external
-   * sessions forward plain and provider-specific lines through `session.command`
-   * and wait for the durable external turn terminal when a turn is started.
+   * Execute one slash-command line against this session's agent — pure
+   * admission semantics (the host executor durably logs the lifecycle;
+   * outcomes render as flow nodes, never as a response echo).
    * @param line - the full command line, leading slash included.
    * @returns the admission result, or the error branch on transport failure.
    */
   async command(line: string): Promise<RemoteResult<{ matched: boolean }>> {
-    if (this.isExternalMode()) {
-      const commandName = /^\/([a-z0-9_-]+)/iu.exec(line.trim())?.[1]?.toLowerCase()
-      if (commandName === 'goal' || commandName === 'goals' || commandName === 'plan') {
-        return {
-          ok: false,
-          error: {
-            code: 'external-goals-unsupported',
-            message: 'Native goals are unavailable for external sessions.',
-            details: { command: commandName },
-          },
-        }
-      }
-      const waitsForTurn = commandName !== 'compact' && commandName !== 'model'
-      // Register before the RPC for every open state. External providers may
-      // emit the terminal event while a cold session is being attached or its
-      // history window is loading.
-      const wait = waitsForTurn ? this.waitForExternalTurnEnd() : undefined
-      try {
-        const response = (await this.api.sessions.command({ sessionId: this.sessionId, line })).result
-        if (!response.ok) {
-          wait?.cancel()
-          return response
-        }
-        if (response.value.kind === 'error') {
-          wait?.cancel()
-          return {
-            ok: false,
-            error: {
-              code: 'external-command-failed',
-              message: response.value.text,
-              details: { sessionId: this.sessionId, line },
-            },
-          }
-        }
-        if (wait !== undefined) {
-          wait.arm(response.value.externalTurnId)
-          await wait.promise
-        }
-        return { ok: true, value: { matched: true } }
-      } catch (error: unknown) {
-        wait?.cancel()
-        return transportError(error)
-      }
-    }
     const result = await this.remote.commands.execute(this.sessionId, line, [])
     if (!result.ok) return result
     return { ok: true, value: { matched: result.value !== undefined } }
@@ -530,7 +419,6 @@ export class Session implements SessionFace {
     // already, and the host never resends it. The mirror re-baselines on the
     // session/subscribed frame instead (same stream as the queue snapshot
     // that follows it, so ordering is guaranteed).
-    this.resetExternalLive()
     if (this.openState === 'cold') return // never opened: no window to rebuild (doOpen flips to 'loading' synchronously, so cold implies no in-flight open)
     this.openGeneration++
     this.openPromise = null
@@ -582,10 +470,6 @@ export class Session implements SessionFace {
         this.acceptLiveEvent(frame.event, frame.view)
         return
       }
-      case 'external/delta': {
-        this.acceptExternalDelta(frame.turnId, frame.delta)
-        return
-      }
       case 'session/queue': {
         this.queueMirror.replace(frame.items)
         this.notifier.markDirty()
@@ -593,7 +477,6 @@ export class Session implements SessionFace {
       }
       case 'session/subscribed': {
         this.subscribedLastSeq = frame.lastSeq
-        this.resetExternalLive()
         // New mux-generation baseline: the host pushes this session's queue
         // snapshot AFTER the subscribed frame on the same stream, so the
         // stale mirror clears here — race-free against onConnected/resync
@@ -665,16 +548,6 @@ export class Session implements SessionFace {
   }
 
   /**
-   * Update the durable driver mode from a refreshed list summary.
-   * @param mode - current mode from the host summary, or undefined for native sessions.
-   */
-  configureMode(mode: string | undefined): void {
-    if (this.sessionMode === mode) return
-    this.sessionMode = mode
-    this.notifier.markDirty()
-  }
-
-  /**
    * Update only the parent availability hint from a catalog refresh.
    * @param available - whether the exact direct parent is live.
    */
@@ -701,8 +574,6 @@ export class Session implements SessionFace {
   /** host/session-removed relay: flag the snapshot (instance survives — resident-instance rule). */
   handleRemoved(): void {
     this.removed = true
-    this.failExternalTurnWaiters(new Error(`session ${this.sessionId} was removed`))
-    this.resetExternalLive()
     this.notifier.markDirty()
   }
 
@@ -712,20 +583,11 @@ export class Session implements SessionFace {
    */
   handleAgentError(message: string): void {
     this.lastAgentError = message
-    this.failExternalTurnWaiters(new Error(message))
-    this.resetExternalLive()
     this.notifier.markDirty()
   }
 
-  /** Clear transient external output after the connection or session dies. */
-  clearExternalLive(): void {
-    this.resetExternalLive()
-  }
-
-  /** Release command barriers when scope pruning disposes a resident instance. */
-  dispose(): void {
-    this.failExternalTurnWaiters(new Error(`session ${this.sessionId} was disposed`))
-  }
+  /** No-op because session instances remain resident. */
+  dispose(): void {}
 
   /** Rebuild the current window after a low-frequency Definition or view registration change. */
   rebuildConversationRegistry(): void {
@@ -759,7 +621,6 @@ export class Session implements SessionFace {
       if (!result.ok) {
         this.openState = 'error'
         this.openError = result.error
-        this.externalDeltaBuffer = []
         return
       }
       this.installWindow(result.value.events, result.value.hasMore, result.value.projections)
@@ -774,7 +635,6 @@ export class Session implements SessionFace {
     } catch (error) {
       if (generation !== this.openGeneration) return
       this.openState = 'error'
-      this.externalDeltaBuffer = []
       const folded = transportError<never>(error)
       /* v8 ignore next -- the `? null` arm is unreachable: transportError always returns ok:false. */
       this.openError = folded.ok ? null : folded.error
@@ -798,13 +658,6 @@ export class Session implements SessionFace {
     if (this.events.some(event => event.type === 'turn/start')) this.firstPromptPendingTurn = false
     this.conversation.replaceWindow(entries.map(conversationInput), hasMore)
     if (projections !== undefined) this.projections.seed(projections)
-    // A prompt can start as soon as the composer is enabled, before the first
-    // history request settles. Apply those transient deltas before durable
-    // history so a committed agent message retires the matching live turn
-    // instead of allowing a stale delta to resurrect after the baseline lands.
-    const externalDeltas = this.externalDeltaBuffer
-    this.externalDeltaBuffer = []
-    for (const item of externalDeltas) this.externalLive.push(item.turnId, item.delta)
     const buffered = this.liveBuffer
     this.liveBuffer = []
     for (const item of buffered) this.appendLive(item.event, item.view)
@@ -813,16 +666,14 @@ export class Session implements SessionFace {
 
   /** Seq-guarded append shared by stitching and the open-state live path. */
   private appendLive(event: SessionEvent, view?: ToolEventView): ConversationPublication {
-    const externalChanged = this.retireExternalLive(event)
     const tailSeq = this.windowTailSeq()
-    if (tailSeq !== null && event.seq <= tailSeq) return externalChanged ? 'immediate' : 'none' // replay overlap, drop
-    this.observeExternalTurnEnd(event)
+    if (tailSeq !== null && event.seq <= tailSeq) return 'none' // replay overlap, drop
     this.events.push(event)
     this.views.push(view)
     if (event.type === 'turn/start') this.firstPromptPendingTurn = false
     const queueChanged = this.queueMirror.acceptDurable(event)
     const publication = this.conversation.append({ event, view })
-    return externalChanged || queueChanged ? 'immediate' : publication
+    return queueChanged ? 'immediate' : publication
   }
 
   /** Land a live session/event (open/repair in flight -> buffer; overlapping seq -> drop;
@@ -831,11 +682,6 @@ export class Session implements SessionFace {
    *  raw range, which lets Conversation Definitions correlate every recorded event between its
    *  ends and lets a compaction checkpoint resolve its cited summary event. */
   private acceptLiveEvent(event: SessionEvent, view?: ToolEventView): void {
-    // Terminal events can arrive before a Session has opened or while its
-    // history request is in flight. Observe them before the state gate; the
-    // append path repeats the call for buffered/history entries and the
-    // sequence guard makes that replay idempotent.
-    this.observeExternalTurnEnd(event)
     if (this.openState === 'loading' || this.stitching) {
       this.liveBuffer.push({ event, view })
       return
@@ -848,141 +694,6 @@ export class Session implements SessionFace {
       return
     }
     this.scheduleConversation(this.appendLive(event, view))
-  }
-
-  /** Accept one transient external delta only for an open, healthy session. */
-  private acceptExternalDelta(turnId: string, delta: string): void {
-    if (this.removed || this.lastAgentError !== null) return
-    if (this.openState === 'loading' || this.stitching) {
-      this.externalDeltaBuffer.push({ turnId, delta })
-      return
-    }
-    if (this.openState !== 'open') return
-    if (this.externalLive.push(turnId, delta)) this.notifier.markFrameDirty()
-  }
-
-  /** Register a wait for the next durable external turn terminal event. */
-  private waitForExternalTurnEnd(): ExternalTurnWaiter {
-    let resolveWaiter!: () => void
-    let rejectWaiter!: (error: unknown) => void
-    let settled = false
-    const minimumSeq = this.highestKnownSeq()
-    const remove = (): void => {
-      const index = this.externalTurnWaiters.indexOf(waiter)
-      if (index !== -1) this.externalTurnWaiters.splice(index, 1)
-    }
-    const promise = new Promise<void>((resolve, reject) => {
-      resolveWaiter = resolve
-      rejectWaiter = reject
-    })
-    // A removal/error can reject before the command RPC itself returns. The
-    // command attaches its awaited handler after that RPC, so install a
-    // no-op observer now to keep that early rejection handled.
-    void promise.catch(() => {})
-    const waiter: ExternalTurnWaiter = {
-      minimumSeq,
-      armed: false,
-      expectedTurnId: undefined,
-      promise,
-      arm: (turnId) => {
-        if (settled) return
-        waiter.armed = true
-        waiter.expectedTurnId = turnId
-        if (turnId === undefined) waiter.minimumSeq = Math.max(waiter.minimumSeq, this.highestKnownSeq())
-        else {
-          const terminalSeq = this.recentExternalTerminals.get(turnId)
-          if (terminalSeq !== undefined && terminalSeq > waiter.minimumSeq) waiter.settle()
-        }
-      },
-      settle: () => {
-        if (settled) return
-        settled = true
-        remove()
-        resolveWaiter()
-      },
-      fail: (error: unknown) => {
-        if (settled) return
-        settled = true
-        remove()
-        rejectWaiter(error)
-      },
-      cancel: () => {
-        if (settled) return
-        settled = true
-        remove()
-        resolveWaiter()
-      },
-    }
-    this.externalTurnWaiters.push(waiter)
-    return waiter
-  }
-
-  /** Observe a durable terminal once, including events received before open. */
-  private observeExternalTurnEnd(event: SessionEvent): void {
-    if ((event as unknown as { type: string }).type !== 'external/turn-ended') return
-    if (event.seq <= this.lastObservedExternalTerminalSeq) return
-    this.lastObservedExternalTerminalSeq = event.seq
-    const turnId = (event as unknown as { data: { turnId: string } }).data.turnId
-    this.recentExternalTerminals.set(turnId, event.seq)
-    while (this.recentExternalTerminals.size > 32) {
-      const oldest = this.recentExternalTerminals.keys().next().value
-      if (oldest === undefined) break
-      this.recentExternalTerminals.delete(oldest)
-    }
-    for (const waiter of this.externalTurnWaiters) {
-      if (!waiter.armed || event.seq <= waiter.minimumSeq) continue
-      if (waiter.expectedTurnId === undefined || waiter.expectedTurnId === turnId) {
-        waiter.settle()
-        break
-      }
-    }
-  }
-
-  /** Reject all barriers when their Session can no longer produce a terminal event. */
-  private failExternalTurnWaiters(error: unknown): void {
-    for (const waiter of [...this.externalTurnWaiters]) waiter.fail(error)
-  }
-
-  /** Highest durable sequence known to this Session at barrier creation time. */
-  private highestKnownSeq(): number {
-    let highest = Math.max(this.subscribedLastSeq ?? -1, this.lastObservedExternalTerminalSeq)
-    for (const event of this.events) highest = Math.max(highest, event.seq)
-    for (const item of this.liveBuffer) highest = Math.max(highest, item.event.seq)
-    return highest
-  }
-
-  /** Whether this session is driven by a registered external provider. */
-  private isExternalMode(): boolean {
-    return this.sessionMode !== undefined && this.sessionMode !== 'dsh'
-  }
-
-  /** Retire transient output when its durable message/turn boundary arrives. */
-  private retireExternalLive(event: SessionEvent): boolean {
-    const type = (event as unknown as { type: string }).type
-    switch (type) {
-      case 'external/message-added': {
-        const data = (event as unknown as { data: { role?: string; turnId: string } }).data
-        if (data.role !== 'agent') return false
-        return this.externalLive.commit(data.turnId)
-      }
-      case 'external/turn-ended': {
-        const turnId = (event as unknown as { data: { turnId: string } }).data.turnId
-        return this.externalLive.commit(turnId)
-      }
-      case 'external/session-ended':
-      case 'external/session-start-failed':
-        return this.externalLive.close()
-      default:
-        return false
-    }
-  }
-
-  /** Reset the live accumulator and publish a lifecycle edge when needed. */
-  private resetExternalLive(): void {
-    const buffered = this.externalDeltaBuffer.length > 0
-    this.externalDeltaBuffer = []
-    if (!this.externalLive.clear() && !buffered) return
-    this.notifier.markDirty()
   }
 
   /** Route assembler cadence into the Session's existing microtask/RAF notifier. */
@@ -1031,7 +742,6 @@ export class Session implements SessionFace {
       turnTimings: legacy.turnTimings,
       turnEnds: legacy.turnEnds,
       partial: legacy.partial,
-      externalLive: this.externalLive.snapshot(),
       runningCalls: legacy.runningCalls,
       pending: this.pendingCache.value,
       queue: this.queueMirror.snapshot(),

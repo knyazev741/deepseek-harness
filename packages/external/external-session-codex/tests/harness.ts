@@ -13,24 +13,16 @@ import { delimiter, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import ExternalSessions from '@deepseek-ai/dsh-external-session'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import WebServer from '@deepseek-ai/dsh-host-webserver'
-import McpGateway from '@deepseek-ai/dsh-mcp-gateway'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type {
   ExternalBridgeContext,
   ExternalPermissionDecision,
-  ExternalProviderThreadId,
   ExternalSessionProvider,
 } from '@deepseek-ai/dsh-external-session'
-import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessHandle } from '@deepseek-ai/dsh-subprocess'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import { SandboxProvider } from '@deepseek-ai/dsh-sandbox'
-import type { ConfinedArgv, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
 import { vi } from 'vitest'
 import * as codex from '../src/index.ts'
-import { codexStateRoot } from '../src/index.ts'
 import {
   startResponsesFixture,
   type ResponsesBehavior,
@@ -41,7 +33,7 @@ const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const codexBinDir = join(packageRoot, 'node_modules', '.bin')
 
 /** One appended session event or live delta captured by the recorded bridge. */
-interface CodexRecorded {
+export interface CodexRecorded {
   readonly events: Array<{ type: string; data: unknown }>
   readonly deltas: Array<{ turnId: string; delta: string }>
   readonly permissionAsks: Array<{ askId: string; title: string; options: readonly string[] }>
@@ -55,22 +47,12 @@ export interface CodexTestHarness {
   readonly recorded: CodexRecorded
   readonly fixture: ResponsesFixture
   readonly handles: SubprocessHandle[]
-  readonly spawnSpecs: SubprocessSpawnSpec[]
-  readonly confinedPolicies: SandboxPolicy[]
   readonly workspace: string
   readonly codexHome: string
   /** Set the decision every permission ask resolves with. */
   setPermissionAnswer(decision: ExternalPermissionDecision): void
-  /** Hold the next permission answer until {@link releasePermission}. */
-  holdPermission(): void
-  /** Resolve a held permission answer. */
-  releasePermission(decision: ExternalPermissionDecision): void
   /** Open the session on the recorded bridge (provider.start). */
-  start(model?: string): Promise<void>
-  /** Attach the session on the recorded bridge (provider.resume). */
-  resume(providerThreadId: ExternalProviderThreadId): Promise<void>
-  /** Dispose only the external attachment while retaining the host context. */
-  disposeAttachment(): Promise<void>
+  start(): Promise<void>
   /** Wait until at least `count` events of `type` have been recorded. */
   waitCount(type: string, count: number, timeoutMs?: number): Promise<void>
   /** Wait until the recorded deltas mention `needle`. */
@@ -84,12 +66,8 @@ export interface CodexTestHarness {
 function makeBridge(recorded: CodexRecorded): {
   bridge: ExternalBridgeContext
   setAnswer: (decision: ExternalPermissionDecision) => void
-  holdAnswer: () => void
-  releaseAnswer: (decision: ExternalPermissionDecision) => void
 } {
   let answer: ExternalPermissionDecision = 'allowed'
-  let hold = false
-  let pending: PromiseWithResolvers<ExternalPermissionDecision> | undefined
   const bridge: ExternalBridgeContext = {
     appendEvent: (_sessionId, event) => {
       recorded.events.push({ type: event.type, data: event.data })
@@ -100,10 +78,7 @@ function makeBridge(recorded: CodexRecorded): {
         title: ask.title,
         options: [...ask.options],
       })
-      if (!hold) return answer
-      const next = Promise.withResolvers<ExternalPermissionDecision>()
-      pending = next
-      return next.promise
+      return answer
     },
     streamDelta: (_sessionId, turnId, delta) => {
       recorded.deltas.push({ turnId: String(turnId), delta })
@@ -113,12 +88,6 @@ function makeBridge(recorded: CodexRecorded): {
   return {
     bridge,
     setAnswer: (decision) => { answer = decision },
-    holdAnswer: () => { hold = true },
-    releaseAnswer: (decision) => {
-      hold = false
-      pending?.resolve(decision)
-      pending = undefined
-    },
   }
 }
 
@@ -147,18 +116,14 @@ function poll(predicate: () => boolean, describe: string, timeoutMs: number): Pr
  */
 export async function startCodexHarness(
   script: readonly ResponsesBehavior[],
-  options: { readonly gateway?: boolean } = {},
 ): Promise<CodexTestHarness> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-external-codex-'))
   const workspace = join(root, 'workspace')
   const codexHome = join(root, 'codex-home')
-  const sessionId = SessionId('external-codex-test-session')
   mkdirSync(workspace)
   mkdirSync(codexHome)
-  const fixture = await startResponsesFixture(script, { allowStatelessContinuation: true })
-  const sessionHome = codexStateRoot(codexHome, String(sessionId))
-  mkdirSync(sessionHome, { recursive: true })
-  writeFileSync(join(sessionHome, 'config.toml'), [
+  const fixture = await startResponsesFixture(script)
+  writeFileSync(join(codexHome, 'config.toml'), [
     'model = "fixture-model"',
     'model_provider = "fixture"',
     'approval_policy = "on-request"',
@@ -189,75 +154,26 @@ export async function startCodexHarness(
     NO_PROXY: '127.0.0.1,localhost',
   }
   const ctx = new Context()
-  await ctx.plugin(SessionStore)
   await ctx.plugin(ExternalSessions)
-  if (options.gateway === true) {
-    await ctx.plugin(SystemPrompt)
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
-    await ctx.plugin(McpGateway, { allowlist: ['allowed'] })
-  }
   await ctx.plugin(LocalSubprocessRuntime)
-  const confinedPolicies: SandboxPolicy[] = []
-  class TestSandboxProvider extends SandboxProvider {
-    confine(argv: readonly string[], policy: SandboxPolicy): ConfinedArgv {
-      confinedPolicies.push(policy)
-      return {
-        argv: [...argv],
-        enforcement: 'full',
-        denialSignatures: [],
-        runnerFailureRules: [],
-      }
-    }
-  }
-  await ctx.plugin(TestSandboxProvider)
 
   const handles: SubprocessHandle[] = []
-  const spawnSpecs: SubprocessSpawnSpec[] = []
   const spawn = ctx.subprocess.spawn.bind(ctx.subprocess)
   vi.spyOn(ctx.subprocess, 'spawn').mockImplementation((spec) => {
-    spawnSpecs.push(spec)
     const handle = spawn(spec)
     handles.push(handle)
     return handle
   })
 
-  await ctx.plugin(codex, {
-    env,
-    stateRoot: codexHome,
-    disposeGraceMs: 2_000,
-    ...options.gateway === true ? { mcpTools: ['allowed'] } : {},
-  })
+  await ctx.plugin(codex, { env, disposeGraceMs: 2_000 })
   const provider = ctx.externalSessions.getProvider('codex')
   if (provider === undefined) {
     throw new Error('codex provider did not register')
   }
 
   const recorded: CodexRecorded = { events: [], deltas: [], permissionAsks: [] }
-  const { bridge, setAnswer, holdAnswer, releaseAnswer } = makeBridge(recorded)
-  ctx.sessions.create(sessionId, { meta: { cwd: workspace, mode: 'codex' } })
-  const stopSessionEvents = options.gateway === true
-    ? ctx.on('session/event', (session, event) => {
-      if (session.id === sessionId) recorded.events.push({ type: event.type, data: event.data })
-    })
-    : undefined
-  const stopDeltas = options.gateway === true
-    ? ctx.on('external/session-delta', ({ sessionId: eventSessionId, turnId, delta }) => {
-      if (eventSessionId === sessionId) recorded.deltas.push({ turnId: String(turnId), delta })
-    })
-    : undefined
-  if (options.gateway === true) {
-    ctx.externalSessions.registerPermissionChannel((permissionSessionId, ask) =>
-      bridge.requestPermission(permissionSessionId, ask))
-  }
-  const request = (model?: string) => ({
-    sessionId,
-    provider: 'codex' as const,
-    cwd: workspace,
-    ...(model === undefined ? {} : { model }),
-    sandbox: 'read-only' as const,
-    approvalPolicy: 'ask' as const,
-  })
+  const { bridge, setAnswer } = makeBridge(recorded)
+  const sessionId = SessionId('external-codex-test-session')
 
   const harness: CodexTestHarness = {
     ctx,
@@ -266,35 +182,17 @@ export async function startCodexHarness(
     recorded,
     fixture,
     handles,
-    spawnSpecs,
-    confinedPolicies,
     workspace,
     codexHome,
     setPermissionAnswer: setAnswer,
-    holdPermission: holdAnswer,
-    releasePermission: releaseAnswer,
-    start: model => options.gateway === true
-      ? ctx.externalSessions.start(request(model))
-      : provider.start(request(model), bridge),
-    resume: providerThreadId => options.gateway === true
-      ? ctx.externalSessions.resume(request(), providerThreadId)
-      : provider.resume(request(), bridge, providerThreadId),
-    disposeAttachment: () => options.gateway === true
-      ? ctx.externalSessions.dispose(sessionId)
-      : provider.dispose(sessionId),
+    start: () => provider.start({ sessionId, provider: 'codex', cwd: workspace }, bridge),
     waitCount: (type, count, timeoutMs = 120_000) => poll(
       () => recorded.events.filter(event => event.type === type).length >= count,
       `${count}x ${type} (saw ${recorded.events.filter(e => e.type === type).length})`,
       timeoutMs,
     ),
     waitDelta: (needle, timeoutMs = 120_000) => poll(
-      () => {
-        const byTurn = new Map<string, string>()
-        for (const delta of recorded.deltas) {
-          byTurn.set(delta.turnId, `${byTurn.get(delta.turnId) ?? ''}${delta.delta}`)
-        }
-        return [...byTurn.values()].some(text => text.includes(needle))
-      },
+      () => recorded.deltas.some(delta => delta.delta.includes(needle)),
       `delta ${JSON.stringify(needle)}`,
       timeoutMs,
     ),
@@ -304,14 +202,12 @@ export async function startCodexHarness(
       timeoutMs,
     ),
     close: async () => {
-      await (options.gateway === true ? ctx.externalSessions.dispose(sessionId) : provider.dispose(sessionId)).catch(() => {})
+      await provider.dispose(sessionId).catch(() => {})
       for (const handle of handles) {
         if (handle.pid > 0) handle.terminate()
         await handle.done.catch(() => {})
       }
       await ctx.fiber.dispose().catch(() => {})
-      stopSessionEvents?.()
-      stopDeltas?.()
       await fixture.close().catch(() => {})
       await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     },

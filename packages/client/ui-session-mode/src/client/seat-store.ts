@@ -158,10 +158,7 @@ export class ModeSeatController {
     this.set({ model })
   }
 
-  /**
-   * The external mode the picker currently offers the model seat for.
-   * @returns the selected external mode, or undefined for native/unknown modes.
-   */
+  /** The external mode the picker currently offers the model seat for. */
   currentMode(): ModeOption | undefined {
     const snapshot = this.store.getSnapshot()
     return snapshot.modes.find(mode => mode.provider === snapshot.current)

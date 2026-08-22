@@ -128,9 +128,6 @@ function validateSessionHeader(id: SessionId, input: unknown): SessionHeader {
   if (record.mode !== undefined && (typeof record.mode !== 'string' || record.mode.length === 0)) {
     throw new Error('session header mode must be a non-empty string')
   }
-  if (record.model !== undefined && typeof record.model !== 'string') {
-    throw new Error('session header model must be a string')
-  }
   if (record.delegationDepth !== undefined
     && (typeof record.delegationDepth !== 'number' || !Number.isSafeInteger(record.delegationDepth) || record.delegationDepth < 0)) {
     throw new Error('session header delegationDepth must be a non-negative safe integer')

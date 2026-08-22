@@ -27,7 +27,6 @@ import { ItemRetainer, TextRetainer } from '@deepseek-ai/dsh-output-retention'
 import type { RetainedItems } from '@deepseek-ai/dsh-output-retention'
 import type { SubprocessHandle, SubprocessOutcome, SubprocessOutputRead, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import type { SaveTextSpill, SpillRef } from '@deepseek-ai/dsh-spill'
-import { executionSession } from '@deepseek-ai/dsh-tools'
 import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 
 /**
@@ -181,7 +180,7 @@ export function resolveRgPath(): Promise<string> {
 /**
  * Run the packaged ripgrep binary with a plain argv vector and return its
  * complete raw stdout. The working directory is the calling agent's session
- * cwd (`executionSession(exec).header.cwd`) when available, else
+ * cwd (`exec.agent.session.header.cwd`) when available, else
  * `process.cwd()`. `exec.signal` is forwarded so the cooperative tool timeout
  * (`@deepseek-ai/dsh-tool-call-timeout-policy`) and caller cancellation terminate the
  * process tree.
@@ -225,7 +224,7 @@ export async function runRipgrep(
   if (exec.signal.aborted) {
     throw new SearchError(`${toolName} was aborted before completion (tool timeout or caller cancellation)`, 'SEARCH_ABORTED')
   }
-  const cwd = executionSession(exec)?.header.cwd
+  const cwd = exec.agent?.session.header.cwd
   const workdir = cwd ?? process.cwd()
   let handle: SubprocessHandle
   try {
@@ -379,7 +378,7 @@ export async function trySaveFormattedResult(
   suggestedName: string,
   content: string,
 ): Promise<SpillRef | undefined> {
-  const sessionId = executionSession(exec)?.header.id
+  const sessionId = exec.agent?.session.header.id
   if (sessionId === undefined) {
     ctx.logger.warn(`tool-fs-search: no session owner for ${exec.name} result; complete result not saved`)
     return undefined

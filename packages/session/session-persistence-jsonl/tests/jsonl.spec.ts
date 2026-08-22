@@ -8,8 +8,7 @@ import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import {
-  encodeSegment, eventLines, logPath, parseHeaderMeta, projectDir, projectKey, scanLog, sessionDir, SessionLogScanner,
-  toHeaderLine,
+  encodeSegment, eventLines, logPath, projectDir, projectKey, scanLog, sessionDir, SessionLogScanner, toHeaderLine,
 } from '../src/format.ts'
 import { runPersistenceContract, meta, oneTurnLog, appendLog } from '../../session-persistence/tests/contract.ts'
 import { runCoordinatorContract, type CoordinatorFixture } from '../../session-persistence/tests/coordinator-contract.ts'
@@ -947,24 +946,6 @@ describe('JsonlSessionPersistence: scanLog unit', () => {
     const log = '{"type":"session","version":0,"id":"bad-preset","createdAt":1,"delegationDepth":0,"agentPreset":7}\n'
 
     expect(() => scanLog(Buffer.from(log))).toThrow(/session header/)
-  })
-
-  it.each([
-    ['mode', 7],
-    ['mode', ''],
-    ['model', 7],
-  ] as const)('rejects a session header with invalid %s metadata', (field, value) => {
-    const line = JSON.stringify({
-      type: 'session',
-      version: 0,
-      id: 'invalid-routing-metadata',
-      createdAt: 1,
-      delegationDepth: 0,
-      [field]: value,
-    })
-
-    expect(parseHeaderMeta(line)).toBeUndefined()
-    expect(() => scanLog(Buffer.from(`${line}\n`))).toThrow(/session header/)
   })
 
   it('round-trips a github-actions session origin', () => {

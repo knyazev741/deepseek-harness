@@ -28,14 +28,9 @@ function group(
 interface FakeState {
   groups: ExternalModeGroup[]
   failures: ExternalModeFailure[]
-  failWith?: unknown
+  failWith?: Error
   // When set, externalModes resolves with ok:false and this message.
   failResolve?: string
-}
-
-/** Reject with a deliberately non-Error value for normalization coverage. */
-function rejectUnknown(value: unknown): Promise<never> {
-  return Promise.resolve().then(() => { throw value })
 }
 
 function fakeApi(state: FakeState): Pick<IApiClient, 'sessions'> {
@@ -43,7 +38,7 @@ function fakeApi(state: FakeState): Pick<IApiClient, 'sessions'> {
     sessions: {
       externalModes: () =>
         state.failWith !== undefined
-          ? rejectUnknown(state.failWith)
+          ? Promise.reject(state.failWith)
           : state.failResolve !== undefined
             ? Promise.resolve({
               rpcId: 'r',
@@ -219,7 +214,7 @@ describe('the hero mode-seat controller', () => {
   })
 
   it('stringifies a non-Error catalog rejection', async () => {
-    const controller = new ModeSeatController(fakeApi({ groups: [], failures: [], failWith: 'oops' }), vi.fn())
+    const controller = new ModeSeatController(fakeApi({ groups: [], failures: [], failWith: 'oops' as unknown as Error }), vi.fn())
     await controller.load()
     expect(controller.store.getSnapshot().error).toBe('oops')
   })
@@ -233,7 +228,7 @@ describe('the hero mode-seat controller', () => {
   it('stringifies a non-Error create rejection', async () => {
     const controller = new ModeSeatController(
       fakeApi({ groups: [group('codex', 'Codex', [{ id: 'gpt-5', name: 'GPT-5' }])], failures: [] }),
-      () => rejectUnknown('refused'),
+      () => Promise.reject('refused' as unknown as Error),
     )
     await controller.load()
     controller.select('codex')

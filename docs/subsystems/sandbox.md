@@ -8,7 +8,7 @@ Source: [`packages/sandbox/sandbox/src/index.ts`](../../packages/sandbox/sandbox
 
 ## Modes and enforcement
 
-`SandboxMode` governs filesystem effects only. `read-only` asks the backend to deny writes — the POSIX runners additionally grant the `/dev/null` sink their shells require, while the Windows ACL runner grants no explicit writable root and reports partial enforcement for its ambient ACL gaps; `workspace-write` permits writes under the workspace root, an optional host-owned state root, and the backend's promised temp area; `danger-full-access` bypasses confinement. Network and process visibility are outside this vocabulary.
+`SandboxMode` governs filesystem effects only. `read-only` asks the backend to deny writes — the POSIX runners additionally grant the `/dev/null` sink their shells require, while the Windows ACL runner grants no explicit writable root and reports partial enforcement for its ambient ACL gaps; `workspace-write` permits writes under the workspace root and the backend's promised temp area; `danger-full-access` bypasses confinement. Network and process visibility are outside this vocabulary.
 
 ```ts type-equiv
 /**
@@ -54,12 +54,6 @@ interface SandboxExecutionPolicy {
   /** Absolute root directory `workspace-write` may write under. */
   workspaceRoot: string
   /**
-   * Optional absolute host-owned directory for stateful children. The local
-   * backends canonicalize and grant it only under `workspace-write`; it is
-   * ignored under `read-only`, and callers own its creation and cleanup.
-   */
-  stateRoot?: string
-  /**
    * Opaque identity of the calling session (the branded `dsh-session`
    * SessionId). Backends key per-session state off it (e.g. windows-acl gives
    * each live session/workspace pair a random private temp directory and SID,
@@ -70,7 +64,7 @@ interface SandboxExecutionPolicy {
 }
 ```
 
-`ctx.sandboxPolicy.resolve()` accepts the active session and, for an approved retry, an explicit mode. The service owns precedence and root fallback so bash and fs do not repeat it. Stateful child providers add one caller-owned absolute `stateRoot` to the resolved policy; local backends canonicalize and grant it only under `workspace-write`.
+`ctx.sandboxPolicy.resolve()` accepts the active session and, for an approved retry, an explicit mode. The service owns precedence and root fallback so bash and fs do not repeat it.
 
 ```ts type-equiv
 /** Inputs that select the sandbox policy for one capability call. */
@@ -190,7 +184,7 @@ Abstract process-sandbox service. confine must return enforcing argv or fail clo
 abstract confine(argv: readonly string[], policy: SandboxPolicy): ConfinedArgv
 ```
 
-Source: [`packages/sandbox/sandbox/src/index.ts:164`](../../packages/sandbox/sandbox/src/index.ts)
+Source: [`packages/sandbox/sandbox/src/index.ts:158`](../../packages/sandbox/sandbox/src/index.ts)
 
 <a id="ctxsandboxpolicy--sandboxpolicyservice"></a>
 

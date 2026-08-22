@@ -16,7 +16,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { AttachmentError, AttachmentId } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import { defineTool, executionAgent, executionSession } from '@deepseek-ai/dsh-tools'
+import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, ToolExecution } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-fs'
 import { resolveRegularReadTarget } from './read-target.ts'
@@ -61,11 +61,9 @@ export function imageMediaTypeForPath(filePath: string): ImageMediaType | undefi
  * @param requestedPath - the raw, not-yet-resolved path rendered in refusal messages.
  */
 export async function assertImageCapableRoute(ctx: Context, exec: ToolExecution, requestedPath: string): Promise<void> {
-  const session = executionSession(exec)
-  const routed = session?.requestHeader()?.config
-  const agent = executionAgent(exec)
-  const provider = routed?.provider ?? agent?.options.provider
-  const model = routed?.model ?? agent?.options.model
+  const routed = exec.agent?.session.requestHeader()?.config
+  const provider = routed?.provider ?? exec.agent?.options.provider
+  const model = routed?.model ?? exec.agent?.options.model
   const llm = ctx.get('llm')
   if (provider === undefined || model === undefined || llm === undefined) {
     throw new Error(`cannot read "${requestedPath}" as an image: the current model route could not be resolved`)
@@ -131,7 +129,6 @@ function imageReadContent(value: ImageReadValue): ContentBlock[] {
 export function applyReadImageTool(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'read_image',
-    externalEligibility: 'allow',
     description: 'Read a PNG/JPEG/WebP/GIF file and return the image itself. Requires the current model to accept image input.',
     parameters: {
       file_path: { type: 'string', required: true, description: 'Path to the image file, resolved by the filesystem backend.' },

@@ -46,7 +46,7 @@ advertised tool names.
 
 | transcript | produced by | what it proves |
 | --- | --- | --- |
-| `thread-persistence.json` | initialize → `thread/start{ephemeral:false}` → two `turn/start` on the same `threadId` → process close → **fresh process** `thread/resume{threadId}` against the same `CODEX_HOME` | protocol proof of a non-ephemeral thread and process-restart resume; Task 2 uses this only for same-process child respawn, while durable Harness restart/resume is Task 3 |
+| `thread-persistence.json` | initialize → `thread/start{ephemeral:false}` → two `turn/start` on the same `threadId` → process close → **fresh process** `thread/resume{threadId}` against the same `CODEX_HOME` | non-ephemeral thread; a second turn on the same thread; cold reattach after a wire restart |
 | `turn-notifications.json` | one `complete` turn then one `hold` turn interrupted with `turn/interrupt` | the notification family during one turn and the interrupted-stop path |
 | `approvals.json` | two turns, each driving a `shell_command` tool call under `approval_policy = "on-request"`; the recorder answers `item/commandExecution/requestApproval` with `accept` then `decline` | the tool-call → approval-request → decision → resolve round-trip on both arms |
 | `models.json` | initialize → `model/list` | the native model-listing surface |
@@ -70,10 +70,10 @@ Each method below is marked:
 | method | judgment | notes |
 | --- | --- | --- |
 | `initialize` | stable, observed | handshake; response carries `userAgent`, `codexHome`, `platformFamily`, `platformOs`. |
-| `thread/start` | stable, method observed | The checked-in transcript observes `{ cwd, ephemeral }`; the optional `model`, `sandbox`, and `approvalPolicy` fields are stable schema fields covered by the provider's wire-serialization test, not by this transcript. `ephemeral:false` persists to a rollout `.jsonl` (see `.result.thread.path` and `thread/started`). |
-| `turn/start` | stable, method observed | The checked-in transcript observes the method and text input; optional `model`, `effort`, `sandbox`, and `approvalPolicy` fields are stable schema fields covered by the provider's wire-serialization test, not by this transcript. Response `{ turn }`, then `turn/started`. |
+| `thread/start` | stable, observed | `{ cwd, ephemeral }`; `ephemeral:false` persists to a rollout `.jsonl` (see `.result.thread.path` and `thread/started`). |
+| `turn/start` | stable, observed | `{ threadId, input: [{ type: "text", text, text_elements: [] }] }`; response `{ turn }`, then `turn/started`. |
 | `turn/interrupt` | stable, observed | `{ threadId, turnId }`; responds `{}`; settles the turn with `turn/completed` status `interrupted`. |
-| `thread/resume` | stable, method observed | The checked-in transcript observes `{ threadId }` on a fresh app-server; optional `model`, `sandbox`, and `approvalPolicy` fields are stable schema fields covered by the provider's wire-serialization test, not by this transcript. The response carried a `thread` plus `initialTurnsPage`, `turnsBackwardsCursor`, and `itemsBackwardsCursor`. |
+| `thread/resume` | stable, observed | `{ threadId }` resumes a persisted thread; on the cold-restart process it returned a `thread` plus `initialTurnsPage`, `turnsBackwardsCursor`, `itemsBackwardsCursor`. |
 | `model/list` | stable, observed | native model roster; returns `{ data: [...], nextCursor }`. **Not ABSENT** in 0.147.0. |
 | `thread/compact/start` | stable, observed | **the** compact path. **Not ABSENT**: a dedicated method (not a `/compact` slash passthrough). Responds `{}` immediately; compaction runs as a background turn (`turn/started`, `item/started`, extra model rounds, `turn/completed`). |
 | `initialized` (client notification) | stable, observed | sent once after `initialize`. |
@@ -116,22 +116,11 @@ shapes.
   required. The recorded roster for this build: `gpt-5.6-sol`, `gpt-5.6-terra`,
   `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.2` (the fixture-provided model is not in it,
   hence the `warning` notification).
-- **Stable settings are request fields**: model and sandbox/approval overrides
-  are accepted on `thread/start` and `thread/resume`; `turn/start` accepts model,
-  effort, sandbox, and approval overrides. The provider maps Harness `ask` to
-  `on-request` and `never` to `never`; reasoning effort maps to `effort`.
 - **Compact is a dedicated method** (`thread/compact/start`, async, returns
   `{}`), not a `/compact` slash passthrough. There is no slash-command namespace
   on the app-server wire.
-- **Protocol persistence versus Task 2 scope**: `ephemeral:false` + `thread/resume`
-  work across a process restart in this protocol capture. Task 2 uses that method
-  only when the same provider instance respawns its child; durable provider-thread
-  identity across a Harness restart is Task 3.
+- **Threads persist and cold-resume**: `ephemeral:false` + `thread/resume`
+  work across a process restart, so the persistent-session provider can reattach
+  instead of ending with `error`.
 - **Approval decisions** map cleanly: allow → `accept`, reject → `decline`,
   plus `cancel`. The wire exposes `availableDecisions` to pick from.
-
-The assembled-app Loader composition, browser accessibility, and keyless
-user-visible snapshot acceptance evidence are deferred to Task 9. These checked-in
-transcripts prove the pinned protocol method/notification vocabulary; the optional
-settings field mapping is proved by the provider's exact wire unit test and is not
-claimed as observed in the JSON captures above.

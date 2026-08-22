@@ -1,7 +1,6 @@
 /** Shared top-level-call post-policy selection for search result spill. @module dsh-tool-fs-search/direct-call */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { executionScope } from '@deepseek-ai/dsh-tools'
 import type { JsonValue, PostToolDecision, ToolDefinition, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 
 /**
@@ -23,6 +22,6 @@ export function acceptedDirectCallValue(
 ): JsonValue | undefined {
   if (decision.kind !== 'accept' || decision.content !== undefined || Object.hasOwn(decision, 'value')
     || exec.parent !== undefined || exec.name !== tool.name || result.isError
-    || ctx.tools.get(exec.name, executionScope(exec)) !== tool) return undefined
+    || ctx.tools.get(exec.name, exec.agent) !== tool) return undefined
   return result.value
 }

@@ -12,8 +12,7 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { ExternalToolPrincipalId, TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
-import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
 import { LocalFileSystem } from '@deepseek-ai/dsh-fs-local'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
 import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
@@ -417,26 +416,6 @@ describe('per-session cwd', () => {
     const edited = await callIn(session, 'edit', { file_path: 'code.txt', old_string: 'alpha', new_string: 'beta' })
     expect(edited.isError).toBe(false)
     expect(await readFile(join(sessionDir, 'code.txt'), 'utf8')).toBe('beta')
-  })
-
-  it('resolves an external principal filesystem call against its session cwd', async () => {
-    const principal = {
-      kind: 'external',
-      id: ExternalToolPrincipalId('fs-integration-external'),
-      session: { header: { version: 0, id: 'fs-integration-external-session', createdAt: 0, cwd: sessionDir } },
-      ctx: new Context(),
-      recorder: {},
-    } as unknown as ExternalToolPrincipal
-    await writeFile(join(sessionDir, 'external.txt'), 'external session')
-    const result = await ctx.tools.execute({
-      signal: testToolSignal,
-      callId: CallId(`call-${++callCounter}`),
-      name: 'read',
-      arguments: { file_path: 'external.txt' },
-      principal,
-    })
-    expect(result.isError).toBe(false)
-    expect(text(result)).toContain('external session')
   })
 })
 

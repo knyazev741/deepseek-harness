@@ -79,18 +79,14 @@ export function apply(ctx: Context, config: Config): void {
     )
   }
 
-  ctx.externalSessions.registerPermissionChannel(async (sessionId, ask) => {
+  ctx.externalSessions.registerPermissionChannel(async (_sessionId, ask) => {
     const question: AskUserQuestionItem = {
       id: ask.askId,
       question: ask.title,
       options: ask.options.map(label => ({ label })),
     }
     using d = deadline(undefined, timeoutMs, PERMISSION_TIMEOUT)
-    const decisionPromise: Promise<ExternalPermissionDecision> = ctx.userQuestions.ask({
-      sessionId,
-      questions: [question],
-      signal: d.signal,
-    })
+    const decisionPromise: Promise<ExternalPermissionDecision> = ctx.userQuestions.ask({ questions: [question], signal: d.signal })
       .then(answer => resolveDecision(answer, ask))
       .catch((error: unknown) => {
         // The bounded wait elapsed first: fail closed to 'cancelled' whether

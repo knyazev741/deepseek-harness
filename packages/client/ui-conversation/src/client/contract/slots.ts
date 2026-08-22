@@ -83,8 +83,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       hookContext: string
       inject: ChatNodeTurnDataInjected
     }
-    /** Additive seat for transient, non-durable external-agent Markdown. */
-    'conversation.chat.live': { kind: 'list'; scope: 'session'; owner: EmptyChatLiveOwnerProps }
     /**
      * The chat view's per-command row hole: keyed dispatch on the command
      * name (`command/run.name`; a run-less cross-window node has none and
@@ -261,9 +259,6 @@ export interface HeroSessionModeOwnerProps {
   /** Marker field: the picker owns its catalog, staging, and model seat. */
   children?: never
 }
-
-/** The live external transcript seat receives all state through the session kit. */
-export interface EmptyChatLiveOwnerProps {}
 
 /** Owner share of the strict session content seat. */
 export interface ConversationSessionOwnerProps {
@@ -729,11 +724,8 @@ export interface ChatViewInjected {
 
 /** Full chat-view component props: runtime & its Tool/command/tail render shares & store & injected & locale seat. */
 export type ChatViewSlotProps =
-  PropsRuntime<'conversation.view'> & PropsRenderSlots<'conversation.chat.node' | 'conversation.chat.live'>
+  PropsRuntime<'conversation.view'> & PropsRenderSlots<'conversation.chat.node'>
   & PropsStore<ChatStore> & ChatViewInjected & PropsLocale<'conversation'>
-
-/** Props for one additive transient external transcript seat. */
-export type ChatLiveSlotProps = PropsRuntime<'conversation.chat.live'> & PropsLocale<'conversation'>
 
 /**
  * Injected share of the details slot: the panel is otherwise a pure reader of

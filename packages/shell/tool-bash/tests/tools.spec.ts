@@ -7,10 +7,9 @@ import { CallId } from '@deepseek-ai/dsh-llm'
 import { ShellExecutor } from '@deepseek-ai/dsh-shell'
 import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellProcessRead, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { ExternalToolPrincipalId, TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ExternalToolPrincipal, ToolExecutionInput } from '@deepseek-ai/dsh-tools'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
@@ -76,29 +75,8 @@ function registerFakeAgent(ctx: Context, sessionId: string, inject: (...args: un
   return agent
 }
 let callCounter = 0
-function call(ctx: Context, name: string, args: unknown, agent?: Agent, principal?: ExternalToolPrincipal) {
-  const base = {
-    signal: testToolSignal,
-    callId: CallId(`call-${++callCounter}`),
-    name,
-    arguments: args,
-  }
-  if (agent !== undefined && principal !== undefined) {
-    return ctx.tools.execute({ ...base, agent, principal } as ToolExecutionInput)
-  }
-  if (agent !== undefined) return ctx.tools.execute({ ...base, agent })
-  if (principal !== undefined) return ctx.tools.execute({ ...base, principal })
-  return ctx.tools.execute(base)
-}
-
-function externalPrincipal(cwd?: string): ExternalToolPrincipal {
-  return {
-    kind: 'external',
-    id: ExternalToolPrincipalId('tool-bash-external'),
-    session: { header: { version: 0, id: 'tool-bash-external-session', createdAt: 0, ...cwd ? { cwd } : {} } },
-    ctx: new Context(),
-    recorder: {},
-  } as unknown as ExternalToolPrincipal
+function call(ctx: Context, name: string, args: unknown, agent?: Agent) {
+  return ctx.tools.execute({ signal: testToolSignal, callId: CallId(`call-${++callCounter}`), name, arguments: args, ...agent ? { agent } : {} })
 }
 
 function text(result: { content: { type: string; text?: string }[] }): string {
@@ -517,13 +495,6 @@ describe('background execution through the job runtime', () => {
     expect(text(result)).toContain('background jobs unavailable: load @deepseek-ai/dsh-jobs and @deepseek-ai/dsh-tool-jobs')
   })
 
-  it('does not give an external principal native job ownership', async () => {
-    const ctx = await setupWithTasks()
-    const result = await call(ctx, 'bash', { command: 'sleep 60', description: 'test command', run_in_background: true }, undefined, externalPrincipal())
-    expect(result.isError).toBe(true)
-    expect(text(result)).toMatch(/background execution requires a native agent/i)
-  })
-
   it('a pre-aborted call is skipped before the process starts', async () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
@@ -836,13 +807,6 @@ describe('session-cwd routing (per-session workdir)', () => {
     const ctx = await setup()
     const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, agentInCwd('/tmp'))
     expect(text(result).trim()).toMatch(/\/tmp$/)
-  })
-
-  it('defaults bash to an external principal session cwd without registering an agent', async () => {
-    const ctx = await setup()
-    const result = await call(ctx, 'bash', { command: 'pwd', description: 'pwd' }, undefined, externalPrincipal('/tmp'))
-    expect(text(result).trim()).toMatch(/\/tmp$/)
-    expect(ctx.agents.get('tool-bash-external-session' as never)).toBeUndefined()
   })
 
   it('an explicit absolute workdir overrides the session cwd', async () => {

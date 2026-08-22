@@ -6,7 +6,6 @@
  */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { JsonValue, SessionId } from '@deepseek-ai/dsh-session/types'
 
 /**
  * Pairs one `approval/asked` audit event with its `approval/decided`.
@@ -22,34 +21,6 @@ export type ApprovalRequestId = Branded<'ApprovalRequestId'>
 export function ApprovalRequestId(id: string): ApprovalRequestId {
   return id as ApprovalRequestId
 }
-
-/** Opaque id assigned to one external tool call and its durable result. */
-export type ExternalToolCallId = Branded<'ExternalToolCallId'>
-
-/** Opaque external execution principal id carried by the audit bracket. */
-export type ExternalToolPrincipalId = Branded<'ExternalToolPrincipalId'>
-
-/** Durable external approval question; paired by `id`, principal, session, and call id. */
-export interface ExternalApprovalAskedData {
-  readonly id: ApprovalRequestId
-  readonly principalId: ExternalToolPrincipalId
-  readonly sessionId: SessionId
-  readonly callId: ExternalToolCallId
-  readonly toolName: string
-  readonly reason?: string
-}
-
-/** Durable external approval outcome; paired with one asked event. */
-export interface ExternalApprovalDecidedData {
-  readonly id: ApprovalRequestId
-  readonly principalId: ExternalToolPrincipalId
-  readonly sessionId: SessionId
-  readonly callId: ExternalToolCallId
-  readonly outcome: ApprovalOutcome
-}
-
-/** A bounded JSON value used by external recorder contracts. */
-export type ExternalApprovalJson = JsonValue
 
 /**
  * Closed approval outcomes: a one-shot grant, explicit rejection, withdrawn

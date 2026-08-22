@@ -28,15 +28,6 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'approval/request'(this: Scoped<ApprovalService>, req: ApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>
-    /**
-     * Ask composed answerers for an external principal's tool decision. The
-     * principal is the scope key; listeners must return an outcome or call
-     * `next()` to delegate, and failures resolve to `unavailable`.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): external-principal-scoped listeners receive only that principal.
-     * @param req - the external principal, tool, call id, reason, and signal.
-     * @mode waterfall
-     */
-    'approval/request-external'(this: Scoped<ExternalApprovalEventCarrier>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>
   }
 }
 
@@ -78,42 +69,14 @@ declare module '@deepseek-ai/dsh-session/types' {
       /** Marks an override seeded into a child at delegation. */
       source?: 'delegation'
     }
-    /**
-     * An external principal asked for one tool decision. The bracket is
-     * independent of native turns and carries principal/session/call identity.
-     */
-    'external/approval-asked': ExternalApprovalAskedData
-    /** One external approval outcome, paired by the complete identity tuple. */
-    'external/approval-decided': ExternalApprovalDecidedData
   }
 }
 
 import { ApprovalRequestId } from './types.ts'
-import type {
-  ApprovalOutcome,
-  ExternalApprovalAskedData,
-  ExternalApprovalDecidedData,
-} from './types.ts'
-import type {
-  ExternalApprovalEventCarrier,
-  ExternalApprovalPrincipal,
-  ExternalApprovalRequest,
-} from './external-types.ts'
+import type { ApprovalOutcome } from './types.ts'
 
 export { ApprovalRequestId } from './types.ts'
-export type {
-  ApprovalOutcome,
-  ExternalApprovalAskedData,
-  ExternalApprovalDecidedData,
-  ExternalToolCallId,
-  ExternalToolPrincipalId,
-} from './types.ts'
-export type {
-  ExternalApprovalEventCarrier,
-  ExternalApprovalPrincipal,
-  ExternalApprovalRecorder,
-  ExternalApprovalRequest,
-} from './external-types.ts'
+export type { ApprovalOutcome } from './types.ts'
 
 /** Every {@link ApprovalOutcome}, for runtime normalization of answerer returns. */
 const OUTCOMES: readonly ApprovalOutcome[] = ['allowed-once', 'rejected', 'cancelled', 'unavailable']
@@ -313,47 +276,6 @@ export class ApprovalService extends Service {
   }
 
   /**
-   * Ask the composed answerers to decide one external-principal tool call.
-   * This path deliberately does not require or create a native Agent and does
-   * not require an open native turn: the explicit `external/approval-*` pair
-   * carries the principal, session, and call identities needed for replay.
-   * Effective session policy is applied before the external waterfall. The
-   * request and the principal's disposal signal both cancel the question; a
-   * missing, throwing, or non-conforming answerer fails closed to
-   * `unavailable`, and any audit append failure rejects instead of returning
-   * an unlogged decision.
-   * @param req - the external principal, tool identity, call id, reason, and signal.
-   * @returns the closed outcome; only `allowed-once` grants this call.
-   * @throws when the request is malformed or an audit append fails before commit.
-   */
-  async requestExternal(req: ExternalApprovalRequest): Promise<ApprovalOutcome> {
-    const principal = req.principal
-    const session = principal.session
-    if (req.toolName.length === 0) throw new TypeError('external approval toolName must be non-empty')
-    if (req.callId.length === 0) throw new TypeError('external approval callId must be non-empty')
-    const id = ApprovalRequestId(randomUUID())
-    session.append('external/approval-asked', {
-      id,
-      principalId: principal.id,
-      sessionId: session.id,
-      callId: req.callId,
-      toolName: req.toolName,
-      ...req.reason === undefined ? {} : { reason: req.reason },
-    })
-    const outcome = externalApprovalAborted(req)
-      ? 'cancelled'
-      : await this.decideExternal(req, session)
-    session.append('external/approval-decided', {
-      id,
-      principalId: principal.id,
-      sessionId: session.id,
-      callId: req.callId,
-      outcome,
-    })
-    return outcome
-  }
-
-  /**
    * The session's effective policy: its own `approval/policy` fold, else the
    * configured default (the schema already defaulted an omitted policy to
    * `'ask'`; the `??` only narrows the optional-input TYPE).
@@ -420,80 +342,6 @@ export class ApprovalService extends Service {
       })
     })
   }
-
-  /** Dispatch the external approval waterfall and race every owner signal. */
-  private async decideExternal(req: ExternalApprovalRequest, session: Session): Promise<ApprovalOutcome> {
-    const signals = [
-      req.signal,
-      req.principal.disposal,
-      recorderSignal(req.principal),
-    ].filter((signal): signal is AbortSignal => signal !== undefined)
-    if (signals.some(signal => signal.aborted)) return 'cancelled'
-    if (this.effectivePolicy(session) === 'never') return 'rejected'
-    const answer: Promise<ApprovalOutcome> = Promise.resolve().then(
-      () => this.ctx.waterfall(
-        scopeTarget(this as unknown as ExternalApprovalEventCarrier, req.principal), 'approval/request-external', req,
-        () => Promise.resolve<ApprovalOutcome>('unavailable'),
-      ),
-    ).then(
-      outcome => OUTCOMES.includes(outcome) ? outcome : 'unavailable',
-      () => 'unavailable',
-    )
-    if (signals.length === 0) return answer
-    return await raceApprovalSignals(answer, signals)
-  }
-}
-
-/** Read the optional lifecycle signal carried by an external recorder. */
-function recorderSignal(principal: ExternalApprovalPrincipal): AbortSignal | undefined {
-  const candidate = principal.recorder as { readonly signal?: unknown }
-  return candidate.signal instanceof AbortSignal ? candidate.signal : undefined
-}
-
-/** Read every owner cancellation signal for the external approval bracket. */
-function externalApprovalAborted(req: ExternalApprovalRequest): boolean {
-  const recorder = recorderSignal(req.principal)
-  return req.signal?.aborted === true
-    || req.principal.disposal?.aborted === true
-    || recorder?.aborted === true
-}
-
-/** Race an answerer against the principal and request cancellation signals. */
-function raceApprovalSignals(answer: Promise<ApprovalOutcome>, signals: readonly AbortSignal[]): Promise<ApprovalOutcome> {
-  return new Promise<ApprovalOutcome>((resolve) => {
-    let settled = false
-    const cleanup = (): void => {
-      for (const signal of signals) signal.removeEventListener('abort', onAbort)
-    }
-    const settleCancelled = (): void => {
-      if (settled) return
-      settled = true
-      cleanup()
-      resolve('cancelled')
-    }
-    const onAbort = (): void => { settleCancelled() }
-    for (const signal of signals) {
-      if (signal.aborted) {
-        settleCancelled()
-        return
-      }
-      signal.addEventListener('abort', onAbort, { once: true })
-    }
-    void answer.then(
-      (outcome) => {
-        if (settled) return
-        settled = true
-        cleanup()
-        resolve(outcome)
-      },
-      () => {
-        if (settled) return
-        settled = true
-        cleanup()
-        resolve('unavailable')
-      },
-    )
-  })
 }
 
 export default ApprovalService

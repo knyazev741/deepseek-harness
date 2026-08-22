@@ -74,11 +74,11 @@ describe('scoped-dispatch invariants', () => {
       ['approval/request', [{ agent, toolName: 'echo' }, () => Promise.resolve('unavailable')]],
       ['goal/changed', [{ agent, change: { operation: 'create', ref: { id: 'goal-a', revision: 1 } } }]],
       ['system-prompt/assemble', [[], { scope: agent }]],
-      ['tools/code-dispatch-log', [{ exec: { callId: 'c', name: 't', arguments: {}, scope: agent }, scope: agent, agent, subCallId: 'c:code:1', name: 't', isError: false, content: [] }, () => Promise.resolve([])]],
-      ['tools/execute', [{ callId: 'c', name: 't', arguments: {}, agent, scope: agent }, () => Promise.resolve({ content: [], isError: false })]],
-      ['tools/post-execute', [{ callId: 'c', name: 't', arguments: {}, agent, scope: agent }, { content: [], isError: false }, () => Promise.resolve({ kind: 'accept' })]],
-      ['tools/pre-execute', [{ callId: 'c', name: 't', arguments: {}, agent, scope: agent }, () => Promise.resolve({ kind: 'allow' })]],
-      ['tools/result', [{ callId: 'c', name: 't', arguments: {}, agent, scope: agent }, { content: [], isError: false }]],
+      ['tools/code-dispatch-log', [{ exec: { callId: 'c', name: 't', arguments: {} }, agent, subCallId: 'c:code:1', name: 't', isError: false, content: [] }, () => Promise.resolve([])]],
+      ['tools/execute', [{ callId: 'c', name: 't', arguments: {}, agent }, () => Promise.resolve({ content: [], isError: false })]],
+      ['tools/post-execute', [{ callId: 'c', name: 't', arguments: {}, agent }, { content: [], isError: false }, () => Promise.resolve({ kind: 'accept' })]],
+      ['tools/pre-execute', [{ callId: 'c', name: 't', arguments: {}, agent }, () => Promise.resolve({ kind: 'allow' })]],
+      ['tools/result', [{ callId: 'c', name: 't', arguments: {}, agent }, { content: [], isError: false }]],
     ]
 
     for (const [event, args] of rows) {

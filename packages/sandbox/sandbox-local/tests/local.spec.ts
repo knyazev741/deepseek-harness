@@ -107,21 +107,6 @@ describe('profile dialects', () => {
 })
 
 describe('runnerCommand config', () => {
-  it('passes one canonical state root through the configured runner profile', async () => {
-    const stateRoot = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-state-root-')))
-    const policy: SandboxPolicy = { mode: 'workspace-write', workspaceRoot: '/ws', stateRoot }
-    const { sandbox } = await setup({
-      runnerCommand: ['fake-runner'],
-      runnerFailureSignatures: ['fake-runner: profile rejected'],
-    })
-    expect(sandbox.confine(['true'], policy).argv).toEqual([
-      'fake-runner',
-      '--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc', '--die-with-parent',
-      '--tmpfs', '/tmp', '--bind', '/ws', '/ws', '--bind', stateRoot, stateRoot,
-      '--', 'true',
-    ])
-  })
-
   it('a non-empty runnerCommand skips the chain: runner argv + bwrap-shaped profile + -- + caller argv, asserted full', async () => {
     const probeBwrap = vi.fn(() => false)
     const probeLandlock = vi.fn(() => 'unusable' as const)

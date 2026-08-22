@@ -17,17 +17,12 @@
  * `object` actor on the `fs/*` events; this plugin narrows that actor to
  * `FsObservationActor` without importing `dsh-tools`, `dsh-agent`, or `dsh-session`.
  *
- * The owner is `principal.session` or `agent.session` when present. It is treated as an opaque object
+ * The owner is `agent.session` when present. It is treated as an opaque object
  * identity (a `WeakMap` key); this package never reads any of its fields.
  */
 export interface FsObservationActor {
   /** The agent on whose behalf the call runs, when there is one. */
   agent?: {
-    /** The session that owns observed-file state, used as an opaque key. */
-    session?: object
-  }
-  /** The external execution subject, when present. */
-  principal?: {
     /** The session that owns observed-file state, used as an opaque key. */
     session?: object
   }

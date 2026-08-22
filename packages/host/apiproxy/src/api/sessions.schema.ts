@@ -268,13 +268,6 @@ export const sessionExternalModesValueSchema = z.object({
   failures: z.array(z.object({
     provider: z.string().min(1),
     label: z.string().min(1),
-    code: z.union([
-      z.literal('BINARY_MISSING'),
-      z.literal('AUTH_UNAVAILABLE'),
-      z.literal('INVALID_CONFIG'),
-      z.literal('SANDBOX_INCOMPATIBLE'),
-      z.literal('PREFLIGHT_FAILED'),
-    ]).optional(),
     message: z.string(),
   })),
 }) satisfies z.ZodType<Wire<ResponseValue<'session.externalModes'>>>
@@ -342,12 +335,7 @@ export const sessionCommandRequestSchema = z.object({
 
 /** session.command response value: the routed command outcome. */
 export const sessionCommandValueSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('success'),
-    text: z.string().optional(),
-    sourceEventSeq: z.number().int().optional(),
-    externalTurnId: z.string().min(1).optional(),
-  }),
+  z.object({ kind: z.literal('success'), text: z.string().optional() }),
   z.object({ kind: z.literal('error'), text: z.string() }),
 ]) satisfies z.ZodType<Wire<ResponseValue<'session.command'>>>
 

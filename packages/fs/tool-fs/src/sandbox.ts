@@ -11,7 +11,6 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { executionAgent, executionSession } from '@deepseek-ai/dsh-tools'
 import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import { ESCALATION_TARGETS, approveEscalation, escalationHintMarker, sandboxDenialMarker, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
@@ -87,8 +86,7 @@ export class FsSandboxController {
    */
   async resolvePolicy(toolName: string, args: FsEscalationArgs, exec: ToolExecution): Promise<SandboxExecutionPolicy | undefined> {
     validateEscalationArgs(args.sandbox_permissions, args.justification)
-    const session = executionSession(exec)
-    const standingPolicy = this.policy?.resolve(session === undefined ? {} : { session })
+    const standingPolicy = this.policy?.resolve({ ...exec.agent ? { session: exec.agent.session } : {} })
     if (args.sandbox_permissions === undefined || args.justification === undefined) {
       return standingPolicy
     }
@@ -100,7 +98,7 @@ export class FsSandboxController {
       { requestedMode: args.sandbox_permissions, justification: args.justification, effectiveMode: policy.mode, subject: 'operation' },
       {
         approver: this.ctx.get('approval'),
-        agent: executionAgent(exec),
+        agent: exec.agent,
         callId: exec.callId,
         toolName,
         signal: exec.signal,

@@ -18,19 +18,7 @@
       "path": "../../llm/llm"
     },
     {
-      "path": "../../sandbox/sandbox"
-    },
-    {
       "path": "../../core/session"
-    },
-    {
-      "path": "../../core/scope"
-    },
-    {
-      "path": "../../core/tools"
-    },
-    {
-      "path": "../../interaction/user-approval"
     },
     {
       "path": "../../util/brand"

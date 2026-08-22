@@ -63,7 +63,6 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
   private buffer = ''
   private readonly decoder = new StringDecoder('utf8')
   private started = false
-  private closed = false
   private requestHandler: RequestHandler | undefined
   private notificationHandler: NotificationHandler | undefined
   private readonly pending = new Map<JsonRpcId, PendingRequest>()
@@ -75,7 +74,7 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
 
   /** Attach the input listeners and begin reading frames. Idempotent. */
   start(): void {
-    if (this.started || this.closed) return
+    if (this.started) return
     this.started = true
     this.input.on('data', this.onData)
     this.input.on('error', this.onInputError)
@@ -86,8 +85,6 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
    * Detach listeners and reject pending requests. Safe before {@link start}.
    */
   close(): void {
-    if (this.closed) return
-    this.closed = true
     this.input.off('data', this.onData)
     this.input.off('error', this.onInputError)
     this.input.off('end', this.onInputEnd)
@@ -125,10 +122,6 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
     const id = `req_${randomUUID().replaceAll('-', '')}`
     const message = { jsonrpc: '2.0', id, method, params }
     return new Promise((resolve, reject) => {
-      if (this.closed) {
-        reject(new Error('JSON-RPC transport closed'))
-        return
-      }
       let detach = (): void => {}
       if (signal !== undefined) {
         if (signal.aborted) {
@@ -171,7 +164,6 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
    * @returns a promise that settles with the output write callback.
    */
   flush(): Promise<void> {
-    if (this.closed) return Promise.resolve()
     return new Promise<void>((resolve, reject) => {
       this.output.write('', (error) => {
         if (error) reject(error)
@@ -266,7 +258,6 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
   }
 
   private write(message: Record<string, unknown>): void {
-    if (this.closed) return
     this.output.write(`${JSON.stringify(message)}\n`)
   }
 

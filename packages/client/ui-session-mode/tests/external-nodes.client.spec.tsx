@@ -15,7 +15,6 @@ import {
   ExternalMessageRow,
   ExternalModelRow,
   ExternalPermissionRow,
-  ExternalSessionFailureRow,
   ExternalToolRow,
 } from '../src/client/transcript/external-nodes.tsx'
 
@@ -73,17 +72,6 @@ describe('external compaction and model rows', () => {
   it('shows the switched model', () => {
     render(<ExternalModelRow {...rowProps({ kind: 'external-model', data: { model: 'gpt-5' } })} />)
     expect(screen.getByText('gpt-5')).toBeTruthy()
-  })
-})
-
-describe('external session failure row', () => {
-  it('shows a safe provider startup failure as an alert', () => {
-    render(<ExternalSessionFailureRow {...rowProps({
-      kind: 'external-session-failure',
-      data: { provider: 'codex', code: 'startup-failed', message: 'External provider failed to start.' },
-    })} />)
-    expect(screen.getByRole('alert')).toBeTruthy()
-    expect(screen.getByText('External provider failed to start.')).toBeTruthy()
   })
 })
 

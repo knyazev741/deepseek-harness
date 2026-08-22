@@ -13,7 +13,6 @@ import z from '@deepseek-ai/schemastery'
 import { DSH_ENV_PREFIX } from '@deepseek-ai/dsh-shell'
 import type { DshEnvironment, DshEnvironmentKey } from '@deepseek-ai/dsh-shell'
 import { DSH_HOME_ENV, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import { executionSession } from '@deepseek-ai/dsh-tools'
 import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 
@@ -155,9 +154,8 @@ export class ShellEnvRegistry extends Service {
       [DSH_HOME_ENV]: this.dshHome,
       [DSH_SHELL_KEY]: '1',
     }
-    const session = executionSession(execution)
-    if (session !== undefined) {
-      values[DSH_SESSION_ID_KEY] = session.header.id
+    if (execution.agent !== undefined) {
+      values[DSH_SESSION_ID_KEY] = execution.agent.session.header.id
     }
 
     for (const contributor of [...this.contributors.values()].sort((left, right) => left.name.localeCompare(right.name))) {
@@ -210,9 +208,9 @@ export function apply(ctx: Context, config: Config = {}): void {
       },
     },
     resolve(execution) {
-      const session = executionSession(execution)
-      if (session === undefined) return {}
-      const location = ctx.get('sessionPersistence')?.locate(session.header)
+      const agent = execution.agent
+      if (agent === undefined) return {}
+      const location = ctx.get('sessionPersistence')?.locate(agent.session.header)
       return location?.kind === 'jsonl' ? { [DSH_SESSION_JSONL_KEY]: location.path } : {}
     },
   })

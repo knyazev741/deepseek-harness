@@ -13,23 +13,13 @@
  * (registry snapshot, change feed, and persisted cache), reproducing the
  * committed exchange — messages, tool activity, permission asks/decisions,
  * compaction notices, model switches, and stop reasons — so replay and client
- * rendering never re-walk the raw log. Malformed, mismatched, duplicate, or
- * ambiguous tool records are ignored; a result is attached only to the one
- * call whose id, name, and optional turn id agree.
+ * rendering never re-walk the raw log.
  *
  * @module @deepseek-ai/dsh-session-projection/external-transcript
  */
 
 import { z } from 'zod'
-import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import {
-  ExternalToolCallId,
-  ExternalProviderThreadId,
-  parseExternalProviderThreadId,
-  type ExternalProviderThreadId as ExternalProviderThreadIdValue,
-} from '@deepseek-ai/dsh-external-session'
-import type { ExternalToolError, ExternalToolResultData } from '@deepseek-ai/dsh-external-session'
 // Type-only import: erased at runtime, so the index → external-transcript value
 // edge stays acyclic even though external-transcript names index's type.
 import type { ProjectionDefinition } from './index.ts'
@@ -38,13 +28,10 @@ declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /**
      * A live external agent session opened on `provider` in `cwd`, optionally
-     * starting on `model`, with the provider-owned thread identity returned by
-     * a successful thread start. Log-only `ignorable: true`; not a
+     * starting on `model`. Log-only `ignorable: true`; not a
      * `SurfaceEventType`. Standalone: the bridge appends it before any turn.
      */
     'external/session-started': ExternalSessionStartedData
-    /** A published external session whose provider failed before attachment. Log-only and user-visible. */
-    'external/session-start-failed': ExternalSessionStartFailedData
     /**
      * One external turn opened, identified by the provider-issued `turnId`.
      * Log-only `ignorable: true`; not a `SurfaceEventType`.
@@ -108,17 +95,6 @@ export interface ExternalSessionStartedData {
   readonly provider: string
   readonly cwd: string
   readonly model?: string
-  /** Opaque provider-owned thread identity used for an explicit cold resume. */
-  readonly providerThreadId: ExternalProviderThreadIdValue
-}
-/** Safe, bounded facts for a provider failure after the host published a session. */
-export interface ExternalSessionStartFailedData {
-  /** Provider/mode selected by the session header. */
-  readonly provider: string
-  /** Stable category; raw subprocess and credential details are excluded. */
-  readonly code: 'startup-failed' | 'startup-aborted'
-  /** Fixed safe user-facing diagnostic, never the provider's raw error. */
-  readonly message: string
 }
 /** Opens one external turn, identified by the provider-issued id. */
 export interface ExternalTurnStartedData {
@@ -177,19 +153,6 @@ export interface ExternalTranscriptToolActivity {
   readonly title: string
   readonly detail?: string
 }
-/** One paired external tool call and committed result in a transcript turn. */
-export interface ExternalTranscriptToolCall {
-  /** Opaque call/result pairing identity. */
-  readonly callId: ExternalToolCallId
-  /** Registered Harness tool name. */
-  readonly name: string
-  /** Detached JSON arguments presented to the tool. */
-  readonly arguments: import('@deepseek-ai/dsh-session').JsonValue
-  /** Detached JSON result for a successful call. */
-  readonly result?: import('@deepseek-ai/dsh-session').JsonValue
-  /** Explicit failure facts for a failed call. */
-  readonly error?: ExternalToolError
-}
 /** One permission ask in a transcript turn; `outcome` fills when decided. */
 export interface ExternalTranscriptPermission {
   readonly askId: string
@@ -202,7 +165,6 @@ export interface ExternalTranscriptTurn {
   readonly turnId: string
   readonly messages: readonly ExternalTranscriptMessage[]
   readonly toolActivities: readonly ExternalTranscriptToolActivity[]
-  readonly toolCalls: readonly ExternalTranscriptToolCall[]
   readonly permissions: readonly ExternalTranscriptPermission[]
   readonly compactionNotices: readonly string[]
   readonly modelSwitches: readonly string[]
@@ -212,15 +174,11 @@ export interface ExternalTranscriptTurn {
 export interface ExternalTranscriptProjection {
   readonly provider: string
   readonly cwd: string
-  /** Opaque provider identity retained for host attachment; transcript renderers ignore it. */
-  readonly providerThreadId?: ExternalProviderThreadIdValue
   /** The current model, once started on or switched to one. */
   readonly sessionModel?: string
   readonly turns: readonly ExternalTranscriptTurn[]
   /** The session's end stop reason, once ended. */
   readonly stopReason?: string
-  /** Safe startup failure facts, when publication succeeded but attachment failed. */
-  readonly startupFailure?: ExternalSessionStartFailedData
 }
 
 /**
@@ -231,12 +189,10 @@ export interface ExternalTranscriptProjection {
 interface ExternalTranscriptState {
   provider: string | null
   cwd: string | null
-  providerThreadId: ExternalProviderThreadIdValue | null
   sessionModel: string | null
   turns: ExternalTranscriptTurn[]
   open: ExternalTranscriptTurn | null
   stopReason: string | null
-  startupFailure: ExternalSessionStartFailedData | null
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
@@ -257,17 +213,6 @@ const toolActivitySchema = z.object({
   title: z.string(),
   detail: z.string().optional(),
 }).strict()
-const toolErrorSchema = z.object({
-  message: z.string().min(1),
-  code: z.string().min(1).optional(),
-}).strict()
-const toolCallSchema = z.object({
-  callId: z.string().min(1).transform(ExternalToolCallId),
-  name: z.string().min(1),
-  arguments: z.json(),
-  result: z.json().optional(),
-  error: toolErrorSchema.optional(),
-}).strict()
 const permissionSchema = z.object({
   askId: z.string(),
   title: z.string(),
@@ -278,7 +223,6 @@ const turnSchema = z.object({
   turnId: z.string(),
   messages: z.array(messageSchema),
   toolActivities: z.array(toolActivitySchema),
-  toolCalls: z.array(toolCallSchema),
   permissions: z.array(permissionSchema),
   compactionNotices: z.array(z.string()),
   modelSwitches: z.array(z.string()),
@@ -287,15 +231,9 @@ const turnSchema = z.object({
 const externalTranscriptSchema = z.object({
   provider: z.string(),
   cwd: z.string(),
-  providerThreadId: z.string().min(1).transform(ExternalProviderThreadId).optional(),
   sessionModel: z.string().optional(),
   turns: z.array(turnSchema),
   stopReason: z.string().optional(),
-  startupFailure: z.object({
-    provider: z.string(),
-    code: z.enum(['startup-failed', 'startup-aborted']),
-    message: z.string().min(1),
-  }).strict().optional(),
 }).strict()
 
 /** The index of the LAST permission in `permissions` matching `askId`, or -1. */
@@ -342,131 +280,6 @@ function decidePermission(
   return state
 }
 
-/** A location of one call node in the open or closed transcript. */
-interface ToolCallLocation {
-  readonly location: 'open' | 'closed'
-  readonly turnId: string
-  readonly turnIndex?: number
-  readonly callIndex: number
-}
-
-/** Whether an unknown value is a plain durable object. */
-function recordValue(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
-  const prototype = Reflect.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
-}
-
-/** Validate one external tool-call payload before it enters the fold. */
-function isExternalToolCallData(value: unknown): boolean {
-  if (!recordValue(value)) return false
-  const callId = value.callId
-  const name = value.name
-  const turnId = value.turnId
-  return typeof callId === 'string' && callId.length > 0
-    && typeof name === 'string' && name.length > 0
-    && (turnId === undefined || typeof turnId === 'string' && turnId.length > 0)
-    && Object.hasOwn(value, 'arguments')
-    && snapshotJsonValue(value.arguments) !== undefined
-}
-
-/** Validate one explicit external tool error. */
-function isExternalToolError(value: unknown): value is ExternalToolError {
-  if (!recordValue(value)) return false
-  return typeof value.message === 'string' && value.message.length > 0
-    && (value.code === undefined || typeof value.code === 'string' && value.code.length > 0)
-}
-
-/** Validate one external tool-result payload and exactly one result form. */
-function isExternalToolResultData(value: unknown): value is ExternalToolResultData {
-  if (!recordValue(value)) return false
-  const callId = value.callId
-  const name = value.name
-  const turnId = value.turnId
-  const isError = value.isError
-  const hasResult = Object.hasOwn(value, 'result')
-  const hasError = Object.hasOwn(value, 'error')
-  if (typeof callId !== 'string' || callId.length === 0
-    || typeof name !== 'string' || name.length === 0
-    || (turnId !== undefined && (typeof turnId !== 'string' || turnId.length === 0))
-    || typeof isError !== 'boolean') return false
-  if (isError) return hasError && !hasResult && isExternalToolError(value.error)
-  return hasResult && !hasError && snapshotJsonValue(value.result) !== undefined
-}
-
-/** Collect every call with one id; ambiguous history must never newest-match. */
-function findToolCallLocations(state: ExternalTranscriptState, callId: ExternalToolCallId): ToolCallLocation[] {
-  const matches: ToolCallLocation[] = []
-  if (state.open !== null) {
-    for (let callIndex = 0; callIndex < state.open.toolCalls.length; callIndex += 1) {
-      if (state.open.toolCalls[callIndex]?.callId === callId) {
-        matches.push({ location: 'open', turnId: state.open.turnId, callIndex })
-      }
-    }
-  }
-  for (let turnIndex = 0; turnIndex < state.turns.length; turnIndex += 1) {
-    const turn = state.turns[turnIndex]
-    if (turn === undefined) continue
-    for (let callIndex = 0; callIndex < turn.toolCalls.length; callIndex += 1) {
-      if (turn.toolCalls[callIndex]?.callId === callId) {
-        matches.push({ location: 'closed', turnId: turn.turnId, turnIndex, callIndex })
-      }
-    }
-  }
-  return matches
-}
-
-/** Find one unambiguous call id, optionally constrained to its durable turn. */
-function findToolCall(
-  state: ExternalTranscriptState,
-  callId: ExternalToolCallId,
-  turnId: string | undefined,
-): ToolCallLocation | undefined {
-  const matches = findToolCallLocations(state, callId)
-  if (matches.length !== 1) return undefined
-  const found = matches[0]
-  return found !== undefined && (turnId === undefined || found.turnId === turnId) ? found : undefined
-}
-
-/** Attach one committed result to its exact call node, preserving late results after turn close. */
-function applyToolResult(state: ExternalTranscriptState, data: ExternalToolResultData): ExternalTranscriptState {
-  if (!isExternalToolResultData(data)) return state
-  const found = findToolCall(state, data.callId, data.turnId)
-  if (found === undefined) return state
-  if (found.location === 'open') {
-    const open = state.open
-    if (open === null) return state
-    const toolCalls = [...open.toolCalls]
-    const existing = toolCalls[found.callIndex]
-    if (existing === undefined) return state
-    if (existing.name !== data.name
-      || Object.hasOwn(existing, 'result') || Object.hasOwn(existing, 'error')) return state
-    if (data.isError) {
-      toolCalls[found.callIndex] = { ...existing, error: data.error }
-    } else {
-      toolCalls[found.callIndex] = { ...existing, result: data.result }
-    }
-    return { ...state, open: { ...open, toolCalls } }
-  }
-  const turnIndex = found.turnIndex
-  if (turnIndex === undefined) return state
-  const turn = state.turns[turnIndex]
-  if (turn === undefined) return state
-  const turns = [...state.turns]
-  const toolCalls = [...turn.toolCalls]
-  const existing = toolCalls[found.callIndex]
-  if (existing === undefined) return state
-  if (existing.name !== data.name
-    || Object.hasOwn(existing, 'result') || Object.hasOwn(existing, 'error')) return state
-  if (data.isError) {
-    toolCalls[found.callIndex] = { ...existing, error: data.error }
-  } else {
-    toolCalls[found.callIndex] = { ...existing, result: data.result }
-  }
-  turns[turnIndex] = { ...turn, toolCalls }
-  return { ...state, turns }
-}
-
 /** Pure fold: `state` + one committed event → next state; unrelated events return the same reference (the Object.is gate). */
 function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTranscriptState {
   switch (event.type) {
@@ -475,20 +288,15 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
         ...state,
         provider: event.data.provider,
         cwd: event.data.cwd,
-        providerThreadId: parseExternalProviderThreadId(event.data.providerThreadId) ?? null,
         sessionModel: event.data.model ?? state.sessionModel,
       }
-    case 'external/session-start-failed':
-      return { ...state, startupFailure: event.data }
     case 'external/turn-started':
-      if (event.data.turnId.length === 0) return state
       return {
         ...state,
         open: {
           turnId: event.data.turnId,
           messages: [],
           toolActivities: [],
-          toolCalls: [],
           permissions: [],
           compactionNotices: [],
           modelSwitches: [],
@@ -520,28 +328,6 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
         },
       }
     }
-    case 'external/tool-call': {
-      if (!isExternalToolCallData(event.data)) return state
-      const open = state.open
-      if (open === null || event.data.turnId !== undefined && open.turnId !== event.data.turnId) return state
-      if (findToolCallLocations(state, event.data.callId).length > 0) return state
-      return {
-        ...state,
-        open: {
-          ...open,
-          toolCalls: [
-            ...open.toolCalls,
-            {
-              callId: event.data.callId,
-              name: event.data.name,
-              arguments: event.data.arguments,
-            },
-          ],
-        },
-      }
-    }
-    case 'external/tool-result':
-      return applyToolResult(state, event.data)
     case 'external/permission-asked': {
       const open = state.open
       if (open === null) return state
@@ -573,7 +359,7 @@ function apply(state: ExternalTranscriptState, event: SessionEvent): ExternalTra
     }
     case 'external/turn-ended': {
       const open = state.open
-      if (event.data.turnId.length === 0 || open === null || open.turnId !== event.data.turnId) return state
+      if (open === null || open.turnId !== event.data.turnId) return state
       return {
         ...state,
         turns: [...state.turns, { ...open, stopReason: event.data.stopReason }],
@@ -594,20 +380,18 @@ function view(state: ExternalTranscriptState): ExternalTranscriptProjection {
     provider: state.provider === null ? '' : state.provider,
     cwd: state.cwd === null ? '' : state.cwd,
     turns,
-    ...(state.providerThreadId === null ? {} : { providerThreadId: state.providerThreadId }),
     ...(state.sessionModel === null ? {} : { sessionModel: state.sessionModel }),
     ...(state.stopReason === null ? {} : { stopReason: state.stopReason }),
-    ...(state.startupFailure === null ? {} : { startupFailure: state.startupFailure }),
   }
 }
 
 /**
  * The transcript-shaped recount of a session's `external/*` events, registered
  * on `ctx.sessionProjections` by a host plugin. Guards every boundary on the
- * untyped pointer keys it can be hostile to (prototype names): malformed or
- * ambiguous tool records never enter state, an unrelated or unknown event
- * returns the same state reference (zero downstream work), and the served
- * value passes {@link externalTranscriptSchema} before it leaves the registry.
+ * untyped pointer keys it can be hostile to (prototype names): the fold reads
+ * only its own declared events, so an unrelated or unknown event returns the
+ * same state reference (zero downstream work), and the served value passes
+ * {@link externalTranscriptSchema} before it leaves the registry.
  */
 export const externalTranscriptProjectionDefinition:
 ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
@@ -620,14 +404,12 @@ ProjectionDefinition<'external/transcript', ExternalTranscriptState> = {
   init: () => ({
     provider: null,
     cwd: null,
-    providerThreadId: null,
     sessionModel: null,
     turns: [],
     open: null,
     stopReason: null,
-    startupFailure: null,
   }),
   apply,
   view,
-  stateVersion: 5,
+  stateVersion: 1,
 }

@@ -1,8 +1,8 @@
 /**
  * The writable-root derivation shared by every enforcement dialect that
  * expresses a mode as a canonical allow-list: `workspace-write` means "the
- * workspace root, optional host-owned state root, and platform temp areas",
- * and this module is that meaning's one home. The Seatbelt profile
+ * workspace root plus the platform temp areas", and this module is that
+ * meaning's one home. The Seatbelt profile
  * (`@deepseek-ai/dsh-sandbox-local`) and the in-process filesystem fence
  * (`@deepseek-ai/dsh-fs-sandbox`) both derive their allow-list here, so "the
  * write tool cannot write /tmp but bash can" asymmetries cannot arise between
@@ -15,7 +15,6 @@
 
 import { realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { isAbsolute } from 'node:path'
 import type { SandboxExecutionPolicy } from './index.ts'
 
 /**
@@ -42,36 +41,15 @@ export function canonicalPath(path: string): string {
 }
 
 /**
- * Resolve and validate the optional host-owned state directory. Missing
- * paths remain absolute and are left for the caller-owned directory setup to
- * report; a relative path is rejected before any runner argv is built.
- * @param stateRoot - the optional state directory from a per-call policy.
- * @returns the canonical absolute state directory, or `undefined` when absent.
- */
-export function canonicalStateRoot(stateRoot: string | undefined): string | undefined {
-  if (stateRoot === undefined) return undefined
-  if (!isAbsolute(stateRoot)) throw new Error('sandbox stateRoot must be absolute')
-  const canonical = canonicalPath(stateRoot)
-  return canonical
-}
-
-/**
  * The roots one confined execution may WRITE under — the mode's meaning as a
  * canonical, deduplicated allow-list. `read-only` allows nothing;
- * `workspace-write` allows the policy's workspace root, optional state root,
- * host `/tmp`, and per-user platform temp dir (`os.tmpdir()` — the real temp
- * area for mkstemp-family tools; omitting it would deny what the mode
- * promises). Every configured state root is absolute after canonicalization.
+ * `workspace-write` allows the policy's workspace root, the host `/tmp`, and
+ * the per-user platform temp dir (`os.tmpdir()` — the real temp area for
+ * mkstemp-family tools; omitting it would deny what the mode promises).
  * @param policy - the file-effect policy to derive the allow-list from.
  * @returns the canonical writable roots; empty exactly under `read-only`.
  */
 export function writableRoots(policy: SandboxExecutionPolicy): string[] {
   if (policy.mode !== 'workspace-write') return []
-  const stateRoot = canonicalStateRoot(policy.stateRoot)
-  return [...new Set([
-    policy.workspaceRoot,
-    ...(stateRoot === undefined ? [] : [stateRoot]),
-    '/tmp',
-    tmpdir(),
-  ].map(canonicalPath))]
+  return [...new Set([policy.workspaceRoot, '/tmp', tmpdir()].map(canonicalPath))]
 }

@@ -395,9 +395,7 @@ async function main() {
     await a.rpc.send('turn/start', { threadId, input: [{ type: 'text', text: 'SECOND_TURN_ON_SAME_THREAD', text_elements: [] }] })
     await waitForTurnEnd(a)
     await a.close()
-    // Protocol evidence only: a fresh app-server can resume persisted state.
-    // Task 2's provider scope is same-process child respawn; durable Harness
-    // restart/resume belongs to Task 3.
+    // Cold reattach: fresh process against the persisted CODEX_HOME + cwd.
     const b = await launch([], { reuse: { home: a.home, cwd: a.cwd } })
     await initialize(b.rpc)
     const resume = await b.rpc.send('thread/resume', { threadId })

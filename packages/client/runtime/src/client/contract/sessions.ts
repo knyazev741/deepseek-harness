@@ -9,7 +9,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type {
-  RpcResult, SessionId, SubagentAddress, WorkspaceId,
+  RpcResult, SessionId, SubagentAddress,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { HostObservable, SessionMaybeProvideInfo } from '@deepseek-ai/dsh-client-ui-slots'
 import type { AgentContext } from '../agents/scope.ts'
@@ -34,18 +34,6 @@ export interface ISessions {
    * (fixture included) reports the same number.
    */
   readonly searchResultLimit: number
-  /**
-   * Create a blank session and project it into the list before resolving.
-   * @param opts - target workspace or directory, plus optional driver mode and model.
-   * @returns the new session id.
-   */
-  create(opts?: {
-    workspaceId?: WorkspaceId
-    cwd?: string
-    sessionId?: SessionId
-    mode?: string
-    model?: string
-  }): Promise<SessionId>
   /**
    * Select a session as current.
    * @param id - session id (must exist in the list; unknown ids fail loud).

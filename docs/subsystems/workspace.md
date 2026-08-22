@@ -213,16 +213,6 @@ insertBefore(id: WorkspaceId, beforeId?: WorkspaceId): Promise<readonly Workspac
 archiveSession(sessionId: SessionId): Promise<void>
 
 /**
- * Pin or unpin one session durably, appending on pin and removing on unpin
- * (each idempotent). The session must exist (live or in session
- * persistence) to pin; workspace accounting is irrelevant.
- * @param sessionId - The session to pin or unpin.
- * @param pinned - `true` pins, `false` unpins.
- * @returns resolution after durability.
- */
-setSessionPinned(sessionId: SessionId, pinned: boolean): Promise<void>
-
-/**
  * Resolve by canonical directory path without creating or mutating a
  * workspace. A missing path rejects during `realpath`; an existing unowned
  * directory returns `undefined`.

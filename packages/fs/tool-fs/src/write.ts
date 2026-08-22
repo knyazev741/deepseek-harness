@@ -68,7 +68,6 @@ export function applyWriteTool(ctx: Context, sandbox: FsSandboxController): void
 
   ctx.tools.register(defineTool({
     name: 'write',
-    externalEligibility: 'allow',
     description: 'Create or fully replace a UTF-8 text file.',
     parameters: {
       file_path: { type: 'string', required: true, description: 'Path to write, resolved by the filesystem backend.' },

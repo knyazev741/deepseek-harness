@@ -11,7 +11,7 @@ import type { FsInfo, FsTarget, FsWriteIntent } from '@deepseek-ai/dsh-fs'
 import { sandboxDenialMarker } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
 import type { SandboxPolicyService } from '@deepseek-ai/dsh-sandbox-policy'
-import { defineTool, executionSession } from '@deepseek-ai/dsh-tools'
+import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolCallView, ToolRunContext } from '@deepseek-ai/dsh-tools'
 
 const TRUNCATED_MESSAGE = '<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with `grep -n` in order to find the line numbers of what you are looking for.</NOTE>'
@@ -73,9 +73,8 @@ class MutationPolicy {
   }
 
   resolve(exec: ToolRunContext): SandboxExecutionPolicy | undefined {
-    const session = executionSession(exec)
     return this.policy?.resolve({
-      ...session === undefined ? {} : { session },
+      ...exec.agent === undefined ? {} : { session: exec.agent.session },
     })
   }
 
@@ -422,7 +421,6 @@ function registerStrReplaceEditor(ctx: Context, config: ResolvedConfig): void {
   const policy = new MutationPolicy(ctx)
   ctx.tools.register(defineTool({
     name: 'str_replace_editor',
-    externalEligibility: 'allow',
     description: config.description,
     parameters: {
       command: {

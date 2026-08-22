@@ -1,5 +1,0 @@
-- menu:
-  - menuitem "DSH Agent":
-    - text: DSH Agent
-    - img
-  - menuitem "Codex Model"

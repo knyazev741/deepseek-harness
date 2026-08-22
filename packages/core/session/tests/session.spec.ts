@@ -1050,16 +1050,11 @@ describe('Session', () => {
       { header: { ...base, seedLength: '1' }, error: /seedLength must be a non-negative safe integer/ },
       { header: { ...base, seedLength: 0.5 }, error: /seedLength must be a non-negative safe integer/ },
       { header: { ...base, seedLength: -1 }, error: /seedLength must be a non-negative safe integer/ },
-      { header: { ...base, model: 42 }, error: /session header model must be a string/ },
     ]
 
     for (const { header, error } of cases) {
       expect(() => Session.create(SessionId('header-shape'), undefined, header as SessionHeader)).toThrow(error)
     }
-    expect(() => Session.fromRestore(SessionId('header-shape'), [], {
-      ...base,
-      model: 42,
-    } as unknown as SessionHeader)).toThrow(/session header model must be a string/)
   })
 
   it('rejects seed records with invalid fixed-envelope fields', () => {

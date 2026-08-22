@@ -17,10 +17,8 @@
  * grant-reuse story the per-session random SID paid a full tree propagation
  * per session for. Each private temp directory instead receives its own SID,
  * so sibling sessions sharing a workspace cannot enter one another's temp
- * trees. The local sandbox provider may attach one caller-owned state
- * directory to that private SID; its ACE is revocable while the directory
- * remains for a later resume. Unlike the POC, every API failure throws with
- * the API name and exact Win32 code; a child is NEVER spawned unrestricted.
+ * trees. Unlike the POC, every API failure throws with the API
+ * name and exact Win32 code; a child is NEVER spawned unrestricted.
  *
  * Known boundaries (inherent to restricted tokens, not this port):
  *  - writes are restricted; reads, network, and process visibility are NOT

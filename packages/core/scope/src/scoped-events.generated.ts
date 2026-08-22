@@ -21,7 +21,6 @@ const scopedSubjectResolvers: Readonly<Record<string, ScopedSubjectResolver | nu
   'agent/status': args => (args[0] as Record<string, unknown>)['agent'],
   'agent/turn-stopping': args => (args[0] as Record<string, unknown>)['agent'],
   'approval/request': args => (args[0] as Record<string, unknown>)['agent'],
-  'approval/request-external': args => (args[0] as Record<string, unknown>)['principal'],
   'goal/changed': args => (args[0] as Record<string, unknown>)['agent'],
   'session/created': null,
   'session/disposed': null,
@@ -30,11 +29,11 @@ const scopedSubjectResolvers: Readonly<Record<string, ScopedSubjectResolver | nu
   'subagent/end': null,
   'subagent/start': null,
   'system-prompt/assemble': args => (args[1] as Record<string, unknown>)['scope'],
-  'tools/code-dispatch-log': args => (args[0] as Record<string, unknown>)['scope'],
-  'tools/execute': args => (args[0] as Record<string, unknown>)['scope'],
-  'tools/post-execute': args => (args[0] as Record<string, unknown>)['scope'],
-  'tools/pre-execute': args => (args[0] as Record<string, unknown>)['scope'],
-  'tools/result': args => (args[0] as Record<string, unknown>)['scope'],
+  'tools/code-dispatch-log': args => (args[0] as Record<string, unknown>)['agent'],
+  'tools/execute': args => (args[0] as Record<string, unknown>)['agent'],
+  'tools/post-execute': args => (args[0] as Record<string, unknown>)['agent'],
+  'tools/pre-execute': args => (args[0] as Record<string, unknown>)['agent'],
+  'tools/result': args => (args[0] as Record<string, unknown>)['agent'],
 })
 
 /**

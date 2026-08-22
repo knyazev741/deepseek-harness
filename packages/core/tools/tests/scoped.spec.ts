@@ -4,12 +4,12 @@ import type { Events } from '@deepseek-ai/cordis'
 import { bindScopeParent, createScope } from '@deepseek-ai/dsh-scope'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { ExternalToolPrincipalId, isExternalToolPrincipal, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
-import type { ExternalToolPrincipal, PreToolDecision, ToolDefinition, ToolExecution, ToolExecutionInput, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
+import ToolRuntime from '@deepseek-ai/dsh-tools'
+import type { PreToolDecision, ToolDefinition, ToolExecution, ToolExecutionInput, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 
 import { CallId } from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 
 const testToolSignal = new AbortController().signal
 
@@ -46,69 +46,19 @@ function tool(name: string, reply = `ran:${name}`): ToolDefinition {
   }
 }
 
-async function mintExternalScope(ctx: Context, name: string): Promise<{ scope: Scope; principal: ExternalToolPrincipal }> {
-  const principal = {
-    kind: 'external' as const,
-    id: ExternalToolPrincipalId(name),
-    session: Session.create(SessionId(`external-session-${name}`)),
-    ctx: undefined as unknown as Context,
-    recorder: {
-      recordCall: () => undefined,
-      recordResult: () => undefined,
-    },
-  } satisfies ExternalToolPrincipal
-  let scope!: Scope
-  await ctx.plugin(Object.assign((inner: Context) => {
-    scope = createScope(inner, principal)
-    ;(principal as { ctx: Context }).ctx = scope.ctx
-  }, { inject: ['tools', 'systemPrompt'] }))
-  return { scope, principal }
-}
-
-async function run(ctx: Context, name: string, identity?: Agent | ExternalToolPrincipal): Promise<string> {
-  const base = {
+async function run(ctx: Context, name: string, agent?: Agent): Promise<string> {
+  const result = await ctx.tools.execute({
     signal: testToolSignal,
     callId: CallId('c1'),
     name,
     arguments: {},
-  }
-  const input: ToolExecutionInput = identity === undefined
-    ? base
-    : isExternalToolPrincipal(identity)
-      ? { ...base, principal: identity }
-      : { ...base, agent: identity }
-  const result = await ctx.tools.execute(input)
+    ...agent ? { agent } : {},
+  })
   const first = result.content[0]
   return first?.type === 'text' ? first.text : JSON.stringify(result.content)
 }
 
 describe('scoped tool registration', () => {
-  it('keeps the external eligibility floor default-deny for excluded tool categories', async () => {
-    const ctx = await mount()
-    const { principal } = await mintExternalScope(ctx, 'eligibility')
-    const excluded = [
-      ['ask-user', ['ask_user_question']],
-      ['schedule', ['schedule_create']],
-      ['workflow', ['workflow']],
-      ['Cordis self-modification', ['cordis_run']],
-      ['terminal/jobs', ['terminal_open', 'job_output']],
-      ['subagent', ['subagent']],
-    ] as const
-    for (const [, names] of excluded) {
-      for (const name of names) ctx.tools.register(tool(name))
-    }
-    ctx.tools.register({ ...tool('bash'), externalEligibility: 'allow' })
-
-    expect(ctx.tools.get('bash', principal)).toBeDefined()
-    expect(ctx.tools.schemas(principal).map(schema => schema.name)).toEqual(['bash'])
-    for (const [category, names] of excluded) {
-      for (const name of names) {
-        expect(ctx.tools.get(name, principal), category).toBeUndefined()
-        await expect(run(ctx, name, principal), category).resolves.toBe(`Error: unknown tool "${name}"`)
-      }
-    }
-  })
-
   it('keeps final-result observers synchronous', () => {
     type ToolResultListener = Events['tools/result']
     type AsyncToolResultListener = () => Promise<void>
@@ -313,144 +263,6 @@ describe('restrict() over an inherited scope layer', () => {
 })
 
 describe('scoped execution dispatch', () => {
-  it('runs an external principal through scoped lookup, restrictions, guards, waterfalls, validation, and result dispatch', async () => {
-    const ctx = await mount()
-    const { scope, principal } = await mintExternalScope(ctx, 'pipeline')
-    const seen: string[] = []
-    let bodyCalls = 0
-    ctx.tools.register({
-      ...tool('global'),
-      externalEligibility: 'allow',
-      output: {
-        schema: { type: 'string' },
-        render: (_args, value) => [{ type: 'text', text: value as string }],
-      },
-    })
-    scope.ctx.tools.register({
-      ...tool('local', 'external-local'),
-      externalEligibility: 'allow',
-      execute: () => {
-        bodyCalls += 1
-        return Promise.resolve('external-local')
-      },
-    })
-    scope.ctx.tools.restrict({ allow: ['global'] })
-    scope.ctx.tools.guard((exec) => {
-      seen.push(`guard:${exec.principal?.id ?? 'missing'}`)
-      return undefined
-    })
-    ctx.on('tools/pre-execute', (exec, next) => {
-      seen.push(`pre:${exec.principal?.id ?? 'missing'}`)
-      return next()
-    })
-    ctx.on('tools/execute', (exec, next) => {
-      seen.push(`execute:${exec.principal?.id ?? 'missing'}`)
-      return next()
-    })
-    ctx.on('tools/post-execute', (exec, _result, next) => {
-      seen.push(`post:${exec.principal?.id ?? 'missing'}`)
-      return next()
-    })
-    ctx.on('tools/result', (exec) => {
-      seen.push(`result:${exec.principal?.id ?? 'missing'}`)
-    })
-
-    expect(await run(ctx, 'local', principal)).toBe('external-local')
-    expect(await run(ctx, 'global', principal)).toBe('ran:global')
-    expect(await run(ctx, 'missing', principal)).toBe('Error: unknown tool "missing"')
-    expect(bodyCalls).toBe(1)
-    expect(seen).toEqual([
-      `pre:${principal.id}`,
-      `guard:${principal.id}`,
-      `execute:${principal.id}`,
-      `post:${principal.id}`,
-      `result:${principal.id}`,
-      `pre:${principal.id}`,
-      `guard:${principal.id}`,
-      `execute:${principal.id}`,
-      `post:${principal.id}`,
-      `result:${principal.id}`,
-      `pre:${principal.id}`,
-      `guard:${principal.id}`,
-      `execute:${principal.id}`,
-      `post:${principal.id}`,
-      `result:${principal.id}`,
-    ])
-  })
-
-  it('rejects both native and external identities at the execution entry', async () => {
-    const ctx = await mount()
-    const { principal } = await mintExternalScope(ctx, 'xor')
-    const agent = { id: 'native' as SessionId } as Agent
-    await expect(ctx.tools.execute({
-      signal: testToolSignal,
-      callId: CallId('xor'),
-      name: 'missing',
-      arguments: {},
-      agent,
-      principal,
-    } as ToolExecutionInput)).rejects.toThrow(/exactly one.*agent.*principal/i)
-  })
-
-  it('cancels an external principal body and publishes its result through the same pipeline', async () => {
-    const ctx = await mount()
-    const { scope, principal } = await mintExternalScope(ctx, 'cancel')
-    const entered = Promise.withResolvers<undefined>()
-    const release = Promise.withResolvers<undefined>()
-    const results: string[] = []
-    scope.ctx.tools.register({
-      ...tool('cancel'),
-      externalEligibility: 'allow',
-      execute: async (_args, exec) => {
-        entered.resolve(undefined)
-        await release.promise
-        return exec.signal.aborted ? 'cancelled-body' : 'completed-body'
-      },
-    })
-    ctx.on('tools/result', (exec) => { results.push(exec.principal?.id ?? 'missing') })
-
-    const controller = new AbortController()
-    const pending = ctx.tools.execute({
-      signal: controller.signal,
-      callId: CallId('external-cancel'),
-      name: 'cancel',
-      arguments: {},
-      principal,
-    })
-    await entered.promise
-    controller.abort('external cancellation')
-    release.resolve(undefined)
-
-    await expect(pending).resolves.toMatchObject({
-      isError: true,
-      error: { info: { name: 'AbortError', code: TOOL_ABORTED } },
-    })
-    expect(results).toEqual([principal.id])
-  })
-
-  it('validates external principal output and publishes the invalid result', async () => {
-    const ctx = await mount()
-    const { scope, principal } = await mintExternalScope(ctx, 'validation')
-    scope.ctx.tools.register({
-      ...tool('invalid'),
-      externalEligibility: 'allow',
-      execute: () => Promise.resolve(42 as unknown as string),
-    })
-    const seen: string[] = []
-    ctx.on('tools/result', (exec) => { seen.push(exec.principal?.id ?? 'missing') })
-
-    const result = await ctx.tools.execute({
-      signal: testToolSignal,
-      callId: CallId('external-invalid-output'),
-      name: 'invalid',
-      arguments: {},
-      principal,
-    })
-
-    expect(result).toMatchObject({ isError: true, error: { info: { code: 'INVALID_TOOL_OUTPUT' } } })
-    expect(seen).toEqual([principal.id])
-  })
-
   it('an agent.ctx pre-execute listener gates only its own agent (and never subject-less calls)', async () => {
     const ctx = await mount()
     const { scope, key } = await mintAgentScope(ctx, 'a')

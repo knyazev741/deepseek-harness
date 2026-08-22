@@ -3,9 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { scopeTarget } from '@deepseek-ai/dsh-scope'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
-import type { ExternalToolPrincipal, ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
 import * as ToolsInvariant from '@deepseek-ai/dsh-tools/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 
@@ -19,12 +17,7 @@ async function setup(): Promise<Context> {
   return ctx
 }
 
-type ExecutionOverrides = Omit<Partial<ToolExecution>, 'agent' | 'principal'> & {
-  agent?: Agent
-  principal?: ExternalToolPrincipal
-}
-
-const execution = (overrides: ExecutionOverrides = {}): ToolExecution => ({
+const execution = (overrides: Partial<ToolExecution> = {}): ToolExecution => ({
   token: Symbol('tool') as ToolExecutionToken,
   callId: CallId('call-1'),
   name: 'echo',
@@ -32,20 +25,12 @@ const execution = (overrides: ExecutionOverrides = {}): ToolExecution => ({
   ...overrides,
   signal: overrides.signal ?? testToolSignal,
   rootCallId: overrides.rootCallId ?? overrides.callId ?? CallId('call-1'),
-}) as ToolExecution
+})
 
 const outcome = (): ToolExecutionResult => Object.freeze({
   content: Object.freeze([{ type: 'text' as const, text: 'ok' }]) as never,
   isError: false,
   value: null,
-})
-
-const externalPrincipal = (): ExternalToolPrincipal => ({
-  kind: 'external',
-  id: ExternalToolPrincipalId('invariant-external'),
-  session: Session.create(SessionId('invariant-external-session')),
-  ctx: new Context(),
-  recorder: {},
 })
 
 function emitResult(ctx: Context, exec: ToolExecution, result: ToolExecutionResult): void {
@@ -102,13 +87,6 @@ describe('tool-pipeline invariants', () => {
 
     const anonymous = Object.freeze(execution({ name: '' }))
     expect(() => { emitResult(ctx, anonymous, outcome()) }).toThrow(/non-empty name and callId/)
-  })
-
-  it('rejects a final snapshot carrying both native and external identities', async () => {
-    const ctx = await setup()
-    const agent = { id: SessionId('native-invariant') } as Agent
-    const exec = Object.freeze(execution({ agent, principal: externalPrincipal() }))
-    expect(() => { emitResult(ctx, exec, outcome()) }).toThrow(/exactly one.*agent.*principal/i)
   })
 
   it('requires code-dispatch records to be turn-enclosed', async () => {

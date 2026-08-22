@@ -64,7 +64,7 @@ const NATIVE_ROW: { provider: string; labelKey: 'mode.native' } = {
  *   always-on native row, which the hero shows by default).
  */
 export function ModePicker({
-  create, load, select, selectModel, useModeSeat, t,
+  load, select, selectModel, useModeSeat, t,
 }: ModePickerProps) {
   const state = useModeSeat(snapshot => snapshot)
   const [modeOpen, setModeOpen] = useState(false)
@@ -120,15 +120,8 @@ export function ModePicker({
   const onModeSelect = (id: string): void => {
     setModeOpen(false)
     select(id)
-    // Switching to dsh or a model-less external mode has no second seat to
-    // confirm, so submit its staged driver immediately. A model-bearing mode
-    // waits for the model seat below; creation must carry both values in one
-    // `session.create` request.
-    const selected = state.modes.find(mode => mode.provider === id)
-    if (id === NATIVE_MODE || selected?.hasModels !== true) {
-      setModelOpen(false)
-      void create()
-    }
+    // Switching to dsh or past a mode clears the staged model seat.
+    if (id === NATIVE_MODE) setModelOpen(false)
   }
 
   const modelSeat = stagedIsExternal && currentMode !== undefined
@@ -153,7 +146,6 @@ export function ModePicker({
         onSelect={(id) => {
           setModelOpen(false)
           selectModel(id)
-          void create()
         }}
         align="start"
         portal

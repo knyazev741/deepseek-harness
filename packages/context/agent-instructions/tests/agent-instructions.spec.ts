@@ -24,7 +24,6 @@ import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 import type {
-  ExternalToolPrincipal,
   ToolExecution,
   ToolExecutionToken,
 } from '@deepseek-ai/dsh-tools'
@@ -201,21 +200,17 @@ function stubAgent(cwd?: string, seed: SessionEvent[] = []): Agent {
   }
 }
 
-type StubToolExecutionInput = Omit<ToolExecution, 'token' | 'rootCallId' | 'agent' | 'principal'> & {
-  agent?: Agent
-  principal?: ExternalToolPrincipal
-  token?: ToolExecutionToken
-  rootCallId?: ToolExecution['rootCallId']
-}
-
 function stubToolExecution(
-  input: StubToolExecutionInput,
+  input: Omit<ToolExecution, 'token' | 'rootCallId'> & {
+    token?: ToolExecutionToken
+    rootCallId?: ToolExecution['rootCallId']
+  },
 ): ToolExecution {
   return {
     token: input.token ?? Symbol('workspace-context-test-execution') as ToolExecutionToken,
     ...input,
     rootCallId: input.rootCallId ?? input.callId,
-  } as ToolExecution
+  }
 }
 
 function blocksText(blocks: { type: string; text?: string }[] | undefined): string {

@@ -60,10 +60,9 @@ export function apply(ctx: ClientContext): void {
     const controller = new ModeSeatController(api, async (mode, model) => {
       // Creation carries the staged mode; the model applies as the initial
       // model for an external mode. Target the current/recent workspace so the
-      // hero flow lands where the workspace picker would. Use the sessions
-      // service rather than the raw connection: it projects the created row
-      // into the list before resolving, so the new session can be opened while
-      // this fiber still owns the hero flow.
+      // hero flow lands where the workspace picker would. The ISessions face
+      // does not expose creation, so this rides the connection api directly
+      // and the next list refresh (below) folds the new row in.
       const sessionsState = scope.sessions.list.getSnapshot()
       const current = sessionsState.current
       const workspaceId = current === undefined
@@ -71,19 +70,21 @@ export function apply(ctx: ClientContext): void {
         : scope.workspaces.list.getSnapshot().items
           .find(item => item.sessionIds.includes(current))?.workspaceId
         ?? scope.workspaces.list.getSnapshot().recentWorkspaceId
-      const sessionId = await scope.sessions.create({
+      const response = await api.sessions.create({
         ...(workspaceId === undefined ? {} : { workspaceId }),
         mode,
         ...(model === undefined ? {} : { model }),
       })
-      scope.sessions.open(sessionId)
+      if (!response.result.ok) {
+        throw new Error(response.result.error.message)
+      }
     })
 
     const injected = (): ModePickerInjected => ({
       hooks: { modeSeat: controller.store },
       load: () => controller.load(),
-      select: (mode: string) => { controller.select(mode) },
-      selectModel: (model: string) => { controller.selectModel(model) },
+      select: (mode: string) => controller.select(mode),
+      selectModel: (model: string) => controller.selectModel(model),
       create: () => controller.create(),
     })
 

@@ -130,7 +130,6 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
   constructor(ctx: Context) {
     super(ctx, 'commandUi')
     this.directory = new CommandDirectory(async (sessionId) => {
-      if (this.isExternalSession(sessionId)) return []
       if (this.sessions().subagentAddress(sessionId) !== undefined) return []
       const result = await ctx.remote.commands.list(sessionId)
       if (!result.ok) throw new Error(`command.list failed: ${result.error.code}: ${result.error.message}`)
@@ -291,7 +290,6 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
   /** Decision table, space column: hot-key sync check; only host leadingInput claims. */
   private matchSpace(session: ClientSessionContext, token: string): PickOutcome {
     if (!token.startsWith('/')) return undefined
-    if (this.isExternalSession(session.sessionId)) return undefined
     const name = token.slice(1)
     if (this.live.contributions.has(name)) return undefined // popup kinds never claim on space
     const desc = this.directory.resolve(session.sessionId, name)
@@ -317,11 +315,6 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     if (contribution !== undefined && contribution.available(session)) {
       if (!bare) return undefined
       this.openPopup(name, contribution.ui, session, { via: 'enter', token })
-      return 'handled'
-    }
-    if (this.isExternalSession(session.sessionId)) {
-      this.consumeVia(session.sessionId, { via: 'enter', token })
-      this.runExternalDetached(session, trimmed)
       return 'handled'
     }
     await this.directory.ensureReady(session.sessionId, signal)
@@ -428,21 +421,6 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     )
   }
 
-  /** Forward an external-session slash line through its per-session route. */
-  private runExternalDetached(session: ClientSessionContext, line: string): void {
-    const actx = this.scopeFor(session.sessionId)
-    const external = actx === undefined ? undefined : this.sessions().sessionOf(actx)
-    if (external === undefined) return
-    void external.command(line).then(
-      (result) => {
-        if (!result.ok) this.noticeFor(session.sessionId, 'error', `session.command failed: ${result.error.message}`)
-      },
-      (error: unknown) => {
-        this.noticeFor(session.sessionId, 'error', error instanceof Error ? error.message : String(error))
-      },
-    )
-  }
-
   /** Dispatch a consume-token event to one session (menu-pick / bare-enter execute paths). */
   private consumeVia(id: SessionId, segment: TokenSegment): void {
     const actx = this.scopeFor(id)
@@ -472,14 +450,5 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     const sessions = this.ctx.get('sessions')
     if (sessions === undefined) throw new Error('ui-commands: sessions service unavailable')
     return sessions
-  }
-
-  /** Whether a scoped session is driven by an external provider rather than the native Agent. */
-  private isExternalSession(id: SessionId): boolean {
-    const sessions = this.sessions()
-    const actx = sessions.scope(id)
-    if (actx === undefined || typeof sessions.sessionOf !== 'function') return false
-    const mode = sessions.sessionOf(actx)?.mode
-    return mode !== undefined && mode !== 'dsh'
   }
 }

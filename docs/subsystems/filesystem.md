@@ -207,17 +207,12 @@ The policy plugin needs just enough execution context to derive the observed-sta
  * `object` actor on the `fs/*` events; this plugin narrows that actor to
  * `FsObservationActor` without importing `dsh-tools`, `dsh-agent`, or `dsh-session`.
  *
- * The owner is `principal.session` or `agent.session` when present. It is treated as an opaque object
+ * The owner is `agent.session` when present. It is treated as an opaque object
  * identity (a `WeakMap` key); this package never reads any of its fields.
  */
 interface FsObservationActor {
   /** The agent on whose behalf the call runs, when there is one. */
   agent?: {
-    /** The session that owns observed-file state, used as an opaque key. */
-    session?: object
-  }
-  /** The external execution subject, when present. */
-  principal?: {
     /** The session that owns observed-file state, used as an opaque key. */
     session?: object
   }
@@ -244,7 +239,7 @@ interface FileReadOutcome {
 
 ## Observed-file state (policy plugin)
 
-Observed state is a `WeakMap<owner, Map<targetKey, FsObservation>>` held inside the `dsh-fs-observation-policy` plugin. Missing map entry means unseen; `{ kind: 'absent' }` means a `read` or `str_replace_editor` `view`, `str_replace`, or `insert` metadata miss confirmed absence; `{ kind: 'present', version }` means a read, write, or edit observed that version. The write decision maps unseen and absent to `createIfAbsent`, while present maps to `replaceIfVersion`; the edit decision maps unseen to `FS_NOT_OBSERVED`, absent to `FS_NOT_FOUND`, and present to its version guard. The owner is derived from the event actor (normally `exec.principal.session` or `exec.agent.session`), treated as opaque and never read. Disposal drops everything (HMR safety), and the policy performs no filesystem I/O.
+Observed state is a `WeakMap<owner, Map<targetKey, FsObservation>>` held inside the `dsh-fs-observation-policy` plugin. Missing map entry means unseen; `{ kind: 'absent' }` means a `read` or `str_replace_editor` `view`, `str_replace`, or `insert` metadata miss confirmed absence; `{ kind: 'present', version }` means a read, write, or edit observed that version. The write decision maps unseen and absent to `createIfAbsent`, while present maps to `replaceIfVersion`; the edit decision maps unseen to `FS_NOT_OBSERVED`, absent to `FS_NOT_FOUND`, and present to its version guard. The owner is derived from the event actor (normally `exec.agent.session`), treated as opaque and never read. Disposal drops everything (HMR safety), and the policy performs no filesystem I/O.
 
 ## Error taxonomy (provider contract)
 

@@ -31,41 +31,26 @@
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
-  "dependencies": {
-    "@openai/codex": "0.147.0"
-  },
   "peerDependencies": {
     "@deepseek-ai/dsh-external-session": "workspace:^",
-    "@deepseek-ai/dsh-mcp-gateway": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
     "@deepseek-ai/dsh-sdk-protocol": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
     "@deepseek-ai/dsh-session-projection": "workspace:^",
     "@deepseek-ai/dsh-subprocess": "workspace:^",
     "@deepseek-ai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/dsh-user-approval": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-mcp-gateway": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@deepseek-ai/dsh-external-session": "workspace:^",
-    "@deepseek-ai/dsh-mcp-gateway": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
     "@deepseek-ai/dsh-sdk-protocol": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
     "@deepseek-ai/dsh-session-projection": "workspace:^",
     "@deepseek-ai/dsh-subprocess": "workspace:^",
     "@deepseek-ai/dsh-subprocess-local": "workspace:^",
     "@deepseek-ai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/dsh-user-approval": "workspace:^",
+    "@openai/codex": "0.147.0",
     "@deepseek-ai/cordis": "workspace:^"
   }
 }

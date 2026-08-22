@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { ApprovalRequestId } from '@deepseek-ai/dsh-user-approval'
-import { ExternalToolCallId } from '@deepseek-ai/dsh-external-session'
-import { ExternalToolPrincipalId } from '@deepseek-ai/dsh-tools'
 import * as ApprovalInvariant from '@deepseek-ai/dsh-user-approval/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 
@@ -104,86 +102,5 @@ describe('approval invariants', () => {
       .toThrow(/unknown outcome/)
     expect(() => session.append('approval/policy', { policy: 'always' as never }))
       .toThrow(/unknown policy/)
-  })
-
-  it('accepts a paired external approval audit without a native turn', async () => {
-    const ctx = await setup()
-    const session = ctx.sessions.create(SessionId('external-audit'))
-    const id = ApprovalRequestId('external-ask')
-    const principalId = ExternalToolPrincipalId('external-principal')
-    const callId = ExternalToolCallId('external-call')
-    session.append('external/approval-asked', {
-      id,
-      principalId,
-      sessionId: session.id,
-      callId,
-      toolName: 'bash',
-    })
-    session.append('external/approval-decided', {
-      id,
-      principalId,
-      sessionId: session.id,
-      callId,
-      outcome: 'allowed-once',
-    })
-  })
-
-  it('rejects an external approval pair with a mismatched session or call id', async () => {
-    const ctx = await setup()
-    const session = ctx.sessions.create(SessionId('external-audit-mismatch'))
-    const id = ApprovalRequestId('external-ask-mismatch')
-    const principalId = ExternalToolPrincipalId('external-principal-mismatch')
-    const callId = ExternalToolCallId('external-call-mismatch')
-    session.append('external/approval-asked', {
-      id,
-      principalId,
-      sessionId: session.id,
-      callId,
-      toolName: 'bash',
-    })
-    expect(() => session.append('external/approval-decided', {
-      id,
-      principalId,
-      sessionId: session.id,
-      callId: ExternalToolCallId('other-call'),
-      outcome: 'rejected',
-    })).toThrow(/does not match external\/approval-asked/)
-  })
-
-  it('rejects an external approval event whose session id is not its owning Session', async () => {
-    const ctx = await setup()
-    const session = ctx.sessions.create(SessionId('external-owner'))
-    expect(() => session.append('external/approval-asked', {
-      id: ApprovalRequestId('external-owner-mismatch'),
-      principalId: ExternalToolPrincipalId('external-owner-principal'),
-      sessionId: SessionId('different-owner'),
-      callId: ExternalToolCallId('external-owner-call'),
-      toolName: 'bash',
-    })).toThrow(/owning Session id/)
-  })
-
-  it('rejects an external approval decision after the external Session has ended', async () => {
-    const ctx = await setup()
-    const session = ctx.sessions.create(SessionId('external-ended'))
-    const id = ApprovalRequestId('external-ended-ask')
-    const principalId = ExternalToolPrincipalId('external-ended-principal')
-    const callId = ExternalToolCallId('external-ended-call')
-    session.append('external/approval-asked', {
-      id,
-      principalId,
-      sessionId: session.id,
-      callId,
-      toolName: 'bash',
-    })
-    ;(session.append as unknown as (type: string, data: unknown) => unknown)(
-      'external/session-ended', { stopReason: 'completed' },
-    )
-    expect(() => session.append('external/approval-decided', {
-      id,
-      principalId,
-      sessionId: session.id,
-      callId,
-      outcome: 'cancelled',
-    })).toThrow(/session has ended/)
   })
 })

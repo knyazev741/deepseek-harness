@@ -1,3 +1,0 @@
-- status:
-  - text: Agent
-  - paragraph: FIRST_TURN

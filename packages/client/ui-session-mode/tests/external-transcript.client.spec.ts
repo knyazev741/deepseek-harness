@@ -13,7 +13,6 @@ import {
   externalMessageDefinition,
   externalModelDefinition,
   externalPermissionDefinition,
-  externalSessionFailureDefinition,
   externalToolDefinition,
 } from '../src/client/transcript/external-transcript.ts'
 
@@ -29,10 +28,9 @@ function context(
 ): ConversationNodeContext {
   const resolved = matches.map(({ event, role }, index) => ({
     event,
-    view: undefined,
     role,
     location: { kind: 'event', timeline: 'live', seq: index },
-  }))
+  })) as never
   return {
     key: 'k', kind: 'x', id: 'i',
     matches: resolved,
@@ -105,19 +103,6 @@ describe('external compaction and model nodes', () => {
     const node = externalModelDefinition.buildViewNode!(context([
       { event: event('external/model-switched', 8, { model: 'gpt-5' }), role: 'update' }]))
     expect(node).toMatchObject({ kind: 'external-model', data: { model: 'gpt-5' } })
-  })
-})
-
-describe('external session failure node', () => {
-  it('folds the safe startup failure facts into an alert row', () => {
-    const eventValue = event('external/session-start-failed', 9, {
-      provider: 'codex', code: 'startup-failed', message: 'External provider failed to start.',
-    })
-    expect(externalSessionFailureDefinition.match(eventValue)).toEqual({ id: '9', role: 'update' })
-    expect(externalSessionFailureDefinition.buildViewNode!(context([{ event: eventValue, role: 'update' }]))).toMatchObject({
-      kind: 'external-session-failure',
-      data: { provider: 'codex', code: 'startup-failed', message: 'External provider failed to start.' },
-    })
   })
 })
 

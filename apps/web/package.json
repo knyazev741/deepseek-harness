@@ -33,7 +33,6 @@
     "@deepseek-ai/dsh-client-web": "workspace:^",
     "@deepseek-ai/dsh-cmdline": "workspace:^",
     "@deepseek-ai/dsh-pwsh-local": "workspace:^",
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^22.0.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.0",

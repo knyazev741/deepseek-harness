@@ -11,7 +11,6 @@ function target(path: string): FsTarget {
   return { targetKey: FsTargetKey(path), displayPath: path }
 }
 const ownerExec = (session: object): FsObservationActor => ({ agent: { session } })
-const externalOwnerExec = (session: object): FsObservationActor => ({ principal: { session } })
 const present = (version: string): FsObservation => ({ kind: 'present', version: FsVersion(version) })
 const absent: FsObservation = { kind: 'absent' }
 
@@ -69,13 +68,6 @@ describe('write-intent decision', () => {
     const exec = ownerExec({})
     ctx.emit('fs/observed', target('a.txt'), present('v7'), exec)
     expect(await writeIntent(ctx, target('a.txt'), exec)).toEqual({ kind: 'replaceIfVersion', version: 'v7' })
-  })
-
-  it('keys observed state by an external principal session', async () => {
-    const { ctx } = await setup()
-    const exec = externalOwnerExec({})
-    ctx.emit('fs/observed', target('external.txt'), present('v8'), exec)
-    expect(await writeIntent(ctx, target('external.txt'), exec)).toEqual({ kind: 'replaceIfVersion', version: 'v8' })
   })
 
   it('a target observed absent decides createIfAbsent', async () => {

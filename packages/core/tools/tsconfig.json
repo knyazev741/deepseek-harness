@@ -9,9 +9,6 @@
   ],
   "references": [
     {
-      "path": "../../util/brand"
-    },
-    {
       "path": "../../core/session"
     },
     {

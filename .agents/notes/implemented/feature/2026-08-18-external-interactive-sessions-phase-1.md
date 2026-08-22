@@ -6,54 +6,93 @@ English | [中文](2026-08-18-external-interactive-sessions-phase-1.zh.md)
 
 ## Problem
 
-The harness runs its own agent loop, while console coding agents remain a separate provider family. Codex interactive sessions are available in the opt-in Web bundle; ACP clients, Claude Code's interactive dialect, and agent-started external sessions remain outside this phase. The [claude-code-and-codex subagent backends](2026-08-04-claude-code-and-codex-subagent-backends.md) note owns the one-shot sibling, and the proposed [external interactive agent sessions](../../proposed/feature/2026-08-18-external-interactive-agent-sessions.md) note records the remaining provider work.
+The harness runs its own agent loop; console coding agents are one-shot subagent
+providers that collapse a child run into a single tool result. A user cannot open
+a session driven by an external agent: multi-turn continuation, live streaming,
+agent-native compaction and model switching, and permission prompts have no
+surface. This note records the Phase 1 landing of the external interactive
+session family as settled; the design intent lives in the proposed
+[external interactive agent sessions](../proposed/feature/2026-08-18-external-interactive-agent-sessions.md)
+note, and the [claude-code-and-codex subagent backends](2026-08-04-claude-code-and-codex-subagent-backends.md)
+note owns the one-shot sibling.
 
 ## Decision
 
-A **mode** names who drives a session: `dsh` (the native agent loop) or a registered external agent. The mode is a client-plane choice at creation, stamped durably on the session header (default `dsh`). Phase 1 ships the Codex dialect; ACP and Claude Code dialects are later phases.
+A **mode** names who drives a session: `dsh` (the native agent loop) or a
+registered external agent. The mode is a client-plane choice at creation, stamped
+durably on the session header (default `dsh`). Phase 1 ships the Codex dialect;
+ACP and Claude Code dialects are later phases.
 
 Settled Phase 1 packages and responsibilities:
 
-- `packages/external/external-session` — Service Definition `ctx.externalSessions` (registry of named providers, like `ctx.subagents`) plus the `ExternalSessionProvider` contract and `ExternalBridgeContext`. `compact()` is part of the provider contract: the harness never re-implements agent-native compaction across the wire.
-- `packages/external/external-session-bridge` — host-side driver: owns provider lifecycle per external session, appends log-only `external/*` events through the Task-1 bridge, projects the transcript, and disposes the provider on session close.
-- `packages/external/external-session-codex` — the Codex provider, driving `codex app-server --stdio` persistently (evidence-pinned at `@openai/codex@0.147.0`).
-- `packages/interaction/external-permission` — Phase 1 permission bridge: routes `bridge.requestPermission` to the ask-user/user-questions channel with a permission-shaped ask and the owning external `sessionId`; fail-closed on dismissal/timeout/no-answerer.
-- `packages/client/ui-session-mode` — the client plugin: mode picker with model seat, and the external transcript conversation nodes.
+- `packages/external/external-session` — Service Definition `ctx.externalSessions`
+  (registry of named providers, like `ctx.subagents`) plus the `ExternalSessionProvider`
+  contract and `ExternalBridgeContext`. `compact()` is part of the provider contract:
+  the harness never re-implements agent-native compaction across the wire.
+- `packages/external/external-session-bridge` — host-side driver: owns provider
+  lifecycle per external session, appends log-only `external/*` events through the
+  Task-1 bridge, projects the transcript, and disposes the provider on session close.
+- `packages/external/external-session-codex` — the Codex provider, driving
+  `codex app-server --stdio` persistently (evidence-pinned at `@openai/codex@0.147.0`).
+- `packages/interaction/external-permission` — Phase 1 permission bridge: routes
+  `bridge.requestPermission` to the ask-user/user-questions channel with a
+  permission-shaped ask; fail-closed on dismissal/timeout/no-answerer.
+- `packages/client/ui-session-mode` — the client plugin: mode picker with model
+  seat, and the external transcript conversation nodes.
 
-External-mode session creation with a registered provider starts a bridge and never a native Agent; an unknown mode fails loud at creation. A no-mode (`dsh`) session is untouched.
-
-An explicit session id is idempotent only when the durable driver mode and absolute cwd agree with the request. Native and external modes, different external providers, and different cwds produce typed `session-conflict` errors; an external model change does not rewrite the persisted identity. Cold external materialization uses `SessionPersistence.prepare` and restores the exact stored header before the bridge announces it.
-
-The Codex provider folds the live session's sandbox and approval settings into each external start or resume. Restricted children receive the exact confined app-server argv and a private per-session `CODEX_HOME` under the configured state root; the packaged `@openai/codex` launcher is the default and an explicit command is an override. The launcher environment scrubs ambient credential-shaped variables while retaining explicit provider credentials. Stable `model` and reasoning `effort` fields are sent on thread start/resume and each turn; model changes are accepted only from the native catalog and are recorded before the next turn. A successful `thread/start` records the branded opaque `providerThreadId` in `external/session-started`; trusted wire output is constructed at that edge and durable input is parsed before a cold session uses explicit `resume`/`thread/resume`, never a replacement thread. The host materializes cold external sessions with `SessionPersistence.prepare`, `SessionStore.enter`, and `SessionStore.announce` only for a live action; history and list stay process-free. Start/resume attachment is deduplicated per session and failed attachment rolls back the live route while leaving the durable log readable. A startup lifecycle record is cancellable before its first await; disposal aborts first, waits for the attachment to settle, and tears down the provider once on the shared quiescence promise, so a late non-cooperative start cannot resolve a disposed session. Concurrent prompts are serialized, pending approvals cancel before `external/session-ended`, and a cleanup failure remains on the quiescence barrier. A child death settles an active turn, closes wire listeners before termination, waits for the process tree, and permits same-process child respawn using the in-memory thread id. The pre-session model catalog uses an explicit read-only policy; read-only ignores state-root write grants.
-
-If a provider start rejects after the external session is published, the bridge appends bounded `external/session-start-failed` facts followed by `external/session-ended` with `stopReason: error`. The projection and UI show a fixed safe message and close the transient live seat; the raw provider error remains only on the typed host diagnostic event and never enters the durable log, client payload, or snapshot.
+External-mode session creation with a registered provider starts a bridge and never
+a native Agent; an unknown mode fails loud at creation. A no-mode (`dsh`) session is
+untouched.
 
 ### The `external/*` session events
 
-The driver appends log-only events via `SessionEventMap` declaration merging, all `ignorable: true` (unknown `external/*` on read does not corrupt replay). Live frame deltas travel the frame channel without durability (`streamDelta` is never logged). Committed units only:
+The driver appends log-only events via `SessionEventMap` declaration merging, all
+`ignorable: true` (unknown `external/*` on read does not corrupt replay). Live frame
+deltas travel the frame channel without durability (`streamDelta` is never logged).
+Committed units only:
 
-`external/session-started` (including the opaque provider-thread identity), `external/session-start-failed` (bounded provider failure facts), `external/turn-started`, `external/message-added`, `external/tool-activity`, `external/tool-call`, `external/tool-result`, `external/approval-asked`, `external/approval-decided`, `external/permission-asked`, `external/permission-decided`, `external/model-switched`, `external/compaction-noticed`, `external/turn-ended`, `external/session-ended`.
+`external/session-started`, `external/turn-started`, `external/message-added`,
+`external/tool-activity`, `external/permission-asked`, `external/permission-decided`,
+`external/model-switched`, `external/compaction-noticed`, `external/turn-ended`,
+`external/session-ended`.
 
-`/compact` and `/model` route per-session-mode: compaction calls the provider's native compact and records the notice; model switching calls `setModel` and records the switch. Unknown slash commands in external mode pass through as prompt text.
-
-### External tool ownership
-
-A live external session supplies an `ExternalToolPrincipal` with its branded id, session, scoped context, and recorder. The recorder detaches nested caller values synchronously at API entry, bounds each committed JSON-safe record, and seeds call-id uniqueness from the owning session log across resume and HMR attachments. The shipped shell and filesystem foreground definitions opt into that identity and derive cwd, environment, observation, and result scope from the external session without creating a native Agent. Native Agent ownership remains required for background shell jobs; ask-user, schedule, workflow, Cordis self-modification, terminal/jobs, and subagent tool definitions are default-denied to external principals. The Phase 1 permission bridge remains the host-owned ask-user path, not an external tool eligibility grant.
+`/compact` and `/model` route per-session-mode: compaction calls the provider's
+native compact and records the notice; model switching calls `setModel` and records
+the switch. Unknown slash commands in external mode pass through as prompt text.
 
 ## Alternatives considered
 
-The design alternatives and their rejections are argued in the proposed [external interactive agent sessions](../../proposed/feature/2026-08-18-external-interactive-agent-sessions.md) note: a PTY terminal adapter (no structured stream, no log projection, no policy inheritance), extending the one-shot subagent providers in place (their contract is one final text), one generic wire for everything (ACP loses Codex thread resume and Claude Code `canUseTool` specifics), and depending on community adapter packs for the whole job (permission, sandbox, and MCP decisions stay harness-owned). The Codex dialect owns the shipped Web path; ACP and Claude Code remain proposed extensions.
-
-## Verification
-
-The assembled Web proof runs `DSH_SNAPSHOT=replay perl -e 'alarm 280; exec @ARGV' pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/external-codex-session.e2e.ts`. It composes the opt-in Loader layers, drives the pinned Codex app-server through a loopback Responses fixture, and pins the mode picker, live and committed text, command activity, approval, a configured `dsh_harness` MCP call with its durable tool row, a supplemental direct-gateway unlisted-call rejection, compaction, and resumed turn. The trace asserts the real `thread/start` and `thread/resume` methods use one provider thread id; the fixture validates non-null `previous_response_id` values and explicitly models Codex's stateless continuation. The proof also asserts fixture consumption and empty browser, page, console, and request-failure tripwires. A real deployment still requires the user to authenticate its configured Codex executable; native DSH delegation and planning are not mounted in Codex mode, and ACP, Claude Code, agent-started external sessions, and remote multi-user hosting remain outside this phase.
+The design alternatives and their rejections are argued in the proposed
+[external interactive agent sessions](../proposed/feature/2026-08-18-external-interactive-agent-sessions.md)
+note: a PTY terminal adapter (no structured stream, no log projection, no policy
+inheritance), extending the one-shot subagent providers in place (their contract is
+one final text), one generic wire for everything (ACP loses Codex thread resume and
+Claude Code `canUseTool` specifics), and depending on community adapter packs for the
+whole job (permission, sandbox, and MCP decisions stay harness-owned). Phase 1 shipped
+the Codex dialect first per the plan's sequencing note; ACP is the Phase 2 wire.
 
 ## Phase 1 vs the approval seam
 
-The external path now calls `ctx.approval.requestExternal()` with the external principal and branded tool-call id. It records paired `external/approval-asked` and `external/approval-decided` events without fabricating a native Agent or turn. Missing answerers, disposal, abort, malformed decisions, tuple mismatches, an event session id that is not the owning Session id, and decisions after `external/session-ended` fail closed; the exact principal, session, and call id are required on both records. The ask-user permission bridge remains a separate host-owned path for provider permission prompts.
+Phase 1 answers every child permission prompt through a human via the ask-user
+interaction channel (there is no open DSH turn for an external session). Agent-driven
+external sessions — authorization as a subagent child and routing permission requests
+through `ctx.approval` with the audit pair — are a later phase; the two paths must not
+diverge in audit semantics, and the later route supersedes rather than forks them.
 
 ## Consequences
 
-A user can open a Codex-driven session in the opt-in Web GUI: streaming turns render in the same conversation UI and replay from the durable log, the mode picker lists Codex with its native model catalog, model switching drives the child, a rendered permission prompt gates the child with fail-closed dismissal/failure paths, and the child runs under the harness sandbox with session-close process-tree disposal. Codex mode does not mount the native DSH delegation or planning services. The assembled Loader, browser, transcript, and accessibility proof is pinned by the Web E2E; ACP, Claude Code, agent-started external sessions, and remote multi-user hosting remain outside this phase.
+A user can open a session driven by an external agent in this GUI: streaming turns
+render in the same conversation UI and replay from the durable log, the mode picker
+lists modes with per-provider model catalogs, model switching drives the child, a
+rendered permission prompt gates the child with fail-closed dismissal/failure paths,
+and the child runs under the harness sandbox with session-close process-tree
+disposal. Phase 1 ships acceptance criteria 1–4 of the proposed note; criterion 5
+(agent-started authorization + `ctx.approval` audit pair) is the later phase above.
 
-External events are log-only and `ignorable: true`, so replay stays correct across reload and unknown `external/*` on read does not corrupt it; the model-visible ⟺ logged rule holds because nothing external is model-visible in a parent session, and there is no parent-context effect. Streamed deltas are not durable. The pinned Codex fixture gates wire drift. External tool calls and results are committed as one bounded, exact call/result pair per branded call id and projected into the external transcript; malformed, wrong-name, duplicate, conflicting, unmatched, or ambiguous records are rejected by the session invariant or ignored by the defensive projection, and they remain outside parent-agent model context. The external approval audit pair likewise remains log-only and is not native turn or Agent state.
+External events are log-only and `ignorable: true`, so replay stays correct across
+reload and unknown `external/*` on read does not corrupt it; the model-visible ⟺
+logged rule holds because nothing external is model-visible in a parent session, and
+there is no parent-context effect. Streamed deltas are not durable. The pinned Codex
+fixture gates wire drift. Audit semantics must not diverge between the Phase 1
+ask-user channel and the later `ctx.approval` route, which supersedes rather than
+forks.
