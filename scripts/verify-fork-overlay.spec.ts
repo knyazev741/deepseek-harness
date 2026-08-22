@@ -75,7 +75,7 @@ function manifestYaml(upstreamCommit: string, path: string): string {
 upstreamCommit: ${upstreamCommit}
 entries:
   - id: fixture
-    kind: composition
+    kind: product-patch
     paths:
       - path: ${path}
         coverage: exact
@@ -88,6 +88,9 @@ entries:
         files:
           - tests/fixture.spec.ts
     retireWhen: upstream provides the fixture behavior
+    budget:
+      maxFiles: 1
+      maxChangedLines: 2
 `
 }
 

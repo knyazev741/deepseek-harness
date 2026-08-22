@@ -39,12 +39,13 @@ async function createRepository(scripts: Record<string, string>): Promise<{
 function makeEntry(id: string, verify: readonly VerificationTarget[]): OverlayEntry {
   return {
     id,
-    kind: 'composition',
+    kind: 'product-patch',
     paths: [{ path: 'changed.ts', coverage: 'exact' }],
     owner: 'packages/fork/fixture',
     agentNote: '.agents/notes/implemented/architecture/fixture.md',
     verify,
     retireWhen: 'upstream provides the fixture behavior',
+    budget: { maxFiles: 1, maxChangedLines: 2 },
   }
 }
 
