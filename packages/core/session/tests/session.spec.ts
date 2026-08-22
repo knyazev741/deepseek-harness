@@ -552,6 +552,32 @@ describe('Session', () => {
     expect(session.events).toHaveLength(1)
   })
 
+  it('rejects unknown symbol keys on append intents', () => {
+    const session = Session.create(SessionId('invalid-symbol-append-intent'))
+    const intent: Record<PropertyKey, unknown> = { ignorable: true }
+    intent[Symbol('unexpected')] = true
+
+    expect(() => (session.append as unknown as (type: string, data: unknown, intent: unknown) => unknown)(
+      'turn/start',
+      { turn: 1 },
+      intent,
+    )).toThrow(/invalid field "Symbol\(unexpected\)"/)
+    expect(session.events).toHaveLength(0)
+  })
+
+  it('rejects unknown non-enumerable keys on append intents', () => {
+    const session = Session.create(SessionId('invalid-non-enumerable-append-intent'))
+    const intent: Record<string, unknown> = { ignorable: true }
+    Object.defineProperty(intent, 'unexpected', { value: true, enumerable: false })
+
+    expect(() => (session.append as unknown as (type: string, data: unknown, intent: unknown) => unknown)(
+      'turn/start',
+      { turn: 1 },
+      intent,
+    )).toThrow(/invalid field "unexpected"/)
+    expect(session.events).toHaveLength(0)
+  })
+
   it('rejects an ignorable marker on a surface append at runtime', () => {
     const session = Session.create(SessionId('surface-ignorable-append'))
     expect(() => (session.append as unknown as (...args: unknown[]) => unknown)(

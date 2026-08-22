@@ -389,7 +389,8 @@ function validateAppendIntent(
     throw new Error(`session append intent for "${type}" must be a plain object`)
   }
   const record = intent
-  for (const key of Object.keys(record)) {
+  for (const key of Reflect.ownKeys(record)) {
+    const keyName = typeof key === 'symbol' ? String(key) : key
     if (isSurfaceEligibleType(type) && key === 'ignorable') {
       throw new Error(`session append intent for "${type}" cannot request ignorable`)
     }
@@ -397,10 +398,10 @@ function validateAppendIntent(
       ? key === 'surfaceOp' || key === 'sourceEventSeqs'
       : key === 'ignorable'
     if (!valid) {
-      if (key === 'surfaceOp' || key === 'sourceEventSeqs') {
-        throw new Error(`session event "${type}" is not surface-eligible and cannot carry ${key}`)
+      if (keyName === 'surfaceOp' || keyName === 'sourceEventSeqs') {
+        throw new Error(`session event "${type}" is not surface-eligible and cannot carry ${keyName}`)
       }
-      throw new Error(`session append intent for "${type}" has an invalid field "${key}"`)
+      throw new Error(`session append intent for "${type}" has an invalid field "${keyName}"`)
     }
   }
   if (isSurfaceEligibleType(type)) {
