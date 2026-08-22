@@ -600,6 +600,22 @@ export interface Config {
 
 Source: [`packages/e2b/e2b/src/index.ts:43`](../packages/e2b/e2b/src/index.ts)
 
+<a id="deepseek-aidsh-fork-llm-first-chunk-timeout"></a>
+
+## `@deepseek-ai/dsh-fork-llm-first-chunk-timeout`
+
+Requires: `llm`
+
+```ts config-catalog
+/** Configuration for the first result deadline. */
+export interface Config {
+  /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
+  readonly firstChunkIdleTimeoutMs?: number
+}
+```
+
+Source: [`packages/fork/llm-first-chunk-timeout/src/index.ts:19`](../packages/fork/llm-first-chunk-timeout/src/index.ts)
+
 <a id="deepseek-aidsh-fork-session-source"></a>
 
 ## `@deepseek-ai/dsh-fork-session-source`
