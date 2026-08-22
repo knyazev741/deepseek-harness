@@ -21,11 +21,21 @@ const REQUIRED_FEATURES = [
 ] as const
 
 const ALLOWED_DISPOSITIONS = ['preserved', 'adapted', 'upstreamed', 'retired', 'deferred'] as const
+const ALLOWED_SOURCE_COMMITS = [
+  '078d3db591',
+  'eb25108045',
+  '842170d111',
+  'cc565b1065',
+  '44c01788c1',
+  '3a1558b55e..72ff0d079c',
+  '3eb7008e09',
+] as const
 const ROOT_KEYS = ['schemaVersion', 'features'] as const
 const RECORD_KEYS = ['id', 'sourceCommits', 'requiredBehavior', 'evidence', 'disposition', 'replacement'] as const
 const TEST_FILE_SUFFIXES = ['.spec.ts', '.spec.tsx', '.e2e.ts', '.test.mjs'] as const
 
 type FeatureDisposition = (typeof ALLOWED_DISPOSITIONS)[number]
+type AllowedSourceCommit = (typeof ALLOWED_SOURCE_COMMITS)[number]
 
 type FeatureRecord = {
   readonly id: string
@@ -74,13 +84,18 @@ function nonEmptyString(value: unknown, label: string): string {
   return value
 }
 
+function isAllowedSourceCommit(value: string): value is AllowedSourceCommit {
+  return (ALLOWED_SOURCE_COMMITS as readonly string[]).includes(value)
+}
+
 function repositoryRelativeTestFile(value: unknown, label: string): string {
   const path = nonEmptyString(value, label)
   const hasGlobSyntax = ['*', '?', '[', ']', '{', '}'].some(character => path.includes(character))
   const hasAbsolutePrefix = path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:/.test(path)
+  const hasUriScheme = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(path)
   const hasTraversal = path.split('/').some(segment => segment === '..')
   const hasSupportedSuffix = TEST_FILE_SUFFIXES.some(suffix => path.endsWith(suffix))
-  if (hasGlobSyntax || hasAbsolutePrefix || path.includes('\\') || path.includes('\u0000')
+  if (hasGlobSyntax || hasAbsolutePrefix || hasUriScheme || path.includes('\\') || path.includes('\u0000')
     || hasTraversal || !hasSupportedSuffix) {
     throw new Error(`${label} must be an exact repository-relative test file without traversal or glob syntax`)
   }
@@ -96,9 +111,13 @@ function parseFeatureRecord(value: unknown, index: number): FeatureRecord {
   if (!Array.isArray(sourceCommitsValue) || sourceCommitsValue.length === 0) {
     throw new Error(`${label}.sourceCommits must contain at least one commit`)
   }
-  const sourceCommits = sourceCommitsValue.map((commit, commitIndex) => (
-    nonEmptyString(commit, `${label}.sourceCommits[${commitIndex}]`)
-  ))
+  const sourceCommits = sourceCommitsValue.map((commit, commitIndex) => {
+    const sourceCommit = nonEmptyString(commit, `${label}.sourceCommits[${commitIndex}]`)
+    if (!isAllowedSourceCommit(sourceCommit)) {
+      throw new Error(`${label}.sourceCommits[${commitIndex}] must be one of the allowed source commit labels`)
+    }
+    return sourceCommit
+  })
   const requiredBehavior = nonEmptyString(
     required(feature, 'requiredBehavior', label),
     `${label}.requiredBehavior`,
@@ -151,7 +170,7 @@ function validFeatureYaml(overrides = ''): string {
 features:
   - id: fixture
     sourceCommits:
-      - "0123456789"
+      - "3eb7008e09"
     requiredBehavior: A fixture behavior remains observable.
     evidence:
       - packages/fork/fixture/tests/fixture.spec.ts
@@ -165,6 +184,9 @@ describe('fork feature inventory schema', () => {
     const inventory = parseFeatureInventory(readFileSync(inventoryPath, 'utf8'))
 
     expect(inventory.features.map(feature => feature.id)).toEqual(REQUIRED_FEATURES)
+    expect(inventory.features.flatMap(feature => feature.sourceCommits).every(commit => (
+      (ALLOWED_SOURCE_COMMITS as readonly string[]).includes(commit)
+    ))).toBe(true)
     expect(inventory.features.slice(0, -1).every(feature => feature.disposition === 'adapted')).toBe(true)
     expect(inventory.features.at(-1)).toMatchObject({
       id: 'external-session-codex',
@@ -183,7 +205,7 @@ describe('fork feature inventory schema', () => {
   it('rejects duplicate feature ids', () => {
     const duplicate = `${validFeatureYaml()}  - id: fixture
     sourceCommits:
-      - "9876543210"
+      - "3eb7008e09"
     requiredBehavior: A second fixture behavior remains observable.
     evidence:
       - packages/fork/fixture/tests/second.spec.ts
@@ -213,6 +235,11 @@ describe('fork feature inventory schema', () => {
       .toThrow(/disposition.*one of/i)
   })
 
+  it('rejects source commit labels outside the closed set from the brief', () => {
+    expect(() => parseFeatureInventory(validFeatureYaml().replace('3eb7008e09', 'not-an-allowed-source')))
+      .toThrow(/sourceCommits.*allowed/i)
+  })
+
   it.each(['', '   '])('rejects empty observable behavior text %j', (requiredBehavior) => {
     expect(() => parseFeatureInventory(validFeatureYaml().replace(
       '    requiredBehavior: A fixture behavior remains observable.',
@@ -222,10 +249,10 @@ describe('fork feature inventory schema', () => {
 
   it('rejects an empty source commit list and empty source commit values', () => {
     expect(() => parseFeatureInventory(validFeatureYaml().replace(
-      '    sourceCommits:\n      - "0123456789"',
+      '    sourceCommits:\n      - "3eb7008e09"',
       '    sourceCommits: []',
     ))).toThrow(/sourceCommits.*at least one/i)
-    expect(() => parseFeatureInventory(validFeatureYaml().replace('      - "0123456789"', '      - ""')))
+    expect(() => parseFeatureInventory(validFeatureYaml().replace('      - "3eb7008e09"', '      - ""')))
       .toThrow(/sourceCommits.*non-empty/i)
   })
 
@@ -234,6 +261,8 @@ describe('fork feature inventory schema', () => {
     'packages/*/fixture.spec.ts',
     '/absolute/fixture.spec.ts',
     'C:/absolute/fixture.spec.ts',
+    'https://host/fixture.spec.ts',
+    'file:///tmp/fixture.spec.ts',
     'packages\\fixture.spec.ts',
     'packages/fixture/tests/fixture.txt',
     'packages/fixture/tests/',

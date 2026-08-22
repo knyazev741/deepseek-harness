@@ -81,7 +81,7 @@ features:
     replacement: A bounded product patch or upstream capability selected after the upstream audit.
   - id: external-session-generic
     sourceCommits:
-      - 3a1558b55e
+      - 3a1558b55e..72ff0d079c
     requiredBehavior: Host code can register and look up named external-session providers with disposer-owned lifecycle and no provider mounted by default.
     evidence:
       - packages/fork/external-session/tests/service.spec.ts
