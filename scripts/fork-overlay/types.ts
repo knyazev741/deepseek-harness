@@ -42,3 +42,36 @@ export interface OverlayManifest {
   readonly upstreamCommit: string
   readonly entries: readonly OverlayEntry[]
 }
+
+/** One changed path and its Git numstat facts. */
+export interface DiffEntry {
+  readonly status: 'A' | 'M' | 'D' | 'R' | 'C' | 'T'
+  readonly path: string
+  readonly oldPath?: string
+  readonly added: number
+  readonly removed: number
+  readonly binary: boolean
+}
+
+/** A deterministic failure found while classifying the overlay. */
+export interface OverlayDiagnostic {
+  readonly code:
+    | 'uncovered-path' | 'overlapping-coverage' | 'stale-entry'
+    | 'fork-owned-collision' | 'whole-package-patch' | 'budget-exceeded'
+    | 'invalid-verification-target' | 'upstream-commit-missing'
+  readonly message: string
+  readonly entryId?: string
+  readonly path?: string
+}
+
+/** Inputs needed to classify one candidate tree against an overlay manifest. */
+export interface ClassificationInput {
+  readonly manifest: OverlayManifest
+  readonly diffs: readonly DiffEntry[]
+  readonly upstreamPaths: ReadonlySet<string>
+}
+
+/** Classification diagnostics for one candidate tree. */
+export interface ClassificationResult {
+  readonly diagnostics: readonly OverlayDiagnostic[]
+}
