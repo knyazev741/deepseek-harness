@@ -1,0 +1,41 @@
+# Agent Note: Fork overlay manifest ownership and verification
+
+Status: implemented
+
+English | [中文](2026-08-22-fork-overlay-manifest.zh.md)
+
+## Problem
+
+Fork differences need durable ownership and bounded comparison against upstream. A Git diff alone does not say whether a path belongs to a fork plugin, composition, extension point, or unavoidable product behavior, and it cannot expose stale declarations or a patch that silently expands to an upstream package. Verification evidence also needs to be inspectable without allowing manifest data to execute arbitrary shell commands.
+
+## Decision
+
+`.fork/overlay.yaml` is a source-plane inventory of the fork difference. It records schema version 1, an immutable 40-hexadecimal upstream SHA in `upstreamCommit` used as the comparison parent, and entries with exact repository-relative path declarations. An `exact` declaration matches one path; a `tree` declaration matches the declared directory and descendants. Paths use no globs, traversal, absolute forms, or backslashes, and a tree declaration ends with `/`.
+
+The source-ownership classes are `fork-owned`, `composition`, `extension-patch`, and `product-patch`. `workflow` is an additional exact-path manifest kind for fork-owned workflow files, not a fifth source-ownership class. `fork-owned` paths must be absent from the upstream tree. Composition entries describe fork assembly around upstream packages; extension patches add a general upstream registration point while the behavior stays in a fork plugin; product patches record narrow upstream behavior changes with explicit budgets. Patch budgets limit files and changed lines, and each entry records an owner, Agent Note, structured verification targets, and a retirement condition.
+
+The classifier requires each changed path to have exactly one owner and fails on overlap or an uncovered path. It checks old and new paths of a rename separately for ownership, but counts the rename's Git numstat record once in both file and changed-line budgets. A binary change contributes one changed line, so binary content cannot bypass a budget. It fails on an upstream collision under a `fork-owned` path, an upstream-owned whole-package patch, a stale entry, or a budget overflow; a missing comparison commit and invalid verification target also fail verification.
+
+Verification targets are structured declarations: a non-empty repository `script` name or a list of supported Vitest test files. The verifier checks that the referenced package script or test files exist and satisfy repository-path and file rules; it never executes a declared target. Behavioral evidence remains in the referenced repository checks rather than in manifest parsing.
+
+Activation is deliberately deferred until the migrated tree is completely classified. The real `.fork/overlay.yaml` and the top-level CI aggregate appear together at that cutover; before then, the verifier accepts fixture manifests without requiring the default file.
+
+## Alternatives considered
+
+**Mirror branch.** A mirror branch duplicates upstream state and makes branch synchronization another source of truth. The immutable commit in the manifest gives each candidate a direct comparison parent while ordinary Git history remains authoritative.
+
+**Duplicate checked-in patch files.** Separate patch files can drift from the applied tree and create a second code representation. The manifest records ownership, paths, budgets, verification declarations, and retirement conditions while Git remains the code source of truth.
+
+**Wildcard or legacy class.** A wildcard or catch-all ownership class hides new paths and makes overlap and retirement ambiguous. Exact/tree declarations and the closed ownership vocabulary force every changed path into an explicit owner; `workflow` remains limited to exact workflow paths.
+
+**Verification shell commands.** Shell command strings would give repository data execution authority, make verification depend on shell behavior, and permit side effects. Structured script and Vitest declarations are checked for existence and never run by the verifier.
+
+**Activation against the unmigrated legacy diff.** Requiring the real manifest before the migrated tree is classified would encourage a wildcard, temporary class, or oversized budget to conceal existing differences. Activation waits for a complete classification so the default manifest and CI aggregate enforce the intended inventory from their first use.
+
+## Consequences
+
+The fork must classify every difference from the recorded upstream parent, and an upstream collision, overlap, uncovered path, stale entry, whole-package patch, invalid target, or budget overflow fails closed. This makes ownership drift visible during ordinary fork changes and upstream syncs.
+
+Patch budgets cannot be bypassed with renames or binary files, while exact/tree coverage keeps the ownership boundary reviewable. The manifest describes classification and verification declarations; it does not replace behavior tests, package checks, or assembled-product evidence.
+
+Target declarations are safe to inspect because the verifier does not execute them. The real manifest and top-level CI requirement remain absent until the migrated tree is completely classified, so current fixture checks do not assert an incomplete legacy inventory.
