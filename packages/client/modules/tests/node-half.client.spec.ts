@@ -7,8 +7,13 @@ import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { WebServer, WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { ClientModuleRegistry } from '../src/index.ts'
+import { renderIndexInjections, type WebServer, type WebRoute } from '@deepseek-ai/dsh-host-webserver'
+import * as modulesClient from '../src/client/index.ts'
+import { ClientModuleRegistry, bootInjections } from '../src/index.ts'
+import type { WebBootGraph } from '../src/client/index.ts'
+
+const MODULES_ID = '@deepseek-ai/dsh-client-modules'
+const RUNTIME_ID = '@deepseek-ai/dsh-client-runtime'
 
 let root: string | undefined
 
@@ -67,6 +72,88 @@ function constructWithRoute(packageNames: string[]): { service: ClientModuleRegi
 function construct(packageNames: string[]): ClientModuleRegistry {
   return constructWithRoute(packageNames).service
 }
+
+/** Execute the exact first inline script emitted by the Host boot rows. */
+function injectedFacade(graph: WebBootGraph): { html: string; target: ClientModuleLoaderTarget } {
+  const html = renderIndexInjections(
+    '<html><head></head><body><script type="module" src="/index.js"></script></body></html>',
+    bootInjections(graph),
+  )
+  const source = /<head><script>([\s\S]*?)<\/script>/.exec(html)?.[1]
+  if (source === undefined) throw new Error('missing injected ModuleLoader facade script')
+  const window: { __ModuleLoader__?: ClientModuleLoaderTarget } = {}
+  runInNewContext(source, { window })
+  if (window.__ModuleLoader__ === undefined) throw new Error('facade script did not install __ModuleLoader__')
+  return { html, target: window.__ModuleLoader__ }
+}
+
+const bootGraph = (): WebBootGraph => ({
+  rev: 'graph',
+  entries: [
+    { id: MODULES_ID, url: '/plugins/modules.js?rev=m', rev: 'm' },
+    { id: RUNTIME_ID, url: '/plugins/runtime.js?rev=r', rev: 'r' },
+  ],
+})
+
+describe('HTML bootstrap facade', () => {
+  it('precedes blocking preloads and the boot graph, then becomes the live registration target', async () => {
+    const graph = bootGraph()
+    const { html, target } = injectedFacade(graph)
+    const facadeAt = html.indexOf('window.__ModuleLoader__=')
+    const modulesAt = html.indexOf('<script src="/plugins/modules.js?rev=m"></script>')
+    const runtimeAt = html.indexOf('<script src="/plugins/runtime.js?rev=r"></script>')
+    const graphAt = html.indexOf('globalThis["__DSH_BOOT__"] = ')
+    const entryAt = html.indexOf('<script type="module" src="/index.js"></script>')
+    expect([facadeAt, modulesAt, runtimeAt, graphAt, entryAt]).toEqual([...new Set([
+      facadeAt, modulesAt, runtimeAt, graphAt, entryAt,
+    ])].sort((a, b) => a - b))
+
+    target.load({ id: MODULES_ID, factory: () => modulesClient })
+    target.load({ id: RUNTIME_ID, factory: () => ({ marker: 'runtime' }) })
+    const system = target.create({ boot: graph, staticModules: {} })
+
+    expect(target.mode).toBe('live')
+    expect(target.pendingQueue).toEqual([])
+    expect(system.manifest.rev).toBe('graph')
+    expect(await system.import(MODULES_ID)).toBe(modulesClient)
+    expect(await system.import(`${RUNTIME_ID}/client`)).toEqual({ marker: 'runtime' })
+    expect(() => target.create({ boot: graph, staticModules: {} }))
+      .toThrow('create called after module-system boot')
+  })
+
+  it('rejects a page that did not preload the modules bundle', () => {
+    const graph = bootGraph()
+    const { target } = injectedFacade(graph)
+    expect(() => target.create({ boot: graph, staticModules: {} }))
+      .toThrow(`HTML did not preload ${MODULES_ID}/client.js`)
+  })
+
+  it('rejects a bootstrap bundle with a runtime external', () => {
+    const graph = bootGraph()
+    const { target } = injectedFacade(graph)
+    target.load({
+      id: MODULES_ID,
+      factory: (require) => {
+        require('react')
+        return modulesClient
+      },
+    })
+    expect(() => target.create({ boot: graph, staticModules: {} }))
+      .toThrow(`${MODULES_ID}/client.js requested external "react"`)
+  })
+
+  it.each([
+    null,
+    { ...modulesClient, createClientModuleSystem: undefined },
+    { ...modulesClient, apply: undefined },
+  ])('rejects a bootstrap bundle without the complete module face', (exports) => {
+    const graph = bootGraph()
+    const { target } = injectedFacade(graph)
+    target.load({ id: MODULES_ID, factory: () => exports as unknown as Record<string, unknown> })
+    expect(() => target.create({ boot: graph, staticModules: {} }))
+      .toThrow(`${MODULES_ID}/client.js did not export the bootstrap module face`)
+  })
+})
 
 describe('client bundle activation', () => {
   it('allows sibling dsh roles', () => {

@@ -213,6 +213,17 @@ function bench(over?: BenchOptions) {
   }
 }
 
+/**
+ * Dispatch the native `beforeinput` the composer reads the pre-edit selection
+ * from. The DOM event carries no range for a textarea (`getTargetRanges()` is
+ * empty there), so the element's own selection plus `inputType` is the signal.
+ * The selection each gesture leaves is the engine-observed one: a delete over a
+ * selection reports that selection, a caret delete reports the bare caret.
+ */
+function beforeInput(el: HTMLTextAreaElement, inputType = 'insertText'): void {
+  el.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType }))
+}
+
 describe('image draft rail', () => {
   it('collects clipboard files while preserving text from a mixed paste', () => {
     const addImages = vi.fn(() => null)
@@ -1224,8 +1235,171 @@ describe('decorations', () => {
     const chip = view.container.querySelector('[data-decoration="chip"]')
     expect(chip?.textContent).toBe('@w1')
     expect(shell.snapshot.occurrences).toHaveLength(1)
-    // The draft carries exactly one placeholder char where the token was.
-    expect(shell.snapshot.draft).toBe('参考 \uFFFC 内容')
+    expect(shell.snapshot.draft).toBe('参考 @会话一 内容')
+    expect(shell.snapshot.occurrences[0]).toMatchObject({ offset: 3, length: 4 })
+  })
+
+  it('keeps the textarea glyph layer transparent when a structured reference becomes disabled', () => {
+    const { view, shell, session, textarea } = bench()
+    act(() => {
+      shell.setDraft('@w1')
+      shell.insertReference({
+        source: 'reference', ref: 'w1', label: '会话一', appearance: 'session', clipboardText: '@w1',
+      }, { start: 0, end: 3, draftRev: shell.snapshot.draftRev })
+      session.set(snapshotOf({ removed: true }))
+    })
+    const backdrop = view.container.querySelector('[data-input-backdrop]')
+    expect(textarea.disabled).toBe(true)
+    expect(backdrop?.getAttribute('data-disabled')).toBe('true')
+    expect(backdrop?.querySelector('[data-decoration="chip"] svg')).not.toBeNull()
+  })
+
+  it('Backspace and Delete remove a reference as one range at its boundaries', () => {
+    const reference = {
+      source: 'reference', ref: 'w1', label: '会话一', appearance: 'session' as const, clipboardText: '@w1',
+    }
+    const backspace = bench()
+    act(() => {
+      backspace.shell.setDraft('前 @w1 后')
+      backspace.shell.insertReference(
+        reference,
+        { start: 2, end: 5, draftRev: backspace.shell.snapshot.draftRev },
+      )
+    })
+    backspace.textarea.setSelectionRange(6, 6)
+    fireEvent.keyDown(backspace.textarea, { key: 'Backspace' })
+    expect(backspace.shell.snapshot).toMatchObject({ draft: '前  后', occurrences: [] })
+
+    const forwardDelete = bench()
+    act(() => {
+      forwardDelete.shell.setDraft('前 @w1 后')
+      forwardDelete.shell.insertReference(
+        reference,
+        { start: 2, end: 5, draftRev: forwardDelete.shell.snapshot.draftRev },
+      )
+    })
+    forwardDelete.textarea.setSelectionRange(2, 2)
+    fireEvent.keyDown(forwardDelete.textarea, { key: 'Delete' })
+    expect(forwardDelete.shell.snapshot).toMatchObject({ draft: '前  后', occurrences: [] })
+  })
+
+  it('typing the trigger char immediately before a reference keeps it structured', () => {
+    const { shell, textarea } = bench()
+    act(() => {
+      shell.setDraft('@w1')
+      shell.insertReference({
+        source: 'reference', ref: 'w1', label: '会话一', appearance: 'session', clipboardText: '@w1',
+      }, { start: 0, end: 3, draftRev: shell.snapshot.draftRev })
+    })
+    expect(shell.snapshot.draft).toBe('@会话一 ')
+    // The inserted char equals the reference's own leading trigger, so the two
+    // drafts alone cannot say whether it landed before or after that trigger.
+    textarea.setSelectionRange(0, 0)
+    act(() => {
+      beforeInput(textarea)
+      fireEvent.change(textarea, { target: { value: '@@会话一 ' } })
+    })
+    expect(shell.snapshot.draft).toBe('@@会话一 ')
+    expect(shell.snapshot.occurrences).toHaveLength(1)
+    expect(shell.snapshot.occurrences[0]).toMatchObject({ offset: 1, length: 4 })
+  })
+
+  it('a selection-replacing delete before a reference keeps it structured', () => {
+    const { shell, textarea } = bench()
+    act(() => {
+      shell.setDraft('@@w1')
+      shell.insertReference({
+        source: 'reference', ref: 'w1', label: '会话一', appearance: 'session', clipboardText: '@w1',
+      }, { start: 1, end: 4, draftRev: shell.snapshot.draftRev })
+    })
+    expect(shell.snapshot.draft).toBe('@@会话一 ')
+    textarea.setSelectionRange(0, 1)
+    act(() => {
+      beforeInput(textarea, 'deleteContentBackward')
+      fireEvent.change(textarea, { target: { value: '@会话一 ' } })
+    })
+    expect(shell.snapshot.draft).toBe('@会话一 ')
+    expect(shell.snapshot.occurrences).toHaveLength(1)
+    expect(shell.snapshot.occurrences[0]).toMatchObject({ offset: 0, length: 4 })
+  })
+
+  it('a caret Backspace before a reference keeps it structured', () => {
+    const { shell, textarea } = bench()
+    act(() => {
+      shell.setDraft('@@w1')
+      shell.insertReference({
+        source: 'reference', ref: 'w1', label: '会话一', appearance: 'session', clipboardText: '@w1',
+      }, { start: 1, end: 4, draftRev: shell.snapshot.draftRev })
+    })
+    expect(shell.snapshot.draft).toBe('@@会话一 ')
+    // A caret delete reports the bare caret, never the character it removes.
+    textarea.setSelectionRange(1, 1)
+    act(() => {
+      beforeInput(textarea, 'deleteContentBackward')
+      fireEvent.change(textarea, { target: { value: '@会话一 ' } })
+    })
+    expect(shell.snapshot.draft).toBe('@会话一 ')
+    expect(shell.snapshot.occurrences).toHaveLength(1)
+    expect(shell.snapshot.occurrences[0]).toMatchObject({ offset: 0, length: 4 })
+  })
+
+  it('a caret Delete before a reference keeps it structured', () => {
+    const { shell, textarea } = bench()
+    act(() => {
+      shell.setDraft('@@w1')
+      shell.insertReference({
+        source: 'reference', ref: 'w1', label: '会话一', appearance: 'session', clipboardText: '@w1',
+      }, { start: 1, end: 4, draftRev: shell.snapshot.draftRev })
+    })
+    textarea.setSelectionRange(0, 0)
+    act(() => {
+      beforeInput(textarea, 'deleteContentForward')
+      fireEvent.change(textarea, { target: { value: '@会话一 ' } })
+    })
+    expect(shell.snapshot.draft).toBe('@会话一 ')
+    expect(shell.snapshot.occurrences).toHaveLength(1)
+    expect(shell.snapshot.occurrences[0]).toMatchObject({ offset: 0, length: 4 })
+  })
+
+  it('a caret word delete before a reference keeps it structured', () => {
+    const { shell, textarea } = bench()
+    act(() => {
+      shell.setDraft('word @w1')
+      shell.insertReference({
+        source: 'reference', ref: 'w1', label: '会话一', appearance: 'session', clipboardText: '@w1',
+      }, { start: 5, end: 8, draftRev: shell.snapshot.draftRev })
+    })
+    expect(shell.snapshot.draft).toBe('word @会话一 ')
+    // One caret gesture can remove more than one character; the deleted span
+    // is whatever the draft lost, never a fixed step.
+    textarea.setSelectionRange(5, 5)
+    act(() => {
+      beforeInput(textarea, 'deleteWordBackward')
+      fireEvent.change(textarea, { target: { value: '@会话一 ' } })
+    })
+    expect(shell.snapshot.draft).toBe('@会话一 ')
+    expect(shell.snapshot.occurrences).toHaveLength(1)
+    expect(shell.snapshot.occurrences[0]).toMatchObject({ offset: 0, length: 4 })
+  })
+
+  it('copy and cut expand a partial reference selection to its structured range', () => {
+    const { shell, textarea } = bench()
+    act(() => {
+      shell.setDraft('前 @w1 后')
+      shell.insertReference({
+        source: 'reference', ref: 'w1', label: '会话一', appearance: 'session', clipboardText: '@w1',
+      }, { start: 2, end: 5, draftRev: shell.snapshot.draftRev })
+    })
+    const setData = vi.fn()
+    textarea.setSelectionRange(3, 4)
+    fireEvent.copy(textarea, { clipboardData: { setData } })
+    expect(setData).toHaveBeenCalledWith('text/plain', '@w1')
+    expect(shell.snapshot.draft).toBe('前 @会话一 后')
+
+    textarea.setSelectionRange(3, 4)
+    fireEvent.cut(textarea, { clipboardData: { setData } })
+    expect(setData).toHaveBeenLastCalledWith('text/plain', '@w1')
+    expect(shell.snapshot).toMatchObject({ draft: '前  后', occurrences: [] })
   })
 
   it('a lexicon-matched plain token renders the text-ref mark', () => {
@@ -1237,6 +1411,33 @@ describe('decorations', () => {
     // Editing the token out of match shape drops the decoration.
     act(() => { shell.setDraft('use /fixture-dem now') })
     expect(view.container.querySelector('[data-decoration="text-ref"]')).toBeNull()
+  })
+
+  it('a directory completion renders a folder glyph without changing its plain text', () => {
+    const { view, shell } = bench()
+    act(() => { shell.setDraft('see @src/components/') })
+    const mark = view.container.querySelector('[data-decoration="text-ref"]')
+    expect(mark?.textContent).toBe('@src/components/')
+    expect(mark?.querySelector('svg')).not.toBeNull()
+    expect(shell.snapshot.draft).toBe('see @src/components/')
+  })
+
+  it('a plain-text reference keeps its nodes while earlier text shifts its offset', () => {
+    const { view, textarea, shell } = bench()
+    act(() => { shell.setDraft('see @src/components/ here') })
+    const backdrop = view.container.querySelector('[data-input-backdrop]')!
+    const mark = backdrop.querySelector('[data-decoration="text-ref"]')!
+    const icon = mark.querySelector('svg')!
+    act(() => { fireEvent.change(textarea, { target: { value: 'X see @src/components/ here' } }) })
+    // Node identity, not text: an offset-derived key remounts the mark and its
+    // icon on every keystroke landing ahead of the range.
+    expect(backdrop.querySelector('[data-decoration="text-ref"]')).toBe(mark)
+    expect(icon.isConnected).toBe(true)
+    expect(mark.textContent).toBe('@src/components/')
+    // A token edited out of match shape still loses its decoration.
+    act(() => { fireEvent.change(textarea, { target: { value: 'X see X@src/components/ here' } }) })
+    expect(backdrop.querySelector('[data-decoration="text-ref"]')).toBeNull()
+    expect(shell.snapshot.draft).toBe('X see X@src/components/ here')
   })
 })
 

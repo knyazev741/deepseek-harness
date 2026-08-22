@@ -4,11 +4,18 @@
  * @module dsh-llm-pi-ai/context
  */
 
-import { CallId, contentHasImage, LlmError } from '@deepseek-ai/dsh-llm'
+import { CallId, contentHasImage, LlmError, offloadRequestImagesWithPolicy, requestImageHandleText } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, Message } from '@deepseek-ai/dsh-llm'
-import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
+import type {
+  AttachmentId,
+  AttachmentStore,
+  ImageAttachmentRef,
+  ImageRequestPolicy,
+  RequestImageAttachment,
+} from '@deepseek-ai/dsh-attachment'
 import type { Context as PiContext, ImageContent, Message as PiMessage, TextContent, Tool as PiTool } from '@earendil-works/pi-ai'
 import { toPiAssistant } from './replay.ts'
+import { DEFAULT_REQUEST_IMAGE_MAX_BYTES, DEFAULT_REQUEST_IMAGE_PIXEL_BUDGET } from './config.ts'
 
 /** Join the text blocks of a harness message. */
 function flattenText(message: Message): string {
@@ -28,7 +35,7 @@ function toolResultText(blocks: readonly ContentBlock[]): string {
 
 async function userContent(
   blocks: readonly ContentBlock[],
-  attachments: AttachmentStore,
+  requestImages: ReadonlyMap<AttachmentId, RequestImageAttachment>,
 ): Promise<string | (TextContent | ImageContent)[]> {
   const content: (TextContent | ImageContent)[] = []
   for (const block of blocks) {
@@ -37,17 +44,18 @@ async function userContent(
         if (block.text.length > 0) content.push({ type: 'text', text: block.text })
         break
       case 'image': {
-        const stored = await attachments.readImage(block.attachment)
+        const version = requestImages.get(block.attachment.attachmentId) as RequestImageAttachment
+        content.push({ type: 'text', text: requestImageHandleText(version) })
         content.push({
           type: 'image',
-          data: Buffer.from(stored.data).toString('base64'),
-          mimeType: stored.ref.mediaType,
+          data: Buffer.from(version.data).toString('base64'),
+          mimeType: version.mediaType,
         })
         break
       }
       case 'tool-result':
         {
-          const nested = await userContent(block.content, attachments)
+          const nested = await userContent(block.content, requestImages)
           if (typeof nested === 'string') {
             if (nested.length > 0) content.push({ type: 'text', text: nested })
           } else {
@@ -62,6 +70,35 @@ async function userContent(
   }
   if (content.every(block => block.type === 'text')) return content.map(block => block.text).join('')
   return content
+}
+
+function collectImageRefs(
+  blocks: readonly ContentBlock[],
+  refs: Map<AttachmentId, ImageAttachmentRef>,
+): void {
+  for (const block of blocks) {
+    if (block.type === 'image') refs.set(block.attachment.attachmentId, block.attachment)
+    else if (block.type === 'tool-result') collectImageRefs(block.content, refs)
+  }
+}
+
+async function prepareRequestImages(
+  messages: readonly Message[],
+  attachments: AttachmentStore,
+  policy: ImageRequestPolicy,
+  signal?: AbortSignal,
+): Promise<Map<AttachmentId, RequestImageAttachment>> {
+  const refs = new Map<AttachmentId, ImageAttachmentRef>()
+  for (const message of messages) collectImageRefs(message.content, refs)
+  const orderedRefs = [...refs.values()]
+  const prepared = await Promise.all(orderedRefs.map(
+    ref => attachments.readImageRequest(ref, policy, signal),
+  ))
+  const versions = new Map<AttachmentId, RequestImageAttachment>()
+  for (const [index, ref] of orderedRefs.entries()) {
+    versions.set(ref.attachmentId, prepared[index] as RequestImageAttachment)
+  }
+  return versions
 }
 
 function toolsOf(options: GenerateOptions): PiTool[] | undefined {
@@ -140,32 +177,57 @@ export function toPiContext(
  * @param options - the harness request; `options.system` maps to pi-ai's single `systemPrompt` slot.
  * @param attachments - durable byte resolver for image references.
  * @param onReplayDegrade - forwarded to {@link toPiAssistant} for each assistant message.
+ * @param maxRequestImageBytes - request-level bound on base64-encoded image payload; omission leaves every image in place.
+ * @param requestImagePolicy - route pixel and raw encoded-byte budgets.
  * @returns the asynchronously resolved pi-ai context.
  */
 export function toPiContext(
   options: GenerateOptions,
   attachments: AttachmentStore,
   onReplayDegrade?: (reason: string) => void,
+  maxRequestImageBytes?: number,
+  requestImagePolicy?: ImageRequestPolicy,
 ): Promise<PiContext>
 export function toPiContext(
   options: GenerateOptions,
   attachments?: AttachmentStore,
   onReplayDegrade?: (reason: string) => void,
+  maxRequestImageBytes?: number,
+  requestImagePolicy?: ImageRequestPolicy,
 ): PiContext | Promise<PiContext> {
   return attachments === undefined
     ? textOnlyContext(options, onReplayDegrade)
-    : toPiContextWithImages(options, attachments, onReplayDegrade)
+    : toPiContextWithImages(options, attachments, onReplayDegrade, maxRequestImageBytes, requestImagePolicy)
 }
 
 async function toPiContextWithImages(
   options: GenerateOptions,
   attachments: AttachmentStore,
   onReplayDegrade?: (reason: string) => void,
+  maxRequestImageBytes?: number,
+  requestImagePolicy: ImageRequestPolicy = {
+    maxPixels: DEFAULT_REQUEST_IMAGE_PIXEL_BUDGET,
+    maxBytes: DEFAULT_REQUEST_IMAGE_MAX_BYTES,
+  },
 ): Promise<PiContext> {
+  assertSupportedImageRoles(options.messages)
+  const requestMessages = offloadRequestImagesWithPolicy(options.messages, {
+    representation: 'base64',
+    ...maxRequestImageBytes === undefined ? {} : { maxBytes: maxRequestImageBytes },
+    byteQuantum: 1,
+    byteLength: ref => Math.min(ref.bytes, requestImagePolicy.maxBytes),
+  })
+  const requestImages = await prepareRequestImages(requestMessages, attachments, requestImagePolicy, options.signal)
+  const exactMessages = offloadRequestImagesWithPolicy(requestMessages, {
+    representation: 'base64',
+    ...maxRequestImageBytes === undefined ? {} : { maxBytes: maxRequestImageBytes },
+    byteQuantum: 1,
+    byteLength: ref => (requestImages.get(ref.attachmentId) as RequestImageAttachment).bytes,
+  })
   const toolNames = new Map<CallId, string>()
   const messages: PiMessage[] = []
 
-  for (const message of options.messages) {
+  for (const message of exactMessages) {
     if (message.role === 'system') {
       if (contentHasImage(message.content)) {
         throw new LlmError('pi-ai cannot represent an image in an in-history system message', 'UNSUPPORTED_CONTENT')
@@ -186,13 +248,15 @@ async function toPiContextWithImages(
     }
     // user role: text + tool results (each result becomes its own message).
     const regular = message.content.filter(block => block.type !== 'tool-result')
-    const content = await userContent(regular, attachments)
-    const results = message.content.filter(block => block.type === 'tool-result')
+    const content = await userContent(regular, requestImages)
+    const results = message.content.filter((block): block is Extract<ContentBlock, { type: 'tool-result' }> => (
+      block.type === 'tool-result'
+    ))
     if (content.length > 0 || results.length === 0) {
       messages.push({ role: 'user', content, timestamp: 0 })
     }
     for (const result of results) {
-      const resultContent = await userContent(result.content, attachments)
+      const resultContent = await userContent(result.content, requestImages)
       messages.push({
         role: 'toolResult',
         toolCallId: result.toolCallId,

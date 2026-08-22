@@ -50,7 +50,7 @@ export interface CoveragePartitionCoordinatorOptions {
   root: string
   /** Number of concurrent single-worker Vitest processes. */
   partitions: number
-  /** pnpm entrypoint from `npm_execpath` (JavaScript launcher or native executable). */
+  /** pnpm JavaScript or executable entrypoint from `npm_execpath`. */
   pnpmEntrypoint: string
   /** Additional arguments shared by every partition. */
   vitestArgs?: string[]

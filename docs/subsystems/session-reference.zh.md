@@ -72,7 +72,38 @@ type SessionReferenceErrorCode =
 
 ## Cordis API
 
-Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxfilereferences--filereferenceservice-abstract-seam"></a>
+
+### `ctx.fileReferences` — `FileReferenceService` (abstract seam)
+
+Host capability for cancellable file-reference discovery.
+
+```ts cordis-catalog
+/**
+ * List file and directory candidates for one agent's working directory.
+ * @param agent - target agent whose session cwd bounds discovery.
+ * @param query - path text following `@` or `@"`.
+ * @param signal - caller cancellation.
+ * @returns deterministic path-only candidates.
+ */
+abstract list( agent: Agent, query: string, signal: AbortSignal, ): Promise<FileReferenceCandidate[]>
+
+/**
+ * Remote face of {@link list}; the decorator cannot mark the abstract
+ * member, so this concrete adapter carries the identical contract.
+ * @param agent - target agent whose session cwd bounds discovery.
+ * @param query - path text following `@` or `@"`.
+ * @param signal - caller cancellation.
+ * @returns deterministic path-only candidates.
+ */
+@Remote('list') remoteExportList( agent: Agent, query: string, signal: AbortSignal, ): Promise<FileReferenceCandidate[]>
+```
+
+Types: [Agent](core.zh.md)
+
+Source: [`packages/context/file-reference/src/index.ts`](../../packages/context/file-reference/src/index.ts)
 
 <a id="ctxsessionreferenceresolver--sessionreferenceresolver"></a>
 
@@ -102,7 +133,7 @@ async listCandidates( agent: Agent, query: string = '', limit: number = this.con
 async prepare( agent: Agent, content: ContentBlock[], references: SessionReferenceInput[], signal?: AbortSignal, ): Promise<PreparedReferencedMessage>
 ```
 
-Types: [Agent](core.md) · [ContentBlock](llm-streaming.md)
+Types: [Agent](core.zh.md) · [ContentBlock](llm-streaming.zh.md)
 
-Source: [`packages/context/session-reference/src/index.ts:70`](../../packages/context/session-reference/src/index.ts)
+Source: [`packages/context/session-reference/src/index.ts`](../../packages/context/session-reference/src/index.ts)
 <!-- END GENERATED cordis-surface -->

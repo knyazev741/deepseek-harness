@@ -5,11 +5,11 @@
 
 [English](persistence-catalog.md) | 中文
 
-会话持久事件日志中可能出现的所有事件类型：完整持久化的 `SessionEvent` 信封，以及可通过合并扩展的 `SessionEventMap` 中的每个成员，包括 `@deepseek-ai/dsh-session` 所属的词汇和本仓库中每个插件对 `@deepseek-ai/dsh-session/types` 的声明合并，并附有源 JSDoc、完整 payload 声明、surface 标记和声明位置。本文档是 [session.md](subsystems/session.md)（surface 排序与 `deriveMessages()` 投影）、[persistence.md](subsystems/persistence.md)（如何让日志持久化）和 [session.md](subsystems/session.md#cordis-surface) 中生成区域（实时总线接线；日志事件**不是** cordis 事件，它通过唯一的 `session/event` emit 到达监听器）的补充。
+会话持久事件日志中可能出现的所有事件类型：完整持久化的 `SessionEvent` 信封，以及可通过合并扩展的 `SessionEventMap` 中的每个成员，包括 `@deepseek-ai/dsh-session` 所属的词汇和本仓库中每个插件对 `@deepseek-ai/dsh-session/types` 的声明合并，并附有源 JSDoc、完整 payload 声明、surface 标记和声明位置。本文档是 [session.md](subsystems/session.zh.md)（surface 排序与 `deriveMessages()` 投影）、[persistence.md](subsystems/persistence.zh.md)（如何让日志持久化）和 [session.md](subsystems/session.zh.md#cordis-surface) 中生成区域（实时总线接线；日志事件**不是** cordis 事件，它通过唯一的 `session/event` emit 到达监听器）的补充。
 
 英文源文件根据源码生成（`scripts/gen-persistence-catalog.ts`），并由 `pnpm run verify-persistence-catalog`（`doc-sync`（文档同步门禁）的一部分）验证新鲜度；本中文文件作为经评审对侧通过双语配对维护。声明块保留源码声明和嵌套属性的 JSDoc，只移除其所在接口／模块带来的缩进，并使用 `ts persistence-catalog` 围栏（doc-typecheck 会跳过这些围栏，因为声明引用了其所属模块中的类型）。payload 中的类型名称会链接到记录该类型的页面。参见 [persistence-log-catalog Agent Note](../.agents/notes/archived/process/2026-07-04-persistence-log-catalog.md)。
 
-以下信封声明组合了每个事件的 `type`、单调递增的 `seq`、以 epoch 毫秒表示的 `time`、`data`、可选的未知类型跳过标记 `ignorable`，以及条件字段 `surfaceOp`／`sourceEventSeqs`。**surface** 表示 `SurfaceEventType` 成员：它会生成一条 LLM（大语言模型）消息，并声明该事件如何加入 surface 列表。**log-only** 表示其他所有事件：这类记录可持久化、可回放，但不参与派生历史。每个 payload 均可进行 JSON 序列化（在 `Session.append` 处强制执行），整个格式固定为 `SESSION_FORMAT_VERSION = 0`：这是预发布格式，不暗示任何兼容性（参见[版本立场](subsystems/persistence.md)）。范围仅限本仓库中的包；下游插件可以继续合并其他事件类型，而这些类型按设计不属于本目录。
+以下信封声明组合了每个事件的 `type`、单调递增的 `seq`、以 epoch 毫秒表示的 `time`、`data`、可选的未知类型跳过标记 `ignorable`，以及条件字段 `surfaceOp`／`sourceEventSeqs`。**surface** 表示 `SurfaceEventType` 成员：它会生成一条 LLM（大语言模型）消息，并声明该事件如何加入 surface 列表。**log-only** 表示其他所有事件：这类记录可持久化、可回放，但不参与派生历史。每个 payload 均可进行 JSON 序列化（在 `Session.append` 处强制执行），整个格式固定为 `SESSION_FORMAT_VERSION = 0`：这是预发布格式，不暗示任何兼容性（参见[版本立场](subsystems/persistence.zh.md)）。范围仅限本仓库中的包；下游插件可以继续合并其他事件类型，而这些类型按设计不属于本目录。
 
 ## 事件信封
 
@@ -160,7 +160,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }
 ```
 
-类型：[CallId](subsystems/core.md)
+类型：[CallId](subsystems/core.zh.md)
 
 来源：[`packages/interaction/user-approval/src/index.ts:44`](../packages/interaction/user-approval/src/index.ts)
 
@@ -215,7 +215,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'assistant/chunk': { turn: number; step: number; chunk: StreamChunk }
 ```
 
-类型：[StreamChunk](subsystems/llm-streaming.md)
+类型：[StreamChunk](subsystems/llm-streaming.zh.md)
 
 来源：[`packages/core/session/src/types.ts:266`](../packages/core/session/src/types.ts)
 
@@ -233,7 +233,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'assistant/message': { turn: number; step: number; message: AssistantMessage; usage?: TokenUsage }
 ```
 
-类型：[TokenUsage](subsystems/llm-streaming.md)
+类型：[TokenUsage](subsystems/llm-streaming.zh.md)
 
 来源：[`packages/core/session/src/types.ts:273`](../packages/core/session/src/types.ts)
 
@@ -387,9 +387,153 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 )
 ```
 
-类型：[ContentBlock](subsystems/core.md) · [TokenUsage](subsystems/llm-streaming.md)
+类型：[ContentBlock](subsystems/core.zh.md) · [TokenUsage](subsystems/llm-streaming.zh.md)
 
 来源：[`packages/compaction/compaction/src/types.ts:33`](../packages/compaction/compaction/src/types.ts)
+
+### `external/*`
+
+<a id="externalcompaction-noticed--log-only"></a>
+
+#### `external/compaction-noticed` — log-only
+
+```ts persistence-catalog
+/**
+ * The external agent performed a compaction; `notice` is its human-visible
+ * summary text. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/compaction-noticed': ExternalCompactionNoticedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:70`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalmessage-added--log-only"></a>
+
+#### `external/message-added` — log-only
+
+```ts persistence-catalog
+/**
+ * One committed message in turn `turnId` — committed units only, never a
+ * live delta. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/message-added': ExternalMessageAddedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:44`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalmodel-switched--log-only"></a>
+
+#### `external/model-switched` — log-only
+
+```ts persistence-catalog
+/**
+ * The external session switched its live model to `model`. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/model-switched': ExternalModelSwitchedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:65`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalpermission-asked--log-only"></a>
+
+#### `external/permission-asked` — log-only
+
+```ts persistence-catalog
+/**
+ * A permission question posed to the human. `askId` pairs it with the
+ * `external/permission-decided` that follows. Log-only `ignorable: true`;
+ * not a `SurfaceEventType`.
+ */
+'external/permission-asked': ExternalPermissionAskedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:55`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalpermission-decided--log-only"></a>
+
+#### `external/permission-decided` — log-only
+
+```ts persistence-catalog
+/**
+ * The outcome of a prior `external/permission-asked` with the same
+ * `askId`. Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/permission-decided': ExternalPermissionDecidedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:60`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalsession-ended--log-only"></a>
+
+#### `external/session-ended` — log-only
+
+```ts persistence-catalog
+/**
+ * The external session ended with a stop reason. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/session-ended': ExternalSessionEndedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:80`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalsession-started--log-only"></a>
+
+#### `external/session-started` — log-only
+
+```ts persistence-catalog
+/**
+ * A live external agent session opened on `provider` in `cwd`, optionally
+ * starting on `model`. Log-only `ignorable: true`; not a
+ * `SurfaceEventType`. Standalone: the bridge appends it before any turn.
+ */
+'external/session-started': ExternalSessionStartedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:34`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externaltool-activity--log-only"></a>
+
+#### `external/tool-activity` — log-only
+
+```ts persistence-catalog
+/**
+ * One tool activity (call, update, or result) in turn `turnId`. Log-only
+ * `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/tool-activity': ExternalToolActivityData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:49`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalturn-ended--log-only"></a>
+
+#### `external/turn-ended` — log-only
+
+```ts persistence-catalog
+/**
+ * Turn `turnId` ended with a stop reason. Log-only `ignorable: true`; not
+ * a `SurfaceEventType`.
+ */
+'external/turn-ended': ExternalTurnEndedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:75`](../packages/session/session-projection/src/external-transcript.ts)
+
+<a id="externalturn-started--log-only"></a>
+
+#### `external/turn-started` — log-only
+
+```ts persistence-catalog
+/**
+ * One external turn opened, identified by the provider-issued `turnId`.
+ * Log-only `ignorable: true`; not a `SurfaceEventType`.
+ */
+'external/turn-started': ExternalTurnStartedData
+```
+
+Source: [`packages/session/session-projection/src/external-transcript.ts:39`](../packages/session/session-projection/src/external-transcript.ts)
 
 ### `feedback/*`
 
@@ -598,7 +742,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'schedule/change': ScheduleChange
 ```
 
-类型：[ScheduleChange](subsystems/schedule.md)
+类型：[ScheduleChange](subsystems/schedule.zh.md)
 
 来源：[`packages/schedule/schedule/src/types.ts:219`](../packages/schedule/schedule/src/types.ts)
 
@@ -648,7 +792,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'session/title': SessionTitleEventData
 ```
 
-类型：[SessionTitleEventData](subsystems/session-title.md)
+类型：[SessionTitleEventData](subsystems/session-title.zh.md)
 
 来源：[`packages/session/session-title/src/index.ts:100`](../packages/session/session-title/src/index.ts)
 
@@ -661,7 +805,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'session/title-llm-request': SessionTitleLlmRequestEventData
 ```
 
-类型：[SessionTitleLlmRequestEventData](subsystems/session-title.md)
+类型：[SessionTitleLlmRequestEventData](subsystems/session-title.zh.md)
 
 来源：[`packages/session/session-title-llm/src/index.ts:43`](../packages/session/session-title-llm/src/index.ts)
 
@@ -708,6 +852,65 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/subagent/subagent/src/descriptor.ts:37`](../packages/subagent/subagent/src/descriptor.ts)
 
+### `team/*`
+
+<a id="teammember--log-only"></a>
+
+#### `team/member` — log-only
+
+```ts persistence-catalog
+/** Whole teammate lifecycle value, stored only in the Team Lead Session. */
+'team/member': { version: 1; teamId: TeamId; member: TeamMemberSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md) · [TeamMemberSnapshot](subsystems/agent-team.zh.md)
+
+来源：[`packages/experimental/agent-team/src/types.ts:206`](../packages/experimental/agent-team/src/types.ts)
+
+<a id="teammessagedelivered--log-only"></a>
+
+#### `team/message/delivered` — log-only
+
+```ts persistence-catalog
+/** Durable acknowledgement that the target Session recorded the message. */
+'team/message/delivered': {
+  version: 1
+  teamId: TeamId
+  messageId: TeamMessageId
+  targetId: SessionId
+}
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md) · [TeamMessageId](subsystems/agent-team.zh.md)
+
+来源：[`packages/experimental/agent-team/src/types.ts:212`](../packages/experimental/agent-team/src/types.ts)
+
+<a id="teammessagequeued--log-only"></a>
+
+#### `team/message/queued` — log-only
+
+```ts persistence-catalog
+/** Durable mailbox enqueue, stored before delivery is attempted. */
+'team/message/queued': { version: 1; teamId: TeamId; message: TeamMessageSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md) · [TeamMessageSnapshot](subsystems/agent-team.zh.md)
+
+来源：[`packages/experimental/agent-team/src/types.ts:210`](../packages/experimental/agent-team/src/types.ts)
+
+<a id="teamtask--log-only"></a>
+
+#### `team/task` — log-only
+
+```ts persistence-catalog
+/** Whole shared-task value, stored only in the Team Lead Session. */
+'team/task': { version: 1; teamId: TeamId; task: TeamTaskSnapshot }
+```
+
+类型：[TeamId](subsystems/agent-team.zh.md) · [TeamTaskSnapshot](subsystems/agent-team.zh.md)
+
+来源：[`packages/experimental/agent-team/src/types.ts:208`](../packages/experimental/agent-team/src/types.ts)
+
 ### `todo/*`
 
 <a id="todowrite--log-only"></a>
@@ -719,7 +922,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'todo/write': { todos: TodoItem[] }
 ```
 
-类型：[TodoItem](subsystems/session.md)
+类型：[TodoItem](subsystems/session.zh.md)
 
 来源：[`packages/core/session/src/types.ts:299`](../packages/core/session/src/types.ts)
 
@@ -738,7 +941,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'tool/call': { turn: number; step: number; callId: CallId; name: string; arguments: string }
 ```
 
-类型：[CallId](subsystems/core.md)
+类型：[CallId](subsystems/core.zh.md)
 
 来源：[`packages/core/session/src/types.ts:279`](../packages/core/session/src/types.ts)
 
@@ -893,7 +1096,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'turn/end': { turn: number; reason: TurnEndReason }
 ```
 
-类型：[TurnEndReason](subsystems/session.md)
+类型：[TurnEndReason](subsystems/session.zh.md)
 
 来源：[`packages/core/session/src/types.ts:252`](../packages/core/session/src/types.ts)
 

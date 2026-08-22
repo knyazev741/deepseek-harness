@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-15-client-shells-and-dynamic-packages.md
 2026-08-15-client-shells-and-dynamic-packages.md: f9666fd9e7861e80fc4f14bf45082f2d3bbd2b50
-2026-08-15-client-shells-and-dynamic-packages.zh.md: a7f2c5809557c9ce72b6a048f93190ccb90d15b7
+2026-08-15-client-shells-and-dynamic-packages.zh.md: eb3e685e5622d2e95bee2202f2462d676ef91d9b

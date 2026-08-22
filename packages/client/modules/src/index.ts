@@ -2,10 +2,11 @@
  * Node half of the client module system (`dsh.client` dual-face package): scans
  * the host Loader's entries for packages declaring `dsh.client`, composes the
  * `window.__DSH_BOOT__` entry graph (wire single source: {@link WebBootEntry}
- * in `./client/manifest.ts`), serves `/plugins/<id>/client.js` and its source
- * map, taps the index render to inject the boot manifest, and provides the
- * `clientModuleHost` service (the HMR node half's registration/notification
- * face).
+ * in `./client/manifest.ts`) in module-graph order, serves
+ * `/plugins/<id>/client.js` and its source map, contributes the boot manifest
+ * plus the parser-blocking bootstrap preloads to the webserver's index
+ * injection table, and provides the `clientModuleHost` service (the HMR node
+ * half's registration/notification face).
  *
  * Scanning is incremental per package — there is no full-rescan code path.
  * Every cordis `internal/plugin` emission (fiber construction/disposal) marks
@@ -29,7 +30,8 @@ import { dirname, join } from 'node:path'
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
-import type {} from '@deepseek-ai/dsh-host-webserver'
+import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
+import { stripClientSuffix } from './client/manifest.ts'
 import type { WebBootEntry, WebBootGraph } from './client/manifest.ts'
 
 export type {
@@ -158,25 +160,105 @@ function graphRow(id: string, rev: string, injectEdges: string[] | undefined, im
 }
 
 /**
- * Inject the boot entry graph into index.html: `window.__DSH_BOOT__` as the
- * first script in <head> (before the shell bundle reads it). `<` is escaped in
- * the JSON so plugin-controlled strings cannot break out of the script element.
- * @param html - the index.html source.
- * @param graph - the composed entry graph.
- * @returns the html with the graph script injected.
+ * Order composed rows so every requested dynamic package precedes its
+ * consumers. An `external` specifier is either the package row it names
+ * (`<pkg>/client` aliases the bare package) or a static-table name that adds no
+ * graph edge.
+ * @param entries - composed rows in scan order.
+ * @returns the same rows reordered; scan order breaks every tie.
+ * @throws {Error} when a row requests itself or when the module graph has a
+ * cycle; the message lists the packages on it.
  */
-export function injectBootManifest(html: string, graph: WebBootGraph): string {
-  const json = JSON.stringify(graph).replaceAll('<', '\\u003c')
-  const script = `<script>window.__DSH_BOOT__ = ${json}</script>`
-  const head = html.indexOf('<head>')
-  if (head !== -1) return `${html.slice(0, head + 6)}${script}${html.slice(head + 6)}`
-  // Headless fixture pages may lack <head>; prepending keeps the read-before-shell ordering.
-  return `${script}${html}`
+export function orderByModuleGraph(entries: readonly WebBootEntry[]): WebBootEntry[] {
+  const rowsById = new Map<string, WebBootEntry>()
+  for (const entry of entries) rowsById.set(entry.id, entry)
+  const ordered: WebBootEntry[] = []
+  const placed = new Set<string>()
+  const open: string[] = []
+  const visit = (entry: WebBootEntry): void => {
+    if (placed.has(entry.id)) return
+    const cycleStart = open.indexOf(entry.id)
+    if (cycleStart !== -1) {
+      throw new Error(
+        `client-modules: module graph cycle ${[...open.slice(cycleStart), entry.id].join(' -> ')} `
+        + '— a requested package row must precede its consumers, and factory-form CJS cannot deliver partial exports',
+      )
+    }
+    open.push(entry.id)
+    for (const name of entry.external ?? []) {
+      const dependency = rowsById.get(name) ?? rowsById.get(stripClientSuffix(name))
+      if (dependency === entry) {
+        throw new Error(
+          `client-modules: "${entry.id}" requests module "${name}" that it answers itself `
+          + '— a row must not declare its own package in dsh.client.external',
+        )
+      }
+      if (dependency !== undefined) visit(dependency)
+    }
+    open.pop()
+    placed.add(entry.id)
+    ordered.push(entry)
+  }
+  for (const entry of entries) visit(entry)
+  return ordered
+}
+
+/** Bootstrap package whose ordinary client bundle supplies the module-system implementation. */
+const CLIENT_MODULES_ID = '@deepseek-ai/dsh-client-modules'
+
+/** Dynamic package whose ordinary client bundle must be registered before plugin boot starts. */
+const CLIENT_RUNTIME_ID = '@deepseek-ai/dsh-client-runtime'
+
+/** Ordinary dynamic bundles the HTML parser executes before the Vite shell. */
+const PARSER_PRELOAD_IDS = [CLIENT_MODULES_ID, CLIENT_RUNTIME_ID] as const
+
+/**
+ * The boot protocol as index injection rows. The inline registration queue
+ * precedes blocking classic scripts for modules' and runtime's ordinary
+ * `lib/client.js` artifacts. Its `create()` method materializes the modules
+ * bundle, delegates construction to that bundle, and leaves the same facade
+ * in live-registration mode. The graph global follows before the shell reads
+ * it.
+ * @param graph - the composed entry graph.
+ * @returns head rows in execution order: queue script, preload scripts, graph global.
+ */
+export function bootInjections(graph: WebBootGraph): IndexInjection[] {
+  const bootstrapId = JSON.stringify(CLIENT_MODULES_ID)
+  const queue = `(()=>{
+const pendingQueue=[]
+window.__ModuleLoader__={
+  mode:"queue",
+  pendingQueue,
+  load(registration){pendingQueue.push(registration)},
+  create(options){
+    if(this.mode!=="queue")throw new Error("client-modules: window.__ModuleLoader__.create called after module-system boot")
+    const index=pendingQueue.findIndex(registration=>registration.id===${bootstrapId})
+    const registration=pendingQueue[index]
+    if(registration===undefined)throw new Error("client-modules: HTML did not preload ${CLIENT_MODULES_ID}/client.js")
+    pendingQueue.splice(index,1)
+    const exports=registration.factory(specifier=>{
+      throw new Error('client-modules: ${CLIENT_MODULES_ID}/client.js requested external "'+specifier+'" before the module system existed')
+    })
+    if(typeof exports!=="object"||exports===null||typeof exports.createClientModuleSystem!=="function"||typeof exports.apply!=="function"){
+      throw new Error("client-modules: ${CLIENT_MODULES_ID}/client.js did not export the bootstrap module face")
+    }
+    return exports.createClientModuleSystem(this,{id:registration.id,exports},options)
+  }
+}
+})()`
+  const preload = PARSER_PRELOAD_IDS.map(id => graph.entries.find(entry => entry.id === id))
+    .filter((entry): entry is WebBootEntry => entry !== undefined)
+    .map((entry): IndexInjection => ({ kind: 'script-src', placement: 'head', src: entry.url }))
+  return [
+    { kind: 'script', placement: 'head', text: queue },
+    ...preload,
+    { kind: 'global', name: '__DSH_BOOT__', value: graph },
+  ]
 }
 
 /**
  * The web plugin table service: incremental `dsh.client` scan + wire composition
- * + bundle route + index tap. Construction runs the activation scan
+ * + bundle route + index injection rows. Construction runs the activation scan
  * synchronously — a malformed declaration or missing bundle among the
  * already-loaded entries aggregates into one loud throw (FAILED fiber; the
  * boot activation audit reports it).
@@ -242,10 +324,9 @@ export class ClientModuleRegistry extends Service {
       () => ctx.webServer.register({ kind: 'prefix', path: '/plugins', handler: this.serveBundle }),
       'client-modules: bundle route',
     )
-    ctx.effect(
-      () => ctx.webServer.tapIndex(html => injectBootManifest(html, this.composed)),
-      'client-modules: boot manifest injection',
-    )
+    ctx.on('webserver/index-inject', (table) => {
+      table.push(...bootInjections(this.composed))
+    })
   }
 
   /**

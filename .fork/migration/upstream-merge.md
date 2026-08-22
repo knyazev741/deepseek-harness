@@ -1,0 +1,213 @@
+# Upstream migration merge checkpoint
+
+## Immutable baseline
+
+- START_SHA: `a38d96793e6a11a6de61a158233aade6c45bf6ca`
+- Recovery tag: `fork-overlay-recovery-2026-08-22`; target: `a38d96793e6a11a6de61a158233aade6c45bf6ca`
+- Selected upstream SHA: `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
+- Exact merge command: `git merge --no-commit --no-ff upstream/master`
+- Merge-side preference: none.
+- The merge begins from a clean worktree at START_SHA. The captured post-merge status contains 2,409 status entries; 182 entries are unmerged below. All other entries are automatically merged upstream changes and remain in the staged merge result.
+
+## Captured pre-resolution status and conflict inventory
+
+The following is the complete unmerged portion of the captured `git status --short` output immediately after the normal merge. The two-letter status is the status recorded before any conflict resolution.
+
+```text
+UU .agents/notes/implemented/architecture/2026-08-15-client-shells-and-dynamic-packages.i18n.yaml
+UU .github/workflows/ci.yml
+UU README.i18n.yaml
+UU apps/web/tests/assembled-boot.ts
+UU docs/architecture.i18n.yaml
+UU docs/architecture.zh.md
+UU docs/config-catalog.i18n.yaml
+UU docs/config-catalog.md
+UU docs/config-catalog.zh.md
+UU docs/development.i18n.yaml
+UU docs/development.zh.md
+UU docs/event-producer-consumer.i18n.yaml
+UU docs/event-producer-consumer.md
+UU docs/event-producer-consumer.zh.md
+UU docs/i18n/README.i18n.yaml
+UU docs/module-graph.i18n.yaml
+UU docs/module-graph.md
+UU docs/module-graph.zh.md
+UU docs/persistence-catalog.i18n.yaml
+UU docs/persistence-catalog.zh.md
+UU docs/subsystems/README.i18n.yaml
+UU docs/subsystems/README.zh.md
+UU docs/subsystems/attachment.i18n.yaml
+UU docs/subsystems/attachment.md
+UU docs/subsystems/attachment.zh.md
+UU docs/subsystems/client-modules.i18n.yaml
+UU docs/subsystems/client-modules.md
+UU docs/subsystems/client-modules.zh.md
+UU docs/subsystems/commands.i18n.yaml
+UU docs/subsystems/commands.md
+UU docs/subsystems/commands.zh.md
+UU docs/subsystems/llm-streaming.i18n.yaml
+UU docs/subsystems/llm-streaming.zh.md
+UU docs/subsystems/persistence.i18n.yaml
+UU docs/subsystems/persistence.zh.md
+UU docs/subsystems/plan.i18n.yaml
+UU docs/subsystems/plan.md
+UU docs/subsystems/plan.zh.md
+UU docs/subsystems/session-reference.i18n.yaml
+UU docs/subsystems/session-reference.md
+UU docs/subsystems/session-reference.zh.md
+UU docs/subsystems/session.i18n.yaml
+UU docs/subsystems/subagent.i18n.yaml
+UU docs/subsystems/web.i18n.yaml
+UU docs/tool-catalog.i18n.yaml
+UU docs/tool-catalog.zh.md
+UU docs/user/guide/providers.i18n.yaml
+UU docs/user/guide/providers.zh.md
+UU examples/acp-agent/image.cordis.yml
+UU examples/acp-agent/tests/acp.snapshot.ts
+UU examples/acp-agent/tests/goal-snapshots/goal-round-driver/session.expected.jsonl
+UU examples/acp-agent/tests/snapshots/cancel/session.jsonl
+UU examples/acp-agent/tests/snapshots/code-mode-read-image/session.jsonl
+UU examples/acp-agent/tests/snapshots/inline-image-prompt/session.jsonl
+UU examples/acp-agent/tests/snapshots/read-image/session.jsonl
+UU examples/acp-agent/tests/snapshots/skill-load/session.jsonl
+UU packages/README.i18n.yaml
+UU packages/api/remotes/package.json
+UU packages/bundle/web-app/README.i18n.yaml
+UU packages/bundle/web-app/README.zh.md
+UU packages/bundle/web-app/package.json
+UU packages/client/README.i18n.yaml
+UU packages/client/README.zh.md
+UU packages/client/connection/package.json
+UU packages/client/hmr/package.json
+UU packages/client/locale/README.i18n.yaml
+UU packages/client/locale/README.zh.md
+UU packages/client/locale/package.json
+UU packages/client/modules/package.json
+UU packages/client/modules/src/index.ts
+UU packages/client/modules/tests/node-half.client.spec.ts
+UU packages/client/runtime/README.i18n.yaml
+UU packages/client/runtime/README.zh.md
+UU packages/client/runtime/package.json
+UU packages/client/ui-agent-preset/package.json
+UU packages/client/ui-attachment/package.json
+DU packages/client/ui-brand-official/package.json
+UU packages/client/ui-commands/README.i18n.yaml
+UU packages/client/ui-commands/package.json
+UU packages/client/ui-conversation/README.i18n.yaml
+UU packages/client/ui-conversation/README.md
+UU packages/client/ui-conversation/README.zh.md
+UU packages/client/ui-conversation/package.json
+UU packages/client/ui-conversation/src/client/index.ts
+UU packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
+UU packages/client/ui-conversation/tests/input-bar.client.spec.tsx
+UU packages/client/ui-deliverables/package.json
+UU packages/client/ui-directory-picker-browse/package.json
+UU packages/client/ui-directory-picker-native/package.json
+UU packages/client/ui-goal/package.json
+UU packages/client/ui-input-trigger/package.json
+UU packages/client/ui-jobs/package.json
+UU packages/client/ui-layout/package.json
+UU packages/client/ui-message-feedback/package.json
+UU packages/client/ui-model-selection/package.json
+UU packages/client/ui-permission-presets/package.json
+UU packages/client/ui-plan/package.json
+UU packages/client/ui-primitives/README.i18n.yaml
+UU packages/client/ui-primitives/README.zh.md
+UU packages/client/ui-primitives/package.json
+DU packages/client/ui-reference/package.json
+DU packages/client/ui-renderer/README.zh.md
+UU packages/client/ui-session-mode/package.json
+UU packages/client/ui-settings-general/package.json
+UU packages/client/ui-settings-models/README.i18n.yaml
+UU packages/client/ui-settings-models/package.json
+UU packages/client/ui-settings-models/src/client/index.ts
+UU packages/client/ui-settings-plugin-inventory/package.json
+UU packages/client/ui-settings-plugins/package.json
+UU packages/client/ui-settings/package.json
+UU packages/client/ui-sidebar/README.i18n.yaml
+UU packages/client/ui-sidebar/README.zh.md
+UU packages/client/ui-sidebar/package.json
+UU packages/client/ui-skill/package.json
+UU packages/client/ui-slots/README.i18n.yaml
+UU packages/client/ui-slots/README.zh.md
+UU packages/client/ui-slots/package.json
+UU packages/client/ui-subagent/package.json
+UU packages/client/ui-subagent/src/client/index.ts
+UU packages/client/ui-theme/README.i18n.yaml
+UU packages/client/ui-theme/package.json
+UU packages/client/ui-tool/README.i18n.yaml
+UU packages/client/ui-tool/package.json
+UU packages/client/ui-trajectory/package.json
+UU packages/client/ui-user-questions/package.json
+UU packages/client/ui-workflow-run/README.i18n.yaml
+UU packages/client/ui-workflow-run/package.json
+UU packages/client/ui-workspace/README.i18n.yaml
+UU packages/client/ui-workspace/README.zh.md
+UU packages/client/ui-workspace/package.json
+UU packages/client/web-react/README.i18n.yaml
+UU packages/client/web/README.i18n.yaml
+UU packages/client/web/README.zh.md
+UU packages/client/web/package.json
+DU packages/client/web/src/boot.ts
+UU packages/compaction/compaction-basic/README.i18n.yaml
+UU packages/compaction/compaction-basic/README.zh.md
+UU packages/core/agent-loop/README.i18n.yaml
+UU packages/core/agent-loop/README.zh.md
+UU packages/core/agent-loop/package.json
+UU packages/core/session/README.i18n.yaml
+UU packages/core/session/package.json
+UU packages/host/apiproxy/README.i18n.yaml
+UU packages/host/apiproxy/README.md
+UU packages/host/apiproxy/README.zh.md
+UU packages/host/apiproxy/package.json
+UU packages/interaction/README.i18n.yaml
+UU packages/interaction/README.zh.md
+UU packages/llm/llm-deepseek/README.i18n.yaml
+UU packages/llm/llm-deepseek/README.md
+UU packages/llm/llm-deepseek/README.zh.md
+UU packages/llm/llm-deepseek/package.json
+UU packages/llm/llm-deepseek/src/adapter.ts
+UU packages/llm/llm-deepseek/src/index.ts
+UU packages/llm/llm-deepseek/src/serialize.ts
+UU packages/llm/llm-deepseek/src/types.ts
+UU packages/llm/llm-deepseek/tests/adapter.spec.ts
+UU packages/llm/llm-deepseek/tests/dynamic-config.spec.ts
+UU packages/llm/llm-deepseek/tests/serialize.spec.ts
+UU packages/llm/llm-pi-ai/README.i18n.yaml
+UU packages/llm/llm-pi-ai/README.md
+UU packages/llm/llm-pi-ai/README.zh.md
+UU packages/llm/llm-pi-ai/package.json
+UU packages/llm/llm-pi-ai/src/adapter.ts
+UU packages/llm/llm-pi-ai/src/config.ts
+UU packages/llm/llm-pi-ai/src/context.ts
+UU packages/llm/llm-pi-ai/tests/adapter.spec.ts
+UU packages/llm/llm-pi-ai/tests/context.spec.ts
+UU packages/llm/llm-retry/package.json
+UU packages/llm/llm/README.i18n.yaml
+UU packages/llm/llm/package.json
+UU packages/llm/llm/src/content.ts
+DU packages/llm/llm/tests/content.spec.ts
+UU packages/session/session-persistence-sqlite/package.json
+UU packages/subagent/tool-subagent/README.i18n.yaml
+UU packages/test-support/client-runtime/package.json
+UU pnpm-lock.yaml
+DU scripts/client-build-environment.client.spec.ts
+UU scripts/coverage-partitions.spec.ts
+UU scripts/coverage-partitions.ts
+UU tsconfig.base.json
+UU tsconfig.host.json
+```
+
+The six `DU` entries are modify/delete conflicts: `packages/client/ui-brand-official/package.json`, `packages/client/ui-reference/package.json`, `packages/client/ui-renderer/README.zh.md`, `packages/client/web/src/boot.ts`, `packages/llm/llm/tests/content.spec.ts`, and `scripts/client-build-environment.client.spec.ts`. The other 176 entries are `UU`.
+
+## Ownership resolutions
+
+- Translation sidecars and generated documentation use the owning English/Chinese document bytes as their source of truth. The repository translation-pairing resolver stages mechanically composable records; the remaining records are regenerated from the manually resolved owner documents. No unrelated product behavior is added.
+- Documentation, workflow, ACP fixture, and snapshot conflicts retain the upstream hunk structure. Snapshot and catalog outputs remain at this structural checkpoint; behavior-level acceptance remains with their owning later checks.
+- Host and capability package conflicts retain upstream package structure and upstream additions. Package metadata and source conflicts are resolved at conflict hunks, preserving surrounding merged context. The owning package READMEs under `packages/client`, `packages/host/apiproxy`, `packages/llm`, `packages/core`, `packages/compaction`, `packages/interaction`, `packages/api`, and `packages/bundle` were reviewed against the upstream release commit.
+- Client conflicts are resolved at individual conflict hunks to upstream structure; no client subtree or package is copied wholesale. The six modify/delete paths retain their upstream additions in the staged merge result. The fork-owned `packages/client/ui-session-mode/package.json` collision retains its existing path-owned metadata so Plan 3 can install the complete upstream `ui-brand-official`, `ui-reference`, and `ui-renderer` split without an invalid package identity at this checkpoint.
+- No Task 3–8 plugin, provider, consumer, composition bundle, product patch, or Codex runtime is implemented in this merge checkpoint. The future owner for the client split and UI acceptance is Plan 3.
+
+## Merge-side preference
+
+No merge-side preference is used. The merge invocation contains only `--no-commit --no-ff`; no side-selection option appears in the procedure or history.
