@@ -36,7 +36,7 @@
 
 普通类（不是 Cordis 服务）。活跃会话通过 `ctx.sessions.create()` 创建，脱离态的回放或检查会话通过 `Session.create()` 创建；脱离态工厂不会发布生命周期事件，也不会将会话绑定到 fiber。
 
-- `session.append(type, data, opts?)` 会为持久数据和 surface 元数据制作快照并冻结它们，校验标记形态、被引用的源事件 seq、替换覆盖完整性，以及仅修改内容的单个 `tool/result` 重写，随后同步提交，再在彼此独立的失败收容下通知观察者。对已挂接会话的重入追加会被拒绝，运行时检查也覆盖扩宽后的联合类型和已加载日志。
+- `session.append(type, data, opts?)` 会为持久数据和 surface 元数据制作快照并冻结它们，校验标记形态、被引用的源事件 seq、替换覆盖完整性，以及仅修改内容的单个 `tool/result` 重写，随后同步提交，再在彼此独立的失败收容下通知观察者。surface 事件必须使用 `SurfaceIntent`；仅日志事件可以传入带 `{ ignorable: true }` 的 `LogIntent`，该标记会在校验前写入信封。对已挂接会话的重入追加会被拒绝，运行时检查也覆盖扩宽后的联合类型和已加载日志。
 - `session.deriveMessages()` 对每个新的 surface 条目只做一次增量投影，并返回一个新数组，其中包含这些条目存储的完整、带标识且冻结的消息。assistant 消息的模型来源会保留生成该消息的提供方和模型，以及适配器私有回放状态。surface 重写会重建投影；不存在原始日志回退。
 - `session.deriveEventMessage(event)` 是重建和请求检查使用的规范逐事件投影。
 - `session.surface` 暴露只读 `SessionSurface` 视图，由会话唯一的增量 surface 管理器所有；每次提交重写，`replaceGeneration` 都会变化。
@@ -81,6 +81,8 @@
 - `sourceEventSeqs?: number[]`：被引用为来源的较早事件 seq（例如 `assistant/message` 引用的 `assistant/chunk` seq，或压缩替换条目引用的已遮蔽条目）。对于 `assistant/message`，存在的 `[]` 表示已知提供方流为空；省略则表示旧版或外部事件没有记录源流。其他 surface 事件若有此字段，则要求非空列表。
 - `surfaceOp?: SurfaceOp`：事件进入 surface 的方式。非 surface 事件（边界、分片、用量、错误）不含该字段。
 - `ignorable?: true`：标记读取器在不认识事件类型时可以安全跳过该事件；缺失表示必需，不认识的事件类型会使会话重建被拒绝（[机制](../../../.agents/notes/implemented/architecture/2026-08-10-session-log-version-mechanism.zh.md)）。
+
+`LogIntent` 是该标记的追加意图类型。surface 事件不能请求它，运行时发现格式错误的意图时会拒绝，而不是静默丢弃。
 
 ### 元数据类型（`types.ts`）
 

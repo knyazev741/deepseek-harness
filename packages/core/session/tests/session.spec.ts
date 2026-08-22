@@ -9,7 +9,7 @@ import SessionStore, {
   SessionId,
   snapshotSessionEvent,
 } from '@deepseek-ai/dsh-session'
-import type { CreateSessionOptions, SessionEventType, SessionHeader, SessionSurface, TodoItem } from '@deepseek-ai/dsh-session'
+import type { CreateSessionOptions, LogIntent, SessionEventType, SessionHeader, SessionSurface, TodoItem } from '@deepseek-ai/dsh-session'
 
 describe('Session', () => {
   it('exposes one stable readonly surface view', () => {
@@ -507,6 +507,67 @@ describe('Session', () => {
       .toThrow(/surface-eligible and requires a surfaceOp marker/)
     // The rejected append never entered the log (only turn/start is present).
     expect(session.events).toHaveLength(1)
+  })
+
+  it('stamps an ignorable marker only on log-only appends and keeps legacy calls unchanged', () => {
+    const session = Session.create(SessionId('ignorable-append'))
+    const intent: LogIntent = { ignorable: true }
+    const marked = session.append('turn/start', { turn: 1 }, intent)
+    expect(marked.ignorable).toBe(true)
+
+    const legacy = session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    expect(legacy.ignorable).toBeUndefined()
+    expect(session.events).toEqual([
+      expect.objectContaining({ type: 'turn/start', ignorable: true }),
+      expect.objectContaining({ type: 'turn/end' }),
+    ])
+  })
+
+  it('rejects malformed runtime intents instead of silently dropping them', () => {
+    const session = Session.create(SessionId('invalid-append-intent'))
+    class ClassIntent { readonly kind = 'class' }
+    const invalidIntents: unknown[] = [
+      null,
+      [],
+      new ClassIntent(),
+      { ignorable: false },
+      { ignorable: 'true' },
+      { ignorable: true, extra: 'field' },
+      { surfaceOp: 'append' },
+    ]
+    for (const intent of invalidIntents) {
+      expect(
+        () => (session.append as unknown as (type: string, data: unknown, intent: unknown) => unknown)(
+          'turn/start',
+          { turn: 1 },
+          intent,
+        ),
+      ).toThrow(/append intent|not surface-eligible/)
+    }
+    expect(session.events).toHaveLength(0)
+
+    const nullPrototypeIntent = Object.create(null) as LogIntent
+    nullPrototypeIntent.ignorable = true
+    expect(() => session.append('turn/start', { turn: 1 }, nullPrototypeIntent)).not.toThrow()
+    expect(session.events).toHaveLength(1)
+  })
+
+  it('rejects an ignorable marker on a surface append at runtime', () => {
+    const session = Session.create(SessionId('surface-ignorable-append'))
+    expect(() => (session.append as unknown as (...args: unknown[]) => unknown)(
+      'user/message',
+      { content: [{ type: 'text', text: 'surface' }], source: { kind: 'user' } },
+      { surfaceOp: 'append', ignorable: true },
+    )).toThrow(/ignorable/)
+    expect(session.events).toHaveLength(0)
+  })
+
+  it('keeps ignorable out of the surface intent type', () => {
+    expectTypeOf<LogIntent>().toEqualTypeOf<{ ignorable?: true }>()
+    // @ts-expect-error SurfaceIntent must never accept an ignorable marker.
+    if (false) Session.create(SessionId('surface-ignorable-type')).append('user/message', {
+      content: [{ type: 'text', text: 'surface' }], source: { kind: 'user' },
+    }, { surfaceOp: 'append', ignorable: true })
   })
 
   it('accepts dense arrays and nested plain objects', () => {

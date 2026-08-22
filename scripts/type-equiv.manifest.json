@@ -485,6 +485,11 @@
     },
     {
       "doc": "docs/subsystems/session.md",
+      "symbol": "LogIntent",
+      "source": "packages/core/session/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/session.md",
       "symbol": "SessionSurface",
       "source": "packages/core/session/src/surface.ts"
     },

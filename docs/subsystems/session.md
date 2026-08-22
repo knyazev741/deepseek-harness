@@ -312,6 +312,18 @@ Required for `SurfaceEventType` events — every message-producing event must de
 
 Only `assistant/message` may carry a present empty `sourceEventSeqs`; when the field is absent, the event does not record which earlier events produced the message, and the provider may still have emitted chunks.
 
+### `LogIntent` — the optional marker parameter to `session.append()`
+
+```ts type-equiv
+/** Optional append intent for a log-only event that older readers may skip. */
+interface LogIntent {
+  /** Mark the committed event as safe for an older reader to ignore. */
+  ignorable?: true
+}
+```
+
+Log-only events may omit the intent or pass `{ ignorable: true }`; surface events require `SurfaceIntent` and cannot request the marker. Invalid runtime intent values are rejected at the append boundary.
+
 ### `SessionSurface` — the live readonly surface projection
 
 `Session.surface` returns the session's stable `SessionSurface` view. The same incremental manager validates append candidates before commit and advances this projection from committed events; callers can observe membership and replacement generation but cannot invoke validation.
@@ -444,14 +456,12 @@ declare class Session {
    *
    * @param type - The event type (key of {@link SessionEventMap}).
    * @param data - The event payload; must be JSON-serializable.
-   * @param opts - Surface metadata: `surfaceOp` controls how the event enters
-   *   the ordered surface; `sourceEventSeqs` lists the seq numbers of earlier
-   *   events this one derives from. REQUIRED for
-   *   {@link SurfaceEventType} events (every message-producing event must
-   *   declare how it joins the surface, the sole source of derived model
-   *   history) and
-   *   rejected by the compiler for non-surface types like `turn/start` or
-   *   `assistant/chunk`.
+   * @param opts - Surface metadata for message-producing events, or the optional
+   *   {@link LogIntent} for a log-only event. `surfaceOp` controls how a surface
+   *   event enters the ordered surface; `sourceEventSeqs` lists the seq numbers
+   *   of earlier events it derives from. Surface events require a
+   *   {@link SurfaceIntent} and cannot request `ignorable`; log-only events may
+   *   pass `{ ignorable: true }` so older readers can skip them.
    * @returns the logged event — its assigned `seq`/`time` plus the SNAPSHOT of
    *   `data` that entered the log, so reading `event.data` back sees the logged
    *   value, never the caller's still-mutable input.
@@ -472,7 +482,7 @@ declare class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : []
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : [opts?: LogIntent]
   ): SessionEvent<T>;
   /**
    * The {@link EpochHeader} in force after the log's last header event — the

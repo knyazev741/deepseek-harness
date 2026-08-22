@@ -392,6 +392,12 @@ export interface SurfaceIntent {
   sourceEventSeqs?: number[]
 }
 
+/** Optional append intent for a log-only event that older readers may skip. */
+export interface LogIntent {
+  /** Mark the committed event as safe for an older reader to ignore. */
+  ignorable?: true
+}
+
 /**
  * One immutable entry in the session log.
  *

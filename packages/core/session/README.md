@@ -36,7 +36,7 @@ The store pairs announced creation with disposal, publishes post-commit append n
 
 Plain class (not a Cordis Service). Create live sessions through `ctx.sessions.create()` and detached replay or inspection sessions through `Session.create()`; the detached factory does not publish lifecycle events or bind the session to a fiber.
 
-- `session.append(type, data, opts?)` snapshots and freezes durable data and surface metadata, validates marker shape, cited source-event seqs, complete replacement coverage, and content-only single-result `tool/result` rewrites, commits synchronously, then notifies observers with independent failure containment. Reentrant attached-session appends reject, and runtime checks cover widened unions and loaded logs.
+- `session.append(type, data, opts?)` snapshots and freezes durable data and surface metadata, validates marker shape, cited source-event seqs, complete replacement coverage, and content-only single-result `tool/result` rewrites, commits synchronously, then notifies observers with independent failure containment. Surface events require `SurfaceIntent`; log-only events may pass `LogIntent` with `{ ignorable: true }`, which is stamped into the envelope before validation. Reentrant attached-session appends reject, and runtime checks cover widened unions and loaded logs.
 - `session.deriveMessages()` incrementally projects each new surface entry once and returns a fresh array over the complete identified, frozen messages stored by those entries. Assistant messages preserve the provider and model that produced them plus adapter-private replay state in their model source. A surface rewrite rebuilds the projection; there is no raw-log fallback.
 - `session.deriveEventMessage(event)` is the canonical per-event projection used by reconstruction and request checks.
 - `session.surface` exposes the readonly `SessionSurface` view owned by the session's single incremental surface manager; `replaceGeneration` changes on every committed rewrite.
@@ -81,6 +81,8 @@ Every `SessionEvent` carries three optional top-level fields (structural metadat
 - `sourceEventSeqs?: number[]` — seq numbers of earlier events cited as sources (e.g., the `assistant/chunk` seqs behind an `assistant/message`, or the shadowed entries behind a compaction replacement entry). On `assistant/message`, a present `[]` records a known empty provider stream, while omission means a legacy or foreign event did not record the source stream; other surface events require a non-empty list when this field is present.
 - `surfaceOp?: SurfaceOp` — how this event entered the surface. Absent for non-surface events (boundaries, chunks, usage, errors).
 - `ignorable?: true` — marks an event a reader may safely skip when it does not recognize the type; absent means required, so an unknown-type event refuses session reconstruction ([mechanism](../../../.agents/notes/implemented/architecture/2026-08-10-session-log-version-mechanism.md)).
+
+`LogIntent` is the append-only intent for this marker. Surface events cannot request it, and malformed runtime intents are rejected instead of being silently discarded.
 
 ### Metadata types (`types.ts`)
 

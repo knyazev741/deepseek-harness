@@ -14,9 +14,9 @@ import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type { Message } from '@deepseek-ai/dsh-llm'
 import { SESSION_FORMAT_VERSION, SessionId } from './types.ts'
 import type { TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
-import type { CreateSessionOptions, EpochHeader, PrepareSessionOptions, RequestContext, SessionEvent, SessionEventMap, SessionEventType, SessionHeader, SurfaceIntent, SurfaceEventType } from './types.ts'
+import type { CreateSessionOptions, EpochHeader, LogIntent, PrepareSessionOptions, RequestContext, SessionEvent, SessionEventMap, SessionEventType, SessionHeader, SurfaceIntent, SurfaceEventType } from './types.ts'
 import { snapshotJsonValue } from './json.ts'
-import { deriveEventMessage, SurfaceManager } from './surface.ts'
+import { deriveEventMessage, isSurfaceEligibleType, SurfaceManager } from './surface.ts'
 import type { SessionSurface } from './surface.ts'
 import { foldRequestHeader } from './request-header.ts'
 
@@ -371,6 +371,47 @@ function assertSupportedRequestHeader(type: string, data: unknown, location: str
   }
 }
 
+/** Whether a public append intent is an ordinary object that can be inspected without coercion. */
+function isPlainAppendIntent(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const prototype = Reflect.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+/** Validate one append intent before it can be projected into the event envelope. */
+function validateAppendIntent(
+  type: SessionEventType,
+  intent: unknown,
+  provided: boolean,
+): SurfaceIntent | LogIntent | undefined {
+  if (!provided || intent === undefined) return undefined
+  if (!isPlainAppendIntent(intent)) {
+    throw new Error(`session append intent for "${type}" must be a plain object`)
+  }
+  const record = intent
+  for (const key of Object.keys(record)) {
+    if (isSurfaceEligibleType(type) && key === 'ignorable') {
+      throw new Error(`session append intent for "${type}" cannot request ignorable`)
+    }
+    const valid = isSurfaceEligibleType(type)
+      ? key === 'surfaceOp' || key === 'sourceEventSeqs'
+      : key === 'ignorable'
+    if (!valid) {
+      if (key === 'surfaceOp' || key === 'sourceEventSeqs') {
+        throw new Error(`session event "${type}" is not surface-eligible and cannot carry ${key}`)
+      }
+      throw new Error(`session append intent for "${type}" has an invalid field "${key}"`)
+    }
+  }
+  if (isSurfaceEligibleType(type)) {
+    return record
+  }
+  if (Object.hasOwn(record, 'ignorable') && record['ignorable'] !== true) {
+    throw new Error(`session append intent for "${type}" has an invalid ignorable marker`)
+  }
+  return record
+}
+
 type SessionCallback = (...args: unknown[]) => unknown
 
 /** Resolve one listener snapshot, including Cordis's internal dispatch checks. */
@@ -576,14 +617,12 @@ export class Session {
    *
    * @param type - The event type (key of {@link SessionEventMap}).
    * @param data - The event payload; must be JSON-serializable.
-   * @param opts - Surface metadata: `surfaceOp` controls how the event enters
-   *   the ordered surface; `sourceEventSeqs` lists the seq numbers of earlier
-   *   events this one derives from. REQUIRED for
-   *   {@link SurfaceEventType} events (every message-producing event must
-   *   declare how it joins the surface, the sole source of derived model
-   *   history) and
-   *   rejected by the compiler for non-surface types like `turn/start` or
-   *   `assistant/chunk`.
+   * @param opts - Surface metadata for message-producing events, or the optional
+   *   {@link LogIntent} for a log-only event. `surfaceOp` controls how a surface
+   *   event enters the ordered surface; `sourceEventSeqs` lists the seq numbers
+   *   of earlier events it derives from. Surface events require a
+   *   {@link SurfaceIntent} and cannot request `ignorable`; log-only events may
+   *   pass `{ ignorable: true }` so older readers can skip them.
    * @returns the logged event — its assigned `seq`/`time` plus the SNAPSHOT of
    *   `data` that entered the log, so reading `event.data` back sees the logged
    *   value, never the caller's still-mutable input.
@@ -604,9 +643,12 @@ export class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : []
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : [opts?: LogIntent]
   ): SessionEvent<T> {
-    const surfaceOpts: SurfaceIntent | undefined = opts[0]
+    const appendIntent = validateAppendIntent(type, opts[0], opts.length > 0)
+    const surfaceOpts: SurfaceIntent | undefined = isSurfaceEligibleType(type)
+      ? appendIntent as SurfaceIntent | undefined
+      : undefined
     const surfaceMetadata = {
       ...surfaceOpts?.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: surfaceOpts.sourceEventSeqs },
       ...surfaceOpts?.surfaceOp === undefined ? {} : { surfaceOp: surfaceOpts.surfaceOp },
@@ -630,6 +672,9 @@ export class Session {
       time: Date.now(),
       data: dataSnapshot,
       ...(surfaceMetadataSnapshot as { surfaceOp?: unknown; sourceEventSeqs?: unknown }),
+      ...!isSurfaceEligibleType(type) && (appendIntent as LogIntent | undefined)?.ignorable === true
+        ? { ignorable: true as const }
+        : {},
     } as unknown as SessionEvent<T>)
     this.surfaceManager.validateNext(event as SessionEvent)
 

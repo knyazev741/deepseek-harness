@@ -314,6 +314,18 @@ interface SurfaceIntent {
 
 只有 `assistant/message` 可以携带存在但为空的 `sourceEventSeqs`；字段不存在时，该事件没有记录这条消息由哪些早期事件产生，但提供方仍可能发出过分片。
 
+### `LogIntent`：`session.append()` 的可选标记参数
+
+```ts type-equiv
+/** Optional append intent for a log-only event that older readers may skip. */
+interface LogIntent {
+  /** Mark the committed event as safe for an older reader to ignore. */
+  ignorable?: true
+}
+```
+
+仅日志事件可以省略该意图，或传入 `{ ignorable: true }`；surface 事件必须使用 `SurfaceIntent`，不能请求该标记。追加边界会拒绝运行时格式错误的意图值。
+
 ### `SessionSurface`：实时只读 surface 投影
 
 `Session.surface` 返回会话稳定的 `SessionSurface` 视图。同一个增量管理器在提交前校验追加候选事件，并根据已提交事件推进该投影；调用方可以观察成员关系和替换代次，但不能调用校验。
@@ -446,14 +458,12 @@ declare class Session {
    *
    * @param type - The event type (key of {@link SessionEventMap}).
    * @param data - The event payload; must be JSON-serializable.
-   * @param opts - Surface metadata: `surfaceOp` controls how the event enters
-   *   the ordered surface; `sourceEventSeqs` lists the seq numbers of earlier
-   *   events this one derives from. REQUIRED for
-   *   {@link SurfaceEventType} events (every message-producing event must
-   *   declare how it joins the surface, the sole source of derived model
-   *   history) and
-   *   rejected by the compiler for non-surface types like `turn/start` or
-   *   `assistant/chunk`.
+   * @param opts - Surface metadata for message-producing events, or the optional
+   *   {@link LogIntent} for a log-only event. `surfaceOp` controls how a surface
+   *   event enters the ordered surface; `sourceEventSeqs` lists the seq numbers
+   *   of earlier events it derives from. Surface events require a
+   *   {@link SurfaceIntent} and cannot request `ignorable`; log-only events may
+   *   pass `{ ignorable: true }` so older readers can skip them.
    * @returns the logged event — its assigned `seq`/`time` plus the SNAPSHOT of
    *   `data` that entered the log, so reading `event.data` back sees the logged
    *   value, never the caller's still-mutable input.
@@ -474,7 +484,7 @@ declare class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : []
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : [opts?: LogIntent]
   ): SessionEvent<T>;
   /**
    * The {@link EpochHeader} in force after the log's last header event — the
