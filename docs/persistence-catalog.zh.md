@@ -228,9 +228,13 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
  * Assembled assistant message for one step (derived history uses this).
  * Carries the step's `usage` when the adapter reported token accounting, so
  * the model output and its accounting travel together (there is no separate
- * usage record). `usage` is absent when the adapter reported none.
+ * usage record). `usage` is absent when the adapter reported none. A turn
+ * cancelled mid-stream finalizes its delivered text/reasoning prefix as this
+ * event with `interrupted: true`; undispatched tool calls are absent. The
+ * marker distinguishes that prefix without re-deriving interruption from turn
+ * boundaries. An aborted turn with no such event streamed no visible content.
  */
-'assistant/message': { turn: number; step: number; message: AssistantMessage; usage?: TokenUsage }
+'assistant/message': { turn: number; step: number; message: AssistantMessage; usage?: TokenUsage; interrupted?: true }
 ```
 
 类型：[TokenUsage](subsystems/llm-streaming.zh.md)
@@ -550,6 +554,19 @@ Source: [`packages/session/session-projection/src/external-transcript.ts:39`](..
 ```
 
 来源：[`packages/feedback/command-feedback/src/index.ts:62`](../packages/feedback/command-feedback/src/index.ts)
+
+### `fork/*`
+
+<a id="forksession-source--log-only"></a>
+
+#### `fork/session-source` — log-only
+
+```ts persistence-catalog
+/** Log-only marker identifying a session created in GitHub Actions. */
+'fork/session-source': { source: 'github-actions' }
+```
+
+来源：[`packages/fork/session-source/src/types.ts:9`](../packages/fork/session-source/src/types.ts)
 
 ### `goal/*`
 

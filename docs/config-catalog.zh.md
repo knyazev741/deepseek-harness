@@ -602,6 +602,22 @@ export interface Config {
 
 来源：[`packages/e2b/e2b/src/index.ts:43`](../packages/e2b/e2b/src/index.ts)
 
+<a id="deepseek-aidsh-fork-session-source"></a>
+
+## `@deepseek-ai/dsh-fork-session-source`
+
+需要：`sessions`
+
+```ts config-catalog
+/** Configuration for selecting the environment variable that enables the marker. */
+export interface Config {
+  /** Environment variable whose exact value `true` enables the marker; defaults to `GITHUB_ACTIONS`. */
+  readonly enabledWhenEnv: string
+}
+```
+
+来源：[`packages/fork/session-source/src/index.ts:28`](../packages/fork/session-source/src/index.ts)
+
 <a id="deepseek-aidsh-fs-local"></a>
 
 ## `@deepseek-ai/dsh-fs-local`
