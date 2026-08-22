@@ -23,8 +23,6 @@ import {
   sessionHistoryRequestSchema,
   sessionListRequestSchema,
   sessionModelsRequestSchema,
-  sessionCommandRequestSchema,
-  sessionExternalModesRequestSchema,
   sessionPromptRequestSchema,
   sessionRenameRequestSchema,
   sessionSearchRequestSchema,
@@ -44,7 +42,6 @@ import {
   workspaceInsertSessionBeforeRequestSchema,
   workspaceListRequestSchema,
   workspaceRenameRequestSchema,
-  workspaceSetSessionPinnedRequestSchema,
 } from '../api/workspace.schema.ts'
 import { skillListRequestSchema } from '../api/skills.schema.ts'
 import {
@@ -100,8 +97,6 @@ const UNARY_ROUTES: UnaryRoutes = {
   'session.rename': { schema: sessionRenameRequestSchema, invoke: (api, r) => api.sessions.rename(r) },
   'session.fork': { schema: sessionForkRequestSchema, invoke: (api, r) => api.sessions.fork(r) },
   'session.prompt': { schema: sessionPromptRequestSchema, invoke: (api, r) => api.sessions.prompt(r) },
-  'session.command': { schema: sessionCommandRequestSchema, invoke: (api, r) => api.sessions.command(r) },
-  'session.externalModes': { schema: sessionExternalModesRequestSchema, invoke: (api, r) => api.sessions.externalModes(r) },
   'session.attachment': { schema: sessionAttachmentRequestSchema, invoke: (api, r) => api.sessions.attachment(r) },
   'session.updateQueue': { schema: sessionUpdateQueueRequestSchema, invoke: (api, r) => api.sessions.updateQueue(r) },
   'session.cancel': { schema: sessionCancelRequestSchema, invoke: (api, r) => api.sessions.cancel(r) },
@@ -121,7 +116,6 @@ const UNARY_ROUTES: UnaryRoutes = {
   'workspace.insertBefore': { schema: workspaceInsertBeforeRequestSchema, invoke: (api, r) => api.workspace.insertBefore(r) },
   'workspace.insertSessionBefore': { schema: workspaceInsertSessionBeforeRequestSchema, invoke: (api, r) => api.workspace.insertSessionBefore(r) },
   'workspace.archiveSession': { schema: workspaceArchiveSessionRequestSchema, invoke: (api, r) => api.workspace.archiveSession(r) },
-  'workspace.setSessionPinned': { schema: workspaceSetSessionPinnedRequestSchema, invoke: (api, r) => api.workspace.setSessionPinned(r) },
   'skill.list': { schema: skillListRequestSchema, invoke: (api, r) => api.skills.list(r) },
   'agentPreset.list': { schema: agentPresetListRequestSchema, invoke: (api, r) => api.agentPresets.list(r) },
   'agentPreset.select': { schema: agentPresetSelectRequestSchema, invoke: (api, r) => api.agentPresets.select(r) },

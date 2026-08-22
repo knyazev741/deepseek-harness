@@ -79,11 +79,10 @@ export interface SessionHeader {
    */
   readonly seedLength?: number
   /**
-   * Coarse durable product classification for a session's creation context —
-   * a subagent child or a headless CI-review run. This is presentation
-   * metadata, not proof of continuability.
+   * Coarse product classification for a session created as a subagent child.
+   * This is presentation metadata, not proof that the child is continuable.
    */
-  readonly origin?: 'subagent' | 'github-actions'
+  readonly origin?: 'subagent'
   /**
    * Delegation depth: absent (zero) for a top-level session, parent depth + 1
    * for a subagent child. Persisted so a recursion budget survives restart and
@@ -97,20 +96,6 @@ export interface SessionHeader {
    * would replay history the model can no longer act on.
    */
   readonly agentPreset?: string
-  /**
-   * Which driver owns this session: absent means the native agent loop
-   * (`dsh`), while a registered external-provider name means an external
-   * console agent (Codex, an ACP client) drives it. Presented as a
-   * client-plane choice at session creation; durable so the driver stays
-   * resolvable across restart.
-   */
-  readonly mode?: string
-  /**
-   * Initial model for an external-mode session: a provider id from that mode's
-   * catalog/roster, stamped at creation so the bridge driver can hand it to
-   * the provider at start. Absent lets the provider/default apply.
-   */
-  readonly model?: string
 }
 
 /**
@@ -130,11 +115,9 @@ export interface CreateSessionOptions {
     readonly parentSession?: SessionId
     readonly createdAt?: number
     readonly seedLength?: number
-    readonly origin?: 'subagent' | 'github-actions'
+    readonly origin?: 'subagent'
     readonly delegationDepth?: number
     readonly agentPreset?: string
-    readonly mode?: string
-    readonly model?: string
   }
 }
 
@@ -285,9 +268,13 @@ export interface SessionEventMap {
    * Assembled assistant message for one step (derived history uses this).
    * Carries the step's `usage` when the adapter reported token accounting, so
    * the model output and its accounting travel together (there is no separate
-   * usage record). `usage` is absent when the adapter reported none.
+   * usage record). `usage` is absent when the adapter reported none. A turn
+   * cancelled mid-stream finalizes its delivered text/reasoning prefix as this
+   * event with `interrupted: true`; undispatched tool calls are absent. The
+   * marker distinguishes that prefix without re-deriving interruption from turn
+   * boundaries. An aborted turn with no such event streamed no visible content.
    */
-  'assistant/message': { turn: number; step: number; message: AssistantMessage; usage?: TokenUsage }
+  'assistant/message': { turn: number; step: number; message: AssistantMessage; usage?: TokenUsage; interrupted?: true }
   /**
    * The model requested one tool invocation: `name` with the raw `arguments`
    * JSON string exactly as the model produced it (unparsed). `callId` pairs the

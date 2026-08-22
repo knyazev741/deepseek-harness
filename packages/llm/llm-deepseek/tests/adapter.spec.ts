@@ -1231,7 +1231,7 @@ describe('DeepSeekAdapter against a mock server', () => {
       .toBe(CONTEXT_WINDOW_EXCEEDED_CODE)
     expect(httpErrorCode(400, { message: 'invalid input: temperature exceeds maximum allowed value' }))
       .toBe('INVALID_REQUEST')
-    expect(httpErrorCode(413, { code: 'context_length_exceeded' })).toBe('HTTP_413')
+    expect(httpErrorCode(413, { code: 'context_length_exceeded' })).toBe('INVALID_REQUEST')
   })
 
   it('distinguishes terminal quota exhaustion from transient HTTP 429 throttling', () => {
@@ -1404,10 +1404,7 @@ describe('DeepSeekAdapter against a mock server', () => {
         for await (const _chunk of adapter.stream({ provider: 'deepseek-official', model: 'm', messages: [] })) { /* drain */ }
       })()
       const rejected = expect(drain).rejects.toMatchObject({ code: 'TIMEOUT' })
-      // First chunk at 10ms (within the 500ms first-chunk budget).
-      await vi.advanceTimersByTimeAsync(10)
-      // The next read never gets the remaining events; past the 100ms idle
-      // budget this is a plain idle timeout, not a first-chunk timeout.
+      await vi.advanceTimersByTimeAsync(0)
       await vi.advanceTimersByTimeAsync(100)
       await rejected
       expect(stopped).toBe(true)
@@ -1625,6 +1622,21 @@ describe('plugin registration and config', () => {
     ])
   })
 
+  it('defaults an adapter-supplied catalog entry to text input', async () => {
+    const connection = resolveAdapterOptions({ models: [] })
+    const adapter = new DeepSeekAdapter({
+      options: () => ({ ...connection, models: [{ id: 'adapter-model' }] }),
+      resolveApiKey: () => Promise.resolve('k'),
+      resolveUserId: () => TEST_USER_ID,
+    })
+    await expect(adapter.listModels('deepseek-official')).resolves.toEqual([{
+      provider: 'deepseek-official',
+      id: 'adapter-model',
+      name: 'adapter-model',
+      inputModalities: ['text'],
+    }])
+  })
+
   it('advertises configured models without restricting arbitrary request ids', async () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
@@ -1637,12 +1649,13 @@ describe('plugin registration and config', () => {
           name: 'Private Reasoner',
           description: 'Higher reasoning budget',
           contextWindow: 64_000,
+          inputModalities: ['text', 'image'],
         },
       ],
     })
     await expect(ctx.llm.listModels('deepseek-official')).resolves.toEqual([
       { provider: 'deepseek-official', id: 'private-fast', name: 'private-fast', inputModalities: ['text'] },
-      { provider: 'deepseek-official', id: 'private-reasoner', name: 'Private Reasoner', description: 'Higher reasoning budget', inputModalities: ['text'] },
+      { provider: 'deepseek-official', id: 'private-reasoner', name: 'Private Reasoner', description: 'Higher reasoning budget', inputModalities: ['text', 'image'] },
     ])
     await expect(ctx.llm.resolveModelInfo('deepseek-official', 'private-fast'))
       .resolves.toMatchObject({ context: { contextWindow: 32_000 } })
@@ -1650,6 +1663,7 @@ describe('plugin registration and config', () => {
       .resolves.toMatchObject({
         name: 'Private Reasoner',
         description: 'Higher reasoning budget',
+        inputModalities: ['text', 'image'],
       })
     await expect(ctx.llm.resolveModelInfo('deepseek-official', 'arbitrary-unlisted'))
       .resolves.toMatchObject({
@@ -1688,13 +1702,21 @@ describe('plugin registration and config', () => {
     await expect(ctx.llm.listModels('deepseek-official')).resolves.toEqual([])
   })
 
-  it.each([
+  const invalidModels: Array<[LlmDeepSeek.DeepSeekCatalogModel[], RegExp]> = [
     [[{ id: '' }], /ids must be non-empty/],
     [[{ id: 'm', name: '' }], /empty name/],
     [[{ id: 'm', contextWindow: 0 }], /contextWindow/],
     [[{ id: 'm', contextWindow: 1.5 }], /contextWindow/],
+    [[{ id: 'm', inputModalities: [] }], /inputModalities/],
+    [[{ id: 'm', inputModalities: ['text', 'text'] }], /inputModalities must not contain duplicates/],
+    [[{
+      id: 'm',
+      inputModalities: ['audio'] as unknown as NonNullable<LlmDeepSeek.DeepSeekCatalogModel['inputModalities']>,
+    }], /expected "text" \| "image"/],
     [[{ id: 'm' }, { id: 'm' }], /duplicate catalog model/],
-  ] as const)('rejects invalid advisory model config', async (models, message) => {
+  ]
+
+  it.each(invalidModels)('rejects invalid advisory model config', async (models, message) => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await expect(ctx.plugin(LlmDeepSeek, {
@@ -1702,6 +1724,18 @@ describe('plugin registration and config', () => {
       models: [...models],
     })).rejects.toThrow(message)
     expect(ctx.llm.listProviders()).toEqual([])
+  })
+
+  const invalidProgrammaticModalities: Array<[LlmDeepSeek.DeepSeekCatalogModel[], RegExp]> = [
+    [[{ id: 'm', inputModalities: [] }], /inputModalities must not be empty/],
+    [[{
+      id: 'm',
+      inputModalities: ['audio'] as unknown as NonNullable<LlmDeepSeek.DeepSeekCatalogModel['inputModalities']>,
+    }], /inputModalities must contain only "text" and "image"/],
+  ]
+
+  it.each(invalidProgrammaticModalities)('rejects programmatic modality config that bypasses the schema', (models, message) => {
+    expect(() => resolveAdapterOptions({ models: [...models] })).toThrow(message)
   })
 
   it.each([0, 1.5])('rejects a per-model output cap of %s', (maxTokens) => {
@@ -1979,10 +2013,6 @@ describe('plugin registration and config', () => {
       .toThrow(/streamIdleTimeoutMs.*positive finite/)
     expect(() => resolveAdapterOptions({ streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 }))
       .toThrow(/streamIdleTimeoutMs.*no greater/)
-    expect(() => resolveAdapterOptions({ firstChunkIdleTimeoutMs: Number.POSITIVE_INFINITY }))
-      .toThrow(/firstChunkIdleTimeoutMs.*positive finite/)
-    expect(() => resolveAdapterOptions({ firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 }))
-      .toThrow(/firstChunkIdleTimeoutMs.*no greater/)
 
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
@@ -1994,27 +2024,6 @@ describe('plugin registration and config', () => {
       baseURL: 'http://127.0.0.1:1',
       streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1,
     })).rejects.toThrow(/streamIdleTimeoutMs/)
-    await expect(ctx.plugin(LlmDeepSeek, {
-      baseURL: 'http://127.0.0.1:1',
-      firstChunkIdleTimeoutMs: 0,
-    })).rejects.toThrow(/firstChunkIdleTimeoutMs/)
-    await expect(ctx.plugin(LlmDeepSeek, {
-      baseURL: 'http://127.0.0.1:1',
-      firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1,
-    })).rejects.toThrow(/firstChunkIdleTimeoutMs/)
-  })
-
-  it('defaults the first-chunk idle budget to 900s and the idle budget to 300s', () => {
-    const resolved = resolveAdapterOptions({ baseURL: 'https://example.invalid' })
-    expect(resolved.streamIdleTimeoutMs).toBe(300_000)
-    expect(resolved.firstChunkIdleTimeoutMs).toBe(900_000)
-    const tuned = resolveAdapterOptions({
-      baseURL: 'https://example.invalid',
-      streamIdleTimeoutMs: 5_000,
-      firstChunkIdleTimeoutMs: 10_000,
-    })
-    expect(tuned.streamIdleTimeoutMs).toBe(5_000)
-    expect(tuned.firstChunkIdleTimeoutMs).toBe(10_000)
   })
 
   it('validates Files API timeout bounds independently of the stream idle deadline', async () => {

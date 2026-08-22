@@ -18,9 +18,6 @@
       "path": "../../credentials/credentials"
     },
     {
-      "path": "../../external/external-session"
-    },
-    {
       "path": "../../../vendor/cordis"
     },
     {

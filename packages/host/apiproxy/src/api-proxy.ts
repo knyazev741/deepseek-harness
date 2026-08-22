@@ -5,13 +5,14 @@
 
 import { randomUUID } from 'node:crypto'
 import { mkdir, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { dirname } from 'node:path'
 import { z as zod } from 'zod'
 import type { Context } from '@deepseek-ai/cordis'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-presets/types'
-import { AttachmentError } from '@deepseek-ai/dsh-attachment'
+import { AttachmentError, admitEncodedImages } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { createUserMessage, freezeMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { errorChain } from '@deepseek-ai/dsh-llm'
@@ -37,7 +38,7 @@ import type { PresetBearingSession } from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {
   ApiProxy, ConfigurableProviderView, CredentialView, GoalRef, HistoryEntry, HostFrame,
-  ModelCatalogFailure, ModelProviderGroup, ExternalModeFailure, ExternalModeGroup,
+  ModelCatalogFailure, ModelProviderGroup,
   ModelReasoning, MuxFrame, PromptContentPart, QuestionResponsePayload, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
   QueuedInboxItem, SessionSummary, SettingsNamespaceView, SubagentAddress, JobView, ToolEventView,
   WorkspaceId, WorkspaceView,
@@ -59,17 +60,6 @@ import {
 } from './api/session-search.ts'
 // Type-only: resolves `ctx.get('sessionProjections')` to the projection registry.
 import type {} from '@deepseek-ai/dsh-session-projection'
-// Type-only: resolves `ctx.get('externalSessions')` for external-mode session
-// creation and provider resolution (optional composition; the external
-// session seams are not mounted in every deployment).
-import type {} from '@deepseek-ai/dsh-external-session'
-// Value edge: the host-side external-mode command router reuses the canonical
-// slash-line parser so its `/compact` and `/model` arms and the pass-through
-// default match the command registry's own syntax, and the CommandResult type
-// for the outcome it returns. The type-only edge below still carries the
-// command-change stream and `ctx.get('skills')`.
-import { parseCommand } from '@deepseek-ai/dsh-commands'
-import type { CommandResult } from '@deepseek-ai/dsh-commands'
 // Type-only: resolves `ctx.get('tasks')` to the background job registry.
 import type {} from '@deepseek-ai/dsh-jobs'
 import type { JobSnapshot } from '@deepseek-ai/dsh-jobs'
@@ -135,42 +125,17 @@ export const DEFAULT_COLD_BLANK_PROBE_MAX_BYTES = 1024
 /** Conversation message event types (the pagination counting unit). */
 const MESSAGE_TYPES = new Set(['user/message', 'assistant/message'])
 
-/** Decode the browser payload while rejecting non-canonical base64 forms. */
-function decodeBase64(data: string): Uint8Array {
-  const decoded = Buffer.from(data, 'base64')
-  if (data.length === 0 || decoded.toString('base64') !== data) {
-    throw new AttachmentError('Image upload is not canonical base64.', 'INVALID_IMAGE_BASE64')
-  }
-  return new Uint8Array(decoded)
-}
-
 /** Validate one prompt as a batch before publishing any durable image object. */
 async function durablePromptContent(ctx: Context, content: readonly PromptContentPart[]): Promise<ContentBlock[]> {
   if (content.every(part => part.type === 'text')) {
     return content.map(part => ({ type: 'text', text: part.text }))
   }
-  const prepared = content.map(part => part.type === 'text'
-    ? part
-    : { part, data: decodeBase64(part.data) })
-  const images = prepared.filter((part): part is Extract<typeof part, { data: Uint8Array }> => 'data' in part)
-  const refs = await ctx.attachments.saveImages(images.map(image => ({
-    data: image.data,
-    mediaType: image.part.mediaType,
-    ...image.part.name === undefined ? {} : { name: image.part.name },
-  })))
-  const blocks: ContentBlock[] = []
-  let imageIndex = 0
-  for (const item of prepared) {
-    if (!('data' in item)) {
-      blocks.push({ type: 'text', text: item.text })
-      continue
-    }
-    const attachment = refs[imageIndex++]
-    /* v8 ignore next -- each prepared image supplied exactly one saveImages input and therefore one ordered ref. */
-    if (attachment === undefined) throw new Error('attachment batch result did not preserve input cardinality')
-    blocks.push({ type: 'image', attachment })
-  }
-  return blocks
+  const refs = await admitEncodedImages(ctx.attachments, content.filter(part => part.type === 'image'))
+  let next = 0
+  return content.map(part => part.type === 'text'
+    ? { type: 'text', text: part.text }
+    // admitEncodedImages returns one reference per image part in order.
+    : { type: 'image', attachment: refs[next++] as ImageAttachmentRef })
 }
 
 /** Search durable content for an image reference, including nested tool results. */
@@ -510,10 +475,9 @@ function sessionListUpdatedAt(header: SessionHeader, metadata: SessionListMetada
 /** Shared Session-header projection for list baselines and creation frames. */
 function sessionListFields(header: SessionHeader, events: readonly SessionEvent[] = []): {
   parentSessionId?: SessionId
-  origin?: 'subagent' | 'github-actions'
+  origin?: 'subagent'
   cwd?: string
   agentPreset?: string
-  mode?: string
 } {
   // The preset comes from the log, not the header: a session that switched
   // while blank ran its turns under the newer composition, and a picker
@@ -524,7 +488,6 @@ function sessionListFields(header: SessionHeader, events: readonly SessionEvent[
     ...header.origin === undefined ? {} : { origin: header.origin },
     ...header.cwd === undefined ? {} : { cwd: header.cwd },
     ...agentPreset === undefined ? {} : { agentPreset },
-    ...header.mode === undefined ? {} : { mode: header.mode },
   }
 }
 
@@ -1072,72 +1035,6 @@ function changedWorkspaceView(workspaceId: string, value: unknown): WorkspaceVie
     sessionIds: [...record.sessionIds],
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
-  }
-}
-
-/**
- * Route one user line for an external-mode session through its provider's
- * native surfaces instead of the agent-loop command registry. An external
- * session has no native Agent, so its lines must never enter the generic
- * execute path (which would fabricate one); this is the per-mode branch that
- * runs before any agent is required. `/compact` maps to the provider's native
- * compact; `/model <id>` switches the live session's model; any other line —
- * slash or plain — is forwarded verbatim as prompt text so the external agent
- * interprets it.
- * @param ctx - Host context carrying the optional external-session registry.
- * @param session - the external-mode session receiving the line.
- * @param line - the full user line.
- * @returns the normalized command outcome.
- */
-async function routeExternalSessionCommand(
-  ctx: Context,
-  session: Session,
-  line: string,
-): Promise<CommandResult> {
-  const external = ctx.get('externalSessions')
-  if (external === undefined) {
-    return {
-      kind: 'error',
-      text: 'External sessions are unavailable: this deployment does not mount @deepseek-ai/dsh-external-session.',
-    }
-  }
-  const parsed = parseCommand(line)
-  if (parsed === undefined || (parsed.name !== 'compact' && parsed.name !== 'model')) {
-    // Plain text or an unknown slash command: hand the verbatim line to the
-    // external agent, whose own command namespace owns it.
-    await external.prompt(session.id, line)
-    return { kind: 'success', text: `Forwarded "${line}" to the external agent.` }
-  }
-  if (parsed.name === 'compact') {
-    try {
-      await external.compact(session.id)
-    } catch (error: unknown) {
-      return { kind: 'error', text: renderFailure(error) }
-    }
-    // The provider records `external/compaction-noticed` on completion; the
-    // durable notice is the transcript, and this echo is the immediate ack.
-    return { kind: 'success', text: 'The external agent compacted its context.' }
-  }
-  const model = parsed.rawInput.trim()
-  if (model.length === 0) {
-    return { kind: 'error', text: 'Usage: /model <model-id>' }
-  }
-  try {
-    await external.setModel(session.id, model)
-  } catch (error: unknown) {
-    // e.g. a provider whose native surface has no runtime model-switch
-    // (Codex 0.147.0) rejects here; the message names the limitation.
-    return { kind: 'error', text: renderFailure(error) }
-  }
-  return { kind: 'success', text: `Switched the external agent to model "${model}".` }
-}
-
-/** Render an arbitrary thrown value without trusting its string coercion. */
-function renderFailure(value: unknown): string {
-  try {
-    return value instanceof Error ? value.message : String(value)
-  } catch {
-    return '<unrenderable error>'
   }
 }
 
@@ -1750,26 +1647,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     return agent
   }
 
-  /**
-   * Create or adopt a bare host session for an external-mode driver: the
-   * session enters the store (and announces `session/created`) WITHOUT a native
-   * Agent, so the bridge driver (a host plugin reacting to that event) owns the
-   * live external process. `mode` is stamped on the durable header so the mode
-   * survives restart.
-   * @param sessionId - the target (possibly preallocated) session id.
-   * @param cwd - the absolute project directory the external agent runs in.
-   * @param mode - the registered external provider name driving this session.
-   * @param model - optional initial model id from the mode's catalog/roster.
-   * @returns the entered session (a pre-existing one is returned unchanged).
-   */
-  function ensureExternalSession(sessionId: SessionId, cwd: string, mode: string, model?: string): Session {
-    const existing = ctx.sessions.get(sessionId)
-    if (existing !== undefined) return existing
-    return ctx.sessions.create(sessionId, {
-      meta: model === undefined ? { cwd, mode } : { cwd, mode, model },
-    })
-  }
-
   /** Resolve or create one path while holding the Host's workspace-create chain. */
   function ensureWorkspace(path: string): Promise<{ workspace: Workspace; created: boolean }> {
     const operation = workspaceCreationChain.then(async () => {
@@ -2213,43 +2090,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           }
         }
         const cwd = workspace?.path ?? request.payload.cwd ?? defaults.cwd
-        // `mode` names who drives the new session (client-plane choice): absent
-        // means the native agent loop (`dsh`); a value must resolve to a
-        // registered external provider, which creates the session WITHOUT a
-        // native Agent — the bridge driver (a host plugin reacting to
-        // `session/created`) owns the live external process.
-        const mode = request.payload.mode ?? 'dsh'
-        if (mode !== 'dsh') {
-          const external = ctx.get('externalSessions')
-          if (external === undefined || external.getProvider(mode) === undefined) {
-            return err(request, {
-              code: 'unknown-mode',
-              message: `no external session provider registered for mode "${mode}"`,
-              details: { mode },
-            })
-          }
-          try {
-            await ensureExternalSession(sessionId, cwd, mode, request.payload.model)
-          } catch (error: unknown) {
-            return err(request, {
-              code: 'internal',
-              message: `failed to create external session "${sessionId}": ${String(error)}`,
-              details: { mode },
-            })
-          }
-          if (workspace !== undefined) {
-            try {
-              await workspace.attachSession(sessionId)
-            } catch (error: unknown) {
-              return err(request, {
-                code: 'workspace-attach-failed',
-                message: `session "${sessionId}" was created but could not attach to workspace "${workspace.id}": ${String(error)}`,
-                details: { sessionId, workspaceId: workspace.id },
-              })
-            }
-          }
-          return ok(request, { sessionId })
-        }
         const requestedPreset = request.payload.agentPreset
         try {
           await ensureSession(sessionId, cwd, request.payload.sessionId !== undefined, requestedPreset)
@@ -2349,49 +2189,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const { groups, failures } = await buildModelCatalog(ctx)
         const routable = routeServed(current.provider)
         return ok(request, { current: { ...current }, routable, groups, failures })
-      },
-
-      // The new-session mode picker's data: every registered external mode with
-      // its disclosed model catalog. Host-scoped — no session exists yet on the
-      // picker. A mode whose catalog lookup fails still appears under
-      // `failures` so the picker can offer it with an inline reason; the agent
-      // list itself comes from the same registry (always synchronous), so a
-      // missing/absent `${ctx.get('externalSessions')}` yields empty groups
-      // rather than failing the picker (the deployment simply has no external
-      // modes).
-      async externalModes(request) {
-        const external = ctx.get('externalSessions')
-        if (external === undefined) {
-          return ok(request, { groups: [], failures: [] })
-        }
-        const agents = external.listAgents()
-        const settled = await Promise.all(agents.map(async (agent) => {
-          try {
-            const models = await external.listModels(agent.provider)
-            const group: ExternalModeGroup = {
-              provider: agent.provider,
-              label: agent.label,
-              modelDirectory: agent.modelDirectory,
-              models: models.map(model => ({
-                id: model.id,
-                name: model.name,
-                ...model.description === undefined ? {} : { description: model.description },
-              })),
-            }
-            return { kind: 'group' as const, group }
-          } catch (error: unknown) {
-            const failure: ExternalModeFailure = {
-              provider: agent.provider,
-              label: agent.label,
-              message: error instanceof Error ? error.message : String(error),
-            }
-            return { kind: 'failure' as const, failure }
-          }
-        }))
-        return ok(request, {
-          groups: settled.flatMap(item => item.kind === 'group' ? [item.group] : []),
-          failures: settled.flatMap(item => item.kind === 'failure' ? [item.failure] : []),
-        })
       },
 
       async selectModel(request) {
@@ -2619,40 +2416,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         return hasImage ? serializeImageAdmission(agent, admit) : admit()
       },
 
-      async command(request) {
-        // External-session consumer surface for a slash line: an external
-        // mode has no native Agent, so the line is routed per-session-mode
-        // here (before the generic execute path could require one) instead of
-        // through the agent-loop command registry.
-        const { sessionId, line } = request.payload
-        const session = ctx.sessions.get(sessionId)
-        if (session === undefined) {
-          return err(request, {
-            code: 'session-not-found',
-            message: `session "${sessionId}" not found`,
-            details: { sessionId },
-          })
-        }
-        const mode = session.header.mode
-        if (mode === undefined || mode === 'dsh') {
-          return err(request, {
-            code: 'invalid-mode',
-            message: 'session.command is for external-mode sessions; native sessions route through the command registry',
-            details: { sessionId },
-          })
-        }
-        try {
-          const result = await routeExternalSessionCommand(ctx, session, line)
-          return ok(request, result)
-        } catch (error: unknown) {
-          return err(request, {
-            code: 'internal',
-            message: `external session command failed: ${renderFailure(error)}`,
-            details: {},
-          })
-        }
-      },
-
       async attachment(request) {
         const { sessionId, attachmentId } = request.payload
         let state: SessionReadState
@@ -2736,11 +2499,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             details: { itemId },
           }))
         }
-        // The queue dock's steering rows are always next-turn messages; the
-        // guard only rejects a foreign next-step id. A running agent consumes
-        // a pushed message at its next step boundary; an idle agent must still
-        // deliver it as a fresh follow-up turn rather than dropping it.
-        if (action.kind === 'steer' && target !== 'next-turn') {
+        if (action.kind === 'steer' && (target !== 'next-turn' || agent.status !== 'running')) {
           return Promise.resolve(err(request, {
             code: 'steer-unavailable',
             message: 'current turn no longer accepts steering',
@@ -2751,10 +2510,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           agent.inbox.replace(itemId, freezeMessage({ ...message, content: action.content }))
         } else {
           agent.inbox.remove(itemId)
-          if (action.kind === 'steer') {
-            if (agent.status === 'running') agent.steer(message)
-            else agent.followup(message)
-          }
+          if (action.kind === 'steer') agent.steer(message)
         }
         return Promise.resolve(ok(request, { accepted: true as const }))
       },
@@ -2948,7 +2704,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         return Promise.resolve(ok(request, {
           items: ctx.workspaceRegistry.list().map(workspaceView),
           archivedSessionIds: [...ctx.workspaceRegistry.archivedSessionIds],
-          pinnedSessionIds: [...ctx.workspaceRegistry.pinnedSessionIds],
         }))
       },
 
@@ -3063,23 +2818,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         }
         return ok(request, { archivedSessionIds: [...ctx.workspaceRegistry.archivedSessionIds] })
       },
-
-      async setSessionPinned(request) {
-        const { sessionId, pinned } = request.payload
-        try {
-          await ctx.workspaceRegistry.setSessionPinned(sessionId, pinned)
-        } catch (error: unknown) {
-          // Only the registry's unknown-session rejection is the business
-          // code; storage/durability failures propagate as internal errors.
-          if (!(error instanceof WorkspaceUnknownSessionError)) throw error
-          return err(request, {
-            code: 'session-not-found',
-            message: error.message,
-            details: { sessionId },
-          })
-        }
-        return ok(request, { pinnedSessionIds: [...ctx.workspaceRegistry.pinnedSessionIds] })
-      },
     },
 
     host: {
@@ -3096,6 +2834,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           provider: selection.provider,
           model: selection.model,
           attachedSessions: ctx.agents.list().length,
+          home: homedir(),
           canOpenPath: canOpenPaths(),
         }))
       },
@@ -3701,7 +3440,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         // stream opens against the current set; workspace.list re-baselines
         // reconnecting clients, so only later changes need frames.
         let archivedSessionIds = ctx.workspaceRegistry.archivedSessionIds
-        let pinnedSessionIds = ctx.workspaceRegistry.pinnedSessionIds
         const disposers = [
           ctx.on('session/created', (session: Session) => {
             queue.push(frame({
@@ -3753,14 +3491,6 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
                 queue.push(frame({
                   type: 'host/archived-sessions-changed',
                   archivedSessionIds: [...state.archivedSessionIds],
-                }))
-              }
-              if (state.pinnedSessionIds.length !== pinnedSessionIds.length
-                || state.pinnedSessionIds.some((id, index) => id !== pinnedSessionIds[index])) {
-                pinnedSessionIds = state.pinnedSessionIds
-                queue.push(frame({
-                  type: 'host/pinned-sessions-changed',
-                  pinnedSessionIds: [...state.pinnedSessionIds],
                 }))
               }
               return

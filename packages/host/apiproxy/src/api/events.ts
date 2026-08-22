@@ -130,7 +130,7 @@ export type HostFrame =
     sessionId: SessionId
     blank: boolean
     parentSessionId?: SessionId
-    origin?: 'subagent' | 'github-actions'
+    origin?: 'subagent'
     cwd?: string
     agentPreset?: string
   }
@@ -141,7 +141,6 @@ export type HostFrame =
   | { type: 'host/workspace-removed'; workspaceId: WorkspaceView['workspaceId'] }
   | { type: 'host/workspace-order-changed'; workspaceIds: WorkspaceView['workspaceId'][] }
   | { type: 'host/archived-sessions-changed'; archivedSessionIds: SessionId[] }
-  | { type: 'host/pinned-sessions-changed'; pinnedSessionIds: SessionId[] }
   /**
    * One allowlisted host cordis event forwarded verbatim. The allowlist is
    * owned by `@deepseek-ai/dsh-api-remotes` (`API_REMOTE_FORWARDED_EVENTS`),

@@ -6,16 +6,11 @@
 
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import {
-  CompactionEngine,
-  isCompactCheckpointSource,
-  ManualCompactionError,
-} from '@deepseek-ai/dsh-compaction'
+import { CompactionEngine, ManualCompactionError } from '@deepseek-ai/dsh-compaction'
 import type { CompactionResult, CompactionTrigger } from '@deepseek-ai/dsh-compaction'
 import type { TokenMeter } from '@deepseek-ai/dsh-token-meter'
-import type { TokenMeasurement } from '@deepseek-ai/dsh-token-meter'
 import type { Session } from '@deepseek-ai/dsh-session'
-import { CONTEXT_WINDOW_EXCEEDED_CODE, FIRST_CHUNK_TIMEOUT_CODE, TIMEOUT_CODE, assertNever } from '@deepseek-ai/dsh-llm'
+import { CONTEXT_WINDOW_EXCEEDED_CODE, assertNever } from '@deepseek-ai/dsh-llm'
 import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
@@ -75,42 +70,12 @@ function conversationTarget(
   return { provider: agent.options.provider, model: agent.options.model }
 }
 
-/**
- * Whether every priced surface node through one end seq is a prior compaction
- * checkpoint. A span holding only checkpoints cannot be compacted further —
- * its replacement checkpoint would not be smaller — so bounded manual passes
- * stop there instead of failing the shrink check on the final pass. Surface
- * nodes are walked in surface order: after a rewrite a checkpoint's seq is
- * higher than the retained tail's, so position, not seq magnitude, bounds the
- * walk.
- * @param session - session whose surface and log are inspected.
- * @param measurement - the priced surface, aligned with the session's own.
- * @param endSeq - inclusive last surface seq of the candidate span.
- * @returns true when the span is entirely compaction checkpoints.
- */
-function spanIsAllCheckpoints(
-  session: Session,
-  measurement: TokenMeasurement,
-  endSeq: number,
-): boolean {
-  for (const node of measurement.nodes) {
-    const event = session.events[node.seq]
-    if (event?.type !== 'user/message' || !isCompactCheckpointSource(event.data.source)) {
-      return false
-    }
-    if (node.seq === endSeq) return true
-  }
-  /* v8 ignore next -- the candidate end is a surface seq, so the priced surface always contains it */
-  return false
-}
-
 const thresholdRatioSchema = z.number()
 const retainRatioSchema = z.number()
 const retainTokensSchema = z.number().step(1).min(0)
 const summarizationProviderSchema = z.string()
 const summarizationModelSchema = z.string()
 const maxTokensSchema = z.number().step(1).min(1)
-const maxSummarizationInputTokensSchema = z.number().step(1).min(0)
 const compactionRetriesSchema = z.number().step(1).min(0)
 const maxOverflowRetriesSchema = z.number().step(1).min(0)
 
@@ -118,13 +83,11 @@ const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   provider: z.string().required(),
   model: z.string().required(),
   thresholdRatio: thresholdRatioSchema,
-  idleTimeoutPressureRatio: thresholdRatioSchema,
   retainRatio: retainRatioSchema,
   retainTokens: retainTokensSchema,
   summarizationProvider: summarizationProviderSchema,
   summarizationModel: summarizationModelSchema,
   maxTokens: maxTokensSchema,
-  maxSummarizationInputTokens: maxSummarizationInputTokensSchema,
   compactionRetries: compactionRetriesSchema,
   maxOverflowRetries: maxOverflowRetriesSchema,
 })
@@ -142,13 +105,11 @@ export class BasicCompactionEngine extends CompactionEngine {
 
   static Config: z<BasicCompactionConfig> = z.object({
     thresholdRatio: thresholdRatioSchema,
-    idleTimeoutPressureRatio: thresholdRatioSchema,
     retainRatio: retainRatioSchema,
     retainTokens: retainTokensSchema,
     summarizationProvider: summarizationProviderSchema,
     summarizationModel: summarizationModelSchema,
     maxTokens: maxTokensSchema,
-    maxSummarizationInputTokens: maxSummarizationInputTokensSchema,
     compactionRetries: compactionRetriesSchema,
     maxOverflowRetries: maxOverflowRetriesSchema,
     modelPolicies: z.array(modelPolicy),
@@ -219,33 +180,13 @@ export class BasicCompactionEngine extends CompactionEngine {
       { agent, failure, signal },
       next,
     ) => {
-      const isOverflow = failure.code === CONTEXT_WINDOW_EXCEEDED_CODE
-      const isTimeout = failure.code === FIRST_CHUNK_TIMEOUT_CODE || failure.code === TIMEOUT_CODE
-      if ((!isOverflow && !isTimeout) || signal.aborted) return next()
+      if (failure.code !== CONTEXT_WINDOW_EXCEEDED_CODE || signal.aborted) return next()
       this.overflowAgents.set(agent.session, agent)
       const target = routedTarget(agent.session)
       if (target === undefined) return next()
       const policy = resolveTargetPolicy(this.config, target)
       const retries = this.overflowRetries.get(agent) ?? 0
       if (retries >= policy.maxOverflowRetries) return next()
-
-      // A first-chunk or total-request timeout means the prompt was too large
-      // to prefill (or to stream within budget), so it only compacts under
-      // high context pressure; at low pressure the retry policy above should
-      // retry the same payload instead. Without capacity metadata there is no
-      // way to gate, so delegate the decision upstream.
-      if (isTimeout) {
-        const measurement = this.ctx.tokenMeter.measure(agent.session)
-        const context = (await this.ctx.llm.resolveModelInfo(
-          target.provider,
-          target.model,
-          signal,
-        )).context
-        if (context?.contextWindow === undefined) return next()
-        if (measurement.totalTokens < context.contextWindow * policy.idleTimeoutPressureRatio) {
-          return next()
-        }
-      }
 
       const generation = agent.session.surface.replaceGeneration
       let result: CompactionResult | null
@@ -344,12 +285,7 @@ export class BasicCompactionEngine extends CompactionEngine {
         prune.pruneSession(agent.session)
         measurement = meter.measure(agent.session)
       }
-      const range = selectCompactableRange(
-        agent.session,
-        measurement,
-        0,
-        policy.maxSummarizationInputTokens,
-      )
+      const range = selectCompactableRange(agent.session, measurement, 0)
       if (range === null) return null
       return this.compactRegion(range.start, range.end, agent, signal)
     }
@@ -377,12 +313,7 @@ export class BasicCompactionEngine extends CompactionEngine {
 
     let result: CompactionResult | null = null
     for (let attempt = 0; attempt <= spec.compactionRetries; attempt += 1) {
-      const range = selectCompactableRange(
-        agent.session,
-        measurement,
-        spec.retainTokens,
-        spec.maxSummarizationInputTokens,
-      )
+      const range = selectCompactableRange(agent.session, measurement, spec.retainTokens)
       if (range === null) {
         /* v8 ignore else -- concrete replacement preserves a compactable checkpoint; subclass hooks cannot mutate it. */
         if (result === null) return null
@@ -428,10 +359,7 @@ export class BasicCompactionEngine extends CompactionEngine {
 
   /**
    * Force one useful idle-session compaction below the pressure threshold, and
-   * resolve only after each standalone marker pair is durably checkpointed.
-   * A huge surface is compacted in bounded passes, each reusing the same
-   * maintenance reservation, so every summarization call replays at most the
-   * policy's summarization input budget instead of the whole conversation.
+   * resolve only after its standalone marker pair is durably checkpointed.
    * @param agent - idle agent whose next-turn admission this call reserves.
    * @param signal - cancellation scoped to this compaction request.
    * @param sourceCommandId - initiating command identity for presentation correlation.
@@ -447,45 +375,29 @@ export class BasicCompactionEngine extends CompactionEngine {
       return agent.runMaintenance(async (agentSignal) => {
         const operationSignal = AbortSignal.any([agentSignal, signal])
         try {
-          const target = conversationTarget(agent)
-          const policy = target === undefined
-            ? this.config
-            : resolveTargetPolicy(this.config, target)
-          // Every successful pass removes at least one surface node (the
-          // checkpoint must be smaller than the span it replaces), so the loop
-          // terminates; the node count is a defensive ceiling, not a policy.
-          const passCeiling = agent.session.surface.nodes.length + 1
-          let result: CompactionResult | null = null
-          for (let attempt = 0; attempt < passCeiling; attempt += 1) {
-            operationSignal.throwIfAborted()
-            assertNoActiveCompaction(agent.session, 'manual compaction')
-            const measurement = this.ctx.tokenMeter.measure(agent.session)
-            const range = selectCompactableRange(
-              agent.session,
-              measurement,
-              0,
-              policy.maxSummarizationInputTokens,
-            )
-            if (range === null) return result
-            if (spanIsAllCheckpoints(agent.session, measurement, range.end)) return result
-            result = await compactSurfaceRegion(
-              this.regionDependencies(),
-              agent.session,
-              range.start,
-              range.end,
-              agent,
-              {
-                owner: null,
-                stability: 'selected-span',
-                ...sourceCommandId === undefined ? {} : { sourceCommandId },
-                flush: async () => {
-                  await this.ctx.sessions.flush(agent.session)
-                },
+          operationSignal.throwIfAborted()
+          const range = selectCompactableRange(
+            agent.session,
+            this.ctx.tokenMeter.measure(agent.session),
+            0,
+          )
+          if (range === null) return null
+          return await compactSurfaceRegion(
+            this.regionDependencies(),
+            agent.session,
+            range.start,
+            range.end,
+            agent,
+            {
+              owner: null,
+              stability: 'selected-span',
+              ...sourceCommandId === undefined ? {} : { sourceCommandId },
+              flush: async () => {
+                await this.ctx.sessions.flush(agent.session)
               },
-              operationSignal,
-            )
-          }
-          return result
+            },
+            operationSignal,
+          )
         } catch (error: unknown) {
           if (agentSignal.aborted && operationSignal.reason === agentSignal.reason) {
             throw new ManualCompactionError(

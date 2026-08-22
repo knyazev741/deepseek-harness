@@ -14,7 +14,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { assertUsableApiKey, LlmError, resolveRetryPolicy, RetryPolicySchema } from '@deepseek-ai/dsh-llm'
-import type { RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
+import type { ModelModality, RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { deepEqualJson, installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
@@ -92,6 +92,8 @@ const DEFAULT_MODELS: DeepSeekCatalogModel[] = [
     imageMaxBytes: DEFAULT_REQUEST_IMAGE_MAX_BYTES,
   },
 ]
+
+const MODEL_MODALITIES = ['text', 'image'] as const satisfies readonly ModelModality[]
 
 /**
  * Plugin config, validated by the same-named schemastery schema and doubling
@@ -431,7 +433,12 @@ export function apply(ctx: Context, config: Config): void {
 
   let userId: AnonymousUserId | undefined
   const resolveUserId = (): AnonymousUserId => userId ??= getOrCreateAnonymousUserId()
-  const adapter = new DeepSeekAdapter({ options, resolveApiKey, resolveUserId })
+  const adapter = new DeepSeekAdapter({
+    options,
+    resolveApiKey,
+    resolveUserId,
+    resolveAttachments: () => ctx.get('attachments'),
+  })
   ctx.llm.registerConfigurableProviders([
     { provider: PROVIDER, displayName: 'DeepSeek', settingsNs: NS, settingsPath: [] },
   ])

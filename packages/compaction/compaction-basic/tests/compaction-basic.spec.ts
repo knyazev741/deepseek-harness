@@ -12,7 +12,7 @@ import {
   resolveTargetPolicy,
 } from '@deepseek-ai/dsh-compaction-basic/src/config.ts'
 import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
-import LlmRuntime, { createUserMessage, CallId, CONTEXT_WINDOW_EXCEEDED_CODE, FIRST_CHUNK_TIMEOUT_CODE, TIMEOUT_CODE, createToolResultMessage, LlmAdapter , createMessage } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, CallId, CONTEXT_WINDOW_EXCEEDED_CODE, createToolResultMessage, LlmAdapter , createMessage } from '@deepseek-ai/dsh-llm'
 import type {
   ContentBlock,
   GenerateOptions,
@@ -290,12 +290,10 @@ describe('compact configuration and defaults', () => {
 
     expect(resolved).toEqual({
       thresholdRatio: 0.8,
-      idleTimeoutPressureRatio: 0.5,
       retainRatio: 0.16,
       summarizationProvider: '',
       summarizationModel: '',
       maxTokens: 8192,
-      maxSummarizationInputTokens: 131072,
       compactionRetries: 1,
       maxOverflowRetries: 1,
       modelPolicies: [],
@@ -321,25 +319,6 @@ describe('compact configuration and defaults', () => {
       retainTokens: 70,
     })
     expect(retentionOnly).not.toHaveProperty('retainRatio')
-  })
-
-  it('resolves the idle-timeout pressure ratio default and exact override', () => {
-    expect(resolveConfig({})).toMatchObject({ idleTimeoutPressureRatio: 0.5 })
-    expect(resolveConfig({ idleTimeoutPressureRatio: 0.2 }))
-      .toMatchObject({ idleTimeoutPressureRatio: 0.2 })
-    expect(resolveTargetPolicy(resolveConfig({ idleTimeoutPressureRatio: 0.9 }), {
-      provider: MODEL,
-      model: MODEL,
-    }).idleTimeoutPressureRatio).toBe(0.9)
-    const overridden = resolveTargetPolicy(resolveConfig({
-      idleTimeoutPressureRatio: 0.9,
-      modelPolicies: [{
-        provider: MODEL,
-        model: MODEL,
-        idleTimeoutPressureRatio: 0.3,
-      }],
-    }), { provider: MODEL, model: MODEL })
-    expect(overridden.idleTimeoutPressureRatio).toBe(0.3)
   })
 
   it('merges exact provider/model policy overrides and scales ratios per model', () => {
@@ -381,7 +360,6 @@ describe('compact configuration and defaults', () => {
         summarizationProvider: 'summary-provider',
         summarizationModel: 'summary-model',
         maxTokens: 512,
-        maxSummarizationInputTokens: 65_536,
         compactionRetries: 2,
         maxOverflowRetries: 3,
       }],
@@ -392,7 +370,6 @@ describe('compact configuration and defaults', () => {
       summarizationProvider: 'summary-provider',
       summarizationModel: 'summary-model',
       maxTokens: 512,
-      maxSummarizationInputTokens: 65_536,
       compactionRetries: 2,
       maxOverflowRetries: 3,
     })
@@ -436,9 +413,6 @@ describe('compact configuration and defaults', () => {
   it('validates common values and pressure-policy invariants', () => {
     const bad = [
       [{ maxTokens: 0 }, /maxTokens/],
-      [{ maxSummarizationInputTokens: -1 }, /maxSummarizationInputTokens/],
-      [{ maxSummarizationInputTokens: 1.5 }, /maxSummarizationInputTokens/],
-      [{ maxSummarizationInputTokens: 'many' }, /maxSummarizationInputTokens/],
       [{ compactionRetries: -1 }, /compactionRetries/],
       [{ maxOverflowRetries: -1 }, /maxOverflowRetries/],
       [{ auto: 'yes' }, /auto must be a boolean/],
@@ -450,8 +424,6 @@ describe('compact configuration and defaults', () => {
       [{ summarizationModel: '' }, /must be set together/],
       [{ thresholdRatio: 0 }, /number in \(0, 1\]/],
       [{ thresholdRatio: 1.1 }, /number in \(0, 1\]/],
-      [{ idleTimeoutPressureRatio: 0 }, /idleTimeoutPressureRatio.*number in \(0, 1\]/],
-      [{ idleTimeoutPressureRatio: 1.1 }, /idleTimeoutPressureRatio.*number in \(0, 1\]/],
       [{ retainRatio: 0.9 }, /retainRatio \(0.9\) must be less than the resolved thresholdRatio \(0.8\)/],
       [{ thresholdRatio: 0.1 }, /retainRatio \(0.16\) must be less than the resolved thresholdRatio \(0.1\)/],
       [{ retainTokens: -1 }, /non-negative integer/],
@@ -791,83 +763,6 @@ describe('pressure measurement and retention', () => {
 
     const priced = ctx.tokenMeter.measure(session)
     expect(selectCompactableRange(session, priced, 1)).toBeNull()
-  })
-})
-
-describe('bounded summarization input', () => {
-  it('selects the whole region unchanged when the budget covers it', () => {
-    const ctx = createContext()
-    const session = conversation(4)
-    const priced = ctx.tokenMeter.measure(session)
-    const full = selectCompactableRange(session, priced, 0)!
-    const bounded = selectCompactableRange(session, priced, 0, 10_000)!
-    expect(bounded).toEqual(full)
-  })
-
-  it('bounds the head span to the shortest prefix exceeding the budget', () => {
-    const ctx = createContext()
-    const session = conversation(6)
-    const priced = ctx.tokenMeter.measure(session)
-    const nodes = session.surface.nodes
-    const bounded = selectCompactableRange(session, priced, 0, 100)!
-    // One fixture message prices at 88 tokens, so the crossing rule stops
-    // after the second message: the span is never smaller than a single node.
-    expect(bounded).toEqual({ start: nodes[0], end: nodes[1] })
-    expect(selectCompactableRange(session, priced, 0, 10_000))
-      .toEqual(selectCompactableRange(session, priced, 0))
-  })
-
-  it('extends the bounded cut forward to a tool-pair balanced boundary', () => {
-    const ctx = createContext()
-    const session = toolConversation()
-    const priced = ctx.tokenMeter.measure(session)
-    const nodes = session.surface.nodes
-    // The budget stops the walk inside the first open tool pair; the end cut
-    // must land after its result instead of splitting the pair.
-    const bounded = selectCompactableRange(session, priced, 0, 1_000)!
-    expect(bounded.start).toBe(nodes[0])
-    expect(bounded.end).toBe(nodes[2])
-    expect(toolPairingBalancedAfter(session, bounded.end)).toBe(true)
-  })
-
-  it('applies the budget after tail retention', () => {
-    const ctx = createContext()
-    const session = conversation(10)
-    const priced = ctx.tokenMeter.measure(session)
-    const nodes = session.surface.nodes
-    const unbounded = selectCompactableRange(session, priced, 300)!
-    const bounded = selectCompactableRange(session, priced, 300, 200)!
-    expect(bounded.end).toBe(nodes[2])
-    expect(bounded.end).toBeLessThan(unbounded.end)
-    expect(unbounded.end).toBeGreaterThan(nodes[3]!)
-  })
-
-  it('converges a huge pressure session over bounded summarization passes', async () => {
-    const ctx = createContext(2_000)
-    const compact = service({
-      auto: false,
-      thresholdRatio: 0.8,
-      retainTokens: 300,
-      maxSummarizationInputTokens: 400,
-      compactionRetries: 6,
-    }, ctx)
-    const session = conversation(20)
-
-    const result = await compactIfNeeded(compact, session)
-
-    expect(result).not.toBeNull()
-    // 40 fixture messages at 88 tokens each need several passes at a 400-token
-    // budget; every call replayed only a bounded prefix, never the whole span.
-    expect(compact.calls.length).toBeGreaterThan(1)
-    for (const call of compact.calls) {
-      expect(call.input.messages.length).toBeGreaterThan(0)
-      expect(call.input.messages.length).toBeLessThan(10)
-    }
-    expect(summarizedText(compact.calls[0]!.input)).toContain('fixture user 1')
-    // The retained recent tail was never replayed into a summarization call.
-    for (const call of compact.calls) {
-      expect(summarizedText(call.input)).not.toContain('fixture user 20')
-    }
   })
 })
 
@@ -1567,14 +1462,6 @@ describe('automatic listener and loader composition', () => {
     return Object.assign(new Error(message), { code: CONTEXT_WINDOW_EXCEEDED_CODE })
   }
 
-  function firstChunkTimeout(message = 'no chunk before budget'): Error & { code: string } {
-    return Object.assign(new Error(message), { code: FIRST_CHUNK_TIMEOUT_CODE })
-  }
-
-  function streamTimeout(message = 'request timed out'): Error & { code: string } {
-    return Object.assign(new Error(message), { code: TIMEOUT_CODE })
-  }
-
   it('compacts before a step above threshold using the durable routed model and remains idle below it', async () => {
     const ctx = createContext()
     const compact = new TestCompactionEngine(ctx, {
@@ -1681,72 +1568,6 @@ describe('automatic listener and loader composition', () => {
     expect(session.surface.replaceGeneration).toBe(beforeGeneration + 1)
     expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
     expect(session.surface.nodes).toContain(retainedSeq)
-  })
-
-  it('compacts a first-chunk timeout when routed pressure is at or above the idle-timeout ratio', async () => {
-    const ctx = createContext()
-    void new TestCompactionEngine(ctx, {
-      idleTimeoutPressureRatio: 0.5,
-      maxOverflowRetries: 1,
-    })
-    const session = conversation(4)
-    expect(ctx.tokenMeter.measure(session).totalTokens).toBeGreaterThanOrEqual(500)
-
-    expect(await recover(ctx, agent(session, MODEL), firstChunkTimeout())).toBe(true)
-    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
-  })
-
-  it('delegates a first-chunk timeout below the idle-timeout ratio without compacting', async () => {
-    const ctx = createContext()
-    void new TestCompactionEngine(ctx, {
-      idleTimeoutPressureRatio: 0.5,
-      maxOverflowRetries: 1,
-    })
-    const session = conversation(2)
-    expect(ctx.tokenMeter.measure(session).totalTokens).toBeLessThan(500)
-
-    expect(await recover(ctx, agent(session, MODEL), firstChunkTimeout())).toBe(false)
-    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(false)
-  })
-
-  it('delegates a first-chunk timeout when the routed model exposes no context capacity', async () => {
-    const ctx = createContext()
-    vi.spyOn(ctx.llm, 'resolveModelInfo').mockImplementation((provider, model) =>
-      Promise.resolve({ provider, id: model, name: model }))
-    void new TestCompactionEngine(ctx, {
-      idleTimeoutPressureRatio: 0.5,
-      maxOverflowRetries: 1,
-    })
-    const session = conversation(4)
-
-    expect(await recover(ctx, agent(session, MODEL), firstChunkTimeout())).toBe(false)
-    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(false)
-  })
-
-  it('compacts a total-request timeout when routed pressure is at or above the idle-timeout ratio', async () => {
-    const ctx = createContext()
-    void new TestCompactionEngine(ctx, {
-      idleTimeoutPressureRatio: 0.5,
-      maxOverflowRetries: 1,
-    })
-    const session = conversation(4)
-    expect(ctx.tokenMeter.measure(session).totalTokens).toBeGreaterThanOrEqual(500)
-
-    expect(await recover(ctx, agent(session, MODEL), streamTimeout())).toBe(true)
-    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
-  })
-
-  it('delegates a total-request timeout below the idle-timeout ratio without compacting', async () => {
-    const ctx = createContext()
-    void new TestCompactionEngine(ctx, {
-      idleTimeoutPressureRatio: 0.5,
-      maxOverflowRetries: 1,
-    })
-    const session = conversation(2)
-    expect(ctx.tokenMeter.measure(session).totalTokens).toBeLessThan(500)
-
-    expect(await recover(ctx, agent(session, MODEL), streamTimeout())).toBe(false)
-    expect(session.events.some(event => event.type === 'compaction/summary')).toBe(false)
   })
 
   it('authorizes overflow retry when pruning alone advances an indivisible surface', async () => {

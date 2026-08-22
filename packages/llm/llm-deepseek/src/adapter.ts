@@ -16,6 +16,7 @@ import type {
   LlmProviderInfo,
   PreparedAdapterCall,
   LlmResolvedModelInfo,
+  ModelModality,
   ResolvedRetryPolicy,
   StreamChunk,
 } from '@deepseek-ai/dsh-llm'
@@ -127,8 +128,6 @@ export interface DeepSeekAdapterOptions {
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
 export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000
-/** Default budget for the wait until an adapter stream's first value. */
-export const DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS = 900_000
 /** Default combined request/response context capacity. */
 export const DEFAULT_CONTEXT_WINDOW = 1_000_000
 /** Default per-request output-token cap. */
@@ -306,7 +305,7 @@ function modelInfo(provider: string, model: DeepSeekCatalogModel): LlmModelInfo 
     id: model.id,
     name: model.name ?? model.id,
     ...model.description === undefined ? {} : { description: model.description },
-    inputModalities: ['text'],
+    inputModalities: model.inputModalities ?? ['text'],
   }
 }
 
@@ -333,6 +332,7 @@ function requestId(headers: Headers): ReturnType<typeof ProviderRequestId> | und
  */
 export function httpErrorCode(status: number, error?: WireError['error']): string {
   if (status === 401 || status === 403) return 'AUTH'
+  if (status === 413) return 'INVALID_REQUEST'
   const detail = [error?.code, error?.type, error?.message].filter(Boolean).join(' ')
   if (isQuotaExceededError(detail)) return QUOTA_EXCEEDED_CODE
   if (status === 429) return 'RATE_LIMIT'
@@ -349,8 +349,7 @@ export function httpErrorCode(status: number, error?: WireError['error']): strin
  * registered under (the harness model name IS the wire model name).
  *
  * One stable signal reaches both initial fetch and body reads. Caller aborts
- * map to `ABORTED`; the configured per-read idle watchdog maps to `TIMEOUT`
- * and its first-chunk wait maps to the distinct `FIRST_CHUNK_TIMEOUT`.
+ * map to `ABORTED`; the configured per-read idle watchdog maps to `TIMEOUT`.
  */
 export class DeepSeekAdapter extends LlmAdapter {
   private readonly files: DeepSeekFileStore
@@ -464,18 +463,14 @@ export class DeepSeekAdapter extends LlmAdapter {
     const upstream = options.signal === undefined
       ? consumer.signal
       : AbortSignal.any([options.signal, consumer.signal])
-    using watchdog = idleWatchdog(upstream, {
-      firstChunkMs: connection.firstChunkIdleTimeoutMs,
-      firstChunkCode: FIRST_CHUNK_IDLE_TIMEOUT_CODE,
-      idleMs: connection.streamIdleTimeoutMs,
-      idleCode: STREAM_IDLE_TIMEOUT_CODE,
-    })
+    using watchdog = idleWatchdog(upstream, connection.streamIdleTimeoutMs, STREAM_IDLE_TIMEOUT_CODE)
     const iterator = this.request(
       options,
       watchdog.signal,
       connection,
       apiKey,
       userId,
+      attachments,
       () => { watchdog.pulse() },
     )[Symbol.asyncIterator]()
     let exhausted = false
@@ -489,13 +484,6 @@ export class DeepSeekAdapter extends LlmAdapter {
         yield result.value
       }
     } catch (error: unknown) {
-      if (timeoutOf(watchdog.signal, FIRST_CHUNK_IDLE_TIMEOUT_CODE) !== undefined) {
-        throw new LlmError(
-          `DeepSeek first-chunk idle timeout after ${connection.firstChunkIdleTimeoutMs}ms`,
-          FIRST_CHUNK_TIMEOUT_CODE,
-          { cause: error },
-        )
-      }
       if (timeoutOf(watchdog.signal, STREAM_IDLE_TIMEOUT_CODE) !== undefined) {
         throw new LlmError(
           `DeepSeek stream idle timeout after ${connection.streamIdleTimeoutMs}ms`,

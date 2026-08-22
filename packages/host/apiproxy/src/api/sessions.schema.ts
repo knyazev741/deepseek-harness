@@ -55,10 +55,9 @@ export const sessionSummarySchema = z.object({
   running: z.boolean(),
   blank: z.boolean(),
   parentSessionId: sessionIdSchema.optional(),
-  origin: z.enum(['subagent', 'github-actions']).optional(),
+  origin: z.literal('subagent').optional(),
   cwd: z.string().optional(),
   agentPreset: z.string().optional(),
-  mode: z.string().optional(),
   projections: z.lazy(() => sessionProjectionsBlockSchema).optional(),
 }) as unknown as z.ZodType<Wire<SessionSummary>>
 
@@ -105,8 +104,6 @@ export const sessionCreateRequestSchema = z.object({
   cwd: z.string().optional(),
   sessionId: sessionIdSchema.optional(),
   agentPreset: z.string().optional(),
-  mode: z.string().optional(),
-  model: z.string().optional(),
 }).refine(
   payload => payload.workspaceId === undefined || payload.cwd === undefined,
   { message: 'session.create accepts workspaceId or cwd, not both' },
@@ -250,28 +247,6 @@ export const sessionModelsRequestSchema = z.object({
   sessionId: sessionIdSchema,
 }) satisfies z.ZodType<Wire<RequestPayload<'session.models'>>>
 
-/** session.externalModes request payload (host-scoped; no session needed). */
-export const sessionExternalModesRequestSchema = z.object({}) satisfies z.ZodType<Wire<RequestPayload<'session.externalModes'>>>
-
-/** session.externalModes response value. */
-export const sessionExternalModesValueSchema = z.object({
-  groups: z.array(z.object({
-    provider: z.string().min(1),
-    label: z.string().min(1),
-    modelDirectory: z.union([z.literal('provider'), z.literal('config')]),
-    models: z.array(z.object({
-      id: z.string().min(1),
-      name: z.string().min(1),
-      description: z.string().optional(),
-    })),
-  })),
-  failures: z.array(z.object({
-    provider: z.string().min(1),
-    label: z.string().min(1),
-    message: z.string(),
-  })),
-}) satisfies z.ZodType<Wire<ResponseValue<'session.externalModes'>>>
-
 /** session.models response value. */
 export const sessionModelsValueSchema = z.object({
   current: modelSelectionSchema,
@@ -326,18 +301,6 @@ export const sessionPromptValueSchema = z.object({
     text: z.string().optional(),
   }).optional(),
 }) satisfies z.ZodType<Wire<ResponseValue<'session.prompt'>>>
-
-/** session.command request payload: one exact slash line for an external-mode session. */
-export const sessionCommandRequestSchema = z.object({
-  sessionId: sessionIdSchema,
-  line: z.string(),
-}) satisfies z.ZodType<Wire<RequestPayload<'session.command'>>>
-
-/** session.command response value: the routed command outcome. */
-export const sessionCommandValueSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('success'), text: z.string().optional() }),
-  z.object({ kind: z.literal('error'), text: z.string() }),
-]) satisfies z.ZodType<Wire<ResponseValue<'session.command'>>>
 
 /** Opaque attachment id after string-shape validation. */
 export const attachmentIdSchema = z.string().min(1) as unknown as z.ZodType<AttachmentIdType>

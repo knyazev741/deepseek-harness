@@ -9,12 +9,12 @@ import type {
   SaveImageAttachment,
   StoredImageAttachment,
 } from '@deepseek-ai/dsh-attachment'
-import LlmRuntime, { createUserMessage, CONTEXT_WINDOW_EXCEEDED_CODE, FIRST_CHUNK_TIMEOUT_CODE, LlmError, ReasoningEffortId, userAgent } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, CONTEXT_WINDOW_EXCEEDED_CODE, LlmError, ReasoningEffortId, userAgent } from '@deepseek-ai/dsh-llm'
 import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
-import { resolveProfiles } from '../src/config.ts'
+import { DEFAULT_MAX_REQUEST_IMAGE_BYTES, resolveProfiles } from '../src/config.ts'
 import { memoryAuth } from './auth-double.ts'
 import { assemble } from './assemble.ts'
 import { closeMockServers, mockServer, textEvents } from './mock-server.ts'
@@ -262,8 +262,8 @@ describe('PiAiAdapter provider routing', () => {
         maxImageBytes: 1,
         maxImagesPerMessage: 1,
         maxMessageImageBytes: 1,
-        maxImageDimension: 1,
         maxImagePixels: 1,
+        maxImageDimension: 2000,
         mediaTypes: ['image/png'],
       }
 
@@ -394,13 +394,10 @@ describe('PiAiAdapter provider routing', () => {
 
   it('stops the SDK request when the adapter idle watchdog expires', async () => {
     const server = await mockServer([{ events: textEvents, delayMs: 200 }])
-    // No chunk ever arrives within the first-chunk budget, so the stream is
-    // killed on the first-chunk budget and reported as a first-chunk timeout
-    // rather than a generic idle timeout.
-    const ctx = await harness(server.url, { streamIdleTimeoutMs: 20, firstChunkIdleTimeoutMs: 20 })
+    const ctx = await harness(server.url, { streamIdleTimeoutMs: 20 })
 
     const result = await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
-    expect(result.finish).toMatchObject({ kind: 'error', failure: { code: FIRST_CHUNK_TIMEOUT_CODE } })
+    expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
     await Promise.race([
       server.responseClosed,
       new Promise<never>((_resolve, reject) => {
@@ -452,7 +449,7 @@ describe('provider profile lifecycle', () => {
     })
     expect(ctx.llm.providerRetryPolicy('anthropic')).toMatchObject({
       mode: 'normal',
-      maxRetries: 2,
+      maxRetries: 5,
     })
     await fiber.dispose()
     expect(ctx.llm.listProviders()).toEqual([])
@@ -657,6 +654,46 @@ describe('provider profile lifecycle', () => {
     expect(server.requests[1]).not.toHaveProperty('reasoning_effort')
   })
 
+  it('keeps the system role on a declared route whose gateway rejects the developer one', async () => {
+    vi.stubEnv('PI_TEST_KEY', 'test-key')
+    const server = await mockServer([{ events: textEvents }, { events: textEvents }])
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmPiAi, {
+      providers: {
+        'acme-gateway': {
+          apiKeyEnv: 'PI_TEST_KEY',
+          api: 'openai-completions',
+          baseURL: `${server.url}/v1`,
+          models: [
+            // pi-ai sends the system prompt as `developer` to a reasoning
+            // model whenever its URL detection says the endpoint is OpenAI —
+            // which is what an unrecognized private URL resolves to. Most
+            // OpenAI-compatible gateways reject that role.
+            { id: 'acme-think', reasoningEfforts: { off: null, high: 'high' }, compat: { supportsDeveloperRole: false } },
+            { id: 'acme-guess', reasoningEfforts: { off: null, high: 'high' } },
+          ],
+        },
+      },
+    })
+    const roles = async (model: string): Promise<string[]> => {
+      await assemble(ctx, {
+        provider: 'acme-gateway',
+        model,
+        reasoningEffort: ReasoningEffortId('high'),
+        system: 'you are a harness',
+        messages: [],
+      })
+      const request = server.requests.at(-1) as { messages: { role: string }[] }
+      return request.messages.map(message => message.role)
+    }
+
+    expect(await roles('acme-think')).toEqual(['system'])
+    // The switch is the only thing that changes it: the same route, same
+    // endpoint, same reasoning declaration still gets pi-ai's guess.
+    expect(await roles('acme-guess')).toEqual(['developer'])
+  })
+
   it('sends a declared off value as the effort parameter instead of omitting it', async () => {
     vi.stubEnv('PI_TEST_KEY', 'test-key')
     const server = await mockServer([{ events: textEvents }])
@@ -757,6 +794,7 @@ describe('provider profile lifecycle', () => {
   })
 
   it('validates empty, underspecified, legacy-shaped, and explicitly blank profiles', () => {
+    expect(DEFAULT_MAX_REQUEST_IMAGE_BYTES).toBe(20 * 1024 * 1024)
     // Empty and omitted dicts are the dormant zero-route posture, not errors.
     expect(resolveProfiles({}).size).toBe(0)
     expect(resolveProfiles(undefined).size).toBe(0)
@@ -770,6 +808,11 @@ describe('provider profile lifecycle', () => {
     expect(() => resolveProfiles({ openai: { provider: 'openai' } as never })).toThrow(/moved to the providers dict key/)
     expect(() => resolveProfiles({ openai: { baseURL: '' } })).toThrow(/empty baseURL/)
     expect(() => resolveProfiles({ openai: { apiKeyEnv: 'not-a-var!' } })).toThrow(/must match/)
+    expect(() => resolveProfiles({ openai: { maxRequestImageBytes: 0 } })).toThrow(/maxRequestImageBytes/)
+    expect(resolveProfiles({ openai: {} }).get('openai')?.maxRequestImageBytes)
+      .toBe(DEFAULT_MAX_REQUEST_IMAGE_BYTES)
+    expect(resolveProfiles({ openai: { maxRequestImageBytes: 1024 } }).get('openai')?.maxRequestImageBytes)
+      .toBe(1024)
   })
 
   it.each(['maxRetries', 'maxRetryDelayMs'] as const)(
@@ -791,9 +834,9 @@ describe('provider profile lifecycle', () => {
       { streamIdleTimeoutMs: 0 },
       { streamIdleTimeoutMs: Number.NaN },
       { streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
-      { firstChunkIdleTimeoutMs: 0 },
-      { firstChunkIdleTimeoutMs: Number.NaN },
-      { firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
+      { maxRequestImageBytes: 0 },
+      { maxRequestImageBytes: 1.5 },
+      { maxRequestImageBytes: Number.NaN },
     ]
     for (const entry of invalid) {
       const ctx = new Context()
@@ -876,23 +919,6 @@ describe('provider profile lifecycle', () => {
     expect(() => resolveProfiles({
       openai: { streamIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
     })).toThrow(/streamIdleTimeoutMs.*no greater/)
-    expect(() => resolveProfiles({
-      openai: { firstChunkIdleTimeoutMs: 0 },
-    })).toThrow(/firstChunkIdleTimeoutMs.*positive finite/)
-    expect(() => resolveProfiles({
-      openai: { firstChunkIdleTimeoutMs: MAX_TIMER_DELAY_MS + 1 },
-    })).toThrow(/firstChunkIdleTimeoutMs.*no greater/)
-  })
-
-  it('defaults the first-chunk idle budget to 900s and the idle budget to 300s', () => {
-    const resolved = resolveProfiles({ openai: {} }).get('openai')
-    expect(resolved?.streamIdleTimeoutMs).toBe(300_000)
-    expect(resolved?.firstChunkIdleTimeoutMs).toBe(900_000)
-    const tuned = resolveProfiles({
-      openai: { streamIdleTimeoutMs: 5_000, firstChunkIdleTimeoutMs: 10_000 },
-    }).get('openai')
-    expect(tuned?.streamIdleTimeoutMs).toBe(5_000)
-    expect(tuned?.firstChunkIdleTimeoutMs).toBe(10_000)
   })
 })
 

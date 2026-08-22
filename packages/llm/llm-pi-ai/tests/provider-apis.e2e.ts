@@ -230,7 +230,7 @@ for (const profile of providerCases) {
       if (profile.provider === 'anthropic') {
         it('sends a real image through the authenticated Anthropic visual path', async () => {
           const data = new Uint8Array(await readFile(
-            new URL('../../../../assets/community-wecom-survey.png', import.meta.url),
+            new URL('./fixtures/qr-code.png', import.meta.url),
           ))
           const ref: ImageAttachmentRef = {
             attachmentId: AttachmentId(`sha256:${'a'.repeat(64)}`),

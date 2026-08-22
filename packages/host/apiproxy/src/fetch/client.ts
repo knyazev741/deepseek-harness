@@ -25,8 +25,6 @@ import {
   sessionHistoryValueSchema,
   sessionListValueSchema,
   sessionModelsValueSchema,
-  sessionCommandValueSchema,
-  sessionExternalModesValueSchema,
   sessionPromptValueSchema,
   sessionRenameValueSchema,
   sessionSearchValueSchema,
@@ -41,7 +39,6 @@ import {
   workspaceInsertSessionBeforeValueSchema,
   workspaceListValueSchema,
   workspaceRenameValueSchema,
-  workspaceSetSessionPinnedValueSchema,
 } from '../api/workspace.schema.ts'
 import { skillListValueSchema } from '../api/skills.schema.ts'
 import {
@@ -98,8 +95,6 @@ export interface IApiClient {
     rename(payload: RequestPayload<'session.rename'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.rename'>>>
     fork(payload: RequestPayload<'session.fork'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.fork'>>>
     prompt(payload: RequestPayload<'session.prompt'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.prompt'>>>
-    command(payload: RequestPayload<'session.command'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.command'>>>
-    externalModes(payload: RequestPayload<'session.externalModes'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.externalModes'>>>
     attachment(payload: RequestPayload<'session.attachment'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.attachment'>>>
     updateQueue(payload: RequestPayload<'session.updateQueue'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.updateQueue'>>>
     cancel(payload: RequestPayload<'session.cancel'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'session.cancel'>>>
@@ -125,7 +120,6 @@ export interface IApiClient {
     insertBefore(payload: RequestPayload<'workspace.insertBefore'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.insertBefore'>>>
     insertSessionBefore(payload: RequestPayload<'workspace.insertSessionBefore'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.insertSessionBefore'>>>
     archiveSession(payload: RequestPayload<'workspace.archiveSession'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.archiveSession'>>>
-    setSessionPinned(payload: RequestPayload<'workspace.setSessionPinned'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.setSessionPinned'>>>
   }
   skills: {
     list(payload: RequestPayload<'skill.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skill.list'>>>
@@ -185,8 +179,6 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'session.rename': sessionRenameValueSchema,
   'session.fork': sessionForkValueSchema,
   'session.prompt': sessionPromptValueSchema,
-  'session.command': sessionCommandValueSchema,
-  'session.externalModes': sessionExternalModesValueSchema,
   'session.attachment': sessionAttachmentValueSchema,
   'session.updateQueue': sessionUpdateQueueValueSchema,
   'session.cancel': sessionCancelValueSchema,
@@ -206,7 +198,6 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'workspace.insertBefore': workspaceInsertBeforeValueSchema,
   'workspace.insertSessionBefore': workspaceInsertSessionBeforeValueSchema,
   'workspace.archiveSession': workspaceArchiveSessionValueSchema,
-  'workspace.setSessionPinned': workspaceSetSessionPinnedValueSchema,
   'skill.list': skillListValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
   'agentPreset.select': agentPresetSelectValueSchema,
@@ -428,8 +419,6 @@ export abstract class AbstractApiClient implements IApiClient {
     rename: (payload, signal) => this.callUnary('session.rename', payload, signal),
     fork: (payload, signal) => this.callUnary('session.fork', payload, signal),
     prompt: (payload, signal) => this.callUnary('session.prompt', payload, signal),
-    command: (payload, signal) => this.callUnary('session.command', payload, signal),
-    externalModes: (payload, signal) => this.callUnary('session.externalModes', payload, signal),
     attachment: (payload, signal) => this.callUnary('session.attachment', payload, signal),
     updateQueue: (payload, signal) => this.callUnary('session.updateQueue', payload, signal),
     cancel: (payload, signal) => this.callUnary('session.cancel', payload, signal),
@@ -462,7 +451,6 @@ export abstract class AbstractApiClient implements IApiClient {
     insertBefore: (payload, signal) => this.callUnary('workspace.insertBefore', payload, signal),
     insertSessionBefore: (payload, signal) => this.callUnary('workspace.insertSessionBefore', payload, signal),
     archiveSession: (payload, signal) => this.callUnary('workspace.archiveSession', payload, signal),
-    setSessionPinned: (payload, signal) => this.callUnary('workspace.setSessionPinned', payload, signal),
   }
 
   readonly skills: IApiClient['skills'] = {

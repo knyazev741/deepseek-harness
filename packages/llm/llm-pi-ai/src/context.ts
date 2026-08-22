@@ -33,6 +33,18 @@ function toolResultText(blocks: readonly ContentBlock[]): string {
     : block.type === 'tool-result' ? toolResultText(block.content) : '').join('')
 }
 
+/** Reject image roles that pi-ai cannot replay before request-size offloading can replace them. */
+function assertSupportedImageRoles(messages: readonly Message[]): void {
+  for (const message of messages) {
+    if (message.role !== 'user' && contentHasImage(message.content)) {
+      throw new LlmError(
+        `pi-ai cannot represent an image in an in-history ${message.role} message`,
+        'UNSUPPORTED_CONTENT',
+      )
+    }
+  }
+}
+
 async function userContent(
   blocks: readonly ContentBlock[],
   requestImages: ReadonlyMap<AttachmentId, RequestImageAttachment>,
@@ -173,7 +185,10 @@ export function toPiContext(
 ): PiContext
 /**
  * Convert harness history to a pi-ai Context while resolving durable images.
- * Tool result names are recovered from preceding assistant tool calls.
+ * Tool result names are recovered from preceding assistant tool calls. When
+ * the accumulated base64 image payload exceeds `maxRequestImageBytes`, the
+ * oldest images are replaced by text placeholders until the request fits, so
+ * an image-heavy session keeps clearing gateway request-size caps.
  * @param options - the harness request; `options.system` maps to pi-ai's single `systemPrompt` slot.
  * @param attachments - durable byte resolver for image references.
  * @param onReplayDegrade - forwarded to {@link toPiAssistant} for each assistant message.
@@ -229,9 +244,6 @@ async function toPiContextWithImages(
 
   for (const message of exactMessages) {
     if (message.role === 'system') {
-      if (contentHasImage(message.content)) {
-        throw new LlmError('pi-ai cannot represent an image in an in-history system message', 'UNSUPPORTED_CONTENT')
-      }
       // pi-ai has a single systemPrompt slot; in-history system messages are
       // folded into user messages to preserve order (rare in practice — the
       // harness sends the system prompt via options.system).

@@ -14,7 +14,6 @@ import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/t
 import type { RpcId, RpcRequest, RpcResponse } from './rpc.ts'
 import type { ToolEventView } from './events.ts'
 import type { WorkspaceId } from './workspace.ts'
-import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
@@ -178,45 +177,6 @@ export type QueueAction =
   | { kind: 'remove' }
   | { kind: 'steer' }
 
-/**
- * Who answers a mode's model list: `provider` means a native model catalog,
- * `config` a validated roster from the provider's own configuration.
- * Mirrors {@link ExternalModelDirectory} from `dsh-external-session`.
- */
-export type ExternalModelDirectory = 'provider' | 'config'
-
-/** One model a registered external mode can switch to (provider-native id). */
-export interface ExternalModelView {
-  /** Model id accepted by the provider's setModel. */
-  id: string
-  /** Human-readable model name for selectors. */
-  name: string
-  /** Optional user-facing distinction from otherwise similar models. */
-  description?: string
-}
-
-/** One registered external mode and its disclosed model catalog. */
-export interface ExternalModeGroup {
-  /** Registry name; also the session mode id and the session.create `mode` value. */
-  provider: string
-  /** Mode display label. */
-  label: string
-  /** Who answers this mode's model list. */
-  modelDirectory: ExternalModelDirectory
-  /** Models in provider-preferred order; empty when the mode offers none. */
-  models: ExternalModelView[]
-}
-
-/** A mode whose model catalog lookup failed; the mode itself remains selectable. */
-export interface ExternalModeFailure {
-  /** Registry name / mode id. */
-  provider: string
-  /** Mode display label. */
-  label: string
-  /** Lookup failure diagnostic. */
-  message: string
-}
-
 /** One Session list entry. */
 export interface SessionSummary {
   sessionId: SessionId
@@ -241,16 +201,9 @@ export interface SessionSummary {
   /** fork/spawn lineage (session.header.parentSession passthrough); absent for root sessions. */
   parentSessionId?: SessionId
   /** Coarse durable origin used by navigation surfaces; never proves resumability. */
-  origin?: 'subagent' | 'github-actions'
+  origin?: 'subagent'
   /** Session working directory (header.cwd passthrough); absent when unrecorded. */
   cwd?: string
-  /**
-   * Which driver owns this session (header.mode passthrough): absent means the
-   * native agent loop (`dsh`); a value names the registered external provider
-   * (Codex, an ACP client) that drives it. A surface renders mode-aware rows
-   * from this without opening the log.
-   */
-  mode?: string
   /**
    * Agent preset this session's agent was composed from (header passthrough);
    * absent when the deployment composes no presets. A surface offering a
@@ -308,27 +261,8 @@ export interface SessionsApi {
    * the session header, so a later resume rebuilds the same agent. An unknown
    * id fails with `agent-preset-not-found`, and a preset whose composition
    * cannot be mounted fails with `agent-preset-invalid`.
-   *
-   * `mode` names who drives the new session: omitted/`dsh` builds a native
-   * agent loop, while a registered external-provider name (Codex, an ACP
-   * client) creates the session without a native agent and hands it to the
-   * configured bridge driver. An unregistered or unknown mode fails with
-   * `unknown-mode`.
-   *
-   * `model` names the initial model for an external-mode session (a provider
-   * id from that mode's `externalModes` catalog or `config` roster); it is
-   * stored on the header so the bridge driver can hand it to the provider at
-   * start. Ignored for a `dsh`-mode session, which routes `model` through the
-   * ordinary model-selection machinery.
    */
-  create(request: RpcRequest<{
-    workspaceId?: WorkspaceId
-    cwd?: string
-    sessionId?: SessionId
-    agentPreset?: string
-    mode?: string
-    model?: string
-  }>):
+  create(request: RpcRequest<{ workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId; agentPreset?: string }>):
   Promise<RpcResponse<{ sessionId: SessionId; agentPreset?: string }>>
 
   /**
@@ -421,31 +355,6 @@ export interface SessionsApi {
     clientTimeZone?: string
   }>):
   Promise<RpcResponse<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
-
-  /**
-   * Routes one slash command line for an external-mode session through its
-   * provider's native surfaces instead of the agent-loop command registry. An
-   * external session has no native Agent, so this is the per-mode command
-   * boundary: `/compact` runs the provider's native compact (recording
-   * `external/compaction-noticed`), `/model <id>` switches the live session's
-   * model (`external/model-switched`), and any other line — slash or plain —
-   * is forwarded verbatim as prompt text to the external agent. A native-mode
-   * session rejects with `invalid-mode`: it routes through the command
-   * registry instead.
-   */
-  command(request: RpcRequest<{ sessionId: SessionId; line: string }>):
-  Promise<RpcResponse<CommandResult>>
-
-  /**
-   * Reads the registered external-session modes (the new-session mode picker's
-   * data) together with each mode's disclosed model catalog. Host-scoped, so
-   * it needs no session: the picker renders on the new-session screen before a
-   * session exists. A mode whose catalog lookup fails still appears, in
-   * `failures`, so the picker can offer the mode with an inline reason and let
-   * the session default its model.
-   */
-  externalModes(request: RpcRequest<{}>):
-  Promise<RpcResponse<{ groups: ExternalModeGroup[]; failures: ExternalModeFailure[] }>>
 
   /** Reads one durable image after proving that this session's log references its id. */
   attachment(request: RpcRequest<{ sessionId: SessionId; attachmentId: AttachmentIdType }>):
