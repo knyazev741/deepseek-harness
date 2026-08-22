@@ -20,15 +20,15 @@ Shared UI libraries still expose synchronous TypeScript and React values to many
 
 | Layer | Members | Responsibility | Build and load form |
 | --- | --- | --- | --- |
-| Web compilation shell | `apps/web` | Owns `index.html`, Vite configuration, dist chunks, and static assets | Assembles final browser output from built package exports |
-| Startup kernel | `packages/client/web` | Owns the plain-DOM boot page, module-system wiring, Cordis settlement, and renderer handoff | `staticLinked` `lib/index.js`; no `dsh.client` row |
+| Web compilation shell | `apps/web` | Owns `index.html`, Vite configuration, dist chunks, and static assets | Compiles the startup kernel and static bootstrap dependencies from source |
+| Startup kernel | `packages/client/web` | Owns the plain-DOM boot page, module-system wiring, Cordis settlement, and renderer handoff | Source-linked by Vite; its Node-loadable `lib/index.js` stubs CSS; no `dsh.client` row |
 | Static assembly libraries | Cordis, `ui-primitives`, `ui-slots` | Supply shared module identities and direct value APIs | ESM `lib/index.js`, merged and chunked by Vite; not Loader entries |
 | Module bootstrap | `packages/client/modules` | Supplies the client module table and its Cordis wrapper | Dynamic package with one ordinary `lib/client.js`; the host delivers its factory early |
 | Dynamic client packages | runtime, `ui-renderer`, theme, and feature plugins | Participate through Cordis services, slots, and effects | Declare `dsh.client`, emit self-registering `lib/client.js`, and remain host-graph entries |
 
-`packages/client/web` keeps Cordis as matching peer and development dependencies and uses modules and static UI packages as development compilation inputs. `apps/web` consumes built package exports rather than aliases into workspace source.
+`packages/client/web` keeps Cordis as matching peer and development dependencies and uses modules and static UI packages as compilation inputs. `apps/web` resolves the kernel, modules client face, `ui-primitives`, and `ui-slots` through exact source aliases. Those aliases preserve one browser identity for the bootstrap graph and route the kernel's global CSS through Vite.
 
-The `staticLinked` preset leaves every bare specifier as an external import in `lib/index.js` and emits relative CSS assets beside it. The Vite host resolves and deduplicates those imports and decides final chunk boundaries. A static library therefore does not copy the host's bundling policy into its own artifact.
+The kernel's separate `lib/index.js` exists for plain Node consumers and replaces every CSS import with an empty module because TypeScript emits no CSS beside `lib/types`. It is not the Vite input. The Vite host compiles the source aliases, resolves and deduplicates their imports, processes their CSS, and decides final chunk boundaries.
 
 ### Shared module requests
 
@@ -81,6 +81,6 @@ Bundle contents stay stable when an npm dependency moves between peer and develo
 
 The startup protocol depends on the modules and runtime package ids, and modules must remain self-contained at runtime. A missing bootstrap registration fails before Cordis starts; later plugin import, apply, and service-wait failures remain visible through the boot page's ACTIVE scan.
 
-The shell consumes built `lib/` products, so source and browser artifacts can drift until the relevant build or watcher runs. Typechecking source alone does not prove the served application uses the same code.
+The shell consumes source through Vite, while dynamic plugins consume built `lib/client.js` products. A complete build records both artifact sets and refuses a Web bundle without the shell theme; typechecking source alone does not prove the served application matches either set.
 
 The two static UI libraries remain deliberate exceptions. Converting either one to a dynamic package requires moving all value consumers to services or slots and removing its identity from the static seed in the same change.

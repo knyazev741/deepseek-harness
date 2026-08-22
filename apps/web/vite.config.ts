@@ -153,14 +153,16 @@ export default defineConfig({
     // run vite from this directory (scripts/dev-web.ts). Workspace packages need
     // no entry: pnpm links each of them to a single directory.
     dedupe: ['react', 'react-dom'],
-    // Workspace packages are consumed as built lib products: each resolves
-    // through its own package.json exports from the importer's directory, and
-    // CSS still rides Vite's pipeline because the client build preset emits it
-    // beside the bundle. Plugin packages never enter this graph; they arrive as
-    // runtime bundles through the client module system. The remaining alias
-    // browserizes the vendored Cordis Loader's only Node import.
+    // The shell and its static bootstrap dependencies resolve to source so
+    // shell-owned CSS reaches Vite. Plugin packages never enter this graph;
+    // they arrive as runtime bundles through the client module system. Keep
+    // exact-match aliases after the Node browserization alias.
     alias: [
       { find: /^node:module$/, replacement: src('./src/node-module-stub.ts') },
+      { find: /^@deepseek-ai\/dsh-client-web$/, replacement: src('../../packages/client/web/src/boot.tsx') },
+      { find: /^@deepseek-ai\/dsh-client-ui-slots$/, replacement: src('../../packages/client/ui-slots/src/index.ts') },
+      { find: /^@deepseek-ai\/dsh-client-ui-primitives$/, replacement: src('../../packages/client/ui-primitives/src/index.ts') },
+      { find: /^@deepseek-ai\/dsh-client-modules\/client$/, replacement: src('../../packages/client/modules/src/client/index.ts') },
     ],
   },
   define: {

@@ -20,15 +20,15 @@ Client npm 依赖区段描述安装和开发关系，但不能可靠描述 bundl
 
 | 层 | 成员 | 职责 | 构建与加载形态 |
 | --- | --- | --- | --- |
-| Web 编译壳 | `apps/web` | 拥有 `index.html`、Vite 配置、dist chunk 和静态资源 | 从已构建 package export 组装最终浏览器产物 |
-| 启动内核 | `packages/client/web` | 拥有纯 DOM 启动页、模块系统接线、Cordis settle 和 renderer handoff | `staticLinked` `lib/index.js`；无 `dsh.client` row |
+| Web 编译壳 | `apps/web` | 拥有 `index.html`、Vite 配置、dist chunk 和静态资源 | 从源码编译启动内核及静态自举依赖 |
+| 启动内核 | `packages/client/web` | 拥有纯 DOM 启动页、模块系统接线、Cordis settle 和 renderer handoff | 由 Vite 链接源码；供 Node 加载的 `lib/index.js` 会桩替 CSS；无 `dsh.client` row |
 | 静态装配库 | Cordis、`ui-primitives`、`ui-slots` | 提供共享模块身份和直接实体 API | ESM `lib/index.js`，由 Vite 合并拆分；不是 Loader entry |
 | 模块自举包 | `packages/client/modules` | 提供 client 模块表及其 Cordis wrapper | 带一个普通 `lib/client.js` 的动态包；host 提前送达其 factory |
 | 动态 client 包 | runtime、`ui-renderer`、主题和功能插件 | 通过 Cordis service、slot 和 effect 参与应用 | 声明 `dsh.client`，产出自注册 `lib/client.js`，并保留 host graph entry |
 
-`packages/client/web` 把 Cordis 保持为 matching peer 与开发依赖，并把 modules 和静态 UI 包作为开发期编译输入。`apps/web` 消费已构建 package export，不通过 alias 读取 workspace 源码。
+`packages/client/web` 把 Cordis 保持为 matching peer 与开发依赖，并把 modules 和静态 UI 包作为编译输入。`apps/web` 通过精确的源码 alias 解析内核、modules client face、`ui-primitives` 与 `ui-slots`。这些 alias 为自举图保留唯一的浏览器身份，并让内核的全局 CSS 进入 Vite 流水线。
 
-`staticLinked` 预设让 `lib/index.js` 中每个 bare specifier 保持 external import，并在旁边输出相对 CSS 资产。Vite 宿主负责解析和去重这些 import，并决定最终 chunk 边界。静态库不会把宿主打包策略复制进自身产物。
+内核另行产出的 `lib/index.js` 供普通 Node 消费者使用；由于 TypeScript 不会在 `lib/types` 旁输出 CSS，该产物会把每个 CSS import 替换为空模块。它不是 Vite 的输入。Vite 宿主编译源码 alias、解析并去重其 import、处理其 CSS，并决定最终 chunk 边界。
 
 ### 共享模块请求
 
@@ -81,6 +81,6 @@ Npm 依赖在 peer 与开发区段间移动时，bundle 内容保持稳定，因
 
 启动协议依赖 modules 和 runtime 的 package id，modules 还必须保持运行期自包含。缺少 bootstrap registration 会在 Cordis 启动前失败；后续插件 import、apply 与 service 等待失败仍由启动页的 ACTIVE 扫描呈现。
 
-外壳消费已构建 `lib/` 产品，因此在相关 build 或 watcher 运行前，源码与浏览器产物可能漂移。仅源码 typecheck 通过不能证明实际服务的应用使用同一份代码。
+外壳通过 Vite 消费源码，动态插件则消费已构建的 `lib/client.js` 产品。完整构建会记录两组产物，并拒绝缺少外壳主题的 Web bundle；仅源码 typecheck 通过不能证明实际服务的应用与任一产物集一致。
 
 两个静态 UI 库仍是明确例外。把其中任一项转换为动态包时，必须在同一变更中把全部实体消费者迁移到 service 或 slot，并从静态 seed 删除对应身份。
