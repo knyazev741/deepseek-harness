@@ -149,15 +149,15 @@ function sessionTitle(session: SessionSummary): string {
  * @returns pinned-first ordering.
  */
 export function pinFirst<T extends { id: SessionId }>(sessions: readonly T[], pinnedOrder: readonly SessionId[]): T[] {
-  const rank = new Map(pinnedOrder.map((id, index) => [id as string, index]))
+  const rank = new Map(pinnedOrder.map((id, index) => [id, index]))
   const pinned: T[] = []
   const unpinned: T[] = []
   for (const session of sessions) {
-    if (rank.has(session.id as string)) pinned.push(session)
+    if (rank.has(session.id)) pinned.push(session)
     else unpinned.push(session)
   }
   pinned.sort((a, b) =>
-    (rank.get(a.id as string) ?? 0) - (rank.get(b.id as string) ?? 0))
+    (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0))
   return [...pinned, ...unpinned]
 }
 

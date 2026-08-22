@@ -26,6 +26,10 @@
       "types": "./lib/types/types.d.ts",
       "default": "./lib/types/types.js"
     },
+    "./external-types": {
+      "types": "./lib/types/external-types.d.ts",
+      "default": "./lib/types/external-types.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },

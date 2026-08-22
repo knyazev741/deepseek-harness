@@ -13,7 +13,8 @@ import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
 import { defineTool, parameterSchemaSpecToJsonSchema } from './schema.ts'
 import { TOOL_RUNTIME_SCHEDULER } from './index.ts'
-import type { CodeDispatchLog, ToolDefinition, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
+import type { CodeDispatchLog, ToolDefinition, ToolExecutionInput, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
+import { executionScope } from './execution-subject.ts'
 import type {} from './types.ts'
 
 /** The model-facing name of the Code Mode tool. */
@@ -470,17 +471,22 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
         const normalized = jsonNormalizeArgs(rawArgs)
         const n = ++dispatches
         const subCallId = CallId(`${String(exec.callId)}:code:${n}`)
-        const input = {
+        const baseInput = {
           callId: subCallId,
           rootCallId: exec.rootCallId,
           name,
           arguments: normalized.dispatched,
-          ...exec.agent ? { agent: exec.agent } : {},
           parent: exec.token,
           signal: runController.signal,
         }
+        const input: ToolExecutionInput = exec.agent !== undefined
+          ? { ...baseInput, agent: exec.agent }
+          : exec.principal !== undefined
+            ? { ...baseInput, principal: exec.principal }
+            : baseInput
         type DispatchOutcome = { isError: true; message: string } | { isError: false; value: JsonValue }
         const scheduler = registry[TOOL_RUNTIME_SCHEDULER]
+        const principal = exec.principal
         const outcome = await new Promise<DispatchOutcome>((resolve, reject) => {
           // Set by the dispatch stage (or start() for a pre-settled result): what commit() finalizes in submission order.
           let parked:
@@ -503,7 +509,13 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
               // locator; the program's value and model-visible result are
               // untouched.
               const logged = await shapeDispatchLog({
-                exec, agent, subCallId, name, isError: result.isError,
+                exec,
+                scope: executionScope(exec),
+                agent,
+                ...principal !== undefined ? { principal } : {},
+                subCallId,
+                name,
+                isError: result.isError,
                 // The registry deep-froze this projection at result
                 // finalization; append snapshots the final copy again, so
                 // the log stays detached.
@@ -611,7 +623,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       // restricted globals vanish) — the same view the SDK section declared,
       // so a program can bind exactly what its prompt promised; sub-dispatch
       // re-resolves per call through the same view (exec.agent threads down).
-      for (const schema of registry.schemas(exec.agent)) {
+      for (const schema of registry.schemas(executionScope(exec))) {
         if (schema.name === RUN_CODE_NAME) continue
         Object.defineProperty(functions, schema.name, { enumerable: true, value: binding(schema.name) })
       }

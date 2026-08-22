@@ -4,11 +4,19 @@
  * (see responses-fixture.ts). No real API key or network is used.
  */
 
-import { existsSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it, vi } from 'vitest'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import {
+  ExternalProviderThreadId,
+  parseExternalProviderThreadId,
+} from '@deepseek-ai/dsh-external-session'
 import * as ExternalCodexInvariant from '@deepseek-ai/dsh-external-session-codex/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { startCodexHarness, type CodexTestHarness } from './harness.ts'
+import { codexStateRoot } from '../src/index.ts'
 
 const command = process.platform === 'win32'
   ? 'cmd /c type nul > approval-side-effect'
@@ -54,9 +62,33 @@ function agentMessageTexts(harness: CodexTestHarness): string[] {
     .map(event => (event.data as { text: string }).text)
 }
 
+/** Join streamed delta fragments by provider turn before asserting text. */
+function streamedDeltaTexts(harness: CodexTestHarness): string[] {
+  const byTurn = new Map<string, string>()
+  for (const delta of harness.recorded.deltas) {
+    byTurn.set(delta.turnId, `${byTurn.get(delta.turnId) ?? ''}${delta.delta}`)
+  }
+  return [...byTurn.values()]
+}
+
 /** Let the session's process-death bookkeeping settle after a kill. */
 async function settle(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 150))
+}
+
+/** Assert that an operation settled with the provider's safe cancellation error. */
+function expectCancellation(value: unknown): void {
+  expect(value).toBeInstanceOf(Error)
+  if (!(value instanceof Error)) return
+  expect(value.message).toMatch(/abort|disposed/u)
+}
+
+/** Assert the small result identity returned by one external prompt. */
+function expectTurnResult(value: unknown): void {
+  expect(value).not.toBeNull()
+  expect(typeof value).toBe('object')
+  if (value === null || typeof value !== 'object') return
+  expect(typeof (value as Record<string, unknown>).turnId).toBe('string')
 }
 
 describe('external-session-codex registration', () => {
@@ -73,11 +105,182 @@ describe('external-session-codex registration', () => {
     }
   })
 
-  it('setModel rejects loud: 0.147.0 exposes no runtime model-switch on a live thread', async () => {
+  it('cancels startup before it can spawn when disposed immediately', async () => {
     const harness = await startCodexHarness([])
     try {
-      await expect(harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol'))
-        .rejects.toThrow(/no runtime model-switch/)
+      const opening = harness.start()
+      const openingOutcome = opening.then(() => undefined, (error: unknown) => error)
+      const closingOutcome = harness.provider.dispose(harness.sessionId).then(
+        () => undefined,
+        (error: unknown) => error,
+      )
+      await expect(closingOutcome).resolves.toBeUndefined()
+      await openingOutcome.then(expectCancellation)
+      expect(harness.handles).toHaveLength(0)
+    } finally {
+      await harness.close()
+    }
+  })
+
+  it('gates prompt and model operations until startup and lets disposal win', async () => {
+    const harness = await startCodexHarness([{ kind: 'complete', text: 'STARTUP_GATED' }])
+    try {
+      const opening = harness.start()
+      const prompt = Promise.resolve().then(() => harness.provider.prompt(harness.sessionId, 'queued during startup'))
+      const model = harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol')
+      let interruptError: unknown
+      try {
+        harness.provider.interrupt(harness.sessionId)
+      } catch (error: unknown) {
+        interruptError = error
+      }
+      const closing = harness.provider.dispose(harness.sessionId)
+
+      const [closingOutcome, openingOutcome, promptOutcome, modelOutcome] = await Promise.all([
+        closing.then(() => undefined, (error: unknown) => error),
+        opening.then(() => undefined, (error: unknown) => error),
+        prompt.then(value => value, (error: unknown) => error),
+        model.then(() => undefined, (error: unknown) => error),
+      ])
+      expect(closingOutcome).toBeUndefined()
+      expectCancellation(openingOutcome)
+      expectCancellation(promptOutcome)
+      expectCancellation(modelOutcome)
+      expect(interruptError).toBeUndefined()
+      expect(harness.recorded.events).not.toContainEqual(expect.objectContaining({
+        type: 'external/turn-started',
+      }))
+    } finally {
+      await harness.close()
+    }
+  })
+
+  it('gates immediate operations behind the completed thread startup', async () => {
+    const harness = await startCodexHarness([{ kind: 'complete', text: 'STARTUP_ORDERED' }])
+    try {
+      const opening = harness.start()
+      const prompt = Promise.resolve().then(() => harness.provider.prompt(harness.sessionId, 'after startup'))
+      const model = harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol')
+      let interruptError: unknown
+      try {
+        harness.provider.interrupt(harness.sessionId)
+      } catch (error: unknown) {
+        interruptError = error
+      }
+
+      const [openingOutcome, modelOutcome, promptOutcome] = await Promise.all([
+        opening.then(() => undefined, (error: unknown) => error),
+        model.then(() => undefined, (error: unknown) => error),
+        prompt.then(value => value, (error: unknown) => error),
+      ])
+      expect(openingOutcome).toBeUndefined()
+      expect(modelOutcome).toBeUndefined()
+      expectTurnResult(promptOutcome)
+      expect(interruptError).toBeUndefined()
+      await harness.waitTurns(1)
+
+      const started = harness.recorded.events.findIndex(event => event.type === 'external/session-started')
+      const turnStarted = harness.recorded.events.findIndex(event => event.type === 'external/turn-started')
+      expect(started).toBeGreaterThanOrEqual(0)
+      expect(turnStarted).toBeGreaterThan(started)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('disposes a failed provider owner during registry rollback', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      const service = harness.ctx.externalSessions
+      const provider = harness.provider
+      const originalStart = provider.start.bind(provider)
+      let disposal: Promise<void> | undefined
+      const startSpy = vi.spyOn(provider, 'start').mockImplementation(async (request, bridge) => {
+        try {
+          await originalStart(request, bridge)
+        } catch (error: unknown) {
+          disposal = service.dispose(request.sessionId)
+          throw error
+        }
+      })
+
+      const opening = service.start({
+        sessionId: harness.sessionId,
+        provider: 'codex',
+        cwd: `${harness.workspace}/missing-start-directory`,
+        sandbox: 'read-only',
+        approvalPolicy: 'ask',
+      })
+      await expect(opening).rejects.toThrow(/ENOENT|spawn/u)
+      if (disposal === undefined) throw new Error('registry disposal was not scheduled')
+      await expect(disposal).resolves.toBeUndefined()
+      await expect(service.dispose(harness.sessionId)).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
+      expect(harness.handles.every(handle => handle.pid <= 0)).toBe(true)
+      expect(harness.recorded.events).not.toContainEqual(expect.objectContaining({
+        type: 'external/session-started',
+      }))
+      startSpy.mockRestore()
+    } finally {
+      await harness.close()
+    }
+  })
+
+  it('stores model and effort and applies them to the next turn', async () => {
+    const harness = await startCodexHarness([{ kind: 'complete', text: 'MODEL_SWITCHED' }])
+    try {
+      await harness.start('fixture-model')
+      await harness.waitCount('external/session-started', 1)
+      const started = harness.recorded.events.find(event => event.type === 'external/session-started')
+      expect(started).toBeDefined()
+      if (started === undefined || started.data === null || typeof started.data !== 'object') {
+        throw new Error('external/session-started event was not recorded')
+      }
+      const startedData = started.data as Record<string, unknown>
+      expect(startedData.provider).toBe('codex')
+      expect(startedData.cwd).toBe(harness.workspace)
+      expect(startedData.model).toBe('fixture-model')
+      expect(typeof startedData.providerThreadId).toBe('string')
+      await harness.provider.setModel(harness.sessionId, 'gpt-5.6-sol', ReasoningEffortId('high'))
+      await harness.provider.prompt(harness.sessionId, 'switch model')
+      await harness.waitTurns(1)
+      expect(harness.recorded.events)
+        .toContainEqual({ type: 'external/model-switched', data: { model: 'gpt-5.6-sol' } })
+      expect(harness.fixture.requests[0]?.body).toMatchObject({
+        model: 'gpt-5.6-sol',
+        reasoning: { effort: 'high' },
+      })
+    } finally {
+      await harness.close()
+    }
+  })
+
+  it('rejects a model outside the authoritative native catalog', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      await harness.start()
+      await expect(harness.provider.setModel(
+        harness.sessionId,
+        'not-in-the-native-catalog',
+      )).rejects.toThrow(/not listed/u)
+      expect(harness.recorded.events).not.toContainEqual({
+        type: 'external/model-switched',
+        data: { model: 'not-in-the-native-catalog' },
+      })
+    } finally {
+      await harness.close()
+    }
+  })
+
+  it('confines a pre-session model listing under read-only policy', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      await harness.ctx.externalSessions.listModels('codex')
+      // Codex initializes its private SQLite/model cache while listing models.
+      // The provider grants write access only to that provider-owned state root;
+      // the user's workspace remains outside the policy.
+      expect(harness.confinedPolicies[0]).toMatchObject({ mode: 'workspace-write' })
+      expect(harness.confinedPolicies[0]?.stateRoot).toContain(harness.codexHome)
+      expect(harness.spawnSpecs[0]?.env?.CODEX_HOME).toContain(harness.codexHome)
     } finally {
       await harness.close()
     }
@@ -85,6 +288,23 @@ describe('external-session-codex registration', () => {
 })
 
 describe('external-session-codex persistent turns', () => {
+  it('serializes concurrent prompts across thread startup and turn dispatch', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'complete', text: 'CONCURRENT_FIRST' },
+      { kind: 'complete', text: 'CONCURRENT_SECOND' },
+    ])
+    try {
+      await harness.start()
+      const first = harness.provider.prompt(harness.sessionId, 'first concurrent prompt')
+      const second = harness.provider.prompt(harness.sessionId, 'second concurrent prompt')
+      await expect(Promise.all([first, second])).resolves.toHaveLength(2)
+      await harness.waitTurns(2, 5_000)
+      expect(harness.recorded.events.filter(event => event.type === 'external/turn-started')).toHaveLength(2)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
   it('runs two prompts on one persistent thread and commits both agent messages', async () => {
     const first = 'FIRST_TURN_SENTINEL'
     const second = 'SECOND_TURN_SENTINEL'
@@ -111,6 +331,133 @@ describe('external-session-codex persistent turns', () => {
     }
   }, 60_000)
 
+  it('resumes the durable provider thread without starting a replacement thread', async () => {
+    const first = 'DURABLE_FIRST'
+    const second = 'DURABLE_SECOND'
+    const harness = await startCodexHarness([
+      { kind: 'complete', text: first },
+      { kind: 'complete', text: second },
+    ])
+    try {
+      await harness.start()
+      await harness.waitCount('external/session-started', 1)
+      const started = harness.recorded.events.find(event => event.type === 'external/session-started')
+      const providerThreadId = (started?.data as { providerThreadId?: unknown } | undefined)?.providerThreadId
+      expect(providerThreadId).toBeTypeOf('string')
+
+      await harness.provider.prompt(harness.sessionId, 'before host restart')
+      await harness.waitTurns(1)
+      await harness.provider.dispose(harness.sessionId)
+      const parsedThreadId = parseExternalProviderThreadId(providerThreadId)
+      if (parsedThreadId === undefined) throw new Error('fixture did not provide a valid provider thread id')
+      await harness.resume(parsedThreadId)
+
+      expect(harness.recorded.events.filter(event => event.type === 'external/session-started'))
+        .toHaveLength(1)
+      await harness.provider.prompt(harness.sessionId, 'after host restart')
+      await harness.waitTurns(2)
+      expect(agentMessageTexts(harness)).toEqual([first, second])
+      expect(responseInputTexts(harness.fixture.requests[1]!.body)).toContain(first)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('composes the real registry with a gateway, rotates lease credentials on resume, and serializes teardown', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'complete', text: 'GATEWAY_FIRST' },
+      { kind: 'complete', text: 'GATEWAY_SECOND' },
+    ], { gateway: true })
+    const order: string[] = []
+    const stopLease = harness.ctx.on('mcp-gateway/lease-disposed', () => { order.push('lease') })
+    try {
+      const rolloutRoot = join(codexStateRoot(harness.codexHome, String(harness.sessionId)), 'sessions')
+      mkdirSync(rolloutRoot, { recursive: true })
+      writeFileSync(join(rolloutRoot, 'rollout.jsonl'), 'preserve-this-rollout\n')
+
+      await Promise.all([harness.start(), harness.start()])
+      await harness.waitCount('external/session-started', 1)
+      const firstConfig = readFileSync(join(codexStateRoot(harness.codexHome, String(harness.sessionId)), 'config.toml'), 'utf8')
+      const firstUrl = firstConfig.match(/^url = "([^"]+)"$/mu)?.[1]
+      const firstToken = harness.spawnSpecs[0]?.env?.DSH_MCP_BEARER_TOKEN
+      expect(firstUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\//u)
+      expect(firstToken).toBeTypeOf('string')
+      expect(firstConfig).toContain('model_provider = "fixture"')
+
+      const started = harness.recorded.events.find(event => event.type === 'external/session-started')
+      const providerThreadId = (started?.data as { providerThreadId?: unknown } | undefined)?.providerThreadId
+      if (typeof providerThreadId !== 'string') throw new Error('gateway fixture did not record provider thread id')
+      await harness.provider.prompt(harness.sessionId, 'gateway first prompt')
+      await harness.waitTurns(1)
+
+      const child = harness.handles[0]
+      if (child === undefined) throw new Error('gateway fixture did not spawn a child')
+      void child.done.then(() => { order.push('child') })
+      await harness.disposeAttachment()
+      expect(order.slice(0, 2)).toEqual(['lease', 'child'])
+
+      await harness.resume(ExternalProviderThreadId(providerThreadId))
+      const secondConfig = readFileSync(join(codexStateRoot(harness.codexHome, String(harness.sessionId)), 'config.toml'), 'utf8')
+      const secondUrl = secondConfig.match(/^url = "([^"]+)"$/mu)?.[1]
+      const secondToken = harness.spawnSpecs[1]?.env?.DSH_MCP_BEARER_TOKEN
+      expect(secondUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\//u)
+      expect(secondUrl).not.toBe(firstUrl)
+      expect(secondToken).toBeTypeOf('string')
+      expect(secondToken).not.toBe(firstToken)
+      expect(secondConfig).toContain('model_provider = "fixture"')
+      expect(readFileSync(join(rolloutRoot, 'rollout.jsonl'), 'utf8')).toBe('preserve-this-rollout\n')
+      await harness.provider.prompt(harness.sessionId, 'gateway second prompt')
+      await harness.waitTurns(2)
+    } finally {
+      stopLease()
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('rejects an unknown real Codex thread, rolls back the route, and keeps the log readable', async () => {
+    const harness = await startCodexHarness([])
+    try {
+      await harness.ctx.plugin(JsonlSessionPersistence, {
+        root: join(harness.workspace, 'session-log'),
+        compression: 'none',
+      })
+      const service = harness.ctx.externalSessions
+      const request = {
+        sessionId: harness.sessionId,
+        provider: 'codex',
+        cwd: harness.workspace,
+        sandbox: 'read-only' as const,
+        approvalPolicy: 'ask' as const,
+      }
+      const startSpy = vi.spyOn(harness.provider, 'start')
+      await service.start(request)
+      const session = harness.ctx.sessions.get(harness.sessionId)
+      if (session === undefined) throw new Error('Codex harness session was not published')
+      await vi.waitFor(() => {
+        expect(session.events.filter(event => event.type === 'external/session-started')).toHaveLength(1)
+      })
+      await harness.ctx.sessions.flush(session)
+      await service.dispose(harness.sessionId)
+      await harness.ctx.sessions.flush(session)
+      const startedBeforeResume = session.events.filter(event => event.type === 'external/session-started').length
+
+      await expect(service.resume(request, ExternalProviderThreadId('00000000-0000-0000-0000-000000000000')))
+        .rejects.toThrow(/thread|not found|unknown/u)
+      expect(startSpy).toHaveBeenCalledOnce()
+      await awaitQuiescent(harness)
+      await expect(service.dispose(harness.sessionId)).rejects.toMatchObject({ code: 'UNKNOWN_SESSION' })
+      expect(session.events.filter(event => event.type === 'external/session-started'))
+        .toHaveLength(startedBeforeResume)
+
+      await harness.ctx.sessions.flush(session)
+      const loaded = await harness.ctx.sessionPersistence.load(harness.sessionId)
+      expect(loaded.events.map(event => event.type)).toContain('external/session-started')
+      expect(loaded.events.map(event => event.type)).toContain('external/session-ended')
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
   it('streams live deltas and commits a message for one complete turn', async () => {
     const sentinel = 'STREAMED_DELTA_SENTINEL'
     const harness = await startCodexHarness([{ kind: 'complete', text: sentinel }])
@@ -121,7 +468,7 @@ describe('external-session-codex persistent turns', () => {
       await harness.waitCount('external/message-added', 1)
       await harness.waitTurns(1)
 
-      expect(harness.recorded.deltas.some(delta => delta.delta.includes(sentinel))).toBe(true)
+      expect(streamedDeltaTexts(harness)).toContain(sentinel)
       expect(agentMessageTexts(harness)).toContain(sentinel)
       expect(harness.recorded.events.some(event => event.type === 'external/turn-started')).toBe(true)
       expect(harness.recorded.events.some(event => event.type === 'external/turn-ended')).toBe(true)
@@ -132,6 +479,61 @@ describe('external-session-codex persistent turns', () => {
 })
 
 describe('external-session-codex approval round-trip', () => {
+  it('cancels a pending approval before session-ended without a late decision', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'advertisedFunctionCall', choices: [{ name: 'exec_command', arguments: execCommandArgs }] },
+    ])
+    try {
+      harness.holdPermission()
+      await harness.start()
+      await harness.provider.prompt(harness.sessionId, 'hold for disposal')
+      await harness.waitCount('external/permission-asked', 1)
+      await harness.provider.dispose(harness.sessionId)
+      harness.releasePermission('allowed')
+      await settle()
+
+      const endedIndex = harness.recorded.events.findIndex(event => event.type === 'external/session-ended')
+      const lateDecisionIndex = harness.recorded.events.findIndex(event => event.type === 'external/permission-decided')
+      expect(endedIndex).toBeGreaterThanOrEqual(0)
+      expect(lateDecisionIndex).toBe(-1)
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('cancels a pending approval when the child dies before a respawn', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'advertisedFunctionCall', choices: [{ name: 'exec_command', arguments: execCommandArgs }] },
+      { kind: 'complete', text: 'RESPAWN_AFTER_APPROVAL_DEATH' },
+    ])
+    try {
+      harness.holdPermission()
+      await harness.start()
+      await harness.provider.prompt(harness.sessionId, 'hold for child death')
+      await harness.waitCount('external/permission-asked', 1)
+      const child = harness.handles.at(-1)!
+      child.terminate()
+      await child.waitForExit()
+      await child.done.catch(() => {})
+      await harness.waitCount('external/turn-ended', 1)
+
+      await harness.provider.prompt(harness.sessionId, 'respawn after child death')
+      await harness.waitTurns(2)
+      harness.releasePermission('allowed')
+      await settle()
+
+      expect(harness.recorded.events).not.toContainEqual(expect.objectContaining({
+        type: 'external/permission-decided',
+      }))
+      expect(harness.recorded.events
+        .filter(event => event.type === 'external/turn-ended')
+        .map(event => (event.data as { stopReason: string }).stopReason))
+        .toEqual(['error', 'completed'])
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
   it('applies an allowed decision: the command executes', async () => {
     const harness = await startCodexHarness([
       { kind: 'advertisedFunctionCall', choices: [{ name: 'exec_command', arguments: execCommandArgs }] },
@@ -214,8 +616,41 @@ describe('external-session-codex interrupt and disposal', () => {
   }, 60_000)
 })
 
-describe('external-session-codex cold reattach', () => {
-  it('resumes the persisted thread after the app-server process restarts', async () => {
+describe('external-session-codex child respawn', () => {
+  it('settles a turn when the app-server dies before completion and accepts the next prompt', async () => {
+    const harness = await startCodexHarness([
+      { kind: 'hold' },
+      { kind: 'complete', text: 'AFTER_PROCESS_DEATH' },
+    ])
+    try {
+      await harness.start()
+      await harness.provider.prompt(harness.sessionId, 'first')
+      await harness.fixture.requestStarted
+      expect(harness.handles.length).toBeGreaterThan(0)
+      const child = harness.handles.at(-1)!
+      child.terminate()
+      await child.waitForExit()
+      await child.done.catch(() => {})
+
+      await expect(Promise.race([
+        harness.provider.prompt(harness.sessionId, 'second'),
+        new Promise<never>((_, reject) => { setTimeout(() => { reject(new Error('second prompt timed out')) }, 5_000) }),
+      ])).resolves.toSatisfy((value) => {
+        expectTurnResult(value)
+        return true
+      })
+      await harness.waitTurns(2, 10_000)
+      expect(harness.recorded.events
+        .filter(event => event.type === 'external/turn-ended')
+        .map(event => (event.data as { stopReason: string }).stopReason))
+        .toEqual(['error', 'completed'])
+      expect(agentMessageTexts(harness)).toContain('AFTER_PROCESS_DEATH')
+    } finally {
+      await harness.close()
+    }
+  }, 60_000)
+
+  it('resumes the in-memory thread after the app-server child restarts', async () => {
     const first = 'REATTACH_FIRST'
     const second = 'REATTACH_SECOND'
     const harness = await startCodexHarness([
@@ -227,8 +662,8 @@ describe('external-session-codex cold reattach', () => {
       await harness.provider.prompt(harness.sessionId, 'first')
       await harness.waitTurns(1)
 
-      // Kill the app-server child mid-session; the provider must respawn and
-      // `thread/resume` the persisted thread before the next turn.
+      // Kill the app-server child mid-session; this provider instance must
+      // respawn and `thread/resume` its in-memory thread before the next turn.
       expect(harness.handles.length).toBeGreaterThan(0)
       const child = harness.handles[0]!
       child.terminate()

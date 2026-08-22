@@ -81,7 +81,9 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
-  let tripwire: ReturnType<typeof watchConsole> = { warnings: [], pageErrors: [] }
+  let tripwire: ReturnType<typeof watchConsole> = {
+    warnings: [], consoleErrors: [], pageErrors: [], requestFailures: [],
+  }
   let slotErrors: string[] = []
 
   beforeAll(async () => {

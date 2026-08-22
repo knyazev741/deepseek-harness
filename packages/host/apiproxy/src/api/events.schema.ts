@@ -43,6 +43,9 @@ const messageSchema = z.object({
 export const muxFrameSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('session/event'), sessionId: sessionIdSchema, event: sessionEventSchema, view: toolEventViewSchema.optional() }),
   z.object({ type: z.literal('session/subscribed'), sessionId: sessionIdSchema, lastSeq: z.number().int() }),
+  // External-agent output is a transient stream keyed by the provider turn;
+  // it must not be accepted as a durable SessionEvent envelope.
+  z.object({ type: z.literal('external/delta'), sessionId: sessionIdSchema, turnId: z.string().min(1), delta: z.string() }),
   z.object({ type: z.literal('approval/requested'), sessionId: sessionIdSchema, approvalId: approvalRequestIdSchema, toolName: z.string(), callId: z.string().optional(), reason: z.string().optional() }),
   z.object({ type: z.literal('approval/resolved'), sessionId: sessionIdSchema, approvalId: approvalRequestIdSchema, outcome: z.union([z.literal('allowed-once'), z.literal('rejected'), z.literal('cancelled'), z.literal('unavailable')]) }),
   // Non-empty by wire contract: the user-questions service rejects empty
@@ -76,6 +79,7 @@ export const hostFrameSchema = z.discriminatedUnion('type', [
     origin: z.enum(['subagent', 'github-actions']).optional(),
     cwd: z.string().optional(),
     agentPreset: z.string().optional(),
+    mode: z.string().optional(),
   }),
   z.object({ type: z.literal('host/session-removed'), sessionId: sessionIdSchema }),
   z.object({ type: z.literal('host/session-status'), sessionId: sessionIdSchema, running: z.boolean() }),

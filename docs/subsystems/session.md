@@ -600,11 +600,12 @@ The hook bridges' `hook/invoked` / `hook/result` pairs (from `@deepseek-ai/dsh-h
 
 ### `external/*` events
 
-External console agents (Codex, ACP clients) write the log-only `external/*` event family into the owning session's log through the host bridge (`@deepseek-ai/dsh-external-session`). Every member is standalone (it may appear between `turn/end` and the next `turn/start`), carries the envelope's `ignorable: true` — a harness build that predates the vocabulary skips it on read instead of refusing the log — and is never a `SurfaceEventType`. Live transcript deltas are not logged; only committed units are. `@deepseek-ai/dsh-session-projection` folds the family into the transcript-shaped `external/transcript` projection.
+External console agents (Codex, ACP clients) write the log-only `external/*` event family into the owning session's log through the host bridge (`@deepseek-ai/dsh-external-session`). Every member is standalone (it may appear between `turn/end` and the next `turn/start`), carries the envelope's `ignorable: true` — a harness build that predates the vocabulary skips it on read instead of refusing the log — and is never a `SurfaceEventType`. Live transcript deltas are not logged; only committed units are. The `external/session-started` record keeps the provider-owned opaque `providerThreadId` returned by a successful start; cold attachment passes that identity to explicit `resume` and never renders it as transcript content. If provider startup rejects after publication, the bridge appends bounded `external/session-start-failed` facts followed by `external/session-ended` with `stopReason: error`; raw provider diagnostics remain host-only. `@deepseek-ai/dsh-session-projection` folds the family into the transcript-shaped `external/transcript` projection while retaining that identity for host attachment and exposing the safe startup failure to history/client renderers.
 
 | Event | Payload | Meaning |
 |---|---|---|
-| `external/session-started` | `{ provider, cwd, model? }` | opened the external session on `provider` in `cwd`, optionally on `model` |
+| `external/session-started` | `{ provider, cwd, model?, providerThreadId }` | opened the external session on `provider` in `cwd`, optionally on `model`, and recorded the provider-owned thread identity |
+| `external/session-start-failed` | `{ provider, code, message }` | a published external session failed to attach its provider; bounded safe facts only |
 | `external/turn-started` | `{ turnId }` | opened one external turn |
 | `external/message-added` | `{ turnId, role: 'user' \| 'agent', text }` | one committed message in a turn |
 | `external/tool-activity` | `{ turnId, kind: 'call' \| 'update' \| 'result', title, detail? }` | one tool activity in a turn |
@@ -628,6 +629,141 @@ The backends that consume this contract are on [persistence.md](persistence.md).
 ## Cordis API
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxexternalsessions--externalsessions"></a>
+
+### `ctx.externalSessions` — `ExternalSessions`
+
+Named-provider registry plus dispatch for live external sessions. registerProvider is effect-scoped and HMR safe; removing a provider blocks new starts but does not revoke live sessions already handed to their holders. Opaque session ids are routed to their owning provider through sessions.
+
+```ts cordis-catalog
+/**
+ * Register a provider under its registry name. Registration is effect-scoped
+ * and HMR safe; removing a provider blocks new starts but does not revoke
+ * live sessions already returned to their holders.
+ * @param provider - the trusted provider implementation.
+ * @returns the exact Cordis effect disposer.
+ */
+registerProvider(provider: ExternalSessionProvider): () => void
+
+/**
+ * Register the permission answerer that every per-session bridge's
+ * {@link ExternalBridgeContext.requestPermission} consults. Registration is
+ * effect-scoped and HMR safe, mirroring {@link registerProvider}: at most one
+ * channel is active, and disposing it restores the fail-closed default.
+ * @param answerer - answers an external session's permission asks on behalf
+ *   of the human.
+ * @returns the exact Cordis effect disposer.
+ */
+registerPermissionChannel(answerer: ExternalPermissionAnswerer): () => void
+
+/**
+ * Look up a provider by its registry name.
+ * @param name - the registry/mode name.
+ * @returns the provider, or undefined when absent.
+ */
+getProvider(name: string): ExternalSessionProvider | undefined
+
+/**
+ * List registered provider names in insertion order.
+ * @returns the registered names.
+ */
+list(): string[]
+
+/**
+ * List registered agents' descriptors.
+ * @returns the descriptors in insertion order.
+ */
+listAgents(): ExternalAgentDescriptor[]
+
+/**
+ * Run one provider's typed pre-session check. A legacy provider without a
+ * preflight operation is allowed through for compatibility with older
+ * providers; their normal model/catalog operation remains the availability
+ * check exposed by the caller.
+ * @param providerName - registered provider name.
+ * @param request - workspace and sandbox inputs.
+ * @returns the typed availability result.
+ */
+async preflight( providerName: string, request: ExternalSessionPreflightRequest, ): Promise<ExternalModePreflightResult>
+
+/**
+ * Begin a live external session on the named provider, handing it a bridge.
+ * Records the session-to-provider route before awaiting the provider so a
+ * later prompt/interrupt/setModel/dispose resolves during startup, then
+ * removes the route when startup rejects.
+ * @param request - the start request with a pre-reserved session id.
+ * @throws {@link ExternalSessionError} for an unknown provider or a
+ *   session id that is already live.
+ */
+async start(request: ExternalSessionStartRequest): Promise<void>
+
+/**
+ * Attach a persisted external session to its provider-owned thread. Resume
+ * is a distinct operation: providers must reject a missing or unknown id and
+ * never create a replacement thread.
+ * @param request - the resolved session identity and policy values.
+ * @param providerThreadId - the branded provider thread id from the durable log.
+ */
+async resume(request: ExternalSessionStartRequest, providerThreadId: ExternalProviderThreadId): Promise<void>
+
+/**
+ * Submit one prompt to a live external session.
+ * @param sessionId - the live external session.
+ * @param text - the user text to deliver.
+ * @returns the provider-issued turn id.
+ * @throws {@link ExternalSessionError} when the session is not live.
+ */
+async prompt(sessionId: SessionId, text: string): Promise<{ turnId: ExternalTurnId }>
+
+/**
+ * Stop the current turn of a live external session.
+ * @param sessionId - the live external session.
+ * @throws {@link ExternalSessionError} when the session is not live.
+ */
+interrupt(sessionId: SessionId): void
+
+/**
+ * Compact a live external session through its provider's native mechanism;
+ * the provider records `external/compaction-noticed` on the bridge.
+ * @param sessionId - the live external session.
+ * @throws {@link ExternalSessionError} when the session is not live or the
+ *   provider's native compact rejects.
+ */
+async compact(sessionId: SessionId): Promise<void>
+
+/**
+ * List the models a provider can switch to.
+ * @param provider - the registered provider name.
+ * @returns the disclosed models.
+ * @throws {@link ExternalSessionError} for an unknown provider.
+ */
+async listModels(provider: string): Promise<ExternalModelInfo[]>
+
+/**
+ * Switch a live external session to a listed model.
+ * @param sessionId - the live external session.
+ * @param model - the model id to switch to.
+ * @param reasoningEffort - the optional provider reasoning-effort selection.
+ * @throws {@link ExternalSessionError} when the session is not live.
+ */
+async setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
+
+/**
+ * Dispose a live external session and its process tree. The bridge's
+ * disposal signal fires first; the returned promise waits for any in-flight
+ * start/resume, provider teardown, and recorder finalization before
+ * disposing the external scope. Concurrent callers receive the same teardown
+ * promise.
+ * @param sessionId - the live external session.
+ * @throws {@link ExternalSessionError} when the session is not live.
+ */
+dispose(sessionId: SessionId): Promise<void>
+```
+
+Types: [SessionId](core.md)
+
+Source: [`packages/external/external-session/src/index.ts:147`](../../packages/external/external-session/src/index.ts)
 
 <a id="ctxsessions--sessionstore"></a>
 
@@ -763,7 +899,173 @@ fork(source: SessionForkSource, boundary?: number, childSessionId?: SessionId): 
 
 Types: [CreateSessionOptions](persistence.md) · [PrepareSessionOptions](persistence.md) · [SessionId](core.md)
 
-Source: [`packages/core/session/src/index.ts:792`](../../packages/core/session/src/index.ts)
+Source: [`packages/core/session/src/index.ts:798`](../../packages/core/session/src/index.ts)
+
+<a id="external-events"></a>
+
+### `external/*` events
+
+<a id="externalprovider-added--emit"></a>
+
+#### `external/provider-added` — emit
+
+A provider became resolvable in the registry.
+
+```ts cordis-catalog
+/**
+ * A provider became resolvable in the registry.
+ * @param descriptor - the registered provider's descriptor.
+ * @mode emit
+ */
+'external/provider-added'(descriptor: ExternalAgentDescriptor): void
+```
+
+Source: [`packages/external/external-session/src/index.ts:117`](../../packages/external/external-session/src/index.ts)
+
+<a id="externalprovider-removed--emit"></a>
+
+#### `external/provider-removed` — emit
+
+A provider left the registry. Live sessions it already started remain owner-held; new starts under that provider fail loud.
+
+```ts cordis-catalog
+/**
+ * A provider left the registry. Live sessions it already started remain
+ * owner-held; new starts under that provider fail loud.
+ * @param provider - the provider name that no longer resolves.
+ * @mode emit
+ */
+'external/provider-removed'(provider: string): void
+```
+
+Source: [`packages/external/external-session/src/index.ts:124`](../../packages/external/external-session/src/index.ts)
+
+<a id="externalsession-bridgeerror--emit"></a>
+
+#### `external/session-bridge/error` — emit
+
+An external provider's `start` rejected for a session already published in an external mode, so no live external process is running. A later phase also records bounded `external/session-start-failed` and terminal `external/session-ended` events; this signal carries the raw host error only for diagnostics and is not the client-facing failure surface.
+
+```ts cordis-catalog
+/**
+ * An external provider's `start` rejected for a session already published
+ * in an external mode, so no live external process is running. A later
+ * phase also records bounded `external/session-start-failed` and terminal
+ * `external/session-ended` events; this signal carries the raw host error
+ * only for diagnostics and is not the client-facing failure surface.
+ * @param payload - the session, its chosen provider, and the rejection reason.
+ * @mode emit
+ */
+'external/session-bridge/error'(payload: { sessionId: SessionId provider: string error: unknown }): void
+```
+
+Types: [SessionId](core.md)
+
+Source: [`packages/external/external-session-bridge/src/index.ts:48`](../../packages/external/external-session-bridge/src/index.ts)
+
+<a id="externalsession-delta--emit"></a>
+
+#### `external/session-delta` — emit
+
+One transient external-agent transcript delta. The host mux projects this event to subscribed clients; it is intentionally not a SessionEvent and never enters the durable session log.
+
+```ts cordis-catalog
+/**
+ * One transient external-agent transcript delta. The host mux projects
+ * this event to subscribed clients; it is intentionally not a
+ * {@link SessionEvent} and never enters the durable session log.
+ * @param payload - the session, provider turn, and incremental text.
+ * @mode emit
+ */
+'external/session-delta'(payload: { sessionId: SessionId turnId: ExternalTurnId delta: string }): void
+```
+
+Types: [SessionId](core.md)
+
+Source: [`packages/external/external-session/src/index.ts:132`](../../packages/external/external-session/src/index.ts)
+
+<a id="mcp-gateway-events"></a>
+
+### `mcp-gateway/*` events
+
+<a id="mcp-gatewaycall-started--emit"></a>
+
+#### `mcp-gateway/call-started` — emit
+
+One tool call entered the gateway's recorder/execute pair.
+
+```ts cordis-catalog
+/** One tool call entered the gateway's recorder/execute pair.
+ * @mode emit
+ * @param payload - route, call, and owning session identifiers.
+ */
+'mcp-gateway/call-started'(payload: { route: string; callId: string; sessionId: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:67`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewaycall-terminal--emit"></a>
+
+#### `mcp-gateway/call-terminal` — emit
+
+One gateway call committed its durable terminal recorder result.
+
+```ts cordis-catalog
+/** One gateway call committed its durable terminal recorder result.
+ * @mode emit
+ * @param payload - route, call, and owning session identifiers.
+ */
+'mcp-gateway/call-terminal'(payload: { route: string; callId: string; sessionId: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:72`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewaylease-created--emit"></a>
+
+#### `mcp-gateway/lease-created` — emit
+
+A lease route became live and owned by one external attachment.
+
+```ts cordis-catalog
+/** A lease route became live and owned by one external attachment.
+ * @mode emit
+ * @param payload - route and owning session identifiers.
+ */
+'mcp-gateway/lease-created'(payload: { route: string; sessionId: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:57`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewaylease-disposed--emit"></a>
+
+#### `mcp-gateway/lease-disposed` — emit
+
+A lease route completed quiescent disposal.
+
+```ts cordis-catalog
+/** A lease route completed quiescent disposal.
+ * @mode emit
+ * @param payload - route and owning session identifiers.
+ */
+'mcp-gateway/lease-disposed'(payload: { route: string; sessionId: string }): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:62`](../../packages/mcp/mcp-gateway/src/types.ts)
+
+<a id="mcp-gatewayteardown-complete--emit"></a>
+
+#### `mcp-gateway/teardown-complete` — emit
+
+The gateway service completed lease teardown.
+
+```ts cordis-catalog
+/** The gateway service completed lease teardown.
+ * @mode emit
+ */
+'mcp-gateway/teardown-complete'(): void
+```
+
+Source: [`packages/mcp/mcp-gateway/src/types.ts:76`](../../packages/mcp/mcp-gateway/src/types.ts)
 
 <a id="session-events"></a>
 

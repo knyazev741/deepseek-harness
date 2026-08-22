@@ -69,10 +69,11 @@ interface SessionHeader {
    */
   readonly seedLength?: number
   /**
-   * Coarse product classification for a session created as a subagent child.
-   * This is presentation metadata, not proof that the child is continuable.
+   * Coarse durable product classification for a session's creation context —
+   * a subagent child or a headless CI-review run. This is presentation
+   * metadata, not proof of continuability.
    */
-  readonly origin?: 'subagent'
+  readonly origin?: 'subagent' | 'github-actions'
   /**
    * Delegation depth: absent (zero) for a top-level session, parent depth + 1
    * for a subagent child. Persisted so a recursion budget survives restart and
@@ -86,6 +87,20 @@ interface SessionHeader {
    * would replay history the model can no longer act on.
    */
   readonly agentPreset?: string
+  /**
+   * Which driver owns this session: absent means the native agent loop
+   * (`dsh`), while a registered external-provider name means an external
+   * console agent (Codex, an ACP client) drives it. Presented as a
+   * client-plane choice at session creation; durable so the driver stays
+   * resolvable across restart.
+   */
+  readonly mode?: string
+  /**
+   * Initial model for an external-mode session: a provider id from that mode's
+   * catalog/roster, stamped at creation so the bridge driver can hand it to
+   * the provider at start. Absent lets the provider/default apply.
+   */
+  readonly model?: string
 }
 ```
 
@@ -95,7 +110,7 @@ interface SessionHeader {
 
 ## `CreateSessionOptions`：seed 与元数据
 
-通过 store 创建 `Session` 时会接收 `seed`（初始回放或 fork 历史）与 `meta`（store 整合进 `SessionHeader` 的存储层字段）。store 填充 `version`/`id` 并为 `createdAt` 提供默认值；调用方可以提供已校验的绝对 `cwd`、`parentSession` 谱系、`seedLength` 种子边界、可选的粗粒度 `origin`、`delegationDepth`、用于组装该 agent（智能体）的 `agentPreset` 以及已有的 `createdAt`。`origin: 'subagent'` 让产品导航能够隐藏重复的 child 行；它不证明描述符有效，也不证明 child 可以恢复。
+通过 store 创建 `Session` 时会接收 `seed`（初始回放或 fork 历史）与 `meta`（store 整合进 `SessionHeader` 的存储层字段）。store 填充 `version`/`id` 并为 `createdAt` 提供默认值；调用方可以提供已校验的绝对 `cwd`、`parentSession` 谱系、`seedLength` 种子边界、可选的粗粒度 `origin`、`delegationDepth`、用于组装该 agent（智能体）的 `agentPreset`、外部驱动 `mode`、初始外部 `model` 以及已有的 `createdAt`。`origin: 'subagent'` 让产品导航能够隐藏重复的 child 行；它不证明描述符有效，也不证明 child 可以恢复。`mode` 与 `model` 持久化 external-session 驱动选择及 bridge 启动或恢复会话时使用的提供方模型。
 
 ```ts type-equiv
 /**
@@ -115,9 +130,13 @@ interface CreateSessionOptions {
     readonly parentSession?: SessionId
     readonly createdAt?: number
     readonly seedLength?: number
-    readonly origin?: 'subagent'
+    readonly origin?: 'subagent' | 'github-actions'
     readonly delegationDepth?: number
     readonly agentPreset?: string
+    /** Driver name; absent uses the native `dsh` agent loop. */
+    readonly mode?: string
+    /** Initial provider model for an external-mode session. */
+    readonly model?: string
   }
 }
 ```

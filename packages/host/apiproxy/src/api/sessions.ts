@@ -16,6 +16,11 @@ import type { ToolEventView } from './events.ts'
 import type { WorkspaceId } from './workspace.ts'
 import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 
+/** Routed command result with the provider turn identity for external prompts. */
+export type SessionCommandResult =
+  | (Extract<CommandResult, { kind: 'success' }> & { externalTurnId?: string })
+  | Extract<CommandResult, { kind: 'error' }>
+
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     /**
@@ -189,6 +194,8 @@ export interface ExternalModelView {
   name: string
   /** Optional user-facing distinction from otherwise similar models. */
   description?: string
+  /** Provider-owned reasoning levels for this exact model, when disclosed. */
+  reasoning?: ModelReasoning
 }
 
 /** One registered external mode and its disclosed model catalog. */
@@ -209,6 +216,8 @@ export interface ExternalModeFailure {
   provider: string
   /** Mode display label. */
   label: string
+  /** Typed preflight category when the provider supplied one. */
+  code?: 'BINARY_MISSING' | 'AUTH_UNAVAILABLE' | 'INVALID_CONFIG' | 'SANDBOX_INCOMPATIBLE' | 'PREFLIGHT_FAILED'
   /** Lookup failure diagnostic. */
   message: string
 }
@@ -425,12 +434,13 @@ export interface SessionsApi {
    * boundary: `/compact` runs the provider's native compact (recording
    * `external/compaction-noticed`), `/model <id>` switches the live session's
    * model (`external/model-switched`), and any other line — slash or plain —
-   * is forwarded verbatim as prompt text to the external agent. A native-mode
-   * session rejects with `invalid-mode`: it routes through the command
-   * registry instead.
+   * is forwarded verbatim as prompt text to the external agent. A successful
+   * forwarded prompt carries the provider-issued `externalTurnId` so a client
+   * can wait for its own durable terminal event. A native-mode session rejects
+   * with `invalid-mode`: it routes through the command registry instead.
    */
   command(request: RpcRequest<{ sessionId: SessionId; line: string }>):
-  Promise<RpcResponse<CommandResult>>
+  Promise<RpcResponse<SessionCommandResult>>
 
   /**
    * Reads the registered external-session modes (the new-session mode picker's

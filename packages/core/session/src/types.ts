@@ -133,7 +133,9 @@ export interface CreateSessionOptions {
     readonly origin?: 'subagent' | 'github-actions'
     readonly delegationDepth?: number
     readonly agentPreset?: string
+    /** Driver name; absent uses the native `dsh` agent loop. */
     readonly mode?: string
+    /** Initial provider model for an external-mode session. */
     readonly model?: string
   }
 }

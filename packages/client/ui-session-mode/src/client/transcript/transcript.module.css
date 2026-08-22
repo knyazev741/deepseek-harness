@@ -1,4 +1,5 @@
 .messageRow,
+.liveRow,
 .toolRow,
 .permissionRow,
 .noticeRow {
@@ -23,6 +24,10 @@
 .body {
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.liveRow {
+  border-inline-start: 2px solid var(--dsw-alias-state-success-primary);
 }
 
 .detail {

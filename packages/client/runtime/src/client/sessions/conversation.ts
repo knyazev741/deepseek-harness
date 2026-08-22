@@ -19,6 +19,7 @@ import type { ContextProvenanceView, KnownContextForm } from './context-provenan
 import type {
   ChatConversationViewNode, ConversationTimelineSnapshot, ConversationViewSnapshotStore,
 } from '../contract/conversation.ts'
+import type { ExternalLiveMessage } from './external-live.ts'
 export type { TodoItem }
 
 /** Request configuration recorded for one provider call. */
@@ -443,6 +444,8 @@ export interface ConversationSnapshot {
   /** In-window completed turn number -> its `turn/end` event seq. */
   turnEnds: ReadonlyMap<number, number>
   partial: PartialAssistant | null
+  /** Transient external-agent Markdown seat; absent from durable history. */
+  externalLive?: ExternalLiveMessage | null
   runningCalls: readonly RunningToolCall[]
   pending: readonly PendingInteraction[]
   /** Authoritative transient inbox snapshot, including queued and steering placements. */

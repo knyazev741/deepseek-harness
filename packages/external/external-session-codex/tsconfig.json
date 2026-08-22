@@ -21,6 +21,18 @@
       "path": "../external-session"
     },
     {
+      "path": "../../mcp/mcp-gateway"
+    },
+    {
+      "path": "../../sandbox/sandbox"
+    },
+    {
+      "path": "../../sandbox/sandbox-policy"
+    },
+    {
+      "path": "../../interaction/user-approval"
+    },
+    {
       "path": "../../session/session-projection"
     },
     {

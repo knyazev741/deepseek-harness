@@ -1,0 +1,26 @@
+- banner:
+  - navigation "Session hierarchy":
+    - button "workspace" [disabled]
+  - button "Session log":
+    - text: Session log
+    - img
+  - tablist:
+    - tab "Chat" [selected]
+    - tab "Trajectory"
+- text: 模型 gpt-5.6-sol 你 Run the fixture command, then report the completed marker. 工具 · call /bin/zsh -lc 'touch approval-side-effect' 权限 exercise the Web Codex approval bridge
+- list:
+  - listitem: Allow
+  - listitem: Reject
+  - listitem: Cancel
+- text: 允许 工具 · result /bin/zsh -lc 'touch approval-side-effect' completed (exit 0) 智能体
+- paragraph: FIRST_TURN_COMMITTED
+- text: 压缩 The external agent compacted its conversation context. 你 Continue the resumed Codex thread and report the second marker. 智能体
+- paragraph: SECOND_TURN_COMMITTED
+- textbox "Message the agent"
+- button "Commands":
+  - img
+- 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Select model, current GPT-5.6-Sol, reasoning effort low":
+  - text: GPT-5.6-Sol low
+  - img
+- button "Send message" [disabled]

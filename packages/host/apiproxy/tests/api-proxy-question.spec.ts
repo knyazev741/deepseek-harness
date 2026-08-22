@@ -70,6 +70,25 @@ function answer(
 }
 
 describe('question response validation', () => {
+  it('routes a live external session question without creating a native Agent', async () => {
+    const { ctx, api } = await harness()
+    const session = ctx.sessions.create(undefined, { meta: { cwd: '/tmp', mode: 'codex' } })
+    const abort = new AbortController()
+    const mux = openMux(api, abort)
+    const asked = ctx.userQuestions.ask({
+      sessionId: session.id,
+      questions: [{ id: 'permission', question: 'Allow the external action?', options: [{ label: 'Allow' }] }],
+    })
+    const envelope = await mux.waitForQuestion()
+
+    expect(envelope.payload.sessionId).toBe(session.id)
+    expect(await api.respond(answer(envelope, ['Allow']))).toEqual({ accepted: true })
+    await expect(asked).resolves.toEqual({
+      answers: [{ id: 'permission', selected: ['Allow'] }],
+    })
+    abort.abort()
+  })
+
   it('accepts selected options with custom text for multi-select questions', async () => {
     const { ctx, api } = await harness()
     const abort = new AbortController()

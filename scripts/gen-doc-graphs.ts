@@ -140,6 +140,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns append-only Session instances and emits the durable session event feed.',
   },
   {
+    key: 'externalSessions',
+    pkg: 'external-session',
+    title: 'External interactive-session provider registry',
+    mode: 'seam',
+    implementations: ['external-session-codex'],
+    consumers: ['external-session-bridge', 'external-permission', 'host-apiproxy'],
+    note: 'The Service Definition routes named external providers and their per-session bridges; providers own process protocols, while host consumers stamp and drive durable external sessions.',
+  },
+  {
     key: 'invariants',
     pkg: 'invariants',
     title: 'Package-owned invariant registry',
@@ -314,6 +323,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     mode: 'core',
     consumers: ['tool-todo', 'session-title', 'host-apiproxy'],
     note: 'Domains register state-driven fold units; the eager drive keeps per-session watermark states and api-proxy serves baselines and pushes changed values.',
+  },
+  {
+    key: 'mcpGateway',
+    pkg: 'mcp-gateway',
+    title: 'Authenticated loopback MCP tool gateway',
+    mode: 'seam',
+    consumers: ['external-session-codex'],
+    note: 'The gateway gives one external attachment an authenticated loopback endpoint over an allowlisted subset of Harness tools, routing calls through the normal external-principal execution pipeline.',
   },
   {
     key: 'sessionProjectionCache',
@@ -943,6 +960,13 @@ export class EventRelationCollector {
               this.addDispatcher(name, source.pkg, 'emitAgentEvent')
             }
           }
+        } else if (this.isContainedEventEmitter(node.expression)) {
+          const event = node.arguments[1]
+          if (event) {
+            for (const name of this.finiteStringValues(event) ?? []) {
+              this.addDispatcher(name, source.pkg, 'emitContained')
+            }
+          }
         } else if (ts.isPropertyAccessExpression(node.expression) && EVENT_API_METHODS.has(node.expression.name.text)) {
           const receiverKind = this.receiverKind(node.expression.expression)
           const method = node.expression.name.text
@@ -981,6 +1005,21 @@ export class EventRelationCollector {
       return ts.isFunctionDeclaration(declaration)
         && declaration.name?.text === 'emitAgentEvent'
         && this.project.relativePath(declaration.getSourceFile()) === 'packages/core/agent/src/dispatch.ts'
+    })
+  }
+
+  /** Match the MCP gateway's local helper that emits contained observer events. */
+  private isContainedEventEmitter(expression: ts.Expression): boolean {
+    if (!ts.isIdentifier(expression)) return false
+    const local = this.project.checker.getSymbolAtLocation(expression)
+    if (!local) return false
+    const symbol = local.flags & ts.SymbolFlags.Alias
+      ? this.project.checker.getAliasedSymbol(local)
+      : local
+    return (symbol.declarations ?? []).some((declaration) => {
+      return ts.isFunctionDeclaration(declaration)
+        && declaration.name?.text === 'emitContained'
+        && this.project.relativePath(declaration.getSourceFile()) === 'packages/mcp/mcp-gateway/src/index.ts'
     })
   }
 
@@ -1200,7 +1239,7 @@ function renderEventRelations(pkgs: Pkg[], events: readonly EventEntry[]): strin
   const maintenance = 'generated: Cordis event declarations and producer/listener edges are resolved from the repository TypeScript Program'
   const lines = generatedHeader('Event Producer And Consumer Matrix')
   lines.push(
-    'This matrix shows which packages dispatch each harness-owned event and which packages listen to it. Events are many-to-many, so the dense relation data is presented as a table rather than one large graph. Receiver and event-name types also cover contained dispatch sites that deliberately bypass `ctx.emit`, such as subagent lifecycle containment.',
+    'This matrix shows which packages dispatch each harness-owned event and which packages listen to it. Events are many-to-many, so the dense relation data is presented as a table rather than one large graph. Receiver and event-name types also cover contained dispatch sites that deliberately bypass `ctx.emit`, such as subagent lifecycle containment and the MCP gateway observer helper.',
     '',
     '| Event | Mode | Declared in | Dispatchers | Listeners |',
     '| --- | --- | --- | --- | --- |',

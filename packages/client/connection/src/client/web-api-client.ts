@@ -77,6 +77,18 @@ export class WebApiClient extends AbstractApiClient {
           const item = inbox.shift() as SocketItem<F>
           if (item.kind === 'end') return
           yield item.envelope
+          // External deltas are transient UI state. Let the browser paint the
+          // live seat before the following durable message frame can retire it
+          // when both frames were queued by one WebSocket task.
+          if (item.envelope.payload.type === 'external/delta') {
+            await new Promise<void>((resolve) => {
+              if (typeof globalThis.requestAnimationFrame === 'function') {
+                globalThis.requestAnimationFrame(() => { resolve() })
+              } else {
+                setTimeout(resolve, 0)
+              }
+            })
+          }
         }
         await new Promise<void>((resolve) => { wake = resolve })
       }

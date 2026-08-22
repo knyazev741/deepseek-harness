@@ -485,6 +485,8 @@ export interface DefineToolOptions<S extends ParameterSchemaSpec, O extends Valu
   readonly name: string
   /** Human-readable description sent to the model. */
   readonly description: string
+  /** External-principal capability opt-in; omitted definitions stay hidden from external callers. */
+  readonly externalEligibility?: 'allow'
   /** Per-property parameter schema compiled to an implicit open object root. */
   readonly parameters: S
   /** Canonical output schema plus pure Native and presentation projections. */
@@ -569,6 +571,7 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
   const tool: ToolDefinition = {
     name: options.name,
     description: options.description,
+    ...(options.externalEligibility !== undefined ? { externalEligibility: options.externalEligibility } : {}),
     parameters: parameters as unknown as Record<string, unknown>,
     output: {
       schema: outputSchema,

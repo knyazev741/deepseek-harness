@@ -196,6 +196,19 @@ export interface LaunchOptions {
    */
   extraOverlayPath?: string
   /**
+   * Additional product overlays, applied in order after `extraOverlayPath`.
+   * This lets an assembled acceptance scenario load a shipped opt-in bundle
+   * and then layer only its deterministic fixture configuration.
+   */
+  extraOverlayPaths?: string[]
+  /**
+   * Additional installation manifests whose dependency closures are exposed
+   * through the temporary profile resolver. Opt-in bundles own plugin rows
+   * outside the CLI's default dependency closure and need this anchor when
+   * an assembled test loads their shipped patch.
+   */
+  moduleFallbackAnchors?: string[]
+  /**
    * Replay fixture (session.jsonl) served by the inserted dsh-llm-replay row
    * in replay/refresh modes; ignored in record mode (the real adapter
    * answers). Omit for scenarios issuing no model calls — a stray stream then
@@ -290,14 +303,28 @@ export interface LaunchOptions {
   remoteAuthority?: string
   /** Reuse an existing harness home so a second Host can verify user settings across origins. */
   harnessHome?: string
+  /** Reuse an existing project directory when a test restarts the Host. */
+  workspaceCwd?: string
+  /** Reuse an existing session-persistence root when a test restarts the Host. */
+  persistenceRoot?: string
+  /** Keep the Web origin stable when a test restarts the Host in the same browser context. */
+  webPort?: number
+  /** Keep the temporary project and persistence roots for a subsequent Host launch. */
+  retainWorld?: boolean
 }
 
-/** Dispose the booted tree and remove both owned temp roots, reporting every independent cleanup failure. */
-async function cleanupScaffoldWorld(ctx: Context, workspaceCwd: string, persistenceRoot: string): Promise<unknown[]> {
+/** Dispose the booted tree and remove selected temp roots, reporting each cleanup failure. */
+async function cleanupScaffoldWorld(
+  ctx: Context,
+  workspaceCwd: string,
+  persistenceRoot: string,
+  removeWorkspace = true,
+  removePersistence = true,
+): Promise<unknown[]> {
   const failures: unknown[] = []
   await Promise.resolve(ctx.fiber.dispose()).catch((error: unknown) => failures.push(error))
-  await rm(workspaceCwd, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
-  await rm(persistenceRoot, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
+  if (removeWorkspace) await rm(workspaceCwd, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
+  if (removePersistence) await rm(persistenceRoot, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
   return failures
 }
 
@@ -332,7 +359,8 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       process.env.DEEPSEEK_API_KEY = originalDeepSeekCredential
     }
   }
-  const workspaceCwd = await realpath(await mkdtemp(join(tmpdir(), 'dsh-web-e2e-ws-')))
+  const ownsWorkspace = options.workspaceCwd === undefined
+  const workspaceCwd = await realpath(options.workspaceCwd ?? await mkdtemp(join(tmpdir(), 'dsh-web-e2e-ws-')))
   // Isolated harness home: the settings/credentials rows resolve $DSH_HOME
   // paths at load, and an in-process boot must NEVER touch the developer's
   // real ~/.dsh document or credential file.
@@ -366,11 +394,14 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   }
   Object.assign(process.env, skillRootEnvironment)
   let persistenceRoot: string
+  const ownsPersistence = options.persistenceRoot === undefined
   try {
-    persistenceRoot = await mkdtemp(join(tmpdir(), 'dsh-web-e2e-sessions-'))
+    persistenceRoot = options.persistenceRoot ?? await mkdtemp(join(tmpdir(), 'dsh-web-e2e-sessions-'))
   } catch (error) {
     const failures: unknown[] = [error]
-    await rm(workspaceCwd, { recursive: true, force: true }).catch((cleanupError: unknown) => failures.push(cleanupError))
+    if (ownsWorkspace) {
+      await rm(workspaceCwd, { recursive: true, force: true }).catch((cleanupError: unknown) => failures.push(cleanupError))
+    }
     restoreSkillRootEnvironment()
     if (failures.length > 1) throw new AggregateError(failures, 'web scaffold temp-root setup failed')
     throw error
@@ -386,7 +417,14 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   const extraOverlayPatches = options.extraOverlayPath === undefined
     ? []
     : loadOverlayPatches('web e2e scaffold', options.extraOverlayPath)
-  const composedRows = composeEntries([basePatches, surfacePatches, extraOverlayPatches])
+  const additionalOverlayPatches = (options.extraOverlayPaths ?? []).flatMap(path =>
+    loadOverlayPatches('web e2e scaffold', path))
+  const composedRows = composeEntries([
+    basePatches,
+    surfacePatches,
+    extraOverlayPatches,
+    additionalOverlayPatches,
+  ])
   const webRuntimeConfig = composedRows.find(row => row.id === 'web-runtime')?.config as {
     surfaceContext?: boolean
   } | undefined
@@ -395,6 +433,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     ...basePatches,
     ...surfacePatches,
     ...extraOverlayPatches,
+    ...additionalOverlayPatches,
     // The roster's `roots` is an assembly fact AppCLIEntry resolves and patches
     // in, exactly like `distIndex` on the webserver row — the shipped preset
     // directory sits beside the composition that names it, and no config author
@@ -455,7 +494,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       },
     {
       id: 'webserver',
-      config: { host: '127.0.0.1', port: 0 },
+      config: { host: '127.0.0.1', port: options.webPort ?? 0 },
     },
     // The bundle's web-runtime row resolves the same built dist under test
     // (apps/web IS @deepseek-ai/dsh-web-frontend); native browser opening and the
@@ -518,6 +557,9 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     // harness home, with bare plugin names resolving through the flat module
     // fallback the launcher heals under <home>/profiles.
     healProfilesModuleFallback(INSTALL_ANCHOR, harnessHome)
+    for (const anchor of options.moduleFallbackAnchors ?? []) {
+      healProfilesModuleFallback(anchor, harnessHome)
+    }
     const profileDir = join(harnessHome, 'profiles', 'scaffold')
     await mkdir(profileDir, { recursive: true })
     const rootConfig = join(profileDir, 'cordis.yml')
@@ -614,7 +656,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     }
   } catch (error) {
     if (process.cwd() !== originalCwd) process.chdir(originalCwd)
-    const cleanupFailures = await cleanupScaffoldWorld(ctx, workspaceCwd, persistenceRoot)
+    const cleanupFailures = await cleanupScaffoldWorld(ctx, workspaceCwd, persistenceRoot, ownsWorkspace, ownsPersistence)
     restoreCredentialEnvironment()
     restoreSkillRootEnvironment()
     if (cleanupFailures.length > 0) {
@@ -664,7 +706,13 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
         }
       }
       try {
-        failures.push(...await cleanupScaffoldWorld(ctx, workspaceCwd, persistenceRoot))
+        failures.push(...await cleanupScaffoldWorld(
+          ctx,
+          workspaceCwd,
+          persistenceRoot,
+          options.retainWorld !== true,
+          options.retainWorld !== true,
+        ))
       } finally {
         restoreCredentialEnvironment()
         restoreSkillRootEnvironment()
@@ -929,17 +977,28 @@ export async function assertFixtureInventory(dir: string, expected: string[]): P
  * Console tripwires: reconnect/gap-repair self-healing or a pageerror must
  * fail the scenario, not mask a dead wire behind eventual consistency.
  * @param page - the page under test.
- * @returns live warning/pageerror collectors to assert empty at scenario end.
+ * @returns live browser-console, page-error, request-failure, and reconnect-warning collectors.
  */
-export function watchConsole(page: Page): { warnings: string[]; pageErrors: string[] } {
+export function watchConsole(page: Page): {
+  warnings: string[]
+  consoleErrors: string[]
+  pageErrors: string[]
+  requestFailures: string[]
+} {
   const warnings: string[] = []
+  const consoleErrors: string[] = []
   const pageErrors: string[] = []
+  const requestFailures: string[] = []
   page.on('console', (message) => {
     const text = message.text()
     if (/connection lost|gap repair|discontinuous/i.test(text)) warnings.push(text)
+    if (message.type() === 'error') consoleErrors.push(text)
   })
   page.on('pageerror', (error) => { pageErrors.push(String(error)) })
-  return { warnings, pageErrors }
+  page.on('requestfailed', (request) => {
+    requestFailures.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText ?? 'unknown failure'}`)
+  })
+  return { warnings, consoleErrors, pageErrors, requestFailures }
 }
 
 /**

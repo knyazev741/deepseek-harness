@@ -10,7 +10,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { type ToolResult } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { ExternalToolPrincipalId, type ToolResult } from '@deepseek-ai/dsh-tools'
+import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
 import { FileSystem, FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
 import type {
   FsDirEntry,
@@ -120,6 +121,16 @@ function call(ctx: Context, name: string, args: unknown, agent?: object) {
   })
 }
 
+function externalPrincipal(cwd: string): ExternalToolPrincipal {
+  return {
+    kind: 'external',
+    id: ExternalToolPrincipalId('tool-fs-external'),
+    session: { header: { version: 0, id: 'tool-fs-external-session', createdAt: 0, cwd } },
+    ctx: new Context(),
+    recorder: {},
+  } as unknown as ExternalToolPrincipal
+}
+
 function text(result: { content: { type: string; text?: string }[] }): string {
   return result.content.filter(b => b.type === 'text').map(b => b.text).join('')
 }
@@ -147,6 +158,11 @@ describe('session cwd resolution', () => {
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+  })
+
+  it('derives an external principal session cwd', () => {
+    const cwd = process.cwd()
+    expect(sessionCwd({ principal: externalPrincipal(cwd) } as never, 'file.txt')).toBe(cwd)
   })
 })
 

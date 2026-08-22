@@ -57,7 +57,7 @@ const HIGH_CONTEXT_PRESSURE_RATIO = 0.5
  */
 function isHighContextPressure(pressure: ContextPressureProjection | undefined): boolean {
   return pressure?.pressureTokens !== undefined
-    && pressure?.contextWindow !== undefined
+    && pressure.contextWindow !== undefined
     && pressure.pressureTokens / pressure.contextWindow >= HIGH_CONTEXT_PRESSURE_RATIO
 }
 
@@ -114,7 +114,6 @@ function ModelRetryItem({ node, active, highPressure, t }: {
   // A first-chunk timeout under a high-pressure context is a size problem the
   // retry will repeat; surface the /compact remedy right at the disclosure.
   const showCompactHint = highPressure
-    && node.failure.code !== undefined
     && TIMEOUT_CODES.has(node.failure.code)
 
   return (

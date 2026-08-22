@@ -588,11 +588,11 @@ describe('ChatView', () => {
       ...retry(2),
       failure: { code: 'FIRST_CHUNK_TIMEOUT', message: 'first chunk timeout' },
     }
-    const pressure = (key: string): unknown =>
+    const pressure: ChatViewSlotProps['useProjection'] = (key: string) =>
       key === 'contextPressure' ? { pressureTokens: 96_000, contextWindow: 128_000 } : undefined
     const h = makeHarness(
       { nodes: [user(1, 'try'), timeoutNode], running: true },
-      pressure as ChatViewSlotProps['useProjection'],
+      pressure,
     )
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByText(/\/compact/)).toBeTruthy()
@@ -603,11 +603,11 @@ describe('ChatView', () => {
       ...retry(2),
       failure: { code: 'FIRST_CHUNK_TIMEOUT', message: 'first chunk timeout' },
     }
-    const lowPressure = (key: string): unknown =>
+    const lowPressure: ChatViewSlotProps['useProjection'] = (key: string) =>
       key === 'contextPressure' ? { pressureTokens: 32_000, contextWindow: 128_000 } : undefined
     const h = makeHarness(
       { nodes: [user(1, 'try'), timeoutNode], running: true },
-      lowPressure as ChatViewSlotProps['useProjection'],
+      lowPressure,
     )
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByText(/\/compact/)).toBeNull()
@@ -618,11 +618,11 @@ describe('ChatView', () => {
       ...retry(2),
       failure: { code: 'TRANSPORT', message: '连接被重置' },
     }
-    const pressure = (key: string): unknown =>
+    const pressure: ChatViewSlotProps['useProjection'] = (key: string) =>
       key === 'contextPressure' ? { pressureTokens: 96_000, contextWindow: 128_000 } : undefined
     const h = makeHarness(
       { nodes: [user(1, 'try'), plainNode], running: true },
-      pressure as ChatViewSlotProps['useProjection'],
+      pressure,
     )
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByText(/\/compact/)).toBeNull()
@@ -1007,13 +1007,15 @@ describe('ChatView', () => {
       return opts?.fallback ?? null
     })
     render(<h.ChatView {...h.props} />)
-    expect(calls).toHaveLength(1)
-    expect(calls[0]).toMatchObject({
+    const nodeCalls = calls.filter(call => call.key === 'conversation.chat.node')
+    expect(nodeCalls).toHaveLength(1)
+    expect(calls.some(call => call.key === 'conversation.chat.live')).toBe(true)
+    expect(nodeCalls[0]).toMatchObject({
       key: 'conversation.chat.node',
       owner: { node: { kind: 'tool-call' }, selectedCallId: undefined },
       entryKey: 'tool-call',
     })
-    const owner = calls[0]?.owner as RoutedChatNodeOwner
+    const owner = nodeCalls[0]?.owner as RoutedChatNodeOwner
     expect((owner.node.data as { readonly root: ToolCallBlock }).root).toBe(block)
     expect(owner.openFile).toBe(h.openFile)
     expect(owner.inspectCall).toBe(h.inspectCall)

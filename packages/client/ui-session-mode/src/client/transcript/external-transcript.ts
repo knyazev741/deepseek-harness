@@ -5,9 +5,12 @@
  * as standalone log-only `external/*` events (message-added, tool-activity,
  * permission-asked/decided, compaction-noticed, model-switched) — the same
  * vocabulary the host's session-projection unit folds into a transcript. Each
- * node matches one such event family, folds deterministically by seq, and
- * renders one Chat row — never scanning the full event window. Permission
- * asks pair with their matching decision by `askId`.
+ * published provider-start failure is also a durable `external/session-start-failed`
+ * node; its payload is bounded by the host and never contains raw diagnostics.
+ *
+ * Each node matches one such event family, folds deterministically by seq, and
+ * renders one Chat row — never scanning the full event window. Permission asks
+ * pair with their matching decision by `askId`.
  */
 
 import type { ConversationLocation, ConversationMatch, ConversationNodeContext, ConversationNodeDefinition } from '@deepseek-ai/dsh-client-runtime/client'
@@ -25,6 +28,8 @@ declare module '@deepseek-ai/dsh-client-ui-conversation/client' {
     'external-compaction': ExternalCompactionChatData
     /** One external model switch. */
     'external-model': ExternalModelChatData
+    /** One provider startup failure after the session was published. */
+    'external-session-failure': ExternalSessionFailureChatData
   }
 }
 
@@ -54,6 +59,12 @@ export interface ExternalCompactionChatData {
 export interface ExternalModelChatData {
   readonly model: string
 }
+/** One safe provider startup failure shown in the external transcript. */
+export interface ExternalSessionFailureChatData {
+  readonly provider: string
+  readonly code: 'startup-failed' | 'startup-aborted'
+  readonly message: string
+}
 
 /** State for one permission ask + decision pair. */
 interface PermissionState {
@@ -62,7 +73,7 @@ interface PermissionState {
 }
 
 /** The external event vocabulary field that node matchers read. */
-type ExternalEventKind = 'external/message-added' | 'external/tool-activity' | 'external/permission-asked' | 'external/permission-decided' | 'external/compaction-noticed' | 'external/model-switched'
+type ExternalEventKind = 'external/message-added' | 'external/tool-activity' | 'external/permission-asked' | 'external/permission-decided' | 'external/compaction-noticed' | 'external/model-switched' | 'external/session-start-failed'
 
 /** Structural shape of one external event used by the loose matchers. */
 interface ExternalEvent {
@@ -77,6 +88,9 @@ interface ExternalEvent {
     detail?: string
     notice?: string
     model?: string
+    provider?: string
+    code?: 'startup-failed' | 'startup-aborted'
+    message?: string
     outcome?: 'allowed' | 'rejected' | 'cancelled'
     options?: readonly string[]
   }
@@ -253,5 +267,29 @@ export const externalModelDefinition: ConversationNodeDefinition = {
     const ext = asExternal(match.event)
     if (ext === undefined || ext.data.model === undefined) return null
     return externalChatNode(context, match, 'external-model', match.event.seq, { model: ext.data.model })
+  },
+}
+
+/** One provider startup failure that occurred after the session row was published. */
+export const externalSessionFailureDefinition: ConversationNodeDefinition = {
+  kind: 'external-session-failure',
+  target: 'chat',
+  match: (event) => {
+    const ext = asExternal(event)
+    if (ext?.type !== 'external/session-start-failed') return null
+    return { id: `${ext.seq}`, role: 'update' }
+  },
+  start: () => ({}),
+  update: () => ({}),
+  buildViewNode: (context) => {
+    const match = context.matches[0]
+    if (match === undefined) return null
+    const ext = asExternal(match.event)
+    if (ext === undefined || ext.data.provider === undefined || ext.data.code === undefined || ext.data.message === undefined) return null
+    return externalChatNode(context, match, 'external-session-failure', match.event.seq, {
+      provider: ext.data.provider,
+      code: ext.data.code,
+      message: ext.data.message,
+    })
   },
 }

@@ -4,7 +4,7 @@
 
 面向 [harness 沙盒 seam](../sandbox/) 的 Windows 写入限制沙盒后端：一个 Node.js/[koffi](https://koffi.dev/) 实现的、对 [huoyaoyuan/windows-acl-restrict-poc](https://github.com/huoyaoyuan/windows-acl-restrict-poc)（`10e4dfb`，固定修订版本）机制的移植，挂载为 [`@deepseek-ai/dsh-sandbox-local`](../sandbox-local/) 链中报告 `enforcement: 'partial'` 的 win32 一级（`workspace-write` / `read-only` 两种模式）；Linux/macOS 后端在同一包中。
 
-一句话机制：把调用者令牌复制为 `WRITE_RESTRICTED` 受限令牌，其 restricting SIDs 携带彼此独立的工作区能力与私有临时目录能力。工作区 SID 由规范工作区路径确定性派生（`workspaceWriteSid`），因此工作区根目录 ACE 每台机器每个工作区只物化一次，之后每次会话、调用或重启都命中精确 ACE 跳过。每个活跃的会话/工作区对则获得一个随机临时目录，以及一个从该路径派生的 SID（`tempWriteSid`），因此各会话共享预期的工作区权限，却不会继承彼此的临时目录权限。此后 Windows 只在「调用者正常权限」与「restricting SID 交集」同时允许时才放行写入。这些 SID 是主要白名单，在系统其余位置不授予任何权限；但该检查还会继承**其他** restricting SID 的环境写 ACE（保活组登录 SID + Everyone），而 NTFS ACL 属于文件对象而非路径。Everyone 与硬链接边界正是该档报告部分而非完整强制执行的原因。
+一句话机制：把调用者令牌复制为 `WRITE_RESTRICTED` 受限令牌，其 restricting SIDs 携带彼此独立的工作区能力与私有临时目录能力。工作区 SID 由规范工作区路径确定性派生（`workspaceWriteSid`），因此工作区根目录 ACE 每台机器每个工作区只物化一次，之后每次会话、调用或重启都命中精确 ACE 跳过。每个活跃的会话/工作区对则获得一个随机临时目录，以及一个从该路径派生的 SID（`tempWriteSid`）；若提供状态根目录，该精确目录也获得同一私有能力及可撤销 ACE，因此各会话共享预期的工作区权限，却不会继承彼此的临时目录或状态目录权限。此后 Windows 只在「调用者正常权限」与「restricting SID 交集」同时允许时才放行写入。这些 SID 是主要白名单，在系统其余位置不授予任何权限；但该检查还会继承**其他** restricting SID 的环境写 ACE（保活组登录 SID + Everyone），而 NTFS ACL 属于文件对象而非路径。Everyone 与硬链接边界正是该档报告部分而非完整强制执行的原因。
 
 直接构建在原生 ACL 机制上是记录在案的设计选择：它实现两种隔离模式，且不背负被否决的容器方案的问题——见[设计笔记](../../../.agents/notes/implemented/feature/2026-08-08-windows-acl-restricted-token-sandbox.md)（[mxc](https://github.com/microsoft/mxc/blob/main/docs/process-container/os-version-support.md) 要求 Windows 11 24H2 的 OS 下限，且任意路径读取需要整体改写宿主 DACL；AppContainer 根本无法任意路径读取）。
 
@@ -52,7 +52,7 @@ node runner.js --workspace <dir> --temp <dir> --mode <read-only|workspace-write>
 
 runner 创建受限令牌，在它之下 spawn 包装后的 argv，调用者的 stdio 直接透传（调用者的管道在 spawn 前后被设为可继承——Node 在启动时清除 stdio 可继承性，裸 spawn 必须补偿这一点），把子进程包进 `KILL_ON_JOB_CLOSE` job（runner 死亡则子进程死亡），忽略自身的控制台 Ctrl+C 让子进程自行处理，镜像子进程的退出码，并在退出时撤销其自行管理的临时授权（工作区 ACE 常驻）。每个 runner 侧失败都会向 stderr 打印 `windows-acl-run: <detail>` 并以 127 退出——seam 的 `RUNNER_FAILURE_RULES` 匹配该签名，因此 runner 拒绝永远不会被误判为拒绝授权。
 
-**工作区复用与临时隔离**：seam 先把确定性工作区 SID 的 ACE **常驻**物化（每个工作区每服务器生命周期一次，绝不撤销——它就是复用缓存），再为每个活跃的会话/工作区对创建随机私有临时目录和不同的可回收 SID。它把两种身份作为必须成对出现的 `--write-sid`/`--temp-write-sid` 传入；runner 对照各自所属路径验证二者，既不授权也不撤销（`manageDacls: false`）。fork 获得不同的临时能力；即使恢复的是同一会话，新的提供方也会给出新的路径和 SID，因此崩溃残留只是失效垃圾，而非冲突或继承的能力。如果不带这一对标志，`--temp` 指定的是根目录：无 agent（智能体）/独立的 workspace-write runner 会创建随机私有子目录，自行管理其临时 SID，重写 TMP/TEMP，并在退出时移除该子目录。工作区若等于或包含该根目录，会在任何授权前被拒绝，因为否则其可继承的工作区 ACE 会向每个私有子目录授权；直接 API 同样拒绝任何可写根目录与实际私有临时目录重叠。重启后重新授权常驻工作区 ACE 是幂等的：`grantWrite` 读取当前 DACL，当完全相同的 ACE 已存在时跳过 `SetNamedSecurityInfoW`（应用该 ACE 会把相同的 ACE 急切地重新传播到整棵树——大型工作区上以分钟计）。已知代价：大型工作区树的首次授权会阻塞整次急切传播，每台机器每个工作区一次。
+**工作区复用与临时隔离**：seam 先把确定性工作区 SID 的 ACE **常驻**物化（每个工作区每服务器生命周期一次，绝不撤销——它就是复用缓存），再为每个活跃的会话/工作区对创建随机私有临时目录和不同的可回收 SID。提供状态根目录时，seam 会把该精确目录加入同一个私有 SID 授权，并仅在拆除时撤销 ACE；调用方拥有的目录会保留以便之后恢复。它把两种身份作为必须成对出现的 `--write-sid`/`--temp-write-sid` 传入；runner 对照各自所属路径验证二者，既不授权也不撤销（`manageDacls: false`）。fork 获得不同的临时能力；即使恢复的是同一会话，新的提供方也会给出新的路径和 SID，因此崩溃残留只是失效垃圾，而非冲突或继承的能力。如果不带这一对标志，`--temp` 指定的是根目录：无 agent（智能体）/独立的 workspace-write runner 会创建随机私有子目录，自行管理其临时 SID，重写 TMP/TEMP，并在退出时移除该子目录。工作区若等于或包含该根目录，会在任何授权前被拒绝，因为否则其可继承的工作区 ACE 会向每个私有子目录授权；直接 API 同样拒绝任何可写根目录与实际私有临时目录重叠。重启后重新授权常驻工作区 ACE 是幂等的：`grantWrite` 读取当前 DACL，当完全相同的 ACE 已存在时跳过 `SetNamedSecurityInfoW`（应用该 ACE 会把相同的 ACE 急切地重新传播到整棵树——大型工作区上以分钟计）。已知代价：大型工作区树的首次授权会阻塞整次急切传播，每台机器每个工作区一次。
 
 模式（令牌的 restricting-SID 列表随模式而变；保活组登录 SID + Everyone 在**两种**模式下都存在——没有它们早期 DLL 初始化会以 `0xC0000142` 死亡、CNG 会让 pwsh 以 `0xE0434352` 崩溃）：
 - `workspace-write`（登录 SID、Everyone、工作区 SID、临时 SID）：工作区与会话的**私有**临时子目录分别携带 Write 授权；受 ACL 管辖的其他写入都会被拒绝，已记录的 Everyone 与硬链接边界除外。
@@ -81,6 +81,7 @@ koffi 结构体定义在模块加载时对照探针断言其大小，因此头�
 - **ACL 授权是对真实目录的驻留改动。** 进程中途死亡会留下授权；工作区 ACE **按设计**常驻（绝不撤销——复用缓存），临时 ACE 由 `dispose()` 撤销（后续步骤失败时 `init()` 也会撤销已应用的临时授权）。POC 注释里的手工清理命令（`icacls <dir> /remove '*S-1-4-…'`）在本平台实测失败（`ERROR_NONE_MAPPED` 1332）——请通过本模块回收。工作区 ACE 在异常关闭后无需自愈：派生 SID 在下一次供给时重新命中常驻 ACE（跳过应用）；写入 SID ACE 不会因每次重启而累积第二个身份，因为身份**就是**工作区。
 - **被授权目录必须由调用者拥有。** 所有者的隐式 `WRITE_DAC` 是沙盒无需提权即可编辑 DACL 的原因。
 - **环境临时根目录绝不会被隐式授权。** 直接使用 `AclSandbox` 的 workspace-write 调用方必须提供一个已存在的私有 `tempDir` 及其不同的 `tempWriteSid`，或通过 `tempDir: null` 显式禁用临时写入。实际临时目录不得与任何可写根目录重叠。seam 会创建随机私有目录；无 agent runner 调用把 `--temp` 视为父根目录并自行创建随机子目录，但如果工作区等于或包含该父根目录，就会在任何 ACL 改动前拒绝调用。
+- **状态根目录由调用方拥有且只授予一个目录。** seam 接受一个绝对的规范状态目录，仅在 `workspace-write` 下通过活跃会话的私有能力授予它，在提供方拆除时撤销 ACE；目录的创建、保留和删除由调用方负责。
 - **受限子进程的临时能力按每个活跃的会话/工作区对私有。** runner 在 spawn 之前用 `SetEnvironmentVariableW` 把 TMP/TEMP 改写为该私有目录，子进程继承改写后的环境块（bwrap `--tmpfs /tmp` 的语义）。临时 ACE 与目录会在提供方 dispose 时移除，或在每次无 agent 调用后移除。崩溃可能留下失效的 `%TEMP%` 垃圾，但恢复后的提供方会选择新的随机路径和 SID，而不会与残留发生冲突或重新向其授权。原生 runner 套件证明，共享同一工作区 SID 的两个令牌无法写入彼此的临时目录。
 - **受限令牌下 `whoami` 与令牌检查 cmdlet 会失败。** 子进程对复制令牌的 `GetTokenInformation` 部分不可用，因此 `whoami /all` 报错——这是限制方案的诊断噪音，不是运行故障；真正重要的拒绝面（文件写入）不受影响。
 

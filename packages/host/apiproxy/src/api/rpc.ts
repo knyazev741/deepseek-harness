@@ -34,12 +34,19 @@ export interface RpcErrorDetailsMap {
   'cancelled': {}
   'session-not-found': { sessionId: SessionId }
   'model-unavailable': { provider: string; model: string }
-  'session-conflict': { sessionId: SessionId; requestedCwd: string; existingCwd?: string }
+  'session-conflict':
+    | { sessionId: SessionId; requestedCwd: string; existingCwd?: string }
+    | { sessionId: SessionId; requestedMode: string; existingMode: string }
   /**
    * A session.create named a driver mode that is neither `dsh` nor a
    * registered external provider, so no session was created.
    */
   'unknown-mode': { mode: string }
+  /** A provider preflight rejected an external mode before a Session was published. */
+  'external-mode-unavailable': {
+    mode: string
+    reason: 'BINARY_MISSING' | 'AUTH_UNAVAILABLE' | 'INVALID_CONFIG' | 'SANDBOX_INCOMPATIBLE' | 'PREFLIGHT_FAILED'
+  }
   /**
    * session.command addressed a native-mode session, but the per-session-mode
    * command boundary is only for external-mode sessions; native sessions route
@@ -52,6 +59,12 @@ export interface RpcErrorDetailsMap {
    * provider rather than the agent-loop dispatch.
    */
   'external-session': { sessionId: SessionId; mode: string }
+  /** External input or command surface is not implemented for this mode. */
+  'external-images-unsupported': { mode: string }
+  'external-steer-unsupported': { mode: string }
+  'external-queue-unsupported': { mode?: string; itemId?: MessageId; action?: string }
+  'external-goals-unsupported': { command: string }
+  'external-command-failed': { sessionId: SessionId; line: string }
   'invalid-time-zone': { value: string }
   'workspace-attach-failed': { sessionId: SessionId; workspaceId: string }
   'workspace-not-found': { workspaceId: string }

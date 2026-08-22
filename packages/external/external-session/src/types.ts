@@ -6,15 +6,28 @@
  * Internal control state belongs with the {@link ExternalSessions} implementation;
  * this module stays the published surface.
  *
- * Opaque cross-boundary ids are branded. {@link ExternalTurnId} is the one the
- * seam owns; {@link SessionId} comes pre-branded from `dsh-session`, imported
- * here without a cycle because `dsh-session` never depends on this family.
+ * Opaque cross-boundary ids are branded. {@link ExternalTurnId} and
+ * {@link ExternalProviderThreadId} are owned by this seam; {@link SessionId}
+ * comes pre-branded from `dsh-session`, imported here without a cycle because
+ * `dsh-session` never depends on this family.
  *
  * @module @deepseek-ai/dsh-external-session/types
  */
 
 import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/dsh-session'
+import type { LlmModelReasoningInfo, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
+import type { JsonValue, SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/dsh-session'
+import type { ExternalToolPrincipal } from '@deepseek-ai/dsh-tools'
+import type { ExternalTurnId } from './protocol.ts'
+
+export { ExternalTurnId } from './protocol.ts'
+
+/** Model reasoning level accepted by an external provider's stable wire. */
+export type ReasoningEffort = ReasoningEffortId
+/** Sandbox mode folded from the session policy for one external child. */
+export type { ApprovalPolicy, SandboxMode }
 
 /**
  * Which surface answers {@link ExternalSessionsService.listModels} for a mode.
@@ -23,16 +36,152 @@ import type { SessionEventMap, SessionEventType, SessionId } from '@deepseek-ai/
  */
 export type ExternalModelDirectory = 'provider' | 'config'
 
-/** Identifies one submitted turn inside an external session. */
-export type ExternalTurnId = Branded<'ExternalTurnId'>
+/** Stable availability categories returned by an external provider preflight. */
+export type ExternalModePreflightCode =
+  | 'BINARY_MISSING'
+  | 'AUTH_UNAVAILABLE'
+  | 'INVALID_CONFIG'
+  | 'SANDBOX_INCOMPATIBLE'
+  | 'PREFLIGHT_FAILED'
+
+/** Inputs that may affect a provider's pre-session availability check. */
+export interface ExternalSessionPreflightRequest {
+  /** Working directory used for sandbox and app-server checks. */
+  readonly cwd: string
+  /** Requested Harness file policy; defaults to `read-only` at the registry. */
+  readonly sandbox?: SandboxMode
+}
+
+/** A typed provider availability failure that is safe to expose to the mode picker. */
+export interface ExternalModePreflightFailure {
+  /** Stable category used by client surfaces and tests. */
+  readonly code: ExternalModePreflightCode
+  /** Human-readable diagnostic with no credential material. */
+  readonly message: string
+}
+
+/** Result of checking whether an external mode can be selected or created. */
+export type ExternalModePreflightResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly failure: ExternalModePreflightFailure }
+
+/** Identifies one provider-owned persistent thread across a host restart. */
+export type ExternalProviderThreadId = Branded<'ExternalProviderThreadId'>
 
 /**
- * Brand a string as an {@link ExternalTurnId}.
- * @param id - the raw turn id.
- * @returns the same string, branded.
+ * Brand a provider thread id at a trusted wire boundary.
+ * @param id - the provider-issued thread id.
+ * @returns the same id with the provider-thread brand.
  */
-export function ExternalTurnId(id: string): ExternalTurnId {
-  return id as ExternalTurnId
+export function ExternalProviderThreadId(id: string): ExternalProviderThreadId {
+  return id as ExternalProviderThreadId
+}
+
+/** Identifies one external tool call across its durable call/result pair. */
+export type ExternalToolCallId = Branded<'ExternalToolCallId'>
+
+/**
+ * Brand an external tool call id at the gateway/recorder boundary.
+ * @param id - the raw provider or gateway call id.
+ * @returns the same string carrying the external-call brand.
+ */
+export function ExternalToolCallId(id: string): ExternalToolCallId {
+  return id as ExternalToolCallId
+}
+
+/**
+ * Parse a durable or wire value as a non-empty provider thread id.
+ * @param value - an unknown value read from a durable event or provider wire.
+ * @returns the branded id when the value is a non-empty string.
+ */
+export function parseExternalProviderThreadId(value: unknown): ExternalProviderThreadId | undefined {
+  return typeof value === 'string' && value.length > 0 ? ExternalProviderThreadId(value) : undefined
+}
+
+/** Explicit, bounded error facts retained by an external tool-result event. */
+export interface ExternalToolError {
+  /** Stable human-readable diagnostic. */
+  readonly message: string
+  /** Optional stable provider/tool error code. */
+  readonly code?: string
+}
+
+/** Durable external tool-call event data. */
+export interface ExternalToolCallData {
+  /** Current external turn, when the call was made during one. */
+  readonly turnId?: string
+  /** Pairing identity shared with the matching result event. */
+  readonly callId: ExternalToolCallId
+  /** Registered Harness tool name. */
+  readonly name: string
+  /** Detached, lossless JSON arguments. */
+  readonly arguments: JsonValue
+}
+
+/** Durable external tool-result event data. */
+export type ExternalToolResultData =
+  | {
+    /** Current external turn, when the call was made during one. */
+    readonly turnId?: string
+    /** Pairing identity from the preceding call event. */
+    readonly callId: ExternalToolCallId
+    /** Tool name copied from the paired call. */
+    readonly name: string
+    readonly isError: false
+    /** Detached, bounded JSON result for a successful execution. */
+    readonly result: JsonValue
+    readonly error?: never
+  }
+  | {
+    /** Current external turn, when the call was made during one. */
+    readonly turnId?: string
+    /** Pairing identity from the preceding call event. */
+    readonly callId: ExternalToolCallId
+    /** Tool name copied from the paired call. */
+    readonly name: string
+    readonly isError: true
+    readonly result?: never
+    /** Explicit bounded error facts for a failed execution. */
+    readonly error: ExternalToolError
+  }
+
+/** Recorder input accepted from an external gateway at the call commit point. */
+export interface ExternalToolCallRecord {
+  /** Pairing identity for the call and result. */
+  readonly callId: ExternalToolCallId
+  /** Registered Harness tool name. */
+  readonly name: string
+  /** Arguments before the synchronous lossless JSON snapshot at API entry. */
+  readonly arguments: unknown
+  /** Optional provider turn override; the bridge derives one when omitted. */
+  readonly turnId?: string
+}
+
+/** Recorder input accepted from an external gateway at the result commit point. */
+export interface ExternalToolResultRecord {
+  /** Pairing identity from the call record. */
+  readonly callId: ExternalToolCallId
+  /** Optional name, checked against the paired call when present. */
+  readonly name?: string
+  /** Whether the result represents a failed tool execution. */
+  readonly isError?: boolean
+  /** Successful result before the synchronous lossless JSON snapshot at API entry. */
+  readonly result?: unknown
+  /** Alias accepted for a canonical tools-pipeline result value. */
+  readonly value?: unknown
+  /** Error facts or an Error object from the pipeline. */
+  readonly error?: unknown
+  /** Optional provider turn override; the bridge uses the call's turn by default. */
+  readonly turnId?: string
+}
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /** One committed external tool call; paired with exactly one result by `callId`. */
+    'external/tool-call': ExternalToolCallData
+    /** One committed external tool result; paired with the preceding call by `callId`. */
+    'external/tool-result': ExternalToolResultData
+  }
 }
 
 /**
@@ -53,7 +202,9 @@ export interface ExternalAgentDescriptor {
 /**
  * The request that {@link ExternalSessionsService.start} resolves before a
  * provider owns a live session. The session id is pre-reserved by the host
- * session creation (a later phase), so the provider never invents it.
+ * session creation (a later phase), so the provider never invents it. Sandbox
+ * and approval are resolved policy values; startup cancellation and rollback
+ * remain provider/registry lifecycle responsibilities.
  */
 export interface ExternalSessionStart {
   /** Pre-reserved durable session id owned by the host. */
@@ -64,6 +215,12 @@ export interface ExternalSessionStart {
   readonly cwd: string
   /** Optional initial model the mode should drive with. */
   readonly model?: string
+  /** Optional initial reasoning effort the mode should drive with. */
+  readonly reasoningEffort?: ReasoningEffort
+  /** Resolved Harness file policy for the child process. */
+  readonly sandbox: SandboxMode
+  /** Resolved Harness approval policy for the child process. */
+  readonly approvalPolicy: ApprovalPolicy
 }
 
 /** One disclosed model the external agent can switch to. */
@@ -74,6 +231,8 @@ export interface ExternalModelInfo {
   readonly name: string
   /** Optional user-facing distinction from otherwise similar models. */
   readonly description?: string
+  /** Provider-owned reasoning levels for this exact model, when disclosed. */
+  readonly reasoning?: LlmModelReasoningInfo
 }
 
 /** A permission request an external agent poses to the human. */
@@ -122,10 +281,22 @@ export interface ExternalSessionEvent<T extends SessionEventType = SessionEventT
  * through {@link ExternalBridgeContext.appendEvent} enter the durable session
  * log (log-only, `ignorable: true`); deltas ride
  * {@link ExternalBridgeContext.streamDelta} on the live path and are never
- * logged. The permission channel and the live delta sink are wired by host
- * packages in later phases; until then the defaults fail closed.
+ * logged. The service emits a typed `external/session-delta` event for the
+ * host mux; the permission channel remains host-owned and fails closed until
+ * a host answerer is registered. A live session with a SessionStore also
+ * receives an `ExternalToolPrincipal` whose recorder synchronously detaches
+ * caller-owned values at API entry, commits one bounded `external/tool-call`
+ * followed by one matching `external/tool-result`, finalizes pending calls
+ * with a bounded disposal error before scope close, and seeds call-id
+ * uniqueness from the session log.
  */
 export interface ExternalBridgeContext {
+  /**
+   * Session-scoped external execution identity. It is absent only when the
+   * registry is used without a live SessionStore; such a bridge cannot invoke
+   * Harness tools and remains valid for transcript-only providers.
+   */
+  readonly principal?: ExternalToolPrincipal
   /**
    * Append one log-only session event to the live session. The event is a
    * writer-side fragment (type plus payload); the session stamps sequencing and
@@ -161,15 +332,30 @@ export interface ExternalBridgeContext {
  * A named provider driving live external sessions, as the registry's
  * registered member. It carries the descriptor fields the registry reports and
  * the same operational set as {@link ExternalSessionsService} minus registry
- * concerns; `start` additionally receives the per-session bridge.
+ * concerns; `start` and `resume` additionally receive the per-session bridge.
  */
 export interface ExternalSessionProvider extends ExternalAgentDescriptor {
   /**
+   * Check executable, authentication, and sandbox compatibility before a
+   * session is published. Providers that predate this optional operation are
+   * conservatively checked through their model catalog by the registry.
+   * @param request - workspace and policy inputs for the check.
+   * @returns a typed availability result.
+   */
+  preflight?(request: ExternalSessionPreflightRequest): Promise<ExternalModePreflightResult>
+  /**
    * Begin driving one live external session.
-   * @param request - the resolved start request.
+   * @param request - the resolved start request, including sandbox and approval policy.
    * @param bridge - the live conduit the provider writes transcripts through.
    */
   start(request: ExternalSessionStart, bridge: ExternalBridgeContext): Promise<void>
+  /**
+   * Attach an existing provider thread without creating a replacement thread.
+   * @param request - the resolved session identity and policy values.
+   * @param bridge - the live conduit for durable and transient activity.
+   * @param providerThreadId - the branded provider thread id persisted by start.
+   */
+  resume(request: ExternalSessionStart, bridge: ExternalBridgeContext, providerThreadId: ExternalProviderThreadId): Promise<void>
   /**
    * Submit one user prompt as the next turn.
    * @param sessionId - the live external session.
@@ -199,11 +385,15 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
   /**
    * Switch the live session to a listed model.
    * @param sessionId - the live external session.
-   * @param model - a model id from {@link ExternalSessionProvider.listModels}.
+   * @param model - a model id from {@link ExternalSessionProvider.listModels};
+   *   providers reject ids outside their authoritative catalog.
+   * @param reasoningEffort - optional effort applied to the next turn.
    */
-  setModel(sessionId: SessionId, model: string): Promise<void>
+  setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
   /**
-   * Dispose the live session and its process tree.
+   * Dispose the live session and its process tree. The returned promise waits
+   * for an in-flight start/resume to settle before provider teardown; concurrent
+   * calls share the same quiescence promise.
    * @param sessionId - the live external session.
    */
   dispose(sessionId: SessionId): Promise<void>
@@ -212,16 +402,31 @@ export interface ExternalSessionProvider extends ExternalAgentDescriptor {
 /**
  * The registry surface later tasks code against. It owns named-provider
  * registration, session-to-provider dispatch, and the per-session bridge it
- * hands at {@link ExternalSessionsService.start}.
+ * hands at {@link ExternalSessionsService.start} or
+ * {@link ExternalSessionsService.resume}.
  */
 export interface ExternalSessionsService {
   /** List the registered agents' descriptors. */
   listAgents(): ExternalAgentDescriptor[]
   /**
+   * Check one registered provider before exposing it as selectable or
+   * publishing a session. Unknown provider names reject with a typed error.
+   * @param provider - registry name / session mode.
+   * @param request - workspace and policy inputs.
+   * @returns the provider's typed availability result.
+   */
+  preflight(provider: string, request: ExternalSessionPreflightRequest): Promise<ExternalModePreflightResult>
+  /**
    * Begin a live external session on the named provider, handing it a bridge.
    * @param request - the start request with a pre-reserved session id.
    */
-  start(request: ExternalSessionStart): Promise<void>
+  start(request: ExternalSessionStartRequest): Promise<void>
+  /**
+   * Attach a persisted external session to its provider-owned thread.
+   * @param request - the resolved session identity and policy values.
+   * @param providerThreadId - the branded provider thread id persisted by start.
+   */
+  resume(request: ExternalSessionStartRequest, providerThreadId: ExternalProviderThreadId): Promise<void>
   /**
    * Submit one prompt to a live external session.
    * @param sessionId - the live external session.
@@ -249,11 +454,20 @@ export interface ExternalSessionsService {
    * Switch a live external session to a listed model.
    * @param sessionId - the live external session.
    * @param model - the model id to switch to.
+   * @param reasoningEffort - optional effort applied to the next turn.
    */
-  setModel(sessionId: SessionId, model: string): Promise<void>
+  setModel(sessionId: SessionId, model: string, reasoningEffort?: ReasoningEffort): Promise<void>
   /**
-   * Dispose a live external session and its process tree.
+   * Dispose a live external session and its process tree. The returned promise
+   * waits for an in-flight start/resume to settle before provider teardown;
+   * concurrent calls share the same quiescence promise.
    * @param sessionId - the live external session.
    */
   dispose(sessionId: SessionId): Promise<void>
+}
+
+/** Host-facing start input; the registry fills `read-only`/`ask` policy defaults before dispatch. */
+export type ExternalSessionStartRequest = Omit<ExternalSessionStart, 'sandbox' | 'approvalPolicy'> & {
+  readonly sandbox?: SandboxMode
+  readonly approvalPolicy?: ApprovalPolicy
 }

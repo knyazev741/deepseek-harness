@@ -8,7 +8,8 @@
  * The windows-acl rung additionally owns the write grants: the write SID is
  * the per-WORKSPACE identity derived from the canonical workspace path
  * (`workspaceWriteSid`), while every live session receives a RANDOM private
- * temp directory and its own derived capability (`tempWriteSid`). The
+ * temp directory and its own derived capability (`tempWriteSid`) covering the
+ * private temp directory and, when requested, the caller-owned state root. The
  * workspace-root ACE materializes once per workspace per server lifetime
  * and STANDS (the cross-session reuse cache — the exact-ACE skip makes
  * every later provision O(1) instead of re-propagating the tree per
@@ -34,7 +35,7 @@ import {
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { assertNever } from '@deepseek-ai/dsh-llm'
-import { SandboxProvider, SandboxUnavailableError } from '@deepseek-ai/dsh-sandbox'
+import { canonicalPath, canonicalStateRoot, SandboxProvider, SandboxUnavailableError } from '@deepseek-ai/dsh-sandbox'
 import type { ConfinedArgv, ConfinedSandboxMode, RunnerFailureRule, SandboxEnforcement, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import { AclWriteGrant, assertTempRootOutsideWorkspace, tempWriteSid, workspaceWriteSid } from '@deepseek-ai/dsh-sandbox-windows-acl'
@@ -348,15 +349,21 @@ export class LocalSandboxProvider extends SandboxProvider {
    * policy's `sessionId`) under workspace-write, the grants are materialized
    * once per provider lifetime — the standing workspace-root grant per
    * workspace and a revocable, RANDOM private-temp capability per live
-   * session/workspace pair. The runner receives `--write-sid` plus
+   * session/workspace pair. An optional state root is granted through that
+   * private capability and revoked with it. The runner receives `--write-sid` plus
    * `--temp-write-sid` and grants nothing itself. Agentless workspace-write
-   * calls pass the ambient temp ROOT and no SID flags: the runner creates and
-   * removes a random private child directory for that one invocation.
+   * calls without a state root pass the ambient temp ROOT and no SID flags: the
+   * runner creates and removes a random private child directory for that one
+   * invocation. Supplying a state root without a session id fails closed
+   * instead of dropping the requested grant.
    * @param policy - the resolved per-call policy.
    * @returns the runner invocation.
    */
   private windowsAclRunnerArgv(policy: SandboxPolicy): string[] {
     const sessionId = policy.sessionId
+    if (policy.mode === 'workspace-write' && policy.stateRoot !== undefined && sessionId === undefined) {
+      throw new Error('sandbox-local windows-acl workspace-write stateRoot requires sessionId')
+    }
     if (sessionId === undefined || policy.mode === 'read-only') {
       return [
         ...this.windowsAclRunnerInvocation(),
@@ -365,7 +372,7 @@ export class LocalSandboxProvider extends SandboxProvider {
         '--mode', policy.mode,
       ]
     }
-    const temp = this.materializeAclGrant(sessionId, policy.workspaceRoot)
+    const temp = this.materializeAclGrant(sessionId, policy.workspaceRoot, policy.stateRoot)
     return [
       ...this.windowsAclRunnerInvocation(),
       '--workspace', policy.workspaceRoot,
@@ -381,15 +388,19 @@ export class LocalSandboxProvider extends SandboxProvider {
    * lifetime. The workspace SID and standing root grant are shared by the
    * workspace. The temp directory is random and carries a distinct SID, so
    * another session on the same workspace cannot use the shared workspace
-   * SID to enter it. A fresh provider always chooses a new path; crash
-   * residue therefore cannot collide with or authorize a resumed session.
+   * SID to enter it. An optional state root is granted through that private
+   * SID and revoked with it; the caller-owned directory remains. A fresh
+   * provider always chooses a new path; crash residue therefore cannot
+   * collide with or authorize a resumed session.
    * Fail-closed: a half-materialized temp grant is revoked and its directory
    * removed before the error propagates.
    * @param sessionId - the policy's calling-session identity.
    * @param workspaceRoot - the resolved policy root.
+   * @param stateRoot - the optional host-owned state root.
    * @returns the pair's private temp directory and write capability.
    */
-  private materializeAclGrant(sessionId: SessionId, workspaceRoot: string): AclTempCapability {
+  private materializeAclGrant(sessionId: SessionId, workspaceRoot: string, stateRootInput?: string): AclTempCapability {
+    const stateRoot = canonicalStateRoot(stateRootInput)
     assertTempRootOutsideWorkspace(workspaceRoot, tmpdir())
     const writeSid = workspaceWriteSid(workspaceRoot)
     if (!this.workspaceGrants.has(workspaceRoot)) {
@@ -409,7 +420,7 @@ export class LocalSandboxProvider extends SandboxProvider {
       }
       this.workspaceGrants.set(workspaceRoot, grant)
     }
-    const key = JSON.stringify([String(sessionId), workspaceRoot])
+    const key = JSON.stringify([String(sessionId), workspaceRoot, stateRoot])
     const existing = this.tempCapabilities.get(key)
     if (existing !== undefined) return existing
     const tempDir = mkdtempSync(join(tmpdir(), 'dsh-'))
@@ -418,6 +429,7 @@ export class LocalSandboxProvider extends SandboxProvider {
     try {
       grant = AclWriteGrant.create(tempSid)
       grant.add(tempDir)
+      if (stateRoot !== undefined && stateRoot !== canonicalPath(workspaceRoot)) grant.add(stateRoot)
     } catch (error) {
       const cleanupFailures: unknown[] = []
       if (grant !== undefined) {

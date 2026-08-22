@@ -19,22 +19,22 @@
 | `command` | string（必填） | 通过 `bash -c` 运行。调用之间不保留状态；请使用 `workdir`，不要使用 `cd`。 |
 | `description` | string（必填） | 用一行主动语态概述命令（5～10 个词），仅用于 UI／日志显示，不影响执行。 |
 | `timeoutMs` | number | 以毫秒为单位覆盖超时时间。执行器会应用其配置的默认值和上限。 |
-| `workdir` | string | 本次调用的工作目录。默认为调用方 agent（智能体）会话 cwd 的文件系统标识（`session.header.cwd`），使每个会话都在自己的工作区中运行；相对 `workdir` 也以同一标识为基准解析。 |
+| `workdir` | string | 本次调用的工作目录。默认为执行身份的会话 cwd（`executionSession(exec)?.header.cwd`），使原生 Agent 和 ExternalToolPrincipal 会话各自在自己的工作区中运行；相对 `workdir` 也以同一身份为基准解析。 |
 | `run_in_background` | boolean | 立即返回 job id；不应用超时。 |
 | `sandbox_permissions` | string enum | 仅当已挂载的执行器启用沙箱时才会公开（`ctx.shell.sandboxMode` 报告一个具有限制作用的默认值）：被拒命令所需的更宽模式，取自封闭的目标词汇 `workspace-write`/`danger-full-access`（绝不能缩减为执行器默认值；有效模式按会话确定，执行时会基于它检查是否严格拓宽，未拓宽的请求直接失败，不会向任何人发起提示）。 |
 | `justification` | string | 必须与 `sandbox_permissions` 一同提供（缺少任一项都会产生验证错误）：用一句话向用户解释此命令为何需要这项更宽权限。 |
 
-执行前，`command`、`workdir` 和 `timeoutMs` 会通过 `ctx.shell.resolve()` 依据执行器配置默认值完成解析，因此 Service Definition（`ShellExecSpec`）收到显式的 `workdir`/`timeoutMs` 值。工具层会根据调用方 agent 的 `session.header.cwd` 应用工作目录默认值，然后才调用 `resolve()`：由于 N 个会话共享一个执行器，逐会话 cwd 必须来自 `exec.agent`；只有无法取得会话 cwd 时，执行器才回退到自身配置／`process.cwd()`。存在沙箱策略时，工具会复用已经规范化的 `workspaceRoot` 作为工作目录基准，防止限制逻辑与进程启动过程对同一个会话路径拼写产生不同解析结果。
+执行前，`command`、`workdir` 和 `timeoutMs` 会通过 `ctx.shell.resolve()` 依据执行器配置默认值完成解析，因此 Service Definition（`ShellExecSpec`）收到显式的 `workdir`/`timeoutMs` 值。工具层会根据执行身份的 `executionSession(exec)?.header.cwd` 应用工作目录默认值，然后才调用 `resolve()`：原生 Agent 和 ExternalToolPrincipal 会话都提供各自 cwd；只有无法取得会话 cwd 时，执行器才回退到自身配置／`process.cwd()`。存在沙箱策略时，工具会复用已经规范化的 `workspaceRoot` 作为工作目录基准，防止限制逻辑与进程启动过程对同一个会话路径拼写产生不同解析结果。
 
 ### 托管 shell 环境
 
-每次模型发起的前台或后台 bash 调用都会通过共享的 [`dsh-shell-env`](../shell-env/README.md) 注册表收到新收集的一组可信 `DSH_*` 环境变量：`DSH_HOME`（Harness home 绝对路径）、`DSH_SHELL=1`、agent 的 `DSH_SESSION_ID`，以及当活跃持久化后端能定位时的 `DSH_SESSION_JSONL`。注册表约定——贡献方注册、重复键／未声明键的显式报错机制、内置项保留与贡献方示例——载于该包的 README。快照通过专用的 `ShellExecRequest.dshEnv` 通道传递；本地执行器会先删除继承的所有 `DSH_*` 再合并，因此嵌套 harness 和并发的父／子 agent 不会泄漏陈旧身份，且绝不修改 `process.env`。工具说明只教授通用 `$DSH_*` 约定，不会点名持久化专用变量，也不会添加永久的系统提示词段落。
+每次模型发起的前台或后台 bash 调用都会通过共享的 [`dsh-shell-env`](../shell-env/README.md) 注册表收到新收集的一组可信 `DSH_*` 环境变量：`DSH_HOME`（Harness home 绝对路径）、`DSH_SHELL=1`、存在原生 Agent 或 ExternalToolPrincipal 会话时由执行身份提供的 `DSH_SESSION_ID`，以及当活跃持久化后端能定位时的 `DSH_SESSION_JSONL`。无 agent 的调用不包含会话变量。注册表约定——贡献方注册、重复键／未声明键的显式报错机制、内置项保留与贡献方示例——载于该包的 README。快照通过专用的 `ShellExecRequest.dshEnv` 通道传递；本地执行器会先删除继承的所有 `DSH_*` 再合并，因此嵌套 harness 和并发的父／子 agent 不会泄漏陈旧身份，且绝不修改 `process.env`。工具说明只教授通用 `$DSH_*` 约定，不会点名持久化专用变量，也不会添加永久的系统提示词段落。
 
 结果文本依次包含 stdout、可选的 `[stderr]` 段落和适用的沙箱拒绝、超时、信号、退出代码及截断标记。超时与最终退出状态分别报告；非零退出仍是由模型解释的结果，不会成为 `isError`。截断结果会链接安全的完整 spill 文件，或报告文件不可用。只有 spawn 错误和中止等基础设施故障才会产生 `isError`。
 
 已完成前台进程的规范成功值为 `{ kind: 'foreground', ...ShellRunResult }`，已发布任务则为 `{ kind: 'background', jobId }`。Native renderer 保留上述文本，包括精确的 `started background job <id>`；程序化消费方使用带类型字段，无需解析这些字符串。执行器的流上限仍是 `ShellRunResult` 的采集限制，并携带其 spill 路径。
 
-当 `run_in_background` 为 true 时，此插件会在 spawn 前预检 `ctx.jobs.start()`，把调用方 agent 注册为持有者，并将返回的 `ShellProcess` 句柄适配为通用的取消／完成／增量输出钩子。任务运行时负责 job id、跨会话隔离、完成通知、等待和 dispose（资源释放）清理；此插件只把 bash 退出／沙箱事实映射为任务输出和结果详情。`enableRunInBackground: false` 会移除该参数，并在执行时拒绝强制后台调用。
+当 `run_in_background` 为 true 时，此插件会在 spawn 前预检 `ctx.jobs.start()`，把原生 Agent 注册为持有者，并将返回的 `ShellProcess` 句柄适配为通用的取消／完成／增量输出钩子。ExternalToolPrincipal 调用会在 `ctx.jobs.start()` 之前被拒绝，因为通用 job 要求原生 Agent 所有权；外部前台调用仍支持其会话身份。任务运行时负责 job id、跨会话隔离、完成通知、等待和 dispose（资源释放）清理；此插件只把 bash 退出／沙箱事实映射为任务输出和结果详情。`enableRunInBackground: false` 会移除该参数，并在执行时拒绝强制后台调用。
 
 ## UI 展示
 

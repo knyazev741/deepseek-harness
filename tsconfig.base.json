@@ -63,6 +63,9 @@
       "@deepseek-ai/dsh-external-session/invariant": [
         "./packages/external/external-session/src/invariant.ts"
       ],
+      "@deepseek-ai/dsh-external-session/protocol": [
+        "./packages/external/external-session/src/protocol.ts"
+      ],
       "@deepseek-ai/dsh-external-session-codex": [
         "./packages/external/external-session-codex/src/index.ts"
       ],
@@ -467,6 +470,12 @@
       ],
       "@deepseek-ai/dsh-client-ui-subagent": [
         "./packages/client/ui-subagent/src"
+      ],
+      "@deepseek-ai/dsh-client-ui-session-mode": [
+        "./packages/client/ui-session-mode/src"
+      ],
+      "@deepseek-ai/dsh-client-ui-session-mode/invariant": [
+        "./packages/client/ui-session-mode/src/invariant.ts"
       ],
       "@deepseek-ai/dsh-client-ui-settings-plugins": [
         "./packages/client/ui-settings-plugins/src"

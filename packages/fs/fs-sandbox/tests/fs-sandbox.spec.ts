@@ -103,6 +103,14 @@ describe('workspace-write containment', () => {
     expect(await readFile(path, 'utf8')).toBe('temp')
   })
 
+  it('writes and reads under the caller-owned state root', async () => {
+    const stateRoot = await mkdtemp(join(base, 'state-'))
+    const policy = { mode: 'workspace-write' as const, workspaceRoot: workspace, stateRoot }
+    const path = join(stateRoot, 'state.txt')
+    await fs.writeText(await target(path), 'state', undefined, undefined, policy)
+    expect(await fs.readText(await target(path))).toBe('state')
+  })
+
   it('an absolute path outside the workspace is denied, no file created', async () => {
     const path = join(outside, 'escape.txt')
     await expect(fs.writeText(await target(path), 'x')).rejects.toMatchObject({ code: 'FS_SANDBOX_DENIED' })

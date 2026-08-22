@@ -10,7 +10,8 @@
  */
 
 import { memo } from 'react'
-import type { ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ChatLiveSlotProps, ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import css from './transcript.module.css'
 
 /** Outcome copy keyed by the durable decision. */
@@ -26,7 +27,27 @@ export const ExternalMessageRow = memo(function ExternalMessageRow({ node }: Cha
   return (
     <div className={css.messageRow} data-role={data.role}>
       <span className={css.kicker}>{data.role === 'user' ? '你' : '智能体'}</span>
-      <span className={css.body}>{data.text}</span>
+      {data.role === 'agent'
+        ? <MarkdownText text={data.text} />
+        : <span className={css.body}>{data.text}</span>}
+    </div>
+  )
+})
+
+/** One transient external-agent Markdown seat; the runtime removes it on commit. */
+export const ExternalLiveSeat = memo(function ExternalLiveSeat({ useSession, t }: Pick<ChatLiveSlotProps, 'useSession' | 't'>) {
+  const live = useSession(snapshot => snapshot.externalLive)
+  if (live === null || live === undefined) return null
+  return (
+    <div
+      className={css.liveRow}
+      role="status"
+      aria-live="polite"
+      data-testid="external-live-seat"
+      data-turn-id={live.turnId}
+    >
+      <span className={css.kicker}>{t('chat.externalLive.agent')}</span>
+      <MarkdownText text={live.text} streaming />
     </div>
   )
 })
@@ -76,6 +97,16 @@ export const ExternalModelRow = memo(function ExternalModelRow({ node }: ChatNod
     <div className={css.noticeRow}>
       <span className={css.kicker}>模型</span>
       <span className={css.body}>{node.data.model}</span>
+    </div>
+  )
+})
+
+/** One safe provider-start failure row after the external session was published. */
+export const ExternalSessionFailureRow = memo(function ExternalSessionFailureRow({ node }: ChatNodeViewProps<'external-session-failure'>) {
+  return (
+    <div className={css.noticeRow} role="alert" data-provider={node.data.provider} data-code={node.data.code}>
+      <span className={css.kicker}>外部智能体</span>
+      <span className={css.body}>{node.data.message}</span>
     </div>
   )
 })

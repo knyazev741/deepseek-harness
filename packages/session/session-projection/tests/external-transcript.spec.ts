@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { ExternalProviderThreadId, ExternalToolCallId } from '@deepseek-ai/dsh-external-session'
 import SessionProjectionRegistry, {
   externalTranscriptProjectionDefinition,
 } from '@deepseek-ai/dsh-session-projection'
@@ -23,7 +24,12 @@ async function harness(): Promise<{ ctx: Context; session: Session }> {
 
 /** Append one committed external transcript, exercising every event type. */
 function appendFullExternalRun(session: Session): void {
-  session.append('external/session-started', { provider: 'codex', cwd: '/work', model: 'gpt-5' })
+  session.append('external/session-started', {
+    provider: 'codex',
+    cwd: '/work',
+    model: 'gpt-5',
+    providerThreadId: ExternalProviderThreadId('opaque-thread-1'),
+  })
   session.append('external/turn-started', { turnId: 't1' })
   session.append('external/message-added', { turnId: 't1', role: 'user', text: 'add a test' })
   session.append('external/message-added', { turnId: 't1', role: 'agent', text: 'on it' })
@@ -49,7 +55,12 @@ describe('external/* event vocabulary', () => {
     expect(original.seq).toBe(12)
 
     const expectedData = [
-      { provider: 'codex', cwd: '/work', model: 'gpt-5' },
+      {
+        provider: 'codex',
+        cwd: '/work',
+        model: 'gpt-5',
+        providerThreadId: ExternalProviderThreadId('opaque-thread-1'),
+      },
       { turnId: 't1' },
       { turnId: 't1', role: 'user', text: 'add a test' },
       { turnId: 't1', role: 'agent', text: 'on it' },
@@ -82,7 +93,16 @@ describe('external/* event vocabulary', () => {
     // an ignorable type it does not know instead of refusing the log). Seeding
     // replays the constructor's auto-`session/end-seed`, hence length 4.
     const seeded = Session.create(SessionId('unknown-seed'), [
-      { type: 'external/session-started', seq: 0, time: 1, data: { provider: 'codex', cwd: '/work' } },
+      {
+        type: 'external/session-started',
+        seq: 0,
+        time: 1,
+        data: {
+          provider: 'codex',
+          cwd: '/work',
+          providerThreadId: ExternalProviderThreadId('opaque-thread-unknown'),
+        },
+      },
       unknown,
       { type: 'external/turn-started', seq: 2, time: 3, data: { turnId: 't1' } },
     ])
@@ -104,16 +124,38 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-unknown'),
       turns: [
         {
           turnId: 't1',
           messages: [],
           toolActivities: [],
+          toolCalls: [],
           permissions: [],
           compactionNotices: [],
           modelSwitches: [],
         },
       ],
+    })
+  })
+
+  it('folds bounded startup failure facts and the terminal stop reason', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-start-failed', {
+      provider: 'codex',
+      code: 'startup-failed',
+      message: 'External provider failed to start; check the provider configuration.',
+    })
+    session.append('external/session-ended', { stopReason: 'error' })
+
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      startupFailure: {
+        provider: 'codex',
+        code: 'startup-failed',
+        message: 'External provider failed to start; check the provider configuration.',
+      },
+      stopReason: 'error',
     })
   })
 
@@ -125,6 +167,7 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-1'),
       sessionModel: 'gpt-5.1',
       turns: [
         {
@@ -137,6 +180,7 @@ describe('external/* event vocabulary', () => {
             { kind: 'call', title: 'grep' },
             { kind: 'result', title: 'grep', detail: '1 match' },
           ],
+          toolCalls: [],
           permissions: [
             { askId: 'p1', title: 'Allow run?', options: ['allow', 'deny'], outcome: 'allowed' },
           ],
@@ -149,10 +193,30 @@ describe('external/* event vocabulary', () => {
     })
   })
 
+  it('preserves the opaque provider thread id for attachment without rendering it as transcript content', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-for-resume'),
+    })
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({
+      providerThreadId: ExternalProviderThreadId('opaque-thread-for-resume'),
+    })
+    expect(projection).not.toHaveProperty('turns.0.providerThreadId')
+  })
+
   it('leaves unrelated (non-external) events out of the fold and shows an open turn', async () => {
     const { ctx, session } = await harness()
     ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
-    session.append('external/session-started', { provider: 'codex', cwd: '/work' })
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-unrelated'),
+    })
     session.append('external/turn-started', { turnId: 't1' })
     session.append('external/message-added', { turnId: 't1', role: 'agent', text: 'before unrelated' })
     session.append('turn/start', { turn: 1 })
@@ -162,16 +226,212 @@ describe('external/* event vocabulary', () => {
     expect(snapshot.values['external/transcript']).toEqual({
       provider: 'codex',
       cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-thread-unrelated'),
       turns: [
         {
           turnId: 't1',
           messages: [{ role: 'agent', text: 'before unrelated' }],
           toolActivities: [],
+          toolCalls: [],
           permissions: [],
           compactionNotices: [],
           modelSwitches: [],
         },
       ],
     })
+  })
+
+  it('pairs durable external tool call/result events into replayable tool nodes', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-tools'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-tools' })
+    session.append('external/tool-call', {
+      turnId: 'turn-tools',
+      callId: ExternalToolCallId('call-tools'),
+      name: 'read',
+      arguments: { path: 'README.md' },
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-tools',
+      callId: ExternalToolCallId('call-tools'),
+      name: 'read',
+      isError: false,
+      result: { text: 'hello' },
+    })
+
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      turns: [{
+        turnId: 'turn-tools',
+        toolCalls: [{
+          callId: ExternalToolCallId('call-tools'),
+          name: 'read',
+          arguments: { path: 'README.md' },
+          result: { text: 'hello' },
+        }],
+      }],
+    })
+  })
+
+  it('replays an explicit external tool error on the paired node', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-tool-error'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-error' })
+    session.append('external/tool-call', {
+      turnId: 'turn-error',
+      callId: ExternalToolCallId('call-error-node'),
+      name: 'write',
+      arguments: { path: 'README.md', text: 'nope' },
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-error',
+      callId: ExternalToolCallId('call-error-node'),
+      name: 'write',
+      isError: true,
+      error: { message: 'permission denied', code: 'EACCES' },
+    })
+
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      turns: [{
+        toolCalls: [{
+          callId: ExternalToolCallId('call-error-node'),
+          name: 'write',
+          arguments: { path: 'README.md', text: 'nope' },
+          error: { message: 'permission denied', code: 'EACCES' },
+        }],
+      }],
+    })
+  })
+
+  it('ignores malformed external turns and tool calls without breaking snapshots', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-malformed-turn'),
+    })
+    session.append('external/turn-started', { turnId: '' })
+    session.append('external/tool-call', {
+      callId: ExternalToolCallId(''),
+      name: 'read',
+      arguments: {},
+    })
+    session.append('external/tool-call', {
+      callId: ExternalToolCallId('malformed-name'),
+      name: '',
+      arguments: {},
+    })
+
+    expect(() => ctx.sessionProjections.snapshot(session)).not.toThrow()
+    expect(ctx.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({ turns: [] })
+  })
+
+  it('ignores a result with the wrong tool name', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-wrong-name'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-wrong-name' })
+    session.append('external/tool-call', {
+      turnId: 'turn-wrong-name',
+      callId: ExternalToolCallId('wrong-name-call'),
+      name: 'read',
+      arguments: {},
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-wrong-name',
+      callId: ExternalToolCallId('wrong-name-call'),
+      name: 'write',
+      isError: false,
+      result: { ignored: true },
+    })
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({ turns: [{ toolCalls: [{ name: 'read', arguments: {} }] }] })
+    expect(projection).not.toHaveProperty('turns.0.toolCalls.0.result')
+  })
+
+  it('keeps one durable call node and its first result when duplicates appear', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-duplicate-records'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-duplicate-records' })
+    const call = {
+      turnId: 'turn-duplicate-records',
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      arguments: {},
+    }
+    session.append('external/tool-call', call)
+    session.append('external/tool-call', call)
+    session.append('external/tool-result', {
+      turnId: 'turn-duplicate-records',
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      isError: false,
+      result: { first: true },
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-duplicate-records',
+      callId: ExternalToolCallId('duplicate-call'),
+      name: 'read',
+      isError: false,
+      result: { second: true },
+    })
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({
+      turns: [{ toolCalls: [{ callId: ExternalToolCallId('duplicate-call'), result: { first: true } }] }],
+    })
+    expect(projection?.turns[0]?.toolCalls).toHaveLength(1)
+  })
+
+  it('ignores a conflicting result that carries both success and error fields', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(externalTranscriptProjectionDefinition)
+    session.append('external/session-started', {
+      provider: 'codex',
+      cwd: '/work',
+      providerThreadId: ExternalProviderThreadId('opaque-conflicting-result'),
+    })
+    session.append('external/turn-started', { turnId: 'turn-conflicting-result' })
+    session.append('external/tool-call', {
+      turnId: 'turn-conflicting-result',
+      callId: ExternalToolCallId('conflicting-result'),
+      name: 'write',
+      arguments: {},
+    })
+    session.append('external/tool-result', {
+      turnId: 'turn-conflicting-result',
+      callId: ExternalToolCallId('conflicting-result'),
+      name: 'write',
+      isError: false,
+      result: { ok: true },
+      error: { message: 'also failed' },
+    } as never)
+
+    const projection = ctx.sessionProjections.snapshot(session).values['external/transcript']
+    expect(projection).toMatchObject({
+      turns: [{ toolCalls: [{ callId: ExternalToolCallId('conflicting-result'), name: 'write', arguments: {} }] }],
+    })
+    expect(projection).not.toHaveProperty('turns.0.toolCalls.0.result')
+    expect(projection).not.toHaveProperty('turns.0.toolCalls.0.error')
   })
 })

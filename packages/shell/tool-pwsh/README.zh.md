@@ -19,22 +19,22 @@
 | `command` | string (required) | 通过 `pwsh -Command` 运行。调用之间不保留状态——用 `workdir`，不要用 `cd`。 |
 | `description` | string (required) | 命令的一行主动语态摘要（5-10 词），仅用于 UI/日志展示——不影响执行。 |
 | `timeoutMs` | number | 超时覆盖值（毫秒）。执行器应用其配置的默认值与上限。 |
-| `workdir` | string | 本次调用的工作目录。默认取调用 agent（智能体）的会话 cwd（`session.header.cwd`），使每个会话在自己的工作区运行；相对 `workdir` 基于同一身份解析。 |
+| `workdir` | string | 本次调用的工作目录。默认取执行身份的会话 cwd（`executionSession(exec)?.header.cwd`），使原生 Agent 和 ExternalToolPrincipal 会话各自在自己的工作区运行；相对 `workdir` 基于同一身份解析。 |
 | `run_in_background` | boolean | 立即返回 job id；不适用超时。 |
 | `sandbox_permissions` | string enum | 仅当已挂载 sandbox 执行器时才会公开（`ctx.shell.sandboxMode` 已定义）。用于对刚被 sandbox 拒绝的命令做一次性重试的更宽 sandbox 模式——取刚好足够的最窄更宽模式，要求 `justification` 并在执行**之前**经 `ctx.approval` 获得用户批准。未拓宽或无法获批的请求 fail-closed，不运行任何内容。 |
 | `justification` | string | 必须与 `sandbox_permissions` 一同提供：用一句话向用户解释为何正是这条命令需要更宽的访问。 |
 
-`command`、`workdir` 与 `timeoutMs` 在执行前经 `ctx.shell.resolve()` 按执行器配置默认值解析。workdir 默认值在工具层于 `resolve()` 之前从调用 agent 的 `session.header.cwd` 取得——每次会话的 cwd 必须来自 `exec.agent`，因为 N 个会话共享一个执行器；仅当没有会话 cwd 时执行器才回退到自己的配置 / `process.cwd()`。
+`command`、`workdir` 与 `timeoutMs` 在执行前经 `ctx.shell.resolve()` 按执行器配置默认值解析。workdir 默认值在工具层于 `resolve()` 之前从执行身份的 `executionSession(exec)?.header.cwd` 取得——原生 Agent 和 ExternalToolPrincipal 会话都提供各自 cwd；仅当没有会话 cwd 时执行器才回退到自己的配置 / `process.cwd()`。
 
 ### Managed shell environment
 
-每次前台与后台模型 pwsh 调用都会通过共享的 [`dsh-shell-env`](../shell-env/) 注册表收到一份新收集的受信任 `DSH_*` 环境：`DSH_HOME`（Harness 主目录绝对路径）、`DSH_SHELL=1`、agent 的 `DSH_SESSION_ID`，以及活跃持久化后端定位到 JSONL 时的 `DSH_SESSION_JSONL`。向 `ctx.shellEnv` 贡献 `DSH_*` 事实的插件对 pwsh 调用与 bash 调用一视同仁。快照通过专用的 `ShellExecRequest.dshEnv` 通道传递；`process.env` 永不被修改。描述只教授通用的 `$env:DSH_*` 约定，而不是点名持久化相关的变量。
+每次前台与后台模型 pwsh 调用都会通过共享的 [`dsh-shell-env`](../shell-env/) 注册表收到一份新收集的受信任 `DSH_*` 环境：`DSH_HOME`（Harness 主目录绝对路径）、`DSH_SHELL=1`、存在原生 Agent 或 ExternalToolPrincipal 会话时由执行身份提供的 `DSH_SESSION_ID`，以及活跃持久化后端定位到 JSONL 时的 `DSH_SESSION_JSONL`。无 agent 的调用不包含会话变量。向 `ctx.shellEnv` 贡献 `DSH_*` 事实的插件对 pwsh 调用与 bash 调用一视同仁。快照通过专用的 `ShellExecRequest.dshEnv` 通道传递；`process.env` 永不被修改。描述只教授通用的 `$env:DSH_*` 约定，而不是点名持久化相关的变量。
 
 结果文本包含 stdout、可选的 `[stderr]` 段，然后是适用的截断、sandbox 拒绝（组合公开升级能力时带同轮次升级提示）、超时、signal 与退出 marker。干净退出（0、无 signal）不产生 marker；空体渲染为 `(no output)`。截断会链接一个安全的完整 spill 文件，或报告其不可用。超时独立于最终退出状态报告；非零退出仍是模型解读的结果而非 `isError`。Windows 上强制终止以无 signal 的 exit 1 结算，因此 `[killed by signal: …]` 仅适用于 POSIX。只有基础设施失败——spawn 错误与中止（`tool call aborted`）——产生 `isError`。
 
 规范成功形态是已完成前台进程的 `{ kind: 'foreground', ...ShellRunResult }`（存在时投影执行器的 `sandbox` 事实——`mode`/`denied`、可选的 `enforcement`/`runnerFailed`）或已发布任务的 `{ kind: 'background', jobId }`。渲染器对后台 ack 精确保留 `started background job <id>`；编程消费者使用类型化字段而不解析渲染文本。
 
-当 `run_in_background` 为 true 时，本插件在 spawn 前预检 `ctx.jobs.start()`，把调用 agent 注册为 owner，并将返回的 `ShellProcess` 句柄适配为通用的 cancel/done/增量输出钩子。任务运行时负责 job id、跨会话隔离、完成通知、等待和 dispose（资源释放）清理；本插件只把 pwsh 退出事实映射进任务输出与结果明细。`enableRunInBackground: false` 会移除参数并在执行时拒绝强制的后台调用。
+当 `run_in_background` 为 true 时，本插件在 spawn 前预检 `ctx.jobs.start()`，把原生 Agent 注册为 owner，并将返回的 `ShellProcess` 句柄适配为通用的 cancel/done/增量输出钩子。ExternalToolPrincipal 调用会在 `ctx.jobs.start()` 之前被拒绝，因为通用 job 要求原生 Agent 所有权；外部前台调用仍支持其会话身份。任务运行时负责 job id、跨会话隔离、完成通知、等待和 dispose（资源释放）清理；本插件只把 pwsh 退出事实映射进任务输出与结果明细。`enableRunInBackground: false` 会移除参数并在执行时拒绝强制的后台调用。
 
 ## UI presentation
 

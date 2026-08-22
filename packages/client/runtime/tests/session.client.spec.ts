@@ -22,6 +22,7 @@ import { entries, ev, plainTurn } from './event-script.client.ts'
 
 const SID = 'fk-s1' as SessionId
 const PARENT = 'fk-parent' as SessionId
+const turnId = (id: string): never => id as never
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -246,6 +247,20 @@ describe('open', () => {
     // Overlapping seq-15 frame (== page tail turn/end) was dropped; 16 appended once.
     expect(seqs).toEqual([11, 13, 16])
   })
+
+  it('retains an external delta arriving while history is pending', async () => {
+    const { api, session } = makeSession()
+    const gate = deferred<Awaited<ReturnType<FakeApiClient['onHistory']>>>()
+    api.onHistory = () => gate.promise
+    const opening = session.open()
+    session.handleMuxEnvelope('delta' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-opening'), delta: 'partial',
+    })
+    expect(session.getSnapshot().externalLive).toBeNull()
+    gate.resolve(ok({ events: entries([]) as never[], hasMore: false }))
+    await opening
+    expect(session.getSnapshot().externalLive).toEqual({ turnId: 'turn-opening', text: 'partial' })
+  })
 })
 
 
@@ -263,6 +278,124 @@ describe('live event path', () => {
     session.handleMuxEnvelope('r' as never, { type: 'session/event', sessionId: SID, event: ev.user(3, '重放') })
     await Promise.resolve()
     expect(session.getSnapshot().nodes).toEqual(before.nodes)
+  })
+
+  it('batches external delta frames, retires them on committed messages, and drops cold frames', async () => {
+    const { api, session } = await opened([])
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.push(callback)
+      return frames.length
+    })
+    const published: ConversationSnapshot[] = []
+    session.subscribe(() => { published.push(session.getSnapshot()) })
+
+    session.handleMuxEnvelope('d1' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-1'), delta: 'partial',
+    })
+    session.handleMuxEnvelope('d2' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-1'), delta: ' text',
+    })
+    expect(frames).toHaveLength(1)
+    expect(published).toEqual([])
+    frames.shift()!(0)
+    expect(published.at(-1)?.externalLive).toEqual({ turnId: 'turn-1', text: 'partial text' })
+
+    session.handleMuxEnvelope('m1' as never, {
+      type: 'session/event', sessionId: SID,
+      event: { type: 'external/message-added', seq: 0, time: 1, data: { turnId: 'turn-1', role: 'agent', text: 'partial text' } } as never,
+    })
+    await Promise.resolve()
+    expect(session.getSnapshot().externalLive).toBeNull()
+
+    session.handleMuxEnvelope('d3' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-2'), delta: 'failed partial',
+    })
+    session.handleMuxEnvelope('e1' as never, {
+      type: 'session/event', sessionId: SID,
+      event: { type: 'external/turn-ended', seq: 1, time: 2, data: { turnId: 'turn-2', stopReason: 'error' } } as never,
+    })
+    await Promise.resolve()
+    expect(session.getSnapshot().externalLive).toBeNull()
+
+    session.handleMuxEnvelope('d4' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-3'), delta: 'stale generation',
+    })
+    session.handleMuxEnvelope('sub' as never, { type: 'session/subscribed', sessionId: SID, lastSeq: 1 })
+    expect(session.getSnapshot().externalLive).toBeNull()
+
+    session.handleMuxEnvelope('d5' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-4'), delta: 'before reconnect',
+    })
+    api.onHistory = () => histResponse([])
+    await session.resync()
+    expect(session.getSnapshot().externalLive).toBeNull()
+
+    const cold = makeSession().session
+    cold.handleMuxEnvelope('cold' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-cold'), delta: 'ignored',
+    })
+    expect(cold.getSnapshot().externalLive).toBeNull()
+  })
+
+  it('keeps a live turn after its durable user message until the agent message commits', async () => {
+    const { session } = await opened([])
+    session.handleMuxEnvelope('delta' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-user'), delta: 'partial',
+    })
+    expect(session.getSnapshot().externalLive).toEqual({ turnId: 'turn-user', text: 'partial' })
+
+    session.handleMuxEnvelope('user' as never, {
+      type: 'session/event', sessionId: SID,
+      event: {
+        type: 'external/message-added', seq: 0, time: 1,
+        data: { turnId: 'turn-user', role: 'user', text: 'prompt' },
+      } as never,
+    })
+    expect(session.getSnapshot().externalLive).toEqual({ turnId: 'turn-user', text: 'partial' })
+
+    session.handleMuxEnvelope('agent' as never, {
+      type: 'session/event', sessionId: SID,
+      event: {
+        type: 'external/message-added', seq: 1, time: 2,
+        data: { turnId: 'turn-user', role: 'agent', text: 'partial' },
+      } as never,
+    })
+    expect(session.getSnapshot().externalLive).toBeNull()
+  })
+
+  it('does not resurrect live text after the external session ends', async () => {
+    const { session } = await opened([])
+    session.handleMuxEnvelope('delta' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-ended'), delta: 'partial',
+    })
+    session.handleMuxEnvelope('ended' as never, {
+      type: 'session/event', sessionId: SID,
+      event: {
+        type: 'external/session-ended', seq: 0, time: 1,
+        data: { stopReason: 'completed' },
+      } as never,
+    })
+    session.handleMuxEnvelope('late' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-ended'), delta: 'late',
+    })
+
+    expect(session.getSnapshot().externalLive).toBeNull()
+  })
+
+  it('clears external live text when a session error or removal arrives', async () => {
+    const { session } = await opened([])
+    session.handleMuxEnvelope('d' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-1'), delta: 'partial',
+    })
+    expect(session.getSnapshot().externalLive).toEqual({ turnId: 'turn-1', text: 'partial' })
+    session.handleAgentError('provider failed')
+    expect(session.getSnapshot().externalLive).toBeNull()
+    session.handleMuxEnvelope('d2' as never, {
+      type: 'external/delta', sessionId: SID, turnId: turnId('turn-2'), delta: 'again',
+    })
+    session.handleRemoved()
+    expect(session.getSnapshot().externalLive).toBeNull()
   })
 
   it('keeps the authoritative host blank bit across unrelated log events', async () => {

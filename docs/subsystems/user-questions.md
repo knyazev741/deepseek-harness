@@ -70,7 +70,7 @@ interface AskUserQuestionItem {
 
 ## Ask request
 
-`AskUserQuestionRequest` is the cross-package request. `questions` is an array so a UI can present related prompts in one flow while preserving a stable id per answer. When present, `agent` is the exact live caller; the interaction seam admits it only while the live registry identifies that instance as a runtime root.
+`AskUserQuestionRequest` is the cross-package request. `questions` is an array so a UI can present related prompts in one flow while preserving a stable id per answer. When present, `agent` is the exact live caller; the interaction seam admits it only while the live registry identifies that instance as a runtime root. When no native Agent exists, `sessionId` identifies the live external session that owns the question.
 
 ```ts type-equiv
 /** Request for a human answer. */
@@ -79,6 +79,8 @@ interface AskUserQuestionRequest {
   questions: AskUserQuestionItem[]
   /** Exact live calling agent, when the request came from an agent tool call. */
   agent?: Agent
+  /** Live external session posing the question when no native Agent exists. */
+  sessionId?: SessionId
   /** Abort signal for the owning tool/step. */
   signal?: AbortSignal
 }
@@ -174,5 +176,5 @@ registerProvider(provider: UserQuestionProvider): () => void
 async ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer>
 ```
 
-Source: [`packages/interaction/user-questions/src/index.ts:51`](../../packages/interaction/user-questions/src/index.ts)
+Source: [`packages/interaction/user-questions/src/index.ts:54`](../../packages/interaction/user-questions/src/index.ts)
 <!-- END GENERATED cordis-surface -->

@@ -6,9 +6,10 @@
 
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjection from '@deepseek-ai/dsh-session-projection'
 import ExternalSessions, {
+  ExternalProviderThreadId,
   ExternalTurnId,
   type ExternalBridgeContext,
   type ExternalSessionProvider,
@@ -19,6 +20,9 @@ import * as bridge from '@deepseek-ai/dsh-external-session-bridge'
 class StubProvider implements ExternalSessionProvider {
   readonly modelDirectory = 'config'
   started: boolean | undefined
+  resumed: ExternalProviderThreadId | undefined
+  disposeError: Error | undefined
+  startError: Error | undefined
 
   constructor(
     readonly provider: string,
@@ -27,9 +31,21 @@ class StubProvider implements ExternalSessionProvider {
 
   async start(request: ExternalSessionStart, bridgeCtx: ExternalBridgeContext): Promise<void> {
     this.started = true
+    if (this.startError !== undefined) throw this.startError
     bridgeCtx.appendEvent(request.sessionId, {
       type: 'external/session-started',
-      data: { provider: this.provider, cwd: request.cwd },
+      data: { provider: this.provider, cwd: request.cwd, providerThreadId: ExternalProviderThreadId('opaque-thread-started') },
+    })
+  }
+  async resume(
+    request: ExternalSessionStart,
+    bridgeCtx: ExternalBridgeContext,
+    providerThreadId: ExternalProviderThreadId,
+  ): Promise<void> {
+    this.resumed = providerThreadId
+    bridgeCtx.appendEvent(request.sessionId, {
+      type: 'external/message-added',
+      data: { turnId: 'resume-turn', role: 'agent', text: 'resumed' },
     })
   }
   async prompt() { return { turnId: ExternalTurnId('t1') } }
@@ -37,7 +53,9 @@ class StubProvider implements ExternalSessionProvider {
   async compact() {}
   async listModels() { return [] }
   async setModel() {}
-  async dispose() {}
+  async dispose() {
+    if (this.disposeError !== undefined) throw this.disposeError
+  }
 }
 
 let ctx: Context | undefined
@@ -71,5 +89,76 @@ describe('external-session-bridge driver', () => {
     const { ctx: loaded } = await setup()
     expect(() => loaded.sessions.create(SessionId('z1'), { meta: { cwd: '/tmp', mode: 'missing' } }))
       .toThrow(/was created in mode "missing".*no such external provider is registered/)
+  })
+
+  it('surfaces provider disposal failure instead of creating an unhandled rejection', async () => {
+    const { ctx: loaded, provider } = await setup()
+    const errors: unknown[] = []
+    loaded.on('external/session-bridge/error', (payload) => { errors.push(payload.error) })
+    const session = loaded.sessions.prepare(SessionId('dispose-error'), { meta: { cwd: '/tmp', mode: 'alpha' } })
+    const detach = loaded.sessions.enter(session)
+    loaded.sessions.announce(session)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    provider.disposeError = new Error('dispose failed')
+    detach()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(errors).toEqual([provider.disposeError])
+  })
+
+  it('records a bounded terminal failure when provider startup rejects after publication', async () => {
+    const { ctx: loaded, provider } = await setup()
+    const raw = Object.assign(new Error('secret credential and command details'), { code: 'START_FAILED' })
+    provider.startError = raw
+    const session = loaded.sessions.create(SessionId('start-error'), { meta: { cwd: '/tmp', mode: 'alpha' } })
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(session.events.map(event => event.type)).toEqual([
+      'external/session-start-failed',
+      'external/session-ended',
+    ])
+    expect(session.events[0]?.data).toEqual({
+      provider: 'alpha',
+      code: 'startup-failed',
+      message: '外部智能体启动失败，请检查提供方配置。',
+    })
+    expect(JSON.stringify(session.events)).not.toContain('secret credential')
+    expect(loaded.sessionProjections.snapshot(session).values['external/transcript']).toMatchObject({
+      startupFailure: {
+        provider: 'alpha',
+        code: 'startup-failed',
+        message: '外部智能体启动失败，请检查提供方配置。',
+      },
+      stopReason: 'error',
+    })
+  })
+
+  it('resumes a cold external session from its durable provider thread id', async () => {
+    const { ctx: loaded, provider } = await setup()
+    const session = loaded.sessions.prepare(SessionId('cold-resume'), {
+      seed: [
+        {
+          type: 'external/session-started',
+          seq: 0,
+          time: 1,
+          data: { provider: 'alpha', cwd: '/tmp', providerThreadId: ExternalProviderThreadId('opaque-thread-cold') },
+          ignorable: true,
+        },
+      ],
+      meta: {
+        id: SessionId('cold-resume'),
+        version: SESSION_FORMAT_VERSION,
+        createdAt: 1,
+        cwd: '/tmp',
+        mode: 'alpha',
+      },
+      seedSource: 'persistence',
+    })
+    const detach = loaded.sessions.enter(session)
+    loaded.sessions.announce(session)
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(provider.started).toBeUndefined()
+    expect(provider.resumed).toBe(ExternalProviderThreadId('opaque-thread-cold'))
+    detach()
   })
 })

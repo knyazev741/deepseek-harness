@@ -56,6 +56,7 @@ async function bench() {
   return {
     ctx, slots: ctx.get('slots') as SlotRegistry, creates, externalModesCalls,
     failCreate: (message: string) => { createFail = message },
+    createFailure: () => createFail,
   }
 }
 
@@ -75,11 +76,22 @@ function declareConversation(slots: SlotRegistry): () => void {
 }
 
 /** The sessions face the apply's hero flow reads for the current workspace. */
-function sessionsDouble(state: { current?: string }) {
+function sessionsDouble(
+  state: { current?: string },
+  creates: { mode?: string; model?: string; workspaceId?: string }[],
+  createFailure: () => string | undefined,
+) {
   let current = state.current
   return {
     list: { getSnapshot: () => ({ current }) },
-    setCurrent: (value: string | undefined) => { current = value },
+    create: (payload: { mode?: string; model?: string; workspaceId?: string }) => {
+      creates.push(payload)
+      const failure = createFailure()
+      return failure === undefined
+        ? Promise.resolve('s1')
+        : Promise.reject(new Error(failure))
+    },
+    open: (value: string) => { current = value },
   }
 }
 
@@ -96,11 +108,11 @@ describe('ui-session-mode apply', () => {
   })
 
   it('registers the hero picker and submits creation carrying the staged mode + model', async () => {
-    const { ctx, slots, creates, externalModesCalls } = await bench()
+    const { ctx, slots, creates, externalModesCalls, createFailure } = await bench()
     declareRoot(slots)
     declareConversation(slots)
     ctx.provide('conversation', {} as never)
-    const sessions = sessionsDouble({ current: 's9' })
+    const sessions = sessionsDouble({ current: 's9' }, creates, createFailure)
     ctx.provide('sessions', sessions as never)
     const workspaces = workspacesDouble({
       items: [{ workspaceId: 'w1', sessionIds: ['s9'] }],
@@ -130,11 +142,11 @@ describe('ui-session-mode apply', () => {
   })
 
   it('submits creation without a workspace when no session is current, and without a model', async () => {
-    const { ctx, slots, creates } = await bench()
+    const { ctx, slots, creates, createFailure } = await bench()
     declareRoot(slots)
     declareConversation(slots)
     ctx.provide('conversation', {} as never)
-    ctx.provide('sessions', sessionsDouble({}) as never)
+    ctx.provide('sessions', sessionsDouble({}, creates, createFailure) as never)
     ctx.provide('workspaces', workspacesDouble({ items: [], recentWorkspaceId: 'w0' }) as never)
     await ctx.plugin({ inject: [...inject, 'conversation'], apply }).await()
 
@@ -148,12 +160,12 @@ describe('ui-session-mode apply', () => {
   })
 
   it('falls back to the recent workspace for a current session not in any list', async () => {
-    const { ctx, slots, creates } = await bench()
+    const { ctx, slots, creates, createFailure } = await bench()
     declareRoot(slots)
     declareConversation(slots)
     ctx.provide('conversation', {} as never)
     // 's9' is current but absent from every workspace's sessionIds.
-    ctx.provide('sessions', sessionsDouble({ current: 's9' }) as never)
+    ctx.provide('sessions', sessionsDouble({ current: 's9' }, creates, createFailure) as never)
     ctx.provide('workspaces', workspacesDouble({ items: [{ workspaceId: 'w2', sessionIds: ['s8'] }], recentWorkspaceId: 'w0' }) as never)
     await ctx.plugin({ inject: [...inject, 'conversation'], apply }).await()
 
@@ -166,11 +178,11 @@ describe('ui-session-mode apply', () => {
   })
 
   it('surfaces a refused create to the picker', async () => {
-    const { ctx, slots, failCreate } = await bench()
+    const { ctx, slots, failCreate, creates, createFailure } = await bench()
     declareRoot(slots)
     declareConversation(slots)
     ctx.provide('conversation', {} as never)
-    ctx.provide('sessions', sessionsDouble({ current: 's9' }) as never)
+    ctx.provide('sessions', sessionsDouble({ current: 's9' }, creates, createFailure) as never)
     ctx.provide('workspaces', workspacesDouble({ items: [{ workspaceId: 'w1', sessionIds: ['s9'] }], recentWorkspaceId: 'w0' }) as never)
     await ctx.plugin({ inject: [...inject, 'conversation'], apply }).await()
 
@@ -184,11 +196,11 @@ describe('ui-session-mode apply', () => {
   })
 
   it('drops the hero picker on fiber disposal', async () => {
-    const { ctx, slots } = await bench()
+    const { ctx, slots, creates, createFailure } = await bench()
     declareRoot(slots)
     declareConversation(slots)
     ctx.provide('conversation', {} as never)
-    ctx.provide('sessions', sessionsDouble({}) as never)
+    ctx.provide('sessions', sessionsDouble({}, creates, createFailure) as never)
     ctx.provide('workspaces', workspacesDouble({ items: [], recentWorkspaceId: 'w0' }) as never)
     const fiber = ctx.plugin({ inject: [...inject, 'conversation'], apply })
     await fiber.await()

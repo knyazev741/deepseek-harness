@@ -5,7 +5,7 @@ import { createScope, scopeOf, SessionProvideChannel } from '@deepseek-ai/dsh-cl
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
   AgentContext, ConversationSnapshot, ISessions, ObservableSnapshot, ProjectionsFace, SessionFace, SessionId,
-  SessionListState, SessionProvideDescriptor, SessionSearchResultItem, SessionSummary, SnapshotStore,
+  SessionListState, SessionProvideDescriptor, SessionSearchResultItem, SessionSummary, SnapshotStore, WorkspaceId,
   SubagentAddress,
 } from '@deepseek-ai/dsh-client-runtime/client'
 // The double reports the wire schema's own search bound, like the production
@@ -23,6 +23,9 @@ import type { SessionFixture, Stabilizer } from './fixtures.ts'
  * fixture methods are grafted verbatim for feature-side casts.
  */
 export class FixtureSession implements SessionFace {
+  /** Fixture-facing durable driver mode; absent keeps the native session route. */
+  readonly mode: string | undefined = undefined
+
   /**
    * The useProjection seat: identity-stable per-key faces over the fixture's
    * projection values (set via {@link TestSessions.setProjection}).
@@ -184,7 +187,7 @@ export class TestSessions implements ISessions {
 
   /** Calls observed on the service-level face, newest last. */
   readonly calls: {
-    method: 'open' | 'openSubagent' | 'setSubagentCatalogOpen' | 'refreshSubagents'
+    method: 'create' | 'open' | 'openSubagent' | 'setSubagentCatalogOpen' | 'refreshSubagents'
       | 'clear' | 'search' | 'fork' | 'markUnread'
     args: unknown[]
   }[] = []
@@ -194,6 +197,14 @@ export class TestSessions implements ISessions {
 
   /** Replaceable search behavior (see {@link TestSessions.stubSearch}). */
   private searchStub: ((query: string, signal: AbortSignal) => { items: SessionSearchResultItem[]; hasMore: boolean }) | undefined
+  /** Replaceable create behavior; test fixtures must opt into session creation. */
+  private createStub: ((opts: {
+    workspaceId?: WorkspaceId
+    cwd?: string
+    sessionId?: SessionId
+    mode?: string
+    model?: string
+  }) => Promise<SessionId>) | undefined
 
   /**
    * @param stabilize - the owning runtime's act wrapper.
@@ -411,6 +422,40 @@ export class TestSessions implements ISessions {
       draft.current = id
       draft.currentAddress = undefined
     })
+  }
+
+  /**
+   * Create behavior supplied by a fixture that exercises the new-session flow.
+   * The generic double stays fail-loud when a test did not declare creation.
+   * @param opts - target workspace or directory and optional mode/model.
+   * @returns the fixture-created session id.
+   */
+  create(opts: {
+    workspaceId?: WorkspaceId
+    cwd?: string
+    sessionId?: SessionId
+    mode?: string
+    model?: string
+  } = {}): Promise<SessionId> {
+    this.calls.push({ method: 'create', args: [opts] })
+    if (this.createStub === undefined) {
+      return Promise.reject(new Error('test sessions: create is not stubbed — call stubCreate first'))
+    }
+    return this.createStub(opts)
+  }
+
+  /**
+   * Supply the Host-facing creation behavior for a session-flow fixture.
+   * @param impl - fixture create implementation.
+   */
+  stubCreate(impl: (opts: {
+    workspaceId?: WorkspaceId
+    cwd?: string
+    sessionId?: SessionId
+    mode?: string
+    model?: string
+  }) => Promise<SessionId>): void {
+    this.createStub = impl
   }
 
   /**

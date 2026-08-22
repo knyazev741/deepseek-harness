@@ -16,6 +16,7 @@ import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools/presen
 import type { RpcError, RpcId, RpcRequest } from './rpc.ts'
 import type { JobView } from './jobs.ts'
 import type { WorkspaceView } from './workspace.ts'
+import type { ExternalTurnId } from '@deepseek-ai/dsh-external-session/protocol'
 
 // Client-side consumers take the render-intent vocabulary from the contract;
 // dsh-tools remains its owner.
@@ -69,6 +70,8 @@ export interface EventsApi {
 export type MuxFrame =
   | { type: 'session/event'; sessionId: SessionId; event: SessionEvent; view?: ToolEventView }
   | { type: 'session/subscribed'; sessionId: SessionId; lastSeq: number }
+  /** Transient external-agent text; never appended to the session log. */
+  | { type: 'external/delta'; sessionId: SessionId; turnId: ExternalTurnId; delta: string }
   | { type: 'approval/requested'; sessionId: SessionId; approvalId: ApprovalRequestId; toolName: string; callId?: CallId; reason?: string }
   | { type: 'approval/resolved'; sessionId: SessionId; approvalId: ApprovalRequestId; outcome: ApprovalOutcome }
   | { type: 'question/requested'; sessionId: SessionId; questions: AskUserQuestionItem[] }
@@ -109,7 +112,7 @@ export type MuxFrame =
 
 /**
  * Host stream frames. session-added carries the lineage anchor, product
- * origin, project cwd, and blank bit (the list-summary fields a client cannot
+ * origin, project cwd, durable driver mode, and blank bit (the list-summary fields a client cannot
  * wait for a refresh to learn); the frame fires at session/created, so blank is
  * constantly true — clients flip it on the session's first
  * `host/session-status(running:true)` (a blank session never runs), and a
@@ -133,6 +136,7 @@ export type HostFrame =
     origin?: 'subagent' | 'github-actions'
     cwd?: string
     agentPreset?: string
+    mode?: string
   }
   | { type: 'host/session-removed'; sessionId: SessionId }
   | { type: 'host/session-status'; sessionId: SessionId; running: boolean }

@@ -799,6 +799,22 @@
       "ignoreDependencies": [
         "@deepseek-ai/.+"
       ]
+    },
+    "packages/bundle/web-codex": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-external-permission",
+        "@deepseek-ai/dsh-external-session",
+        "@deepseek-ai/dsh-external-session-bridge",
+        "@deepseek-ai/dsh-external-session-codex",
+        "@deepseek-ai/dsh-mcp-gateway"
+      ]
     }
   }
 }

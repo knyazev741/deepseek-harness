@@ -1,45 +1,59 @@
-# Agent Note: 外部交互式会话 — 第 1 阶段
+# Agent Note: External interactive sessions — Phase 1
 
 Status: implemented
 
 [English](2026-08-18-external-interactive-sessions-phase-1.md) | 中文
 
-## 问题
+## Problem
 
-框架运行自身的 agent 循环；控制台编码智能体是一次性子代理提供者，会把子运行折叠为单个工具结果。用户无法打开由外部智能体驱动的会话：多轮延续、实时流式输出、智能体自身的压缩与模型切换、以及权限提示都没有出口。本注记录外部交互式会话家族第 1 阶段的落地结果；设计意图保存在[外部交互式智能体会话](../proposed/feature/2026-08-18-external-interactive-agent-sessions.md)建议稿中，而[claude-code 与 codex subagent 后端](2026-08-04-claude-code-and-codex-subagent-backends.md)负责单发兄弟特性。
+Harness 运行自己的 agent loop，而 console coding agent 仍属于独立的提供方家族。Codex 交互式会话已经通过可选的 Web bundle 提供；ACP 客户端、Claude Code 的交互式 dialect 与智能体启动的外部会话仍不在本阶段内。[Claude Code 与 Codex subagent 后端](2026-08-04-claude-code-and-codex-subagent-backends.md)说明一次性兄弟实现，提案中的[外部交互式 agent 会话](../../proposed/feature/2026-08-18-external-interactive-agent-sessions.md)说明剩余的提供方工作。
 
-## 决策
+## Decision
 
-**模式**（mode）决定由谁驱动会话：`dsh`（原生 agent 循环）或一个已注册的外部智能体。模式是创建时的客户端平面选择，持久地盖章在会话头部（默认 `dsh`）。第 1 阶段交付 Codex 方言；ACP 与 Claude Code 方言属于后续阶段。
+**Mode** 命名驱动会话的主体：`dsh`（原生 agent loop）或已注册的外部 agent。Mode 是创建时的 client-plane 选择，并持久写入会话 header（默认 `dsh`）。Phase 1 提供 Codex dialect；ACP 与 Claude Code dialect 属于后续阶段。
 
-第 1 阶段已定稿的包与职责：
+已确定的 Phase 1 程序包与职责：
 
-- `packages/external/external-session` — 服务定义 `ctx.externalSessions`（具名提供者注册表，类似 `ctx.subagents`），外加 `ExternalSessionProvider` 契约与 `ExternalBridgeContext`。`compact()` 属于提供者契约的一部分：框架绝不在线路上重新实现智能体自身压缩。
-- `packages/external/external-session-bridge` — 宿主机侧驱动：负责每个外部会话的提供者生命周期，通过 Task-1 桥追加仅日志的 `external/*` 事件，投影转录本，并在会话关闭时释放提供者。
-- `packages/external/external-session-codex` — Codex 提供者，持久地驱动 `codex app-server --stdio`（以 `@openai/codex@0.147.0` 钉证据）。
-- `packages/interaction/external-permission` — 第 1 阶段权限桥：把 `bridge.requestPermission` 路由到 ask-user/user-questions 通道，并携带权限形状的询问；在关闭/超时/无应答者时默认失败关闭。
-- `packages/client/ui-session-mode` — 客户端插件：带模型席位的模式选择器，以及外部转录本会话节点。
+- `packages/external/external-session`——`ctx.externalSessions` Service Definition（类似 `ctx.subagents` 的命名提供方注册表）以及 `ExternalSessionProvider` 与 `ExternalBridgeContext` 约定。`compact()` 属于提供方约定，Harness 不会跨 wire 重做 agent 原生压缩。
+- `packages/external/external-session-bridge`——宿主侧 driver：按外部会话拥有提供方生命周期，通过 Task 1 bridge 追加仅日志的 `external/*` 事件，投影 transcript，并在会话关闭时 dispose 提供方。
+- `packages/external/external-session-codex`——Codex 提供方，持久驱动 `codex app-server --stdio`（证据固定为 `@openai/codex@0.147.0`）。
+- `packages/interaction/external-permission`——Phase 1 权限 bridge：把 `bridge.requestPermission` 与所属 external `sessionId` 路由到 ask-user/user-questions 通道，使用权限形状的询问；关闭、超时、无 answerer 时故障关闭。
+- `packages/client/ui-session-mode`——客户端插件：带 model seat 的 mode picker 与外部 transcript conversation nodes。
 
-以外部模式并携带已注册提供者创建会话时，会启动桥而绝不会创建原生 Agent；未知模式在创建时响亮失败。无模式（`dsh`）的会话不受影响。
+使用已注册提供方的 external-mode 会话创建会启动 bridge，绝不会启动原生 Agent；未知 mode 在创建时大声失败。无 mode（`dsh`）的会话不受影响。
 
-### `external/*` 会话事件
+带显式 session id 的请求只有在持久化 driver mode 与绝对 cwd 都和请求一致时才是幂等的。native 与 external mode、不同的 external provider 以及不同 cwd 都返回类型化的 `session-conflict` 错误；改变 external model 不会重写持久化身份。冷 external materialization 使用 `SessionPersistence.prepare`，恢复完全相同的 stored header 后再由 bridge announce。
 
-驱动通过 `SessionEventMap` 声明合并追加仅日志事件，全部 `ignorable: true`（读取时的未知 `external/*` 不会损坏重放）。实况帧增量在帧通道上传输而不持久化（`streamDelta` 绝不记录）。仅提交单元：
+Codex 提供方把实时会话的 sandbox 与 approval fold 合并到每次 external start 或 resume。受限子进程收到精确的 app-server argv 与配置 state root 下的私有 `CODEX_HOME`；默认使用打包的 `@openai/codex` launcher，显式 command 是覆盖项。launcher 环境清洗环境中的凭证形状变量，同时保留显式提供的凭证。稳定的 `model` 与 reasoning `effort` 字段发送到 thread start/resume 与每轮；模型切换只有在原生目录中时才接受，并在下一轮前记录。成功的 `thread/start` 会把品牌化的不透明 `providerThreadId` 写入 `external/session-started`；可信 wire 输出在该边界构造成类型化值，持久输入解析后，冷会话使用显式的 `resume`/`thread/resume`，绝不回退到替代线程。宿主只在实时操作需要时通过 `SessionPersistence.prepare`、`SessionStore.enter` 与 `SessionStore.announce` 物化冷外部会话；history 与 list 保持无进程。start/resume 按会话去重，挂接失败会回滚实时路由，同时让持久日志保持可读。启动生命周期记录在第一次 await 前即可取消；dispose 会先 abort、等待挂接结算，并在共享的 quiescence Promise 上只 teardown 一次，因此不合作的延迟启动不会解析已 dispose 的会话。并发 prompt 串行化，待处理审批在 `external/session-ended` 前取消，清理失败保留在 quiescence 屏障上。子进程死亡会结算活动轮次、在终止前关闭 wire listener、等待进程树，然后使用内存线程 id 在同一提供方实例内重启子进程。会话创建前的模型目录使用明确的 read-only policy；read-only 忽略 state-root 的写授权。
 
-`external/session-started`、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
+如果提供方在 external session 发布后拒绝启动，bridge 会追加有界的 `external/session-start-failed` 事实，随后追加 `stopReason: error` 的 `external/session-ended`。projection 与 UI 显示固定的安全消息并关闭临时 live seat；原始提供方错误只存在于类型化宿主诊断事件中，不会进入持久日志、client payload 或 snapshot。
 
-`/compact` 与 `/model` 按会话模式路由：压缩调用提供者的原生压缩并记录 notice；模型切换调用 `setModel` 并记录切换。外部模式下的未知斜杠命令作为提示文本透传。
+### The `external/*` session events
 
-## 第 1 阶段与 approval seam
+Driver 通过 `SessionEventMap` declaration merging 追加仅日志事件，全部为 `ignorable: true`（读取时未知 `external/*` 不会破坏 replay）。实时 frame 增量通过 frame channel 传递，不持久化（`streamDelta` 永不写日志）。只提交以下单元：
 
-第 1 阶段通过 ask-user 交互通道由人类应答每个子权限提示（外部会话没有打开的 DSH 轮次）。智能体驱动的外部会话——作为子代理子级授权并让权限请求经 `ctx.approval` 及审计对路由——属于后续阶段；两条路径的审计语义不得分叉，且后续路由应取代而非分叉它们。
+`external/session-started`（包含不透明的提供方线程身份）、`external/session-start-failed`（有界的提供方失败事实）、`external/turn-started`、`external/message-added`、`external/tool-activity`、`external/tool-call`、`external/tool-result`、`external/approval-asked`、`external/approval-decided`、`external/permission-asked`、`external/permission-decided`、`external/model-switched`、`external/compaction-noticed`、`external/turn-ended`、`external/session-ended`。
 
-## 备选方案
+`/compact` 与 `/model` 按 session mode 路由：压缩调用提供方原生 compact 并记录 notice；模型切换调用 `setModel` 并记录切换。外部 mode 中未知 slash command 作为 prompt 文本传递。
 
-设计备选方案及其否决在[外部交互式智能体会话](../proposed/feature/2026-08-18-external-interactive-agent-sessions.md)建议稿中论证：PTY 终端适配器（无结构化流、无日志投影、无策略继承）、就地扩展现有一次性子代理提供者（其契约是单个最终文本）、为一切使用单一通用线路（ACP 会丢失 Codex 线程恢复与 Claude Code `canUseTool` 细节）、以及把整个任务交给社区适配包（权限、沙箱、MCP 决策仍由框架掌控）。按计划的排序说明，第 1 阶段先交付 Codex 方言；ACP 是第 2 阶段的线路。
+### 外部工具所有权
 
-## 后果
+实时外部会话提供带品牌化 id、session、作用域 context 与 recorder 的 `ExternalToolPrincipal`。recorder 会在 API 入口同步脱离调用方的嵌套值，为每条已提交记录限制 JSON 安全的大小，并从所属会话日志播种 call id 唯一性，覆盖 resume 与 HMR 挂接。已交付的 shell 与 filesystem 前台定义显式选择该身份，并从外部 session 派生 cwd、环境、观察和结果作用域，无需创建原生 Agent。后台 shell job 仍要求原生 Agent 所有权；ask-user、schedule、workflow、Cordis 自修改、terminal/jobs 与 subagent 工具定义对外部 principal 默认拒绝。Phase 1 权限 bridge 仍是由宿主拥有的 ask-user 路径，而不是外部工具 eligibility 授权。
 
-用户可以在本 GUI 中打开由外部智能体驱动的会话：流式轮次渲染在同一个会话 UI 并从持久日志重放，模式选择器列出带各自模型目录的模式，模型切换驱动子方，渲染的权限提示以失败关闭的关闭/失败路径门控子方，且子方在框架沙箱下运行并在会话关闭时释放整个进程树。第 1 阶段交付建议稿的验收标准 1–4；标准 5（智能体启动的授权 + `ctx.approval` 审计对）属于上述后续阶段。
+## Alternatives considered
 
-外部事件仅日志且 `ignorable: true`，因此重放跨重载保持正确，读取时未知 `external/*` 不损坏重放；模型可见⟺已记录规则成立，因为外部内容在父会话中不可模型可见，且无父上下文影响。流式增量不持久。钉住的 Codex fixture 门控线路漂移。第 1 阶段 ask-user 通道与后续 `ctx.approval` 路由之间的审计语义不得分叉，且后者取代而非分叉前者。
+设计替代项及其否决理由记录在[外部交互式 agent 会话规范说明](../../proposed/feature/2026-08-18-external-interactive-agent-sessions.md)中：PTY terminal adapter 没有结构化 stream、日志投影与 policy inheritance；原地扩展一次性 subagent 提供方会违反其单一最终文本约定；一个通用 wire 无法表达 ACP 的 Codex thread resume 与 Claude Code `canUseTool` 细节；依赖社区 adapter pack 会把权限、sandbox 与 MCP 决策留在 Harness 之外。Codex dialect 拥有已交付的 Web 路径；ACP 与 Claude Code 仍是提案中的扩展。
+
+## Verification
+
+组装 Web 证明使用 `DSH_SNAPSHOT=replay perl -e 'alarm 280; exec @ARGV' pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/external-codex-session.e2e.ts`。它通过 opt-in Loader 层组合、经 loopback Responses fixture 驱动固定版本的 Codex app-server，并固定 mode picker、实时与已提交文本、命令活动、审批、经配置的 `dsh_harness` MCP 调用及其持久化工具记录、直接网关对未列出调用的补充拒绝、压缩和恢复后的轮次。trace 断言真实 `thread/start` 与 `thread/resume` 方法使用同一个提供方线程 id；fixture 校验非空的 `previous_response_id`，并显式建模 Codex 的无状态延续。证明也会断言 fixture 已完全消费，浏览器、页面、控制台与请求失败探针为空。真实部署仍需要用户为配置的 Codex 可执行文件完成认证；Codex mode 不挂载原生 DSH 的委派与计划服务，ACP、Claude Code、智能体启动的外部会话与远程多用户托管仍不在本阶段内。
+
+## Phase 1 vs the approval seam
+
+外部路径现在使用带 external principal 与 branded 工具调用 id 的 `ctx.approval.requestExternal()`。它会记录成对的 `external/approval-asked` 与 `external/approval-decided` 事件，不会伪造原生 Agent 或轮次。缺少应答者、dispose、abort、格式错误的决定、元组不匹配、事件 session id 不属于所属 Session，或 `external/session-ended` 之后的决定都会故障关闭；两条记录必须使用完全相同的 principal、session 与 call id。ask-user 权限 bridge 仍是独立的、由宿主拥有的提供方权限询问路径。
+
+## Consequences
+
+用户可以在 opt-in Web GUI 中打开由 Codex 驱动的会话：流式轮次显示在同一 conversation UI，并从持久日志 replay；mode picker 列出带原生模型目录的 Codex mode；模型切换驱动子进程；渲染出的权限询问在故障关闭的关闭／失败路径上门控子进程；子进程在 Harness sandbox 下运行，并在会话关闭时回收进程树。Codex mode 不挂载原生 DSH 的委派或计划服务。组装 Loader、浏览器、transcript 与可访问性证明由 Web E2E 固定；ACP、Claude Code、智能体启动的外部会话与远程多用户托管仍不在本阶段内。
+
+External 事件仅写日志且为 `ignorable: true`，因此 replay 在 reload 后仍正确，读取未知 `external/*` 不会破坏它；model-visible ⟺ logged 规则成立，因为没有外部内容进入父会话的 model 请求，也没有 parent-context effect。流式增量不持久化。固定的 Codex fixture 防止 wire 漂移。外部工具调用与结果按 branded call id 严格成对提交，每对记录限制为有界 JSON，并投影到 external transcript；格式错误、名称错误、重复、冲突、无匹配或有歧义的记录由 session invariant 拒绝或由防御性 projection 忽略，不会进入父 agent 的 model context。外部审批审计对同样只写日志，不是原生轮次或 Agent 状态。

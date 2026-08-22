@@ -143,6 +143,56 @@ describe('windows-acl write grants (LocalSandboxProvider)', () => {
     }
   })
 
+  it('workspace-write grants the private state root through the session capability and revokes that grant on dispose', async () => {
+    try {
+      const { sandbox, fiber } = await setup()
+      const ws = workspaceRoot()
+      const state = mkdtempSync(join(tmpdir(), 'dsh-acl-grants-state-'))
+      scratch.push(ws, state)
+      const policy: SandboxPolicy = {
+        mode: 'workspace-write',
+        workspaceRoot: ws,
+        stateRoot: realpathSync.native(state),
+        sessionId: SessionId('state-root'),
+      }
+
+      const confined = sandbox.confine(['true'], policy)
+      const tempDir = flag(confined.argv, '--temp')
+      const tempSid = flag(confined.argv, '--temp-write-sid')
+      const tempGrant = mockState.grants.find(grant => grant.writeSid === tempSid)
+      expect(tempGrant?.added).toEqual(expect.arrayContaining([
+        { path: tempDir, standing: false },
+        { path: realpathSync.native(state), standing: false },
+      ]))
+
+      await fiber.dispose()
+      expect(tempGrant?.disposed).toBe(true)
+      expect(existsSync(state)).toBe(true)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('rejects a workspace-write state root without a session id instead of dropping it', async () => {
+    try {
+      const { sandbox, fiber } = await setup()
+      const ws = workspaceRoot()
+      const state = mkdtempSync(join(tmpdir(), 'dsh-acl-grants-agentless-state-'))
+      scratch.push(ws, state)
+
+      expect(() => sandbox.confine(['true'], {
+        mode: 'workspace-write',
+        workspaceRoot: ws,
+        stateRoot: realpathSync.native(state),
+      })).toThrow(/stateRoot.*sessionId/u)
+      expect(mockState.grants).toHaveLength(0)
+
+      await fiber.dispose()
+    } finally {
+      cleanup()
+    }
+  })
+
   it('read-only materializes no capability; upgrade creates them and downgrade leaves them reusable', async () => {
     try {
       const { sandbox, fiber } = await setup()

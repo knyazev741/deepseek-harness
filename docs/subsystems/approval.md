@@ -132,6 +132,22 @@ setPolicy(agent: Agent, policy: ApprovalPolicy): void
 async request(req: ApprovalRequest): Promise<ApprovalOutcome>
 
 /**
+ * Ask the composed answerers to decide one external-principal tool call.
+ * This path deliberately does not require or create a native Agent and does
+ * not require an open native turn: the explicit `external/approval-*` pair
+ * carries the principal, session, and call identities needed for replay.
+ * Effective session policy is applied before the external waterfall. The
+ * request and the principal's disposal signal both cancel the question; a
+ * missing, throwing, or non-conforming answerer fails closed to
+ * `unavailable`, and any audit append failure rejects instead of returning
+ * an unlogged decision.
+ * @param req - the external principal, tool identity, call id, reason, and signal.
+ * @returns the closed outcome; only `allowed-once` grants this call.
+ * @throws when the request is malformed or an audit append fails before commit.
+ */
+async requestExternal(req: ExternalApprovalRequest): Promise<ApprovalOutcome>
+
+/**
  * Read the session override without applying the configured default.
  * @param session - session whose log supplies the override.
  * @returns the last logged policy, or `undefined` without one.
@@ -141,7 +157,7 @@ overrideOf(session: Session): ApprovalPolicy | undefined
 
 Types: [Agent](core.md) · [Session](session.md)
 
-Source: [`packages/interaction/user-approval/src/index.ts:192`](../../packages/interaction/user-approval/src/index.ts)
+Source: [`packages/interaction/user-approval/src/index.ts:229`](../../packages/interaction/user-approval/src/index.ts)
 
 <a id="approval-events"></a>
 
@@ -167,4 +183,26 @@ Ask composed answerers for one decision. Return an outcome to claim the request 
 Types: [Scoped](scope.md)
 
 Source: [`packages/interaction/user-approval/src/index.ts:30`](../../packages/interaction/user-approval/src/index.ts)
+
+<a id="approvalrequest-external--waterfall"></a>
+
+#### `approval/request-external` — waterfall
+
+Ask composed answerers for an external principal's tool decision. The principal is the scope key; listeners must return an outcome or call `next()` to delegate, and failures resolve to `unavailable`. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): external-principal-scoped listeners receive only that principal.
+
+```ts cordis-catalog
+/**
+ * Ask composed answerers for an external principal's tool decision. The
+ * principal is the scope key; listeners must return an outcome or call
+ * `next()` to delegate, and failures resolve to `unavailable`.
+ * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): external-principal-scoped listeners receive only that principal.
+ * @param req - the external principal, tool, call id, reason, and signal.
+ * @mode waterfall
+ */
+'approval/request-external'(this: Scoped<ExternalApprovalEventCarrier>, req: ExternalApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome>
+```
+
+Types: [Scoped](scope.md)
+
+Source: [`packages/interaction/user-approval/src/index.ts:39`](../../packages/interaction/user-approval/src/index.ts)
 <!-- END GENERATED cordis-surface -->

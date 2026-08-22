@@ -11,6 +11,7 @@ import { entries, ev, plainTurn } from './event-script.client.ts'
 
 const S1 = 'fk-m1' as SessionId
 const S2 = 'fk-m2' as SessionId
+const turnId = (id: string): never => id as never
 
 type SummaryOver = Partial<{
   updatedAt: number
@@ -72,6 +73,21 @@ describe('instances', () => {
     manager.handleMuxEnvelope({ rpcId: 'qz' as never, payload: { type: 'question/requested', sessionId: S2, questions: [] } })
     manager.handleHostEnvelope({ rpcId: 'hz' as never, payload: { type: 'host/session-removed', sessionId: S2 } })
     expect(manager.get(S2).getSnapshot().pending).toEqual([])
+  })
+
+  it('clears resident external live output when the connection generation dies', async () => {
+    const api = new FakeApiClient()
+    api.onHistory = () => Promise.resolve(ok({ events: [], hasMore: false }))
+    const manager = new SessionManager(api, fakeRemote())
+    const session = manager.get(S1)
+    await session.open()
+    manager.handleMuxEnvelope({
+      rpcId: 'delta' as never,
+      payload: { type: 'external/delta', sessionId: S1, turnId: turnId('turn-1'), delta: 'partial' },
+    })
+    expect(session.getSnapshot().externalLive).toEqual({ turnId: 'turn-1', text: 'partial' })
+    manager.handleDisconnected()
+    expect(session.getSnapshot().externalLive).toBeNull()
   })
 })
 

@@ -1,0 +1,38 @@
+# The dsh-web-codex bundle is intentionally a separate opt-in layer over
+# dsh-base + dsh-web-app. The default Web profile never sees these rows.
+# Every provider is mounted once; its own package declares the injection seam.
+
+- insert:
+    - id: external-session
+      name: '@deepseek-ai/dsh-external-session'
+
+    - id: external-permission
+      name: '@deepseek-ai/dsh-external-permission'
+      config:
+        timeoutMs: 300000
+
+    - id: external-session-codex
+      name: '@deepseek-ai/dsh-external-session-codex'
+      config:
+        # The packaged launcher is the default. A local deployment may set a
+        # non-secret executable path through DSH_CODEX_COMMAND in its process
+        # environment; credentials are never stored in this YAML layer.
+        command: !!js process.env.DSH_CODEX_COMMAND
+        args: ['app-server', '--stdio']
+        allowedTools: []
+        stateRoot: !!js dshHomePath('external-codex')
+        disposeGraceMs: 3000
+        preflightTimeoutMs: 30000
+
+    - id: external-session-bridge
+      name: '@deepseek-ai/dsh-external-session-bridge'
+
+    - id: mcp-gateway
+      name: '@deepseek-ai/dsh-mcp-gateway'
+      config:
+        # Tool names are an explicit empty safety floor. A later local overlay
+        # may add reviewed eligible tools, but cannot bypass the gateway.
+        allowlist: []
+        maxRequestBytes: 65536
+        maxResponseBytes: 65536
+        executionTimeoutMs: 60000
