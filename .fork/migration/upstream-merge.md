@@ -205,8 +205,15 @@ The six `DU` entries are modify/delete conflicts: `packages/client/ui-brand-offi
 - Translation sidecars and generated documentation use the owning English/Chinese document bytes as their source of truth. The repository translation-pairing resolver stages mechanically composable records; the remaining records are regenerated from the manually resolved owner documents. No unrelated product behavior is added.
 - Documentation, workflow, ACP fixture, and snapshot conflicts retain the upstream hunk structure. Snapshot and catalog outputs remain at this structural checkpoint; behavior-level acceptance remains with their owning later checks.
 - Host and capability package conflicts retain upstream package structure and upstream additions. Package metadata and source conflicts are resolved at conflict hunks, preserving surrounding merged context. The owning package READMEs under `packages/client`, `packages/host/apiproxy`, `packages/llm`, `packages/core`, `packages/compaction`, `packages/interaction`, `packages/api`, and `packages/bundle` were reviewed against the upstream release commit.
-- Client conflicts are resolved at individual conflict hunks to upstream structure; no client subtree or package is copied wholesale. The six modify/delete paths retain their upstream additions in the staged merge result. The fork-owned `packages/client/ui-session-mode/package.json` collision retains its existing path-owned metadata so Plan 3 can install the complete upstream `ui-brand-official`, `ui-reference`, and `ui-renderer` split without an invalid package identity at this checkpoint.
+- Client conflicts are resolved at individual conflict hunks to upstream structure; no client subtree or package is copied wholesale. Client paths remain deliberately unaccepted at this checkpoint: the six modify/delete paths and their dependent client split are Plan 3 Task 1 acceptance work, so this merge records the upstream parent without asserting client readiness. The fork-owned `packages/client/ui-session-mode/package.json` collision retains its existing path-owned metadata so Plan 3 can install the complete upstream `ui-brand-official`, `ui-reference`, and `ui-renderer` split without an invalid package identity at this checkpoint.
+- The Host package fix round restores `packages/session/session-persistence-sqlite/` to the selected upstream 75-path inventory through an explicit per-path patch. Every worktree file hash matches `upstream/master`, and the feature inventory assigns no fork behavior to this package.
 - No Task 3–8 plugin, provider, consumer, composition bundle, product patch, or Codex runtime is implemented in this merge checkpoint. The future owner for the client split and UI acceptance is Plan 3.
+
+## Post-merge fix round
+
+- Merge checkpoint: `e15d7225b998b590ea99a5d77de3e2d71a4b1ff7`.
+- Follow-up fix commit: `e6c7553ca950ceb5f7f2b87093c88c1eb963143d` (`fix(merge): restore upstream sqlite persistence and reasoning serialization`).
+- The follow-up restores upstream reasoning-only `reasoning_content` propagation and the complete selected-upstream SQLite Host package. Its focused checks pass; repository-wide client and lockfile acceptance remain intentionally RED for Plan 3 Task 1.
 
 ## Merge-side preference
 
