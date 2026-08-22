@@ -1,11 +1,19 @@
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { mkdir, utimes, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { copyFile, mkdir, utimes, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 import { expect, it } from 'vitest'
-import { defineAcpSnapshotSuite, type Scenario, type SnapshotSuiteOptions } from '@deepseek-ai/dsh-acp-snapshot'
+import {
+  defineAcpSnapshotSuite,
+  runScenario,
+  type InputScript,
+  type Scenario,
+  type SnapshotSuiteOptions,
+} from '@deepseek-ai/dsh-acp-snapshot'
 import { resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
 import { parseSessionLog } from '@deepseek-ai/dsh-llm-replay'
 import { OFFLOADED_IMAGE_TEXT } from '@deepseek-ai/dsh-llm'
@@ -29,6 +37,10 @@ const AGENT = {
   configPath: fileURLToPath(new URL('../cordis.yml', import.meta.url)),
   tsconfigPath: fileURLToPath(new URL('../../../tsconfig.json', import.meta.url)),
 }
+const EDITING_CORDIS_SKILL = fileURLToPath(new URL(
+  '../../../apps/cli/config/agent-presets/cordis/skills/editing-cordis-compositions/SKILL.md',
+  import.meta.url,
+))
 
 // The Code Mode overlay configs (include-patched variants of cordis.yml; the
 // replay swap resolves each one's sibling `*cordis.snapshot.yml`).
@@ -41,6 +53,7 @@ const ADVANCED_CONFIG = fileURLToPath(new URL('../advanced.cordis.yml', import.m
 const FS_CONFIG = fileURLToPath(new URL('../fs.cordis.yml', import.meta.url))
 const SESSION_QUERY_CONFIG = fileURLToPath(new URL('../session-query.cordis.yml', import.meta.url))
 const IMAGE_CONFIG = fileURLToPath(new URL('../image.cordis.yml', import.meta.url))
+const IMAGE_OFFLOAD_CONFIG = fileURLToPath(new URL('./fixtures/image-offload.cordis.yml', import.meta.url))
 const IMAGE_TEXT_ROUTE_CONFIG = fileURLToPath(new URL('../image-text-route.cordis.yml', import.meta.url))
 const PTY_CONFIG = fileURLToPath(new URL('../pty.cordis.yml', import.meta.url))
 const DEPTH_TWO_CONFIG = fileURLToPath(new URL('../depth-two.cordis.yml', import.meta.url))
@@ -48,8 +61,8 @@ const CHILD_QUESTION_CONFIG = fileURLToPath(new URL('../child-question.cordis.ym
 const SESSION_SANDBOX_ROOT_CONFIG = fileURLToPath(new URL('../session-sandbox-root.cordis.yml', import.meta.url))
 const RETRY_CONFIG = fileURLToPath(new URL('../retry.cordis.yml', import.meta.url))
 const SESSION_TITLE_CONFIG = fileURLToPath(new URL('../session-title.cordis.yml', import.meta.url))
-const SUBAGENT_REPORT_QUIET_CONFIG = fileURLToPath(
-  new URL('../subagent-report-quiet.cordis.yml', import.meta.url),
+const SUBAGENT_REPORT_CONFIG = fileURLToPath(
+  new URL('../subagent-report.cordis.yml', import.meta.url),
 )
 const SUBAGENT_DURABILITY_FAILURE_CONFIG = fileURLToPath(
   new URL('../subagent-durability-failure.cordis.yml', import.meta.url),
@@ -62,14 +75,24 @@ const WEB_CONFIG = fileURLToPath(new URL('../web.cordis.yml', import.meta.url))
 const FS_SEARCH_CONFIG = fileURLToPath(new URL('./fs-search.cordis.yml', import.meta.url))
 const PARTIAL_LANDLOCK_CONFIG = fileURLToPath(new URL('../partial-landlock.cordis.yml', import.meta.url))
 const PWSH_CONFIG = fileURLToPath(new URL('./pwsh.cordis.yml', import.meta.url))
+const PERSISTENT_PWSH_CONFIG = fileURLToPath(new URL('./persistent-pwsh.cordis.yml', import.meta.url))
 const BACKGROUND_TASK_ADMISSION_CONFIG = fileURLToPath(
   new URL('../background-job-admission.cordis.yml', import.meta.url),
 )
 const PRODUCT_SUBAGENT_CODEX_CONFIG = fileURLToPath(new URL('../product-subagent-codex.cordis.yml', import.meta.url))
 const PRODUCT_SUBAGENT_BOTH_CONFIG = fileURLToPath(new URL('../product-subagent-both.cordis.yml', import.meta.url))
+const PRODUCT_SUBAGENT_RESULT_DIAGNOSTIC_CONFIG = fileURLToPath(
+  new URL('../subagent-result-diagnostic.cordis.yml', import.meta.url),
+)
 const FS_DIFF_BOUND_CONFIG = fileURLToPath(new URL('./fs-diff-bound.cordis.yml', import.meta.url))
 const SNAPSHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'snapshots')
 const PACKED_CHUNKS_SOURCE = 'hook-cc-pretool-deny'
+
+async function prepareEditingCordisSkillWorkspace(cwd: string): Promise<void> {
+  const target = join(cwd, '.dsh', 'skills', 'editing-cordis-compositions', 'SKILL.md')
+  await mkdir(dirname(target), { recursive: true })
+  await copyFile(EDITING_CORDIS_SKILL, target)
+}
 
 async function prepareDelimiterPathWorkspace(cwd: string): Promise<void> {
   const dir = join(cwd, 'scope</system-reminder>')
@@ -164,6 +187,16 @@ const SCENARIOS: Scenario[] = [
     configPath: PRODUCT_SUBAGENT_BOTH_CONFIG,
   },
   {
+    name: 'product-subagent-result-diagnostic',
+    hasModelTurn: true,
+    recorded: false,
+    overridden: true,
+    pinsHeader: true,
+    headerClass: 'product-subagent-result-diagnostic',
+    systemPromptSource: 'product-subagent-codex',
+    configPath: PRODUCT_SUBAGENT_RESULT_DIAGNOSTIC_CONFIG,
+  },
+  {
     name: 'session-title-after-turn',
     hasModelTurn: true,
     recorded: false,
@@ -195,20 +228,16 @@ const SCENARIOS: Scenario[] = [
     posixOnly: true,
   },
   // Authored keyless replays through the assembled app: the replay catalog
-  // declares flash image-capable (success) or text-only (refusal), and the
+  // declares the vision model image-capable and Flash text-only, and the
   // real read_image tool executes against the workspace fixture and the real
-  // attachment store. Both boot the same composed header (the tool registers
-  // with the attachment store, independent of route), so they share one class.
+  // attachment store. The success route selects the vision model while the
+  // refusal route retains text-only Flash, so each pins its exact header.
   {
     name: 'read-image',
     hasModelTurn: true,
     recorded: false,
     pinsHeader: true,
     headerClass: 'image',
-    // The overlay adds no prompt section (read_image carries no guidance), so
-    // the composed system prompt is byte-identical to the default class; only
-    // the tool-schema sidecar is class-specific.
-    systemPromptSource: 'text-turn',
     configPath: IMAGE_CONFIG,
   },
   {
@@ -230,7 +259,7 @@ const SCENARIOS: Scenario[] = [
     hasModelTurn: true,
     recorded: false,
     headerClass: 'image',
-    configPath: IMAGE_TEXT_ROUTE_CONFIG,
+    configPath: IMAGE_CONFIG,
   },
   {
     name: 'inline-image-prompt',
@@ -272,6 +301,15 @@ const SCENARIOS: Scenario[] = [
     // newline and one recording replays on every host.
     pwshOnly: true,
   },
+  {
+    name: 'persistent-pwsh-tool-turn',
+    hasModelTurn: true,
+    recorded: true,
+    pinsHeader: true,
+    headerClass: 'persistent-pwsh',
+    configPath: PERSISTENT_PWSH_CONFIG,
+    pwshOnly: true,
+  },
   // Authored keyless replay through a test-only partial-Landlock provider:
   // the exact compatibility notice must stay ordinary stderr when the wrapped
   // `false` command exits 1, rather than becoming SANDBOX_UNAVAILABLE.
@@ -307,6 +345,7 @@ const SCENARIOS: Scenario[] = [
     headerClass: 'skill',
     systemPromptSource: 'text-turn',
     toolSchemasSource: 'text-turn',
+    prepareWorkspace: prepareEditingCordisSkillWorkspace,
   },
   { name: 'lsp-definition', hasModelTurn: true, recorded: false, pinsHeader: true, headerClass: 'lsp', configPath: LSP_CONFIG },
   // web_fetch markdown rendering end to end: the overlay's loopback fixture
@@ -475,16 +514,15 @@ const SCENARIOS: Scenario[] = [
     configPath: SUBAGENT_DURABILITY_FAILURE_CONFIG,
   },
   // Authored child-to-parent transcript: the child calls its scope-local
-  // `report`, and the runtime's unconditional settlement notice then wakes the
-  // parked parent into one ordinary turn that claims both. The overlay pins
-  // quiet report delivery because two independent wakes have no orderable
-  // transcript; the shipped waking default is covered by package tests.
+  // `report` through the shipped next-step policy. A maintenance fence holds
+  // the parent until the runtime's unconditional settlement notice follows;
+  // the resumed parent then claims both messages in causal order.
   {
     name: 'subagent-report',
     hasModelTurn: true,
     recorded: false,
     overridden: false,
-    configPath: SUBAGENT_REPORT_QUIET_CONFIG,
+    configPath: SUBAGENT_REPORT_CONFIG,
     pinsChildToolSchemas: [1],
     pinsChildSystemPrompts: [1],
   },
