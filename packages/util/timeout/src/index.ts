@@ -79,24 +79,6 @@ export interface IdleWatchdog {
 }
 
 /**
- * Budgets for {@link idleWatchdog}: a distinct, usually larger allowance for
- * the wait on the very first streamed value, and a shorter allowance between
- * values once the stream is producing. Each phase stamps its own timeout code,
- * so a provider that is legitimately lengthy before its first byte is a
- * different outcome from a stream that stalls between chunks.
- */
-export interface IdleWatchdogOptions {
-  /** Positive finite budget for the wait until the first iterator value, in milliseconds. */
-  readonly firstChunkMs: number
-  /** Positive finite budget between subsequent iterator values, in milliseconds. */
-  readonly idleMs: number
-  /** Code stamped on the timeout reason when {@link firstChunkMs} elapses first. */
-  readonly firstChunkCode: string
-  /** Code stamped on the timeout reason when {@link idleMs} elapses first. */
-  readonly idleCode: string
-}
-
-/**
  * Fuse upstream cancellation with an identifiable timeout. `timeoutMs <= 0` is
  * the internal no-timer sentinel; the returned disposer clears an armed timer.
  * The signal only notifies, so callers must stop their own work.
@@ -131,24 +113,22 @@ export function deadline(
 }
 
 /**
- * Create a rearmable idle watchdog for an async iterator with a distinct
- * first-chunk budget. The timer exists only while {@link IdleWatchdog.next} is
- * outstanding, so consumer think time does not count as provider idle time. The
- * wait for the very first value uses `firstChunkMs` / `firstChunkCode`; once the
- * first value has resolved, every later demand uses `idleMs` / `idleCode`. The
- * returned signal is stable for the whole call and only notifies; the iterator
- * must observe it to terminate its work.
+ * Create a rearmable idle watchdog for an async iterator. The timer exists only
+ * while {@link IdleWatchdog.next} is outstanding, so consumer think time does
+ * not count as provider idle time. The returned signal is stable for the whole
+ * call and only notifies; the iterator must observe it to terminate its work.
  *
  * @param upstream - caller cancellation fused into the stable signal.
- * @param options - the first-chunk and inter-chunk budgets and their timeout codes.
+ * @param timeoutMs - positive finite idle interval in milliseconds.
+ * @param code - capability-owned code carried by the timeout reason.
  * @returns a stable signal, guarded next operation, and timer disposer.
  */
 export function idleWatchdog(
   upstream: AbortSignal | undefined,
-  options: IdleWatchdogOptions,
+  timeoutMs: number,
+  code: string,
 ): IdleWatchdog {
-  assertTimerDelay(options.firstChunkMs, 'idleWatchdog firstChunkMs')
-  assertTimerDelay(options.idleMs, 'idleWatchdog idleMs')
+  assertTimerDelay(timeoutMs, 'idleWatchdog timeoutMs')
   const timeout = new AbortController()
   const signal = upstream === undefined
     ? timeout.signal
@@ -156,16 +136,12 @@ export function idleWatchdog(
   let timer: ReturnType<typeof setTimeout> | undefined
   let outstanding = false
   let disposed = false
-  let firstChunk = true
 
   const arm = (): void => {
     if (timer !== undefined) clearTimeout(timer)
-    const [delayMs, code] = firstChunk
-      ? [options.firstChunkMs, options.firstChunkCode]
-      : [options.idleMs, options.idleCode]
     timer = setTimeout(() => {
-      timeout.abort(new TimeoutReason(code, delayMs))
-    }, delayMs)
+      timeout.abort(new TimeoutReason(code, timeoutMs))
+    }, timeoutMs)
   }
 
   return {
@@ -176,9 +152,7 @@ export function idleWatchdog(
       outstanding = true
       arm()
       try {
-        const result = await iterator.next()
-        firstChunk = false
-        return result
+        return await iterator.next()
       } finally {
         clearTimeout(timer)
         timer = undefined
