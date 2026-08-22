@@ -218,6 +218,10 @@ The six `DU` entries are modify/delete conflicts: `packages/client/ui-brand-offi
 - Host-baseline fix commit: `dbdbad7153e40ca4e5efe364e74b4ee321e36d0f` (`fix(merge): align Host roots with selected upstream`).
 - The Host-baseline commit makes these roots byte-identical to selected upstream (`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`): `packages/api/remotes/`, `packages/compaction/compaction-basic/`, `packages/core/agent-loop/`, `packages/core/session/`, `packages/host/apiproxy/`, `packages/llm/llm/`, `packages/llm/llm-deepseek/`, `packages/llm/llm-pi-ai/`, `packages/llm/llm-retry/`, `packages/session/session-persistence-sqlite/`, and `packages/subagent/tool-subagent/`.
 - The client, client test support, upstream Web bundle, and lockfile remain deliberately unaccepted for Plan 3 Task 1. Fork-only external/Codex package paths and Agent Notes remain owned by Task 7. The frozen install remains RED because the unchanged lockfile still contains `@deepseek-ai/dsh-external-session` for the upstream-restored `packages/host/apiproxy/package.json`.
+- Additional Host-baseline fix commit: `4a3d4013d0cfcbdcd6a5488d753cd16f8e134c60` (`fix(merge): align remaining Host roots with upstream`).
+- The additional fix makes these six cleanly merged roots byte-identical to selected upstream: `packages/bundle/headless/`, `packages/core/agent/`, `packages/session/session-persistence-jsonl/`, `packages/test-support/llm-mock-server/`, `packages/util/timeout/`, and `packages/workspace/workspace/`.
+- The clean-merge package audit compares every remaining differing `packages/**` path with selected upstream: 548 paths remain, all 548 belong to Plan 3 client/client-runtime/Web-app surfaces or Task 7 external, external-permission, group README, session-projection, and app-boot surfaces; zero paths are unassigned.
+- Focused tests for the six additional roots pass (18 files, 485 tests); their package typecheck and targeted Oxlint pass. The broader Host typecheck and Oxlint remain limited by existing cross-package fork gaps recorded in the fix report.
 
 ## Merge-side preference
 
