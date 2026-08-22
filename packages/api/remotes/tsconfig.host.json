@@ -44,6 +44,9 @@
       "path": "../../settings/settings"
     },
     {
+      "path": "../../fork/workspace-session-state/tsconfig.host.json"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     },
     {

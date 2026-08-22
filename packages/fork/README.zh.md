@@ -7,5 +7,6 @@ fork 组包含选择性启用的 Host 能力；这些能力保持为独立插件
 | 包 | 职责 | ctx 键 |
 |---|---|---|
 | [`session-source/`](session-source/README.zh.md) | 记录并投影 GitHub Actions 会话来源 | `forkSessionSource` 投影 |
+| [`workspace-session-state/`](workspace-session-state/README.zh.md) | 持久化工作区会话的全局有序置顶列表 | `forkWorkspaceSessionState` |
 
 每个包负责自己的持久事件、投影或服务契约、不变量伴侣和生命周期清理。该组不会改变 `SessionHeader` 或模型可见的会话表面。
