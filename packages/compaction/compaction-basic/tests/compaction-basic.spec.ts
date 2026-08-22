@@ -294,6 +294,7 @@ describe('compact configuration and defaults', () => {
       summarizationProvider: '',
       summarizationModel: '',
       maxTokens: 8192,
+      maxSummarizationInputTokens: 131072,
       compactionRetries: 1,
       maxOverflowRetries: 1,
       modelPolicies: [],
@@ -360,6 +361,7 @@ describe('compact configuration and defaults', () => {
         summarizationProvider: 'summary-provider',
         summarizationModel: 'summary-model',
         maxTokens: 512,
+        maxSummarizationInputTokens: 65_536,
         compactionRetries: 2,
         maxOverflowRetries: 3,
       }],
@@ -370,9 +372,34 @@ describe('compact configuration and defaults', () => {
       summarizationProvider: 'summary-provider',
       summarizationModel: 'summary-model',
       maxTokens: 512,
+      maxSummarizationInputTokens: 65_536,
       compactionRetries: 2,
       maxOverflowRetries: 3,
     })
+  })
+
+  it('inherits the summarization input budget and accepts explicit unlimited mode', () => {
+    const config = resolveConfig({
+      maxSummarizationInputTokens: 0,
+      modelPolicies: [{
+        provider: 'inherit-budget-provider',
+        model: MODEL,
+      }, {
+        provider: 'override-budget-provider',
+        model: MODEL,
+        maxSummarizationInputTokens: 4_096,
+      }],
+    })
+
+    expect(config.maxSummarizationInputTokens).toBe(0)
+    expect(resolveTargetPolicy(config, {
+      provider: 'inherit-budget-provider',
+      model: MODEL,
+    }).maxSummarizationInputTokens).toBe(0)
+    expect(resolveTargetPolicy(config, {
+      provider: 'override-budget-provider',
+      model: MODEL,
+    }).maxSummarizationInputTokens).toBe(4_096)
   })
 
   it('inherits, clears, and replaces the summarization target as a pair', () => {
@@ -413,6 +440,10 @@ describe('compact configuration and defaults', () => {
   it('validates common values and pressure-policy invariants', () => {
     const bad = [
       [{ maxTokens: 0 }, /maxTokens/],
+      [{ maxSummarizationInputTokens: -1 }, /maxSummarizationInputTokens/],
+      [{ maxSummarizationInputTokens: 1.5 }, /maxSummarizationInputTokens/],
+      [{ maxSummarizationInputTokens: Number.MAX_SAFE_INTEGER + 1 }, /maxSummarizationInputTokens/],
+      [{ maxSummarizationInputTokens: 'many' }, /maxSummarizationInputTokens/],
       [{ compactionRetries: -1 }, /compactionRetries/],
       [{ maxOverflowRetries: -1 }, /maxOverflowRetries/],
       [{ auto: 'yes' }, /auto must be a boolean/],
@@ -763,6 +794,93 @@ describe('pressure measurement and retention', () => {
 
     const priced = ctx.tokenMeter.measure(session)
     expect(selectCompactableRange(session, priced, 1)).toBeNull()
+  })
+})
+
+describe('bounded summarization input', () => {
+  it('selects the whole region unchanged when the budget covers it', () => {
+    const ctx = createContext()
+    const session = conversation(4)
+    const priced = ctx.tokenMeter.measure(session)
+    const full = selectCompactableRange(session, priced, 0)!
+    const bounded = selectCompactableRange(session, priced, 0, 10_000)!
+    expect(bounded).toEqual(full)
+  })
+
+  it('bounds the head span to the shortest prefix exceeding the budget', () => {
+    const ctx = createContext()
+    const session = conversation(6)
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    const bounded = selectCompactableRange(session, priced, 0, 100)!
+    // One fixture message prices at 88 tokens, so the crossing rule stops
+    // after the second message: the span is never smaller than a single node.
+    expect(bounded).toEqual({ start: nodes[0], end: nodes[1] })
+    expect(selectCompactableRange(session, priced, 0, 10_000))
+      .toEqual(selectCompactableRange(session, priced, 0))
+  })
+
+  it('extends the bounded cut forward to a tool-pair balanced boundary', () => {
+    const ctx = createContext()
+    const session = toolConversation()
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    // The budget stops the walk inside the first open tool pair; the end cut
+    // must land after its result instead of splitting the pair.
+    const bounded = selectCompactableRange(session, priced, 0, 1_000)!
+    expect(bounded.start).toBe(nodes[0])
+    expect(bounded.end).toBe(nodes[2])
+    expect(toolPairingBalancedAfter(session, bounded.end)).toBe(true)
+  })
+
+  it('selects one oversized node alone instead of returning an empty range', () => {
+    const ctx = createContext()
+    const session = conversation(2, 'oversized '.repeat(500))
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    const bounded = selectCompactableRange(session, priced, 0, 1)!
+
+    expect(bounded).toEqual({ start: nodes[0], end: nodes[0] })
+  })
+
+  it('applies the budget after tail retention', () => {
+    const ctx = createContext()
+    const session = conversation(10)
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    const unbounded = selectCompactableRange(session, priced, 300)!
+    const bounded = selectCompactableRange(session, priced, 300, 200)!
+    expect(bounded.end).toBe(nodes[2])
+    expect(bounded.end).toBeLessThan(unbounded.end)
+    expect(unbounded.end).toBeGreaterThan(nodes[3]!)
+  })
+
+  it('converges a huge pressure session over bounded summarization passes', async () => {
+    const ctx = createContext(2_000)
+    const compact = service({
+      auto: false,
+      thresholdRatio: 0.8,
+      retainTokens: 300,
+      maxSummarizationInputTokens: 400,
+      compactionRetries: 6,
+    }, ctx)
+    const session = conversation(20)
+
+    const result = await compactIfNeeded(compact, session)
+
+    expect(result).not.toBeNull()
+    // 40 fixture messages at 88 tokens each need several passes at a 400-token
+    // budget; every call replayed only a bounded prefix, never the whole span.
+    expect(compact.calls.length).toBeGreaterThan(1)
+    for (const call of compact.calls) {
+      expect(call.input.messages.length).toBeGreaterThan(0)
+      expect(call.input.messages.length).toBeLessThan(10)
+    }
+    expect(summarizedText(compact.calls[0]!.input)).toContain('fixture user 1')
+    // The retained recent tail was never replayed into a summarization call.
+    for (const call of compact.calls) {
+      expect(summarizedText(call.input)).not.toContain('fixture user 20')
+    }
   })
 })
 
@@ -1568,6 +1686,38 @@ describe('automatic listener and loader composition', () => {
     expect(session.surface.replaceGeneration).toBe(beforeGeneration + 1)
     expect(session.events.some(event => event.type === 'compaction/summary')).toBe(true)
     expect(session.surface.nodes).toContain(retainedSeq)
+  })
+
+  it('bounds repeated provider-overflow recovery without mutating the durable tail', async () => {
+    const ctx = createContext(10_000)
+    const compact = new TestCompactionEngine(ctx, {
+      maxSummarizationInputTokens: 400,
+      maxOverflowRetries: 2,
+    })
+    const owner = agent(conversation(20), MODEL)
+    const durableEventCount = owner.session.events.length
+
+    expect(await recover(ctx, owner, overflow())).toBe(true)
+    expect(await recover(ctx, owner, overflow())).toBe(true)
+
+    expect(compact.calls).toHaveLength(2)
+    for (const call of compact.calls) {
+      expect(call.input.messages.length).toBeGreaterThan(0)
+      expect(call.input.messages.length).toBeLessThan(10)
+    }
+    expect(summarizedText(compact.calls[0]!.input)).toContain('fixture user 1')
+    expect(summarizedText(compact.calls[0]!.input)).not.toContain('fixture user 20')
+    expect(summarizedText(compact.calls[1]!.input)).not.toContain('fixture user 20')
+    expect(owner.session.events.length).toBeGreaterThan(durableEventCount)
+    expect(owner.session.events.filter(event =>
+      event.type === 'user/message' && event.data.source.kind === 'user',
+    )).toHaveLength(20)
+    expect(owner.session.events.find(event =>
+      event.type === 'user/message'
+      && event.data.source.kind === 'user'
+      && event.data.content.some(block =>
+        block.type === 'text' && block.text.includes('fixture user 20')),
+    )).toBeDefined()
   })
 
   it('authorizes overflow retry when pruning alone advances an indivisible surface', async () => {
