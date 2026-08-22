@@ -98,6 +98,16 @@ async function writeManifest(root: string, relativePath: string, content: string
   await writeFile(absolutePath, content)
 }
 
+async function createRepositoryWithDefaultManifest(): Promise<{ readonly root: string; readonly upstreamCommit: string }> {
+  const repository = await createRepository()
+  await writeManifest(
+    repository.root,
+    '.fork/overlay.yaml',
+    manifestYaml(repository.upstreamCommit, 'tracked.ts'),
+  )
+  return repository
+}
+
 async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path, constants.F_OK)
@@ -114,14 +124,20 @@ afterEach(async () => {
 
 describe('verify-fork-overlay CLI', () => {
   it('uses .fork/overlay.yaml by default and does not execute verification targets', async () => {
-    const repository = await createRepository()
-    await writeManifest(
-      repository.root,
-      '.fork/overlay.yaml',
-      manifestYaml(repository.upstreamCommit, 'tracked.ts'),
-    )
+    const repository = await createRepositoryWithDefaultManifest()
 
     const result = await runCli(repository.root)
+
+    expect(result.status).toBe(0)
+    expect(result.stdout.trim()).toBe('fork-overlay: PASS')
+    expect(result.stderr).toBe('')
+    expect(await fileExists(join(repository.root, 'verification-target-ran'))).toBe(false)
+  })
+
+  it('accepts an explicit .fork/overlay.yaml manifest and does not execute verification targets', async () => {
+    const repository = await createRepositoryWithDefaultManifest()
+
+    const result = await runCli(repository.root, ['--manifest', '.fork/overlay.yaml'])
 
     expect(result.status).toBe(0)
     expect(result.stdout.trim()).toBe('fork-overlay: PASS')
