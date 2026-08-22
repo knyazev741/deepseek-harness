@@ -135,17 +135,23 @@ const PROFILE_PATCH_TEMPLATE = `# Your patch layer for this dsh profile, applied
 // profiles/node_modules installation fallback, so every plugin shares the
 // installation's single cordis instance instead of a duplicate. pnpm ≥10
 // reads its settings from pnpm-workspace.yaml, not .npmrc.
-const PROFILE_PNPM_WORKSPACE = `packages:
+const LEGACY_PROFILE_PNPM_WORKSPACE = `packages:
   - .
 
 nodeLinker: hoisted
 autoInstallPeers: false
 `
 
+const PROFILE_PNPM_WORKSPACE = `${LEGACY_PROFILE_PNPM_WORKSPACE}
+minimumReleaseAgeExclude:
+  - '@knyazevai/dsh@0.1.3'
+`
+
 /**
  * Initialize a profile directory: manifest, empty user patch layer, and the
- * pnpm settings out-of-tree plugins need. Existing files are never touched,
- * so re-running is a no-op on an initialized profile.
+ * pnpm settings out-of-tree plugins need. Re-running preserves existing files
+ * except for a byte-identical predecessor of the generated pnpm workspace,
+ * which advances to the maintained template without replacing user edits.
  * @param dir - the profile directory from {@link resolveProfileDir}.
  * @param bundles - the initial `dsh.profile.bundles` layer list.
  */
@@ -164,7 +170,10 @@ export function initProfile(dir: string, bundles: readonly string[]): void {
   const patchPath = join(dir, PROFILE_PATCH_FILENAME)
   if (!existsSync(patchPath)) writeFileSync(patchPath, PROFILE_PATCH_TEMPLATE)
   const workspacePath = join(dir, 'pnpm-workspace.yaml')
-  if (!existsSync(workspacePath)) writeFileSync(workspacePath, PROFILE_PNPM_WORKSPACE)
+  if (!existsSync(workspacePath)
+    || readFileSync(workspacePath, 'utf8') === LEGACY_PROFILE_PNPM_WORKSPACE) {
+    writeFileSync(workspacePath, PROFILE_PNPM_WORKSPACE)
+  }
 }
 
 /** Ensure `link` is a symlink to `target`, replacing a wrong or dangling link; a real directory throws. */

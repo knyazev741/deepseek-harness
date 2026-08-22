@@ -12,7 +12,7 @@ Status: implemented
 
 一切都变成 **profile**：即目录 `$DSH_HOME/profiles/<name>`，其中包含一个 `package.json`（pnpm 管理的树外插件 `dependencies`，加上 profile manifest `dsh.profile` 及其有序的 `bundles` 层列表）和一份用户 `cordis.patch.yml`。**组合包**（bundle）是声明了 `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` 的 npm 包；两种 manifest 分别位于互不相同的 `dsh.profile` / `dsh.bundle` 键下，因此一份 package.json 能说明自己扮演哪种角色。配置树在空的根之上组合：按 `dsh.profile.bundles` 顺序应用每个组合包的 patch，然后是用户层与 `--patch` overlay——启动与 `--dump-config` 共享同一条 `applyEntryPatches` 路径。随后，[应用持有命令行的决策](2026-08-06-app-owned-command-line.md)又把调用期取值从启动器派生的 patch 迁移到了启动服务。
 
-默认 Profile 模板使用的组合包是 `@deepseek-ai/dsh-base`（共享核心配置行）、`@deepseek-ai/dsh-web-app`（浏览器 Host 配置行与 Web 运行时粘合层）和 `@deepseek-ai/dsh-headless`（直接叠加在 base 上且不含 web-app 的一次性 runner）。通用的 `dsh --profile <name>` 把剩余参数交给该 profile 的命令行启动行：Web 持有自己的 flag 家族，headless 则持有任务位置参数。patch overlay 使用启动器持有的 `--patch`。`dsh plugin --profile <name> <args...>` 是一层薄薄的 pnpm 转发器，负责初始化 profile，并依据已安装包的组合包声明调和 `dsh.profile.bundles`；没有组合包声明的包保持为普通依赖。[Headless 作为直接 core 入口](2026-08-09-headless-direct-core-entry-point.md)负责 headless 组合约定。
+默认 Profile 模板使用的组合包是 `@deepseek-ai/dsh-base`（共享核心配置行）、`@deepseek-ai/dsh-web-app`（浏览器 Host 配置行与 Web 运行时粘合层）和 `@deepseek-ai/dsh-headless`（直接叠加在 base 上且不含 web-app 的一次性 runner）。通用的 `dsh --profile <name>` 把剩余参数交给该 profile 的命令行启动行：Web 持有自己的 flag 家族，headless 则持有任务位置参数。patch overlay 使用启动器持有的 `--patch`。`dsh plugin --profile <name> <args...>` 是一层薄薄的 pnpm 转发器，负责初始化 profile，并依据已安装包的组合包声明调和 `dsh.profile.bundles`；没有组合包声明的包保持为普通依赖。生成的 pnpm workspace 继续执行 pnpm 的发布时长隔离，只有经过评审的精确版本例外才能放行协同发布的新插件。初始化只升级与旧生成模板字节完全相同的 workspace，因此受维护策略能够覆盖原样 profile，而不会替换用户持有的编辑。[Headless 作为直接 core 入口](2026-08-09-headless-direct-core-entry-point.md)负责 headless 组合约定。
 
 解析在构造上就是双锚点的：`dsh.profile.bundles` 中的名称先从 dsh 安装目录解析，再从 profile 目录解析——因此内置组合包始终来自与运行中 `dsh` 相同的安装，pnpm 从不管理它们——而 patch 行中的裸插件名称经 profile 目录的 Node 父目录逐级查找，落到受维护的扁平回退目录 `$DSH_HOME/profiles/node_modules`（安装目录的应用与各组合包所依赖的每个包各一个符号链接，每次启动时修复）。
 
@@ -24,6 +24,7 @@ Status: implemented
 - **内置组合包使用 `link:` 条目**：pnpm 无法对指向安装目录的 `link:` 做版本管理、安装或更新，它会把机器路径嵌进用户文件，并且在安装目录移动后失效。双锚点解析加上每次启动修复的符号链接回退提供了同样的保证（「组合包来自安装目录」），且没有这些繁文缛节。
 - **在组合包 manifest 中放一个启动前 `context` 模块**承载启动期取值（dist 路径、flag 事实）：否决，改用纯插件——粘合逻辑就是普通配置行和由应用持有的启动服务，因此组合始终可完整 dump，manifest 保持纯数据。启动器提供的宿主 slot（`ctx.cmdlineArgs`、`ctx.appExit` 与环境快照）在任何配置树条目挂载之前，于 `boot()` 的 `prepare` 钩子中提供。
 - **组合包的传递式自动应用**：只有直接列在 `dsh.profile.bundles` 中的条目才贡献层；想重新导出另一个组合包 patch 的元组合包，必须在自己的 patch 文件中显式完成。
+- **对 profile 安装禁用发布时长隔离**：这样做会让所有新发布依赖都立即可选，虽方便紧急协同发布，却失去供应链延迟。精确版本例外会为每个未经评审的发布保留该延迟。
 
 ## Consequences
 
