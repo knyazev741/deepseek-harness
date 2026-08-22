@@ -58,7 +58,8 @@ export interface OverlayDiagnostic {
   readonly code:
     | 'uncovered-path' | 'overlapping-coverage' | 'stale-entry'
     | 'fork-owned-collision' | 'whole-package-patch' | 'budget-exceeded'
-    | 'invalid-verification-target' | 'upstream-commit-missing'
+    | 'upstream-ownership-mismatch' | 'invalid-verification-target'
+    | 'upstream-commit-missing'
   readonly message: string
   readonly entryId?: string
   readonly path?: string

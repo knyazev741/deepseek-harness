@@ -103,6 +103,45 @@ describe('createGitReader', () => {
     expect(await reader.commitExists('f'.repeat(40))).toBe(false)
   })
 
+  it('ignores case-insensitive GIT_* redirection variables', async () => {
+    const repository = await createRepository()
+    const redirected = await createRepository()
+    const previous = new Map<string, string | undefined>([
+      ['GIT_DIR', process.env.GIT_DIR],
+      ['gIt_WORK_TREE', process.env.gIt_WORK_TREE],
+    ])
+    process.env.GIT_DIR = join(redirected.root, '.git')
+    process.env.gIt_WORK_TREE = redirected.root
+    try {
+      const reader = createGitReader(repository.root)
+
+      expect(await reader.listTree(repository.firstCommit)).toEqual(new Set(['src/old name.spec.ts']))
+      expect(await reader.diff(repository.firstCommit)).toEqual([{
+        status: 'R',
+        oldPath: 'src/old name.spec.ts',
+        path: 'src/new name.spec.ts',
+        added: 1,
+        removed: 0,
+        binary: false,
+      }])
+    } finally {
+      const previousGitDir = previous.get('GIT_DIR')
+      if (previousGitDir === undefined) delete process.env.GIT_DIR
+      else process.env.GIT_DIR = previousGitDir
+      const previousWorkTree = previous.get('gIt_WORK_TREE')
+      if (previousWorkTree === undefined) delete process.env.gIt_WORK_TREE
+      else process.env.gIt_WORK_TREE = previousWorkTree
+    }
+  })
+
+  it('treats option-like revisions as revisions for tree and diff reads', async () => {
+    const repository = await createRepository()
+    const reader = createGitReader(repository.root)
+
+    await expect(reader.listTree('--all')).rejects.toThrow()
+    await expect(reader.diff('--all')).rejects.toThrow()
+  })
+
   it('propagates operational failures instead of treating them as missing commits', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-overlay-not-a-repository-'))
     temporaryRepositories.push(root)

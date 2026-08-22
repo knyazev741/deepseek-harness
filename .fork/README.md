@@ -26,7 +26,7 @@ Each `entries` item has these fields:
 | `kind` | yes | One of `fork-owned`, `composition`, `extension-patch`, `product-patch`, or `workflow`. |
 | `paths` | yes | One or more exact-file or directory-tree coverage declarations. |
 | `owner` | yes | Fork package, workflow, or other repository owner responsible for the entry. |
-| `agentNote` | yes | Repository-relative path to the Agent Note that records the entry's rationale and maintenance contract. |
+| `agentNote` | yes | Safe repository-relative file path to the Agent Note that records the entry's rationale and maintenance contract; absolute paths, backslashes, NUL, traversal, glob syntax, and trailing slashes are rejected. |
 | `verify` | yes | Structured repository script and/or focused Vitest targets that provide evidence for the entry. |
 | `retireWhen` | yes | Condition that permits removing the entry when upstream or the fork no longer needs it. |
 | `budget` | patch entries only | Positive limits for files and changed lines in an `extension-patch` or `product-patch`. |
@@ -46,16 +46,18 @@ Each `verify` item is one of these forms:
 | `script` | `kind`, `name` | `name` is a non-empty key in the repository root `package.json` `scripts` object. The command is inspected, never executed by this verifier. |
 | `vitest` | `kind`, `files` | `files` is a non-empty list of repository-relative regular test files ending in `.spec.ts`, `.spec.tsx`, `.e2e.ts`, or `.test.mjs`. |
 
-Each `budget` item has `maxFiles` and `maxChangedLines`, both positive safe integers. A rename counts both old and new paths for ownership but counts its Git line totals once for the budget; binary changes count as one changed line.
+Each `budget` item has `maxFiles` and `maxChangedLines`, both positive safe integers. A rename or copy counts both old and new paths for ownership but counts its Git line totals once for the budget; binary changes count as one changed line.
 
 The four ownership classes describe why a path differs:
 
 - `fork-owned` is a path introduced by the fork and absent from the upstream tree; an upstream collision fails verification.
-- `composition` is fork assembly that layers plugins or bundles around upstream composition.
-- `extension-patch` adds a general upstream registration point while the fork behavior remains in a separate plugin.
-- `product-patch` is a narrow upstream behavior change that cannot be expressed through composition or a general extension point and must stay within its budget.
+- `composition` is fork assembly that layers plugins or bundles around upstream composition and is also absent from the upstream tree.
+- `extension-patch` adds a general upstream registration point while the fork behavior remains in a separate plugin; every matched diff must anchor to an old or current path present in upstream.
+- `product-patch` is a narrow upstream behavior change that cannot be expressed through composition or a general extension point and must stay within its budget. A pure added path is rejected with `upstream-ownership-mismatch`, while deletion, rename, and copy records anchor through any upstream side of the diff.
 
-`workflow` is an additional manifest kind for fork-owned workflow files; workflow exclusions must name exact paths rather than the complete workflows directory.
+`workflow` is an additional manifest kind for fork-owned workflow files. It is restricted to exact paths beneath `.github/workflows/`, and those paths must be absent from upstream; workflow exclusions must name exact files rather than the complete workflows directory.
+
+Git reads ignore every case-insensitive `GIT_*` environment variable and sets only `GIT_OPTIONAL_LOCKS=0`, while preserving ordinary process environment variables. Revision arguments are preceded by `--end-of-options` and path-limiting `--` remains in place, so repository redirection and option-like revisions cannot change what the verifier reads.
 
 ## Minimal valid manifest
 

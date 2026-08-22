@@ -153,10 +153,15 @@ function parseNumstat(buffer: Buffer): readonly NumstatRecord[] {
 }
 
 async function runGit(root: string, args: readonly string[]): Promise<Buffer> {
+  const env: NodeJS.ProcessEnv = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!/^GIT_/i.test(key)) env[key] = value
+  }
+  env.GIT_OPTIONAL_LOCKS = '0'
   const result = await execFileAsync('git', ['-c', 'core.fsmonitor=false', ...args], {
     cwd: root,
     encoding: 'buffer',
-    env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', LANG: 'C', LC_ALL: 'C' },
+    env,
     maxBuffer: GIT_OUTPUT_MAX_BYTES,
   })
   return Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout)
@@ -216,7 +221,7 @@ export function createGitReader(root: string): GitReader {
     },
 
     async listTree(commit: string): Promise<ReadonlySet<string>> {
-      const output = await runGit(root, ['ls-tree', '-r', '-z', '--name-only', commit])
+      const output = await runGit(root, ['ls-tree', '-r', '-z', '--name-only', '--end-of-options', commit])
       return new Set(nulSeparated(output))
     },
 
@@ -227,14 +232,14 @@ export function createGitReader(root: string): GitReader {
           '--no-ext-diff',
           '--no-textconv',
           '--ignore-submodules=none',
-          '--name-status', '-z', '-M', commit, '--',
+          '--name-status', '-z', '-M', '--end-of-options', commit, '--',
         ]),
         runGit(root, [
           'diff',
           '--no-ext-diff',
           '--no-textconv',
           '--ignore-submodules=none',
-          '--numstat', '-z', '-M', commit, '--',
+          '--numstat', '-z', '-M', '--end-of-options', commit, '--',
         ]),
       ])
       return joinDiffs(parseNameStatus(nameStatusOutput), parseNumstat(numstatOutput))

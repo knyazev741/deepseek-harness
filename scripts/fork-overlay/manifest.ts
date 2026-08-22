@@ -51,8 +51,19 @@ function repositoryRelativePath(value: unknown, label: string): string {
   const hasGlobSyntax = ['*', '?', '[', ']', '{', '}'].some(character => path.includes(character))
   const hasAbsolutePrefix = path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:/.test(path)
   const hasTraversal = path.split('/').some(segment => segment === '..')
-  if (hasGlobSyntax || hasAbsolutePrefix || path.includes('\\') || hasTraversal) {
+  if (hasGlobSyntax || hasAbsolutePrefix || path.includes('\\') || path.includes('\u0000') || hasTraversal) {
     throw new Error(`${label} must be a repository-relative path without traversal or glob syntax`)
+  }
+  return path
+}
+
+function repositoryRelativeFilePath(value: unknown, label: string): string {
+  const path = stringValue(value, label)
+  const hasGlobSyntax = ['*', '?', '[', ']', '{', '}'].some(character => path.includes(character))
+  const hasAbsolutePrefix = path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:/.test(path)
+  const hasTraversal = path.split('/').some(segment => segment === '..')
+  if (hasGlobSyntax || hasAbsolutePrefix || path.includes('\\') || path.includes('\u0000') || hasTraversal || path.endsWith('/')) {
+    throw new Error(`${label} must be a repository-relative file path without traversal, glob syntax, backslashes, NUL, or a trailing slash`)
   }
   return path
 }
@@ -136,11 +147,11 @@ function parseEntry(value: unknown, index: number): OverlayEntry {
     throw new Error(`${label}.paths must contain at least one path`)
   }
   const paths = pathsValue.map((path, pathIndex) => parsePath(path, `${label}.paths[${pathIndex}]`))
-  if (kind === 'workflow' && paths.some(path => path.coverage !== 'exact')) {
-    throw new Error(`${label} workflow paths must use exact coverage`)
+  if (kind === 'workflow' && paths.some(path => path.coverage !== 'exact' || !path.path.startsWith('.github/workflows/'))) {
+    throw new Error(`${label} workflow paths must be exact files beneath .github/workflows/`)
   }
   const owner = stringValue(required(entry, 'owner', label), `${label}.owner`)
-  const agentNote = stringValue(required(entry, 'agentNote', label), `${label}.agentNote`)
+  const agentNote = repositoryRelativeFilePath(required(entry, 'agentNote', label), `${label}.agentNote`)
   const verifyValue = required(entry, 'verify', label)
   if (!Array.isArray(verifyValue) || verifyValue.length === 0) {
     throw new Error(`${label}.verify must contain at least one verification target`)

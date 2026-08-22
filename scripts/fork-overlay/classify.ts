@@ -46,13 +46,17 @@ function uniqueEntries(matches: readonly CoverageMatch[]): readonly OverlayEntry
 }
 
 function changedPaths(diff: DiffEntry): readonly string[] {
-  return diff.status === 'R' && diff.oldPath !== undefined
+  return (diff.status === 'R' || diff.status === 'C') && diff.oldPath !== undefined
     ? [diff.oldPath, diff.path]
     : [diff.path]
 }
 
 function isPatch(entry: OverlayEntry): boolean {
   return entry.kind === 'extension-patch' || entry.kind === 'product-patch'
+}
+
+function isForkSide(entry: OverlayEntry): boolean {
+  return entry.kind === 'fork-owned' || entry.kind === 'composition' || entry.kind === 'workflow'
 }
 
 function isWholePackagePath(declaredPath: OverlayPath): boolean {
@@ -63,6 +67,16 @@ function isWholePackagePath(declaredPath: OverlayPath): boolean {
 
 function changedLines(diff: DiffEntry): number {
   return diff.binary ? 1 : diff.added + diff.removed
+}
+
+function hasUpstreamAnchor(diff: DiffEntry, upstreamPaths: ReadonlySet<string>): boolean {
+  return changedPaths(diff).some(path => upstreamPaths.has(path))
+}
+
+function matchesUpstreamPath(declaredPath: OverlayPath, upstreamPath: string): boolean {
+  if (declaredPath.coverage === 'exact') return declaredPath.path === upstreamPath
+  const treeRoot = declaredPath.path.slice(0, -1)
+  return upstreamPath === treeRoot || upstreamPath.startsWith(declaredPath.path)
 }
 
 function diagnosticOrder(left: OverlayDiagnostic, right: OverlayDiagnostic): number {
@@ -116,6 +130,14 @@ export function classifyOverlay(input: ClassificationInput): ClassificationResul
 
     for (const owner of ownersForDiff.values()) {
       if (!isPatch(owner)) continue
+      if (!hasUpstreamAnchor(diff, input.upstreamPaths)) {
+        pushDiagnostic(diagnostics, {
+          code: 'upstream-ownership-mismatch',
+          message: 'upstream-owned patch diff has no path present in upstream',
+          entryId: owner.id,
+          path: diff.path,
+        })
+      }
       const budget = owner.budget
       if (budget === undefined) continue
       const usage = budgetUsage.get(owner.id) ?? { diffIndexes: new Set<number>(), changedLines: 0 }
@@ -163,16 +185,16 @@ export function classifyOverlay(input: ClassificationInput): ClassificationResul
 
   const collisionKeys = new Set<string>()
   for (const entry of entries) {
-    if (entry.kind !== 'fork-owned') continue
+    if (!isForkSide(entry)) continue
     for (const upstreamPath of input.upstreamPaths) {
-      const matches = entry.paths.some(declaredPath => matchesPath(declaredPath, upstreamPath))
+      const matches = entry.paths.some(declaredPath => matchesUpstreamPath(declaredPath, upstreamPath))
       if (!matches) continue
       const key = `${entry.id}\u0000${upstreamPath}`
       if (collisionKeys.has(key)) continue
       collisionKeys.add(key)
       pushDiagnostic(diagnostics, {
         code: 'fork-owned-collision',
-        message: 'fork-owned path exists in upstream',
+        message: 'fork-side path exists in upstream',
         entryId: entry.id,
         path: upstreamPath,
       })

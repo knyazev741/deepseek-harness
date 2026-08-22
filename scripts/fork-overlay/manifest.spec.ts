@@ -94,6 +94,13 @@ entries:
 `
 }
 
+function yamlWithAgentNote(agentNote: string): string {
+  return validYaml.replace(
+    '    agentNote: .agents/notes/implemented/feature/fork-feature.md',
+    `    agentNote: ${JSON.stringify(agentNote)}`,
+  )
+}
+
 describe('parseOverlayManifest', () => {
   it('parses one entry of every class', () => {
     const manifest = parseOverlayManifest(validYaml, 'fixture.yaml')
@@ -163,6 +170,39 @@ describe('parseOverlayManifest', () => {
     )
 
     expect(() => parseOverlayManifest(yaml, 'fixture.yaml')).toThrow(/workflow.*exact/i)
+  })
+
+  it('requires workflow paths to be exact files beneath .github/workflows/', () => {
+    const yaml = validYaml.replace(
+      '      - path: .github/workflows/sync.yml\n        coverage: exact',
+      '      - path: .github/actions/sync.yml\n        coverage: exact',
+    )
+
+    expect(() => parseOverlayManifest(yaml, 'fixture.yaml'))
+      .toThrow(/workflow.*\.github\/workflows/i)
+  })
+
+  it.each([
+    '/absolute.md',
+    'C:/absolute.md',
+    'notes\\agent.md',
+    '../escape.md',
+    '.agents/notes/*.md',
+    '.agents/notes/',
+    'notes\u0000agent.md',
+  ])('rejects unsafe agentNote path %s', (agentNote) => {
+    expect(() => parseOverlayManifest(yamlWithAgentNote(agentNote), 'fixture.yaml'))
+      .toThrow(/agentNote.*repository-relative file path/i)
+  })
+
+  it('prefixes an unsafe agentNote error with its manifest source', () => {
+    expect(() => parseOverlayManifest(yamlWithAgentNote('../escape.md'), 'fixture.yaml'))
+      .toThrow(/^fixture\.yaml: .*agentNote.*repository-relative file path/i)
+  })
+
+  it('does not require an agentNote file to exist while parsing', () => {
+    expect(() => parseOverlayManifest(yamlWithAgentNote('notes/not-yet-created.md'), 'fixture.yaml'))
+      .not.toThrow()
   })
 
   it('requires budgets on patch entries', () => {

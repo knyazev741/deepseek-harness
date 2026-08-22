@@ -142,7 +142,7 @@ git commit -m "feat(fork): parse overlay manifest"
 
 - [ ] **Step 1: Write failing classification tests**
 
-Use rename records with both old and new paths, deletions, overlapping exact/tree entries, stale entries, a fork-owned collision, a patch over budget, and a patch that claims `packages/client/ui-workspace/` as a tree.
+Use rename and copy records with both old and new paths, deletions, overlapping exact/tree entries, stale entries, same-entry exact-plus-tree declarations, fork-side collisions for `fork-owned`, `composition`, and `workflow`, a tree-root collision with an upstream file, pure-added patch ownership mismatches, valid deletion/rename/copy patch anchors, a patch over budget, and a patch that claims `packages/client/ui-workspace/` as a tree.
 
 ```ts
 it('requires both sides of a rename to have one owner', () => {
@@ -156,6 +156,18 @@ it('requires both sides of a rename to have one owner', () => {
 it('rejects a fork-owned path that appears upstream', () => {
   const result = classifyOverlay(fixture({ upstreamPaths: new Set(['packages/fork/x/src/index.ts']) }))
   expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: 'fork-owned-collision' }))
+})
+
+it('rejects an upstream-owned patch with no old/current path in upstream', () => {
+  const result = classifyOverlay(fixture({
+    entries: [makeEntry('new-patch', 'extension-patch', 'packages/upstream/new.ts', 'exact', {
+      maxFiles: 1,
+      maxChangedLines: 10,
+    })],
+    diffs: [{ status: 'A', path: 'packages/upstream/new.ts', added: 1, removed: 0, binary: false }],
+    upstreamPaths: new Set(),
+  }))
+  expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: 'upstream-ownership-mismatch' }))
 })
 ```
 
@@ -181,14 +193,15 @@ export interface OverlayDiagnostic {
   readonly code:
     | 'uncovered-path' | 'overlapping-coverage' | 'stale-entry'
     | 'fork-owned-collision' | 'whole-package-patch' | 'budget-exceeded'
-    | 'invalid-verification-target' | 'upstream-commit-missing'
+    | 'upstream-ownership-mismatch' | 'invalid-verification-target'
+    | 'upstream-commit-missing'
   readonly message: string
   readonly entryId?: string
   readonly path?: string
 }
 ```
 
-An exact path matches only equality. A tree path matches `path.startsWith(entry.path)` and is valid only when the manifest path ends in `/`. Count a rename's old and new paths for ownership, but count its numstat once for budget. Binary changes count as one changed line so a binary patch cannot bypass the budget. A patch is a whole-package claim when tree coverage has exactly the three segments `packages`, package group, and package name.
+An exact path matches only equality. A tree path matches its directory and descendants and is valid only when the manifest path ends in `/`; a tree root also collides with an upstream file at that exact root. `fork-owned`, `composition`, and `workflow` declarations are fork-side and every declared path must be absent from upstream. `extension-patch` and `product-patch` declarations are upstream-side and every matched diff must have at least one old/current path present in upstream; a deletion, rename, or copy uses the diff record's upstream path as its anchor, so a new destination need not already exist. Emit `upstream-ownership-mismatch` for a patch with no upstream anchor. Count a rename's old and new paths for ownership, count a copy's old and new paths likewise, but count either numstat record once for budget. Binary changes count as one changed line so a binary patch cannot bypass the budget. A patch is a whole-package claim when tree coverage has exactly the three segments `packages`, package group, and package name.
 
 - [ ] **Step 4: Run and confirm GREEN**
 
