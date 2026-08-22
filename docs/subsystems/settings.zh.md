@@ -17,7 +17,7 @@ type SettingsNamespace = Branded<'SettingsNamespace'>
 
 ## 注册
 
-注册把 schemastery schema 绑定到调用方插件 fiber 上的 namespace——dispose（资源释放）该 fiber 即移除 namespace 及其观察者。options 携带组合层、owner 的生效时机，以及一个可选的、用于校验 schema 表达不了的约束的钩子。
+注册把 schemastery schema 绑定到调用方插件 fiber 上的 namespace——dispose（资源释放）该 fiber 即移除 namespace 及其观察者。返回的 scope 暴露 Cordis 精确 disposer，可将注册嵌入有序组合 effect。options 携带组合层、owner 的生效时机，以及一个可选的、用于校验 schema 表达不了的约束的钩子。
 
 ```ts type-equiv
 /** Registration options beyond the namespace schema. */
@@ -65,6 +65,8 @@ scope 是面向 owner 的句柄。`update` 把稀疏 patch 只合并进用户分
 ```ts type-equiv
 /** Owner-facing handle for one registered namespace. */
 interface SettingsScope<T> {
+  /** Exact Cordis disposer, used when nesting this namespace in an ordered composite effect. */
+  rawDispose: () => Promise<void> | void
   /** Current resolved value: schema defaults, then `base`, then the user layer. */
   get(): T
   /**

@@ -15,6 +15,17 @@ interface WorkspaceRecord {
   readonly sessionIds: readonly SessionId[]
 }
 
+interface DeferredSignal {
+  readonly promise: Promise<void>
+  readonly resolve: () => void
+}
+
+function deferredSignal(): DeferredSignal {
+  let resolve!: () => void
+  const promise = new Promise<void>((resolvePromise) => { resolve = resolvePromise })
+  return { promise, resolve }
+}
+
 class MemorySettings extends SettingsProvider {
   readonly doc: Record<string, unknown>
   readonly writes: Array<{ ns: string; section: Record<string, unknown> }> = []
@@ -39,6 +50,24 @@ class MemorySettings extends SettingsProvider {
     this.writes.push({ ns, section: structuredClone(section) })
     this.doc[ns] = structuredClone(section)
     return Promise.resolve()
+  }
+}
+
+class DelayedSettings extends SettingsProvider {
+  readonly persistStarted = deferredSignal()
+  readonly releasePersist = deferredSignal()
+
+  get writable(): boolean {
+    return true
+  }
+
+  protected load(): Promise<Record<string, unknown>> {
+    return Promise.resolve({})
+  }
+
+  protected async persist(): Promise<void> {
+    this.persistStarted.resolve()
+    await this.releasePersist.promise
   }
 }
 
@@ -177,6 +206,57 @@ describe('fork workspace session state', () => {
         current: { revision: 1, pinnedSessionIds: [SessionId('s3')] },
       },
     })
+  })
+
+  it('serializes simultaneous mutations with one success and one typed conflict', async () => {
+    const { service, settings } = await setup()
+    const first = service.setPinned({ sessionId: SessionId('s1'), pinned: true, expectedRevision: 0 })
+    const second = service.setPinned({ sessionId: SessionId('s2'), pinned: true, expectedRevision: 0 })
+
+    await expect(first).resolves.toEqual({
+      ok: true,
+      value: { revision: 1, pinnedSessionIds: [SessionId('s1')] },
+    })
+    await expect(second).resolves.toEqual({
+      ok: false,
+      error: {
+        code: 'revision-conflict',
+        current: { revision: 1, pinnedSessionIds: [SessionId('s1')] },
+      },
+    })
+    expect(settings.writes).toEqual([{ ns: NAMESPACE, section: { pins: { sessionIds: ['s1'] } } }])
+    await expect(service.list()).resolves.toEqual({ revision: 1, pinnedSessionIds: [SessionId('s1')] })
+  })
+
+  it('drains an in-flight Settings persist before withdrawing its namespace', async () => {
+    const ctx = new Context()
+    activeContexts.push(ctx)
+    const settingsFiber = ctx.plugin(DelayedSettings)
+    await settingsFiber
+    ctx.provide('workspaceRegistry', {
+      list: () => [{ sessionIds: [SessionId('s1')] }],
+    } as never)
+    const fiber = ctx.plugin(ForkWorkspaceSessionState)
+    await fiber
+    const service = ctx.forkWorkspaceSessionState
+    const mutation = service.setPinned({ sessionId: SessionId('s1'), pinned: true, expectedRevision: 0 })
+
+    const settings = ctx.settings as DelayedSettings
+    await settings.persistStarted.promise
+    const disposal = fiber.dispose()
+    await Promise.resolve()
+
+    try {
+      expect(ctx.settings.get(NAMESPACE)).toEqual({ pins: { sessionIds: [] } })
+    } finally {
+      settings.releasePersist.resolve()
+    }
+    await expect(mutation).resolves.toEqual({
+      ok: true,
+      value: { revision: 1, pinnedSessionIds: [SessionId('s1')] },
+    })
+    await disposal
+    expect(ctx.settings.get(NAMESPACE)).toBeUndefined()
   })
 
   it('rejects malformed persisted pins at Settings registration', async () => {

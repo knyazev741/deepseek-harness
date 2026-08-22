@@ -17,7 +17,7 @@ type SettingsNamespace = Branded<'SettingsNamespace'>
 
 ## Registration
 
-Registration binds a schemastery schema to a namespace on the calling plugin's fiber — disposing that fiber removes the namespace and its observers. The options carry the composition layer, the owner's effect timing, and an optional check for what the schema cannot express.
+Registration binds a schemastery schema to a namespace on the calling plugin's fiber — disposing that fiber removes the namespace and its observers. The returned scope exposes the exact Cordis disposer for nesting the registration in an ordered composite effect. The options carry the composition layer, the owner's effect timing, and an optional check for what the schema cannot express.
 
 ```ts type-equiv
 /** Registration options beyond the namespace schema. */
@@ -65,6 +65,8 @@ The scope is the owner-facing handle. `update` merges a sparse patch over the us
 ```ts type-equiv
 /** Owner-facing handle for one registered namespace. */
 interface SettingsScope<T> {
+  /** Exact Cordis disposer, used when nesting this namespace in an ordered composite effect. */
+  rawDispose: () => Promise<void> | void
   /** Current resolved value: schema defaults, then `base`, then the user layer. */
   get(): T
   /**

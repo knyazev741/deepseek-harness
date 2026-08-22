@@ -18,6 +18,7 @@ const requiredArtifacts = [
   'packages/client/connection/lib/client.js',
   'packages/client/connection/lib/index.js',
   'packages/api/remotes/lib/client.js',
+  'packages/fork/workspace-session-state/lib/typert.remote-client.js',
   'packages/core/agent/lib/index.js',
   'packages/core/session/lib/index.js',
   'packages/goal/goal/lib/index.js',
@@ -137,6 +138,10 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
         const plugin = instantiate(id)
         await client.plugin({ inject: plugin.inject, apply: plugin.apply })
       }
+      if (typeof client.remote.forkWorkspaceSessionState?.list !== 'function'
+        || typeof client.remote.forkWorkspaceSessionState?.setPinned !== 'function') {
+        throw new Error('API remotes Client assembly did not mount the fork workspace session state namespace')
+      }
       client.typert.contexts.registerClient('agent', {
         identity: candidate => candidate.builtAgentId,
       })
@@ -169,6 +174,9 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       }
 
       await client.fiber.dispose()
+      if (client.remote.forkWorkspaceSessionState !== undefined) {
+        throw new Error('API remotes Client assembly did not withdraw the fork workspace session state namespace')
+      }
       await new Promise((resolveClose, rejectClose) => server.close(error => {
         if (error === undefined) resolveClose()
         else rejectClose(error)

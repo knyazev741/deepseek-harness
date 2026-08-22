@@ -113,10 +113,14 @@ export class ForkWorkspaceSessionState extends TypertRemoteService {
    */
   constructor(ctx: Context) {
     super(ctx, 'forkWorkspaceSessionState')
-    ctx.settings.register(SETTINGS_NAMESPACE, StoredStateSchema, { validate: validateStoredState })
-    ctx.effect(() => async () => {
+    const drain = async () => {
       this.stopped = true
       await this.operationTail
+    }
+    ctx.effect(function* () {
+      const settingsScope = ctx.settings.register(SETTINGS_NAMESPACE, StoredStateSchema, { validate: validateStoredState })
+      yield settingsScope.rawDispose
+      yield drain
     }, 'fork-workspace-session-state.operations')
   }
 

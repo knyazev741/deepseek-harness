@@ -101,6 +101,8 @@ export interface SettingsDescribeOptions {
 
 /** Owner-facing handle for one registered namespace. */
 export interface SettingsScope<T> {
+  /** Exact Cordis disposer, used when nesting this namespace in an ordered composite effect. */
+  rawDispose: () => Promise<void> | void
   /** Current resolved value: schema defaults, then `base`, then the user layer. */
   get(): T
   /**
@@ -448,13 +450,14 @@ export abstract class SettingsProvider extends Service {
       revision: 0,
       watchers: new Set(),
     }
-    this.ctx.effect(() => {
+    const rawDispose = this.ctx.effect(() => {
       this.registrations.set(ns, registration)
       // TODO(settings-registration-quiescence): Deactivate every watcher and await
       // its tail on disposal so callbacks cannot outlive the registrant fiber.
       return () => this.registrations.delete(ns)
     }, `settings.register(${JSON.stringify(String(ns))})`)
     return {
+      rawDispose,
       get: () => registration.resolved as T,
       watch: (callback) => {
         const watcher: SettingsWatcher = { callback: callback, tail: Promise.resolve(), active: true }
