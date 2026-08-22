@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-Fork 差异需要持久的所有权记录，以及相对于 upstream 的有界比较。仅靠 Git diff 无法说明路径属于 fork 插件、组合、扩展点还是不可避免的产品行为，也无法暴露陈旧声明或悄然扩展到整个 upstream 包的补丁。验证证据也需要可检查，同时不能允许 manifest 数据执行任意 shell 命令。
+Fork 差异需要持久的所有权记录，以及相对于 upstream 的有界比较。仅靠 Git diff 无法说明路径属于 fork 插件、组合、扩展点还是不可避免的产品行为，也无法暴露陈旧声明或悄然扩展到整个 upstream 包的补丁。验证证据也需要可检查，同时不能允许 manifest（元数据清单）数据执行任意 shell 命令。
 
 ## 决策
 
@@ -18,7 +18,11 @@ Fork 差异需要持久的所有权记录，以及相对于 upstream 的有界�
 
 验证目标是结构化声明：一个非空的仓库 `script` 名称，或一组受支持的 Vitest 测试文件。验证器只检查所引用的 package script 或测试文件存在，并符合仓库路径和文件规则；它从不执行声明的目标。行为证据保留在所引用的仓库检查中，而不是由 manifest 解析提供。
 
-激活有意延后到迁移后的 tree 完成整体分类之后。真正的 `.fork/overlay.yaml` 与顶层 CI aggregate 在该 cutover 一起出现；在此之前，验证器接受 fixture manifest，不要求默认文件存在。
+激活有意延后到迁移后的 tree 完成整体分类之后。真正的 `.fork/overlay.yaml` 与顶层 CI aggregate 在该 cutover 一起出现；在此之前，验证器接受 fixture（测试前置数据） manifest，不要求默认文件存在。
+
+## 验证
+
+`scripts/fork-overlay/manifest.spec.ts` 固定 manifest 解析和 workflow 精确路径行为。`scripts/fork-overlay/classify.spec.ts` 固定分类、重叠、陈旧条目、冲突、rename、binary、整个包、以及预算行为。`scripts/fork-overlay/git-reader.spec.ts` 和 `scripts/fork-overlay/verify.spec.ts` 固定 Git tree/diff 解析和验证目标存在性检查，`scripts/verify-fork-overlay.spec.ts` 固定 CLI fixture 的成功与失败行为。真正的 `.fork/overlay.yaml` 与顶层 CI aggregate 在 cutover 之前有意缺席，因此在迁移后的 tree 完成整体分类之前，真实 manifest 和 aggregate-CI 覆盖是明确的缺口。
 
 ## 考虑过的替代方案
 

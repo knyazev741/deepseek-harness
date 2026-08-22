@@ -136,6 +136,9 @@ function parseEntry(value: unknown, index: number): OverlayEntry {
     throw new Error(`${label}.paths must contain at least one path`)
   }
   const paths = pathsValue.map((path, pathIndex) => parsePath(path, `${label}.paths[${pathIndex}]`))
+  if (kind === 'workflow' && paths.some(path => path.coverage !== 'exact')) {
+    throw new Error(`${label} workflow paths must use exact coverage`)
+  }
   const owner = stringValue(required(entry, 'owner', label), `${label}.owner`)
   const agentNote = stringValue(required(entry, 'agentNote', label), `${label}.agentNote`)
   const verifyValue = required(entry, 'verify', label)

@@ -156,6 +156,15 @@ describe('parseOverlayManifest', () => {
     expect(() => parseOverlayManifest(yaml, 'fixture.yaml')).toThrow(/exact path.*trailing slash/i)
   })
 
+  it('rejects tree coverage for workflow entries', () => {
+    const yaml = validYaml.replace(
+      '      - path: .github/workflows/sync.yml\n        coverage: exact',
+      '      - path: .github/workflows/\n        coverage: tree',
+    )
+
+    expect(() => parseOverlayManifest(yaml, 'fixture.yaml')).toThrow(/workflow.*exact/i)
+  })
+
   it('requires budgets on patch entries', () => {
     const yaml = validYaml.replace(
       '    budget:\n      maxFiles: 2\n      maxChangedLines: 40\n',

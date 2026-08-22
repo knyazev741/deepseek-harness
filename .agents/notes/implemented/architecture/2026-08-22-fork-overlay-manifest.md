@@ -20,6 +20,10 @@ Verification targets are structured declarations: a non-empty repository `script
 
 Activation is deliberately deferred until the migrated tree is completely classified. The real `.fork/overlay.yaml` and the top-level CI aggregate appear together at that cutover; before then, the verifier accepts fixture manifests without requiring the default file.
 
+## Verification
+
+Parser and workflow exact-path behavior are pinned by `scripts/fork-overlay/manifest.spec.ts`. Classification, overlap, stale-entry, collision, rename, binary, whole-package, and budget behavior are pinned by `scripts/fork-overlay/classify.spec.ts`. Git tree/diff parsing and verification-target existence checks are pinned by `scripts/fork-overlay/git-reader.spec.ts` and `scripts/fork-overlay/verify.spec.ts`, while CLI fixture success and failure behavior is pinned by `scripts/verify-fork-overlay.spec.ts`. The real `.fork/overlay.yaml` and top-level CI aggregate are intentionally absent until cutover, so real-manifest and aggregate-CI coverage is a named gap until the migrated tree is completely classified.
+
 ## Alternatives considered
 
 **Mirror branch.** A mirror branch duplicates upstream state and makes branch synchronization another source of truth. The immutable commit in the manifest gives each candidate a direct comparison parent while ordinary Git history remains authoritative.
