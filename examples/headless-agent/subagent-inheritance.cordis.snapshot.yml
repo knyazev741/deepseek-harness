@@ -15,6 +15,11 @@
 # file/override/childFiles all default to their DSH_SNAPSHOT_* env vars.
 - id: replay
   name: '@deepseek-ai/dsh-llm-replay'
+  config:
+    providers:
+      - id: deepseek-official
+        models:
+          - id: deepseek-v4-flash
 
 # The confining filesystem stack: the wide deployment default lives on the
 # shared policy home; the seeded parent's read-only override must beat it

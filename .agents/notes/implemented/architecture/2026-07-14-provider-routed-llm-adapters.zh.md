@@ -48,7 +48,7 @@ pi-ai 回放状态用其成功 `AssistantMessage` 的带版本最小投影填充
 
 ### 在所有请求生产方中传播目标
 
-每条模型选择路径都同时携带 provider 与 model：声明式 agent、ACP（Agent Client Protocol）和 stdio 应用配置、JSON-RPC initialize 请求、subagent 覆盖与继承、工作流子 agent 覆盖，以及直接压缩摘要。subagent 先从父 agent 继承两个字段，再应用请求覆盖。系统提示词变量集合在 `model` 之外增加 `provider`。
+每条模型选择路径都同时携带 provider 与 model：声明式 agent、ACP（Agent Client Protocol）和 stdio 应用配置、JSON-RPC initialize 请求、subagent 覆盖与继承、工作流子 agent 覆盖，以及直接压缩摘要。subagent 工具接受单次调用的可选 provider/model 字段；每个字段都会独立地从配置的子 agent 默认值回退到父 agent 选项，两个有效值都解析出来后才会在接收子 agent 前验证请求路由。`reasoning_effort` 仍暂缓，因为它没有路由或继承约定。subagent 先从父 agent 继承两个字段，再应用请求覆盖。系统提示词变量集合在 `model` 之外增加 `provider`。
 
 压缩配置在 `summarizationModel` 之外增加 `summarizationProvider`。两个值均为空时继承，均非空时选择显式目标；只配置其中一个会导致加载失败。继承优先使用最近一次记录的请求目标，没有时回退到 agent 创建选项。`compaction/summary` 使用现有模型调用 envelope 记录两个字段。
 
@@ -83,7 +83,7 @@ JSON-RPC 运行时显式接收提供方与模型。仅当 `deepseek` 提供方�
 ## 测试
 
 - 单元测试覆盖注册表冲突、请求重建、会话验证、配置解析、单次请求的选项转发、包括 OpenAI Responses 在内的原生 API 选择、转换、回放验证、错误映射、调用方取消、空闲超时导致的传输终止、内容重写，以及同一实例与不同实例间的回放分发。
-- 无密钥的 agent loop/会话测试和 ACP 快照覆盖持久化提供方/模型元数据、恢复与 fork 传播、工作流/subagent 覆盖，以及不变的用户可见 transcript（文本记录）；密钥门控的 DeepSeek e2e 测试保留真实提供方的流式输出与工具后续调用覆盖率。
+- 无密钥的 agent loop/会话测试和 ACP 快照覆盖持久化提供方/模型元数据、恢复与 fork 传播、工作流/subagent 覆盖、subagent 单次路由，以及不变的用户可见 transcript（文本记录）；密钥门控的 DeepSeek e2e 测试保留真实提供方的流式输出与工具后续调用覆盖率。
 - 公共 JSDoc、package README、架构与子系统文档、生成目录、示例、会话 fixture（测试前置数据）和 Python SDK 配对文档统一使用提供方/模型目标，并由仓库文档与类型等价门禁校验。
 
 ## 风险

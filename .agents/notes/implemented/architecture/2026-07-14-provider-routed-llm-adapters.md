@@ -48,7 +48,7 @@ This state is model-visible replay input and therefore follows the existing [rec
 
 ### Propagate the target through every request producer
 
-Every model-selection path carries provider and model together: declarative agents, ACP and stdio app config, the JSON-RPC initialize request, subagent overrides and inheritance, workflow child overrides, and direct compaction summarization. Subagents inherit both fields from their parent before applying request overrides. The system-prompt variable set gains `provider` beside `model`.
+Every model-selection path carries provider and model together: declarative agents, ACP and stdio app config, the JSON-RPC initialize request, subagent overrides and inheritance, workflow child overrides, and direct compaction summarization. The subagent tool accepts optional per-call provider/model fields; each field falls back independently through configured child defaults to the parent options, and a fully resolved requested pair is validated before child admission. `reasoning_effort` remains deferred because no route or inheritance contract exists for it. Subagents inherit both fields from their parent before applying request overrides. The system-prompt variable set gains `provider` beside `model`.
 
 Compaction configuration gains `summarizationProvider` beside `summarizationModel`. Both are empty to inherit, or both are non-empty to select an explicit target; a half-configured pair fails load. Inheritance uses the last logged request target when one exists and falls back to the agent's creation options. `compaction/summary` records both fields with the existing model-call envelope.
 
@@ -83,7 +83,7 @@ The on-disk session format remains the pre-release pinned version `0`, with no c
 ## Testing
 
 - Unit coverage exercises registry conflicts, request reconstruction, session validation, profile resolution, single-attempt option forwarding, native API selection including OpenAI Responses, conversion, replay validation, error mapping, caller cancellation, idle-timeout transport termination, content rewrites, and same-instance versus different-instance replay dispatch.
-- Keyless loop/session tests and ACP snapshots exercise durable provider/model metadata, resume and fork propagation, workflow/subagent overrides, and unchanged user-visible transcripts; the key-gated DeepSeek e2e retains real provider streaming and tool follow-up coverage.
+- Keyless loop/session tests and ACP snapshots exercise durable provider/model metadata, resume and fork propagation, workflow/subagent overrides, per-call subagent routing, and unchanged user-visible transcripts; the key-gated DeepSeek e2e retains real provider streaming and tool follow-up coverage.
 - Public JSDoc, package READMEs, architecture and subsystem docs, generated catalogs, examples, session fixtures, and Python SDK pairs use provider/model targets consistently and are checked by the repository documentation and type-equivalence gates.
 
 ## Risks
