@@ -14,6 +14,8 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from './contract/slots.ts'
+import type { WorkspaceContributions } from './contract/contributions.ts'
+import { WorkspaceContributionsRuntime } from './contributions.ts'
 import { createWorkspaceViewStore } from './stores.ts'
 import { WorkspaceBrowser } from './WorkspaceBrowser.tsx'
 import { WorkspacePicker } from './WorkspacePicker.tsx'
@@ -23,7 +25,15 @@ export type {
   DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected,
   WorkspaceBrowserInjected, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps,
 } from './contract/slots.ts'
+export type { WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext } from './contract/contributions.ts'
 export type { WorkspaceKey } from './locales.ts'
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Generic Workspace list and row contribution service. */
+    workspaceContributions: WorkspaceContributions
+  }
+}
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -52,6 +62,7 @@ export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection'
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  const contributions = new WorkspaceContributionsRuntime(ctx)
   const connection = ctx.get('connection') as ConnectionHandle
   const hostDescription = connection.hostDescription
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workspace: dictionaries')
@@ -102,7 +113,12 @@ export function apply(ctx: ClientContext): void {
       await ctx.workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId)
     },
     createWorkspace: input => ctx.workspaces.create(input),
-    hooks: { directoryFlow: browserFlowSource, hostDescription },
+    hooks: {
+      directoryFlow: browserFlowSource,
+      hostDescription,
+      views: contributions.views,
+      policies: contributions.policies,
+    },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({
     createWorkspace: input => ctx.workspaces.create(input),
@@ -113,7 +129,11 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('sidebar.workspaces', () => ctx.slots.register(
     {
       name: 'sidebar.workspaces',
-      children: { 'sidebar.workspaces.directoryFlow': { kind: 'single', scope: 'root' } },
+      children: {
+        'sidebar.workspaces.directoryFlow': { kind: 'single', scope: 'root' },
+        'workspace.session-row.badges': { kind: 'list', scope: 'root' },
+        'workspace.session-row.actions': { kind: 'list', scope: 'root' },
+      },
       store: createWorkspaceViewStore(),
       inject: browserInjected,
       locale: NS,

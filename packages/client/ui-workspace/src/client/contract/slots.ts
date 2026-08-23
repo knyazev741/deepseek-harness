@@ -32,6 +32,7 @@ import type {
   SessionId, SessionSearchResultItem, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { createWorkspaceViewStore } from '../stores.ts'
+import type { WorkspaceSessionRowContext, WorkspaceListPolicy, WorkspaceListView } from './contributions.ts'
 
 /**
  * Owner share of the directory-flow holes: the complete conversation between
@@ -57,6 +58,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    'workspace.session-row.badges': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
+    'workspace.session-row.actions': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
   }
 }
 
@@ -91,6 +94,8 @@ export type WorkspaceBrowserInjected = {
   hooks: DirectoryPickingInjected['hooks'] & {
     /** Current generation's Host description, bound by the slot renderer. */
     hostDescription: HostDescriptionSource
+    views: HostObservable<readonly WorkspaceListView[]>
+    policies: HostObservable<readonly WorkspaceListPolicy[]>
   }
   /**
    * Start a New Session in a Workspace: reuse-or-create its blank session and
@@ -139,13 +144,21 @@ export type WorkspaceBrowserInjected = {
   createWorkspace: (input: { path: string }) => Promise<WorkspaceView>
 }
 
+type WorkspaceBrowserBaseHooks = DirectoryPickingInjected['hooks'] & { hostDescription: HostDescriptionSource }
+
+type WorkspaceBrowserContributionHooks = {
+  views: HostObservable<readonly WorkspaceListView[]>
+  policies: HostObservable<readonly WorkspaceListPolicy[]>
+}
+
 /** Full browser props: shell owner share + viewing store + injected actions + the locale seat. */
 export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
-  & PropsRenderSlots<'sidebar.workspaces.directoryFlow'>
+  & PropsRenderSlots<'sidebar.workspaces.directoryFlow' | 'workspace.session-row.badges' | 'workspace.session-row.actions'>
   & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
   & Omit<WorkspaceBrowserInjected, 'hooks'>
-  & PropsHooks<WorkspaceBrowserInjected['hooks']>
+  & PropsHooks<WorkspaceBrowserBaseHooks>
+  & Partial<PropsHooks<WorkspaceBrowserContributionHooks>>
   & PropsLocale<'workspace'>
 
 /**

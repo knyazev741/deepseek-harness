@@ -16,9 +16,10 @@ import {
   IconProjectAddOutline16, IconSearchOutline16, Menu, Modal, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
-  SessionId, SessionListState, SessionSearchResultItem, WorkspaceId, WorkspaceView,
+  SessionId, SessionListState, SessionSearchResultItem, SessionSummary, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { WorkspaceBrowserProps } from './contract/slots.ts'
+import type { WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext } from './contract/contributions.ts'
 import type { SessionNode, SessionOrderBy } from './tree.ts'
 import { deriveFlat, deriveGroups, deriveSearchResults, UNGROUPED_KEY } from './tree.ts'
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './rows/Rows.tsx'
@@ -37,6 +38,44 @@ const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
 /** Session rows visible per Workspace before the local overflow control. */
 const COLLAPSED_SESSION_LIMIT = 5
+const DEFAULT_VIEW_ID = 'workspace.default'
+
+function rowContext(session: SessionSummary, workspaces: readonly WorkspaceView[], selected: boolean):
+WorkspaceSessionRowContext {
+  const workspace = workspaces.find(candidate => candidate.sessionIds.includes(session.id))
+    ?? { workspaceId: '' as WorkspaceId, title: 'Ungrouped', path: session.cwd ?? '', sessionIds: [session.id],
+      createdAt: '', updatedAt: '' }
+  return { session, workspace, selected }
+}
+
+function orderSessionIds(
+  ids: readonly SessionId[], list: SessionListState, workspaces: readonly WorkspaceView[], policies: readonly WorkspaceListPolicy[],
+): SessionId[] {
+  if (policies.length === 0) return [...ids]
+  const contexts = new Map(ids.flatMap(id => list.byId[id] === undefined
+    ? [] : [[id, rowContext(list.byId[id], workspaces, list.current === id)] as const]))
+  return [...ids].sort((leftId, rightId) => {
+    const left = contexts.get(leftId)
+    const right = contexts.get(rightId)
+    if (left === undefined || right === undefined) return 0
+    let result = 0
+    for (const policy of policies) {
+      const candidate = policy.compare(left, right)
+      if (result === 0 && candidate !== 0) result = candidate
+    }
+    return result
+  })
+}
+
+function filterSessionList(
+  list: SessionListState, view: WorkspaceListView, workspaces: readonly WorkspaceView[],
+): SessionListState {
+  if (view.id === DEFAULT_VIEW_ID) return list
+  const ids = list.ids.filter(id => list.byId[id] !== undefined
+    && view.include(rowContext(list.byId[id], workspaces, list.current === id)))
+  if (ids.length === list.ids.length) return list
+  return { ...list, ids, byId: Object.fromEntries(ids.map(id => [id, list.byId[id] as SessionSummary])) }
+}
 
 /** Keep controlled input and RPC payload inside the session.search wire contract. */
 function sanitizeSearchQuery(value: string): string {
@@ -216,7 +255,7 @@ function workspaceGroupHalf(e: { clientY: number; currentTarget: HTMLElement }):
 type SessionTreeProps = Pick<
   WorkspaceBrowserProps,
   'useSessions' | 'startSession' | 'open' | 'forkSession'
-  | 'insertWorkspaceBefore' | 'insertSessionBefore' | 't'
+  | 'insertWorkspaceBefore' | 'insertSessionBefore' | 'renderSlot' | 't'
 > & {
   /** Host account home for POSIX hover-path abbreviation. */
   home?: string | undefined
@@ -245,6 +284,7 @@ type SessionTreeProps = Pick<
   onSessionArchive: (sessionId: SessionNode['id']) => void
   /** Session order behavior: fixed after edits, or additionally promoted by user activity. */
   orderBy: SessionOrderBy
+  policies: readonly WorkspaceListPolicy[]
 }
 
 /** The scrolling session tree; unmounting drops the sessions subscription and expand-all state. */
@@ -253,7 +293,7 @@ function SessionTree({
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
-  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
+  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, policies, renderSlot, t,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const current = list.current
@@ -312,13 +352,17 @@ function SessionTree({
   const orderedWorkspaces = useMemo(() => {
     return workspaces.map((workspace) => {
       const stored = sessionOrderByAccount[workspace.workspaceId as string]
-      const sessionIds = reconciledSessionOrder(workspace.sessionIds, stored)
+      const sessionIds = orderSessionIds(
+        reconciledSessionOrder(workspace.sessionIds, stored), list, workspaces, policies,
+      )
       return { ...workspace, sessionIds }
     })
-  }, [sessionOrderByAccount, workspaces])
+  }, [list, policies, sessionOrderByAccount, workspaces])
   const orderedUngroupedSessionIds = useMemo(
-    () => reconciledSessionOrder(ungroupedSessionIds, sessionOrderByAccount[UNGROUPED_KEY]),
-    [sessionOrderByAccount, ungroupedSessionIds],
+    () => orderSessionIds(
+      reconciledSessionOrder(ungroupedSessionIds, sessionOrderByAccount[UNGROUPED_KEY]), list, workspaces, policies,
+    ),
+    [list, policies, sessionOrderByAccount, ungroupedSessionIds, workspaces],
   )
   const groups = useMemo(
     () => deriveGroups(list, orderedWorkspaces, archivedSessionIds, {
@@ -520,6 +564,8 @@ function SessionTree({
                     onFork={forkSession}
                     onArchive={onSessionArchive}
                     drag={dragProps}
+                    rowContext={rowContext(list.byId[node.id] as SessionSummary, workspaces, current === node.id)}
+                    renderSlot={renderSlot}
                     t={t}
                   />
                 )
@@ -548,7 +594,8 @@ function SessionTree({
 /** The flat "In one list" body: every session is one draggable top-level row. */
 function FlatList({
   useSessions, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds,
-  orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, t,
+  orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder,
+  workspaces, policies, renderSlot, t,
 }: Pick<
   SessionTreeProps,
   | 'useSessions'
@@ -562,6 +609,9 @@ function FlatList({
   | 'sessionUpdatedAtByAccount'
   | 'syncSessionOrderAccount'
   | 'setSessionOrder'
+  | 'renderSlot'
+  | 'workspaces'
+  | 'policies'
   | 't'
 >) {
   const list = useSessions(s => s)
@@ -591,12 +641,14 @@ function FlatList({
   }, [list, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, sessionIds, syncSessionOrderAccount])
   const rows = useMemo(() => {
     const byId = new Map(baseRows.map(row => [row.id, row]))
-    return reconciledSessionOrder(sessionIds, sessionOrderByAccount[FLAT_SESSION_ORDER_KEY])
+    return orderSessionIds(
+      reconciledSessionOrder(sessionIds, sessionOrderByAccount[FLAT_SESSION_ORDER_KEY]), list, workspaces, policies,
+    )
       .flatMap((id) => {
         const row = byId.get(id)
         return row === undefined ? [] : [row]
       })
-  }, [baseRows, sessionOrderByAccount, sessionIds])
+  }, [baseRows, list, policies, sessionOrderByAccount, sessionIds, workspaces])
   const [drag, setDrag] = useState<DragState | null>(null)
   const dropCommitted = useRef(false)
   useNativeDragAcceptance(drag !== null)
@@ -636,6 +688,8 @@ function FlatList({
               onFork={forkSession}
               onArchive={onSessionArchive}
               flat
+              rowContext={rowContext(list.byId[node.id] as SessionSummary, workspaces, list.current === node.id)}
+              renderSlot={renderSlot}
               drag={{
                 start: () => {
                   dropCommitted.current = false
@@ -678,6 +732,8 @@ function SearchResults({
   open,
   workspaces,
   archivedSessionIds,
+  policies,
+  renderSlot,
   query,
   remote,
   resultLimit,
@@ -685,6 +741,8 @@ function SearchResults({
 }: Pick<SessionTreeProps, 'useSessions' | 'open' | 't'> & {
   workspaces: readonly WorkspaceView[]
   archivedSessionIds: readonly SessionNode['id'][]
+  policies: readonly WorkspaceListPolicy[]
+  renderSlot: WorkspaceBrowserProps['renderSlot']
   query: string
   remote: RemoteSearchState
   resultLimit: number
@@ -697,6 +755,11 @@ function SearchResults({
     () => deriveSearchResults(list, workspaces, query, archivedSessionIds, currentRemote, resultLimit),
     [list, workspaces, query, archivedSessionIds, currentRemote, resultLimit],
   )
+  const orderedResults = useMemo(() => {
+    const byId = new Map(results.items.map(item => [item.id, item]))
+    return orderSessionIds(results.items.map(item => item.id), list, workspaces, policies)
+      .flatMap((id) => { const item = byId.get(id); return item === undefined ? [] : [item] })
+  }, [list, policies, results.items, workspaces])
   const pending = currentRemote.status === 'loading'
   const failed = currentRemote.status === 'error'
 
@@ -704,12 +767,14 @@ function SearchResults({
     <div className={clsx(css.treeBody, css.wide)}>
       <div className={css.list}>
         <div className={css.searchTree} role="tree" aria-label={t('search.results.aria')}>
-          {results.items.map(result => (
+          {orderedResults.map(result => (
             <SearchResultItem
               key={result.id}
               result={result}
               currentId={list.current}
               onOpen={open}
+              rowContext={rowContext(list.byId[result.id] as SessionSummary, workspaces, list.current === result.id)}
+              renderSlot={renderSlot}
               t={t}
             />
           ))}
@@ -722,7 +787,7 @@ function SearchResults({
             {t('search.unavailable')}
           </div>
         )}
-        {!pending && results.items.length === 0 && (
+        {!pending && orderedResults.length === 0 && (
           <div className={css.empty}>{t('search.noMatches')}</div>
         )}
         {results.hasMore && (
@@ -762,6 +827,8 @@ export function WorkspaceBrowser({
   searchResultLimit,
   useDirectoryFlow,
   useHostDescription,
+  useViews,
+  usePolicies,
   renderSlot,
   t,
 }: WorkspaceBrowserProps) {
@@ -777,10 +844,28 @@ export function WorkspaceBrowser({
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
-  const currentBlankSessionId = useSessions((state) => {
-    const current = state.current
-    return current !== undefined && state.byId[current]?.blank === true ? current : undefined
-  })
+  const sessionList = useSessions(state => state)
+  const contributedViews = useViews?.(views => views) ?? []
+  const policies = usePolicies?.(items => items) ?? []
+  const views = useMemo<readonly WorkspaceListView[]>(() => [{
+    id: DEFAULT_VIEW_ID, order: Number.NEGATIVE_INFINITY,
+    label: groupBy === 'flat' ? t('section.sessions') : t('section.workspaces'), include: () => true,
+  }, ...contributedViews], [contributedViews, groupBy, t])
+  const [activeViewId, setActiveViewId] = useState(DEFAULT_VIEW_ID)
+  const activeView = views.find(view => view.id === activeViewId) ?? views[0]
+  if (activeView === undefined) throw new Error('workspace default view is missing')
+  useEffect(() => { if (!views.some(view => view.id === activeViewId)) setActiveViewId(DEFAULT_VIEW_ID) }, [activeViewId, views])
+  const visibleList = useMemo(() => {
+    const filtered = filterSessionList(sessionList, activeView, workspaces)
+    const ids = orderSessionIds(filtered.ids, filtered, workspaces, policies)
+    return ids.every((id, index) => id === filtered.ids[index]) ? filtered : {
+      ...filtered, ids, byId: Object.fromEntries(ids.map(id => [id, filtered.byId[id] as SessionSummary])),
+    }
+  }, [activeView, policies, sessionList, workspaces])
+  const visibleUseSessions = <S,>(selector: (state: SessionListState) => S): S => selector(visibleList)
+  const currentBlankSessionId = sessionList.current !== undefined && sessionList.byId[sessionList.current]?.blank === true
+    ? sessionList.current
+    : undefined
   const currentBlankAccount = currentBlankSessionId === undefined
     ? undefined
     : (workspaces.find(workspace => workspace.sessionIds.includes(currentBlankSessionId))
@@ -1012,8 +1097,23 @@ export function WorkspaceBrowser({
       <div className={css.sectionHeader}>
         {wide && (
           <span className={clsx(css.sectionLabel, css.wide, searchExpanded && css.sectionLabelHidden)}>
-            {groupBy === 'flat' ? t('section.sessions') : t('section.workspaces')}
+            {activeView.label}
           </span>
+        )}
+        {wide && contributedViews.length > 0 && (
+          <div role="tablist" aria-label={t('section.workspaces')}>
+            {views.map(view => (
+              <button
+                key={view.id}
+                type="button"
+                role="tab"
+                aria-selected={activeView.id === view.id}
+                onClick={() => { setActiveViewId(view.id) }}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
         )}
         {wide && (
           <div className={clsx(css.searchSlot, searchExpanded && css.searchSlotExpanded)}>
@@ -1144,10 +1244,12 @@ export function WorkspaceBrowser({
         {wide && (normalizedQuery !== ''
           ? (
             <SearchResults
-              useSessions={useSessions}
+              useSessions={visibleUseSessions}
               open={open}
               workspaces={workspaces}
               archivedSessionIds={archivedSessionIds}
+              policies={policies}
+              renderSlot={renderSlot}
               query={normalizedQuery}
               remote={remoteSearch}
               resultLimit={searchResultLimit}
@@ -1157,9 +1259,10 @@ export function WorkspaceBrowser({
           : groupBy === 'flat'
             ? (
               <FlatList
-                useSessions={useSessions} open={open} forkSession={forkSession}
+                useSessions={visibleUseSessions} open={open} forkSession={forkSession}
                 onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
                 archivedSessionIds={archivedSessionIds}
+                workspaces={workspaces} policies={policies} renderSlot={renderSlot}
                 orderBy={orderBy}
                 sessionOrderByAccount={sessionOrderByAccount}
                 sessionUpdatedAtByAccount={sessionUpdatedAtByAccount}
@@ -1170,7 +1273,7 @@ export function WorkspaceBrowser({
             )
             : (
               <SessionTree
-                useSessions={useSessions}
+                useSessions={visibleUseSessions}
                 onSessionRename={onSessionRename}
                 onSessionArchive={onSessionArchive}
                 forkSession={forkSession}
@@ -1188,6 +1291,8 @@ export function WorkspaceBrowser({
                 insertSessionBefore={insertSessionBefore}
                 orderBy={orderBy}
                 home={home}
+                policies={policies}
+                renderSlot={renderSlot}
                 t={t}
                 onRenameRequest={(workspaceId, currentTitle) => {
                   setRenameTarget({ workspaceId, currentTitle })

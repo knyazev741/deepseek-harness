@@ -15,12 +15,14 @@ import {
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import { abbreviateHomePath } from '@deepseek-ai/dsh-client-runtime/client'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
+import type { WorkspaceSessionRowContext } from '../contract/contributions.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import { relativeTime } from '../tree.ts'
 import css from './Rows.module.css'
 
 /** The standard locale seat, prop-passed from the browser root. */
 type RowTranslate = WorkspaceBrowserProps['t']
+type WorkspaceRowSlots = WorkspaceBrowserProps['renderSlot']
 
 /** Row display title: blank rows show the localized New Session label. */
 function displayTitle(node: SessionNode, t: RowTranslate): string {
@@ -309,10 +311,12 @@ function SessionHoverContent({ node, now, t }: { node: SessionNode; now: number;
  * @param props.t - Workspace-browser translation seat.
  * @returns the result button.
  */
-export function SearchResultItem({ result, currentId, onOpen, t }: {
+export function SearchResultItem({ result, currentId, onOpen, rowContext, renderSlot, t }: {
   result: SearchResultNode
   currentId: string | undefined
   onOpen: (id: SearchResultNode['id']) => void
+  rowContext?: WorkspaceSessionRowContext
+  renderSlot?: WorkspaceRowSlots
   t: RowTranslate
 }) {
   const selected = result.id === currentId
@@ -333,6 +337,7 @@ export function SearchResultItem({ result, currentId, onOpen, t }: {
           )}
         </span>
         <span className={css.searchResultTitle}>{result.title}</span>
+        {rowContext !== undefined && renderSlot?.('workspace.session-row.badges', rowContext)}
       </span>
       <span className={css.searchResultMeta}>
         <span className={css.searchResultWorkspace}>{result.workspace}</span>
@@ -359,7 +364,9 @@ export function SearchResultItem({ result, currentId, onOpen, t }: {
  * @param props.t - the browser root's locale seat.
  * @returns the session row.
  */
-export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork, onArchive, drag, flat = false, t }: {
+export function SessionNodeItem({
+  node, currentId, now, onOpen, onRename, onFork, onArchive, drag, flat = false, rowContext, renderSlot, t,
+}: {
   node: SessionNode
   currentId: string | undefined
   now: number
@@ -374,6 +381,8 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
   drag?: RowDragProps | undefined
   /** The row is rendered without a parent Workspace header. */
   flat?: boolean | undefined
+  rowContext?: WorkspaceSessionRowContext
+  renderSlot?: WorkspaceRowSlots
   t: RowTranslate
 }) {
   const row = node
@@ -437,6 +446,7 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
         </span>
       )}
       <span className={css.title}>{title}</span>
+      {rowContext !== undefined && renderSlot?.('workspace.session-row.badges', rowContext)}
       {/* A blank New Session row is a provisional placeholder: nothing has
           happened in it yet, so a "now" timestamp and the row verbs
           (rename/fork/archive) would all act on content that does not
@@ -444,6 +454,7 @@ export function SessionNodeItem({ node, currentId, now, onOpen, onRename, onFork
       {!row.blank && <span className={css.time}>{timeLabel(row.updatedAt, now, t)}</span>}
       {!row.blank && (
         <span className={css.rowActions}>
+          {rowContext !== undefined && renderSlot?.('workspace.session-row.actions', rowContext)}
           <Menu
             open={menuOpen}
             onClose={() => { setMenuOpen(false) }}
