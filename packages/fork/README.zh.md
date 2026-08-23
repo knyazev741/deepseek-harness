@@ -8,6 +8,7 @@ fork 组包含选择性启用的 Host 能力；这些能力保持为独立插件
 |---|---|---|
 | [`session-source/`](session-source/README.zh.md) | 记录并投影 GitHub Actions 会话来源 | `forkSessionSource` 投影 |
 | [`workspace-session-state/`](workspace-session-state/README.zh.md) | 持久化工作区会话的全局有序置顶列表 | `forkWorkspaceSessionState` |
+| [`ui-workspace-overlay/`](ui-workspace-overlay/README.zh.md) | 添加后台筛选、来源标记、本地未读标记，以及基于 CAS 的置顶/会话操作 | `workspaceContributions` + 工作区会话行 slot |
 | [`llm-first-chunk-timeout/`](llm-first-chunk-timeout/README.zh.md) | 限制 LLM 流首个结果之前的空闲时间 | `llm/stream` waterfall |
 | [`external-session/`](external-session/README.zh.md) | 按 mode 注册显式组装的外部会话 provider | `externalSessions` |
 
