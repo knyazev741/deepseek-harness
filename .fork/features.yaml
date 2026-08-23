@@ -25,7 +25,6 @@ features:
     evidence:
       - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
       - packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
-      - apps/web/tests/fork-web-smoke.snapshot.ts
     disposition: adapted
     replacement: Fork-owned workspace UI contribution using the upstream row action slot.
   - id: workspace-mark-unread
@@ -44,7 +43,6 @@ features:
     evidence:
       - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
       - packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
-      - apps/web/tests/fork-web-smoke.snapshot.ts
     disposition: adapted
     replacement: Fork-owned workspace UI contribution using the upstream view and filter slots.
   - id: workspace-session-pin
@@ -54,7 +52,6 @@ features:
     evidence:
       - packages/fork/workspace-session-state/tests/service.spec.ts
       - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
-      - apps/web/tests/fork-web-smoke.snapshot.ts
     disposition: adapted
     replacement: Fork-owned settings-backed Host service, Typert Remote, and UI contribution.
   - id: github-actions-session-source
@@ -63,7 +60,6 @@ features:
     requiredBehavior: A session created in GitHub Actions records a fork-owned source marker and exposes it in projections without changing the upstream session origin.
     evidence:
       - packages/fork/session-source/tests/session-source.spec.ts
-      - apps/web/tests/fork-web-smoke.snapshot.ts
     disposition: adapted
     replacement: Fork-owned session-source event, projection, and GitHub Actions producer.
   - id: subagent-recursive-fork
