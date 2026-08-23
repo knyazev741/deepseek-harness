@@ -107,10 +107,15 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => {
     let dispose = contributions.registerView(createBackgroundView(t))
     const unsubscribe = ctx.locale.subscribe(() => {
+      if (disposed) return
       dispose()
       if (!disposed) dispose = contributions.registerView(createBackgroundView(t))
     })
     return () => {
+      // Locale publishes take a snapshot of subscribers before invoking them.
+      // Mark this contribution disposed first so a callback already in that
+      // snapshot cannot register through an inactive Cordis context.
+      disposed = true
       unsubscribe()
       dispose()
     }

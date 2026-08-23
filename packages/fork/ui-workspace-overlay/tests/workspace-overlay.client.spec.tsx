@@ -22,6 +22,8 @@ import { parseReadWatermarks, READ_WATERMARKS_STORAGE_KEY } from '../src/client/
 
 afterEach(cleanup)
 
+type TestRuntime = Awaited<ReturnType<typeof SlotTestRuntime.create>>
+
 const sid = (value: string): SessionId => value as SessionId
 const wid = (value: string): WorkspaceId => value as WorkspaceId
 
@@ -120,6 +122,7 @@ async function bench(options: {
   pins?: ForkWorkspaceSessionStateView
   initialList?: Promise<{ ok: true; value: ForkWorkspaceSessionStateView }>
   mountOverlay?: boolean
+  beforeMount?: (runtime: TestRuntime) => void
 } = {}) {
   const runtime = await SlotTestRuntime.create()
   runtime.provide('workspaceContributions', createContributions())
@@ -139,6 +142,7 @@ async function bench(options: {
     'workspace.session-row.badges': { kind: 'list', scope: 'root' },
     'workspace.session-row.actions': { kind: 'list', scope: 'root' },
   })
+  options.beforeMount?.(runtime)
   const feature = options.mountOverlay === false
     ? undefined
     : await runtime.mount({ inject: [...inject], apply })
@@ -235,6 +239,33 @@ describe('fork workspace overlay assembled client fixture', () => {
       b.runtime.ctx.workspaceContributions.views.getSnapshot().find(view => view.id === 'fork.background')?.label,
     ).toBe('后台'))
     await b.runtime.dispose()
+  })
+
+  it('does not re-register Background after teardown wins a locale snapshot', async () => {
+    let disposeRequested = false
+    const disposeOverlay: { current?: () => Promise<void> } = {}
+    const b = await bench({
+      beforeMount: (runtime) => {
+        // Register before the overlay so this callback can dispose it after
+        // LocaleRuntime snapshots listeners but before the overlay callback.
+        runtime.ctx.locale.subscribe(() => {
+          if (!disposeRequested) return
+          disposeRequested = false
+          void disposeOverlay.current?.()
+        })
+      },
+    })
+    disposeOverlay.current = async () => { await b.feature?.dispose() }
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      disposeRequested = true
+      b.runtime.ctx.locale.setLocale('zh')
+      await vi.waitFor(() => expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toEqual([]))
+      expect(error).not.toHaveBeenCalled()
+    } finally {
+      error.mockRestore()
+      await b.runtime.dispose()
+    }
   })
 
   it('renders the GitHub Actions badge only for the exact projection value', async () => {
