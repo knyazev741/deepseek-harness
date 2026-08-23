@@ -4,6 +4,7 @@ import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type { WorkspaceListView } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
 import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
 
@@ -115,6 +116,22 @@ describe('ui-workspace apply', () => {
     const picker = (b.slots.entries('conversation.hero.workspace')[0]!.inject as () => WorkspacePickerInjected)()
     await picker.createWorkspace({ path: '/tmp/project' })
     expect(b.create).toHaveBeenCalledWith({ path: '/tmp/project' })
+  })
+
+  it('composes a contributor fiber through the applied runtime service', async () => {
+    const b = await bench()
+    declare(b.slots, 'sidebar.workspaces')
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const view: WorkspaceListView = { id: 'runtime-view', order: 0, label: 'Runtime', include: () => true }
+    const contributor = b.ctx.plugin({
+      inject: ['workspaceContributions'],
+      apply: (scope) => { scope.workspaceContributions.registerView(view) },
+    })
+    await contributor.await()
+    const browser = (b.slots.entries('sidebar.workspaces')[0]!.inject as () => WorkspaceBrowserInjected)()
+    expect(browser.hooks.views.getSnapshot()).toEqual([view])
+    await contributor.dispose()
+    expect(browser.hooks.views.getSnapshot()).toEqual([])
   })
 
   it('declares the two directory-flow holes and reports their occupancy per surface', async () => {

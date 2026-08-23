@@ -40,39 +40,31 @@ const SEARCH_QUERY_MAX_CODE_UNITS = 500
 const COLLAPSED_SESSION_LIMIT = 5
 const DEFAULT_VIEW_ID = 'workspace.default'
 
-function rowContext(session: SessionSummary, workspaces: readonly WorkspaceView[], selected: boolean):
-WorkspaceSessionRowContext {
+function rowContext(session: SessionSummary, workspaces: readonly WorkspaceView[], selected: boolean): WorkspaceSessionRowContext {
   const workspace = workspaces.find(candidate => candidate.sessionIds.includes(session.id))
     ?? { workspaceId: '' as WorkspaceId, title: 'Ungrouped', path: session.cwd ?? '', sessionIds: [session.id],
       createdAt: '', updatedAt: '' }
   return { session, workspace, selected }
 }
 
-function orderSessionIds(
-  ids: readonly SessionId[], list: SessionListState, workspaces: readonly WorkspaceView[], policies: readonly WorkspaceListPolicy[],
-): SessionId[] {
+function orderSessionIds(ids: readonly SessionId[], list: SessionListState, workspaces: readonly WorkspaceView[],
+  policies: readonly WorkspaceListPolicy[]): SessionId[] {
   if (policies.length === 0) return [...ids]
-  const contexts = new Map(ids.flatMap(id => list.byId[id] === undefined
-    ? [] : [[id, rowContext(list.byId[id], workspaces, list.current === id)] as const]))
-  return [...ids].sort((leftId, rightId) => {
-    const left = contexts.get(leftId)
-    const right = contexts.get(rightId)
-    if (left === undefined || right === undefined) return 0
-    let result = 0
-    for (const policy of policies) {
-      const candidate = policy.compare(left, right)
-      if (result === 0 && candidate !== 0) result = candidate
-    }
-    return result
+  const candidates = ids.filter(id => list.byId[id] !== undefined)
+  const contexts = new Map(candidates.map(id => [id, rowContext(list.byId[id] as SessionSummary, workspaces,
+    list.current === id)] as const))
+  const ordered = [...candidates].sort((leftId, rightId) => {
+    const left = contexts.get(leftId) as WorkspaceSessionRowContext
+    const right = contexts.get(rightId) as WorkspaceSessionRowContext
+    return policies.reduce((result, policy) => result || policy.compare(left, right), 0)
   })
+  let candidateIndex = 0
+  return ids.map(id => list.byId[id] === undefined ? id : ordered[candidateIndex++] as SessionId)
 }
 
-function filterSessionList(
-  list: SessionListState, view: WorkspaceListView, workspaces: readonly WorkspaceView[],
-): SessionListState {
+function filterSessionList(list: SessionListState, view: WorkspaceListView, workspaces: readonly WorkspaceView[]): SessionListState {
   if (view.id === DEFAULT_VIEW_ID) return list
-  const ids = list.ids.filter(id => list.byId[id] !== undefined
-    && view.include(rowContext(list.byId[id], workspaces, list.current === id)))
+  const ids = list.ids.filter(id => list.byId[id] !== undefined && view.include(rowContext(list.byId[id], workspaces, list.current === id)))
   if (ids.length === list.ids.length) return list
   return { ...list, ids, byId: Object.fromEntries(ids.map(id => [id, list.byId[id] as SessionSummary])) }
 }
@@ -257,6 +249,7 @@ type SessionTreeProps = Pick<
   'useSessions' | 'startSession' | 'open' | 'forkSession'
   | 'insertWorkspaceBefore' | 'insertSessionBefore' | 'renderSlot' | 't'
 > & {
+  visibleList: SessionListState
   /** Host account home for POSIX hover-path abbreviation. */
   home?: string | undefined
   workspaces: readonly WorkspaceView[]
@@ -293,7 +286,7 @@ function SessionTree({
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
-  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, policies, renderSlot, t,
+  sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, policies, renderSlot, visibleList, t,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const current = list.current
@@ -353,25 +346,25 @@ function SessionTree({
     return workspaces.map((workspace) => {
       const stored = sessionOrderByAccount[workspace.workspaceId as string]
       const sessionIds = orderSessionIds(
-        reconciledSessionOrder(workspace.sessionIds, stored), list, workspaces, policies,
+        reconciledSessionOrder(workspace.sessionIds, stored), visibleList, workspaces, policies,
       )
       return { ...workspace, sessionIds }
     })
-  }, [list, policies, sessionOrderByAccount, workspaces])
+  }, [policies, visibleList, sessionOrderByAccount, workspaces])
   const orderedUngroupedSessionIds = useMemo(
     () => orderSessionIds(
-      reconciledSessionOrder(ungroupedSessionIds, sessionOrderByAccount[UNGROUPED_KEY]), list, workspaces, policies,
+      reconciledSessionOrder(ungroupedSessionIds, sessionOrderByAccount[UNGROUPED_KEY]), visibleList, workspaces, policies,
     ),
-    [list, policies, sessionOrderByAccount, ungroupedSessionIds, workspaces],
+    [policies, visibleList, sessionOrderByAccount, ungroupedSessionIds, workspaces],
   )
   const groups = useMemo(
-    () => deriveGroups(list, orderedWorkspaces, archivedSessionIds, {
+    () => deriveGroups(visibleList, orderedWorkspaces, archivedSessionIds, {
       expandedGroups,
       ...(sessionOrderByAccount[UNGROUPED_KEY] === undefined
         ? {}
-        : { ungroupedOrder: sessionOrderByAccount[UNGROUPED_KEY] }),
+        : { ungroupedOrder: orderedUngroupedSessionIds }),
     }),
-    [list, orderedWorkspaces, archivedSessionIds, expandedGroups, sessionOrderByAccount],
+    [visibleList, orderedWorkspaces, orderedUngroupedSessionIds, archivedSessionIds, expandedGroups, sessionOrderByAccount],
   )
   const now = Date.now()
   const commitSessionDrag = (activeDrag: DragState, over: NonNullable<DragState['over']>): void => {
@@ -593,12 +586,13 @@ function SessionTree({
 
 /** The flat "In one list" body: every session is one draggable top-level row. */
 function FlatList({
-  useSessions, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds,
+  useSessions, visibleList, open, forkSession, onSessionRename, onSessionArchive, archivedSessionIds,
   orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder,
   workspaces, policies, renderSlot, t,
 }: Pick<
   SessionTreeProps,
   | 'useSessions'
+  | 'visibleList'
   | 'open'
   | 'forkSession'
   | 'onSessionRename'
@@ -616,8 +610,8 @@ function FlatList({
 >) {
   const list = useSessions(s => s)
   const baseRows = useMemo(
-    () => deriveFlat(list, archivedSessionIds),
-    [list, archivedSessionIds],
+    () => deriveFlat(visibleList, archivedSessionIds),
+    [visibleList, archivedSessionIds],
   )
   const sessionIds = useMemo(() => baseRows.map(row => row.id), [baseRows])
   const previousOrderBy = useRef(orderBy)
@@ -628,7 +622,7 @@ function FlatList({
     const switchedToUpdated = previousOrderBy.current !== 'updated' && orderBy === 'updated'
     previousOrderBy.current = orderBy
     const next = nextSessionOrderAccount({
-      sessionIds,
+      sessionIds: deriveFlat(list, archivedSessionIds).map(row => row.id),
       previousOrder,
       previousUpdatedAt,
       list,
@@ -638,17 +632,17 @@ function FlatList({
     if (next.changed) {
       syncSessionOrderAccount(FLAT_SESSION_ORDER_KEY, next.order.map(id => id as string), next.updatedAt)
     }
-  }, [list, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, sessionIds, syncSessionOrderAccount])
+  }, [list, orderBy, sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount])
   const rows = useMemo(() => {
     const byId = new Map(baseRows.map(row => [row.id, row]))
     return orderSessionIds(
-      reconciledSessionOrder(sessionIds, sessionOrderByAccount[FLAT_SESSION_ORDER_KEY]), list, workspaces, policies,
+      reconciledSessionOrder(sessionIds, sessionOrderByAccount[FLAT_SESSION_ORDER_KEY]), visibleList, workspaces, policies,
     )
       .flatMap((id) => {
         const row = byId.get(id)
         return row === undefined ? [] : [row]
       })
-  }, [baseRows, list, policies, sessionOrderByAccount, sessionIds, workspaces])
+  }, [baseRows, policies, visibleList, sessionOrderByAccount, sessionIds, workspaces])
   const [drag, setDrag] = useState<DragState | null>(null)
   const dropCommitted = useRef(false)
   useNativeDragAcceptance(drag !== null)
@@ -663,7 +657,10 @@ function FlatList({
     const sourceIndex = rows.findIndex(row => row.id === activeDrag.sessionId)
     const anchorIndex = anchor === undefined ? rows.length : rows.findIndex(row => row.id === anchor)
     if (sourceIndex !== -1 && (anchorIndex === sourceIndex || anchorIndex === sourceIndex + 1)) return
-    const nextOrder = rows.map(row => row.id).filter(id => id !== activeDrag.sessionId)
+    const nextOrder = orderSessionIds(
+      reconciledSessionOrder(deriveFlat(list, archivedSessionIds).map(row => row.id),
+        sessionOrderByAccount[FLAT_SESSION_ORDER_KEY]), visibleList, workspaces, policies,
+    ).filter(id => id !== activeDrag.sessionId)
     const insertAt = anchor === undefined ? nextOrder.length : nextOrder.indexOf(anchor)
     nextOrder.splice(insertAt === -1 ? nextOrder.length : insertAt, 0, activeDrag.sessionId)
     setSessionOrder(FLAT_SESSION_ORDER_KEY, nextOrder.map(id => id as string))
@@ -845,8 +842,7 @@ export function WorkspaceBrowser({
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   const sessionUpdatedAtByAccount = useStore(s => s.sessionUpdatedAtByAccount)
   const sessionList = useSessions(state => state)
-  const contributedViews = useViews?.(views => views) ?? []
-  const policies = usePolicies?.(items => items) ?? []
+  const contributedViews = useViews?.(views => views) ?? [], policies = usePolicies?.(items => items) ?? []
   const views = useMemo<readonly WorkspaceListView[]>(() => [{
     id: DEFAULT_VIEW_ID, order: Number.NEGATIVE_INFINITY,
     label: groupBy === 'flat' ? t('section.sessions') : t('section.workspaces'), include: () => true,
@@ -862,10 +858,10 @@ export function WorkspaceBrowser({
       ...filtered, ids, byId: Object.fromEntries(ids.map(id => [id, filtered.byId[id] as SessionSummary])),
     }
   }, [activeView, policies, sessionList, workspaces])
-  const visibleUseSessions = <S,>(selector: (state: SessionListState) => S): S => selector(visibleList)
-  const currentBlankSessionId = sessionList.current !== undefined && sessionList.byId[sessionList.current]?.blank === true
-    ? sessionList.current
-    : undefined
+  const currentBlankSessionId = useSessions((state) => {
+    const current = state.current
+    return current !== undefined && state.byId[current]?.blank === true ? current : undefined
+  })
   const currentBlankAccount = currentBlankSessionId === undefined
     ? undefined
     : (workspaces.find(workspace => workspace.sessionIds.includes(currentBlankSessionId))
@@ -1244,7 +1240,7 @@ export function WorkspaceBrowser({
         {wide && (normalizedQuery !== ''
           ? (
             <SearchResults
-              useSessions={visibleUseSessions}
+              useSessions={<S,>(selector: (state: SessionListState) => S): S => selector(visibleList)}
               open={open}
               workspaces={workspaces}
               archivedSessionIds={archivedSessionIds}
@@ -1259,7 +1255,7 @@ export function WorkspaceBrowser({
           : groupBy === 'flat'
             ? (
               <FlatList
-                useSessions={visibleUseSessions} open={open} forkSession={forkSession}
+                useSessions={useSessions} visibleList={visibleList} open={open} forkSession={forkSession}
                 onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
                 archivedSessionIds={archivedSessionIds}
                 workspaces={workspaces} policies={policies} renderSlot={renderSlot}
@@ -1273,7 +1269,8 @@ export function WorkspaceBrowser({
             )
             : (
               <SessionTree
-                useSessions={visibleUseSessions}
+                useSessions={useSessions}
+                visibleList={visibleList}
                 onSessionRename={onSessionRename}
                 onSessionArchive={onSessionArchive}
                 forkSession={forkSession}

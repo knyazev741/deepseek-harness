@@ -20,7 +20,7 @@ export class WorkspaceContributionsRuntime extends Service implements WorkspaceC
     super(ctx, 'workspaceContributions'); this.views = this.source(() => this.viewSnapshot); this.policies = this.source(() => this.policySnapshot)
   }
 
-  registerView(view: WorkspaceListView): () => void { return this.register(this.viewEntries, view, () => { this.viewSnapshot = this.sorted(this.viewEntries) }) }
+  registerView(view: WorkspaceListView): () => void { if (view.id === 'workspace.default') throw new Error('workspace contribution "workspace.default" is reserved'); return this.register(this.viewEntries, view, () => { this.viewSnapshot = this.sorted(this.viewEntries) }) }
 
   registerPolicy(policy: WorkspaceListPolicy): () => void { return this.register(this.policyEntries, policy, () => { this.policySnapshot = this.sorted(this.policyEntries) }) }
 

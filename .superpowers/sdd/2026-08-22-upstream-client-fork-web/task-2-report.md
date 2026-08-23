@@ -45,3 +45,46 @@ The patch changes exactly six source files and stays below the 260-line source l
 ## Concerns
 
 The throwing-predicate test intentionally emits React's error diagnostic stack while asserting that the callback error is surfaced; the test and GUI gate still exit successfully. The web replay result is not a product regression signal until the missing baseline frontend entrypoint is restored.
+
+## Review fix round 1
+
+### Root cause and fixes
+
+The first extension pass supplied the filtered view snapshot to `SessionTree` and `FlatList`. Their existing persistence effects and drag commits therefore saw a partial account and could overwrite stored ordering with only the visible ids. The components now keep the full upstream session hook for effects, account reconciliation, and drag commits; only their render derivations use the active filtered snapshot. Hidden and stale ids remain in the account order while filtered rows are omitted from the DOM.
+
+Policy comparison previously sorted raw account ids while looking up contexts in a filtered list. Missing contexts returned zero and prevented a policy from ordering the valid candidates. The comparator now receives only valid candidates from the render projection, while the mapping back to the original account sequence preserves excluded and stale positions. Callback errors remain uncaught and therefore surface to the caller or renderer.
+
+The runtime rejects the browser-owned `workspace.default` id before registering a contributed view. The default tab remains the fallback when a contributed view is removed, and contributor tabs therefore cannot collide with the fallback key.
+
+Added evidence covers zero-contributor DOM and account-order preservation, runtime-backed policy ordering with a stale Workspace id, comparator failure propagation, reserved-id rejection, and a contributor fiber composed through the real applied client service. An implemented bilingual Agent Note records the full-state/render-projection split, failure and lifetime rules, and the maintenance/retirement contract.
+
+### Updated diff budget
+
+Selected upstream parent remains `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`. The implementation still changes exactly six `packages/client/ui-workspace/src` files:
+
+| Source file | Added | Deleted | Changed |
+| --- | ---: | ---: | ---: |
+| `src/client/WorkspaceBrowser.tsx` | 126 | 24 | 150 |
+| `src/client/contract/contributions.ts` | 11 | 0 | 11 |
+| `src/client/contract/slots.ts` | 15 | 2 | 17 |
+| `src/client/contributions.ts` | 43 | 0 | 43 |
+| `src/client/index.ts` | 22 | 2 | 24 |
+| `src/client/rows/Rows.tsx` | 13 | 2 | 15 |
+| **Total** | **230** | **30** | **260** |
+
+Tests, README updates, the report, and the bilingual Agent Note are outside this source budget.
+
+### Review-fix commands and results
+
+- `node_modules/.bin/vitest run packages/client/ui-workspace/tests/contributions.client.spec.tsx packages/client/ui-workspace/tests/apply.client.spec.ts` — PASS, 2 files and 14 tests. Expected React diagnostics from the comparator and predicate surfacing tests were emitted.
+- `node_modules/.bin/vitest run packages/client/ui-workspace/tests` — PASS, 9 files and 136 tests.
+- `pnpm exec tsc -p packages/client/ui-workspace/tsconfig.json --noEmit` — PASS.
+- `pnpm exec oxlint` on the six changed source files plus `tests/contributions.client.spec.tsx` and `tests/apply.client.spec.ts` — PASS.
+- `pnpm run verify-export-jsdoc` — PASS.
+- `pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-23-workspace-list-contributions.md` — PASS.
+- `pnpm run verify-translation-pairing .agents/notes/implemented/architecture/2026-08-23-workspace-list-contributions.md` — PASS.
+- `pnpm run verify-agent-note-format .agents/notes/implemented/architecture/2026-08-23-workspace-list-contributions.md` — PASS.
+
+### Concerns
+
+The focused callback-failure tests intentionally emit React error stacks while asserting that failures are surfaced; the test processes exit successfully. No fork UI behavior was changed.
