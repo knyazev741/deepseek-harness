@@ -31,6 +31,7 @@ function buildFixture(environment: Record<string, string>): string {
   roots.push(root)
   write(join(root, 'apps/web/dist/index.html'), '<main></main>')
   write(join(root, 'packages/client/example/lib/client.js'), 'module.exports = {}\n')
+  write(join(root, 'packages/client/ui-theme/lib/client.js'), 'const css = "--dsw-font-family: sans-serif"\n')
   writeClientBuildRecord(root, environment)
   return root
 }
