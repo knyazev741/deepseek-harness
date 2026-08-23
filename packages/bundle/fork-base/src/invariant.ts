@@ -13,9 +13,9 @@ export const name = 'fork-base-bundle-invariant'
 /** Service required before the companion can register. */
 export const inject = ['invariants']
 
-// No runtime invariant: this package carries only a static insert-only patch
-// list. The mounted fork packages own the runtime relations and their
-// package-specific invariant companions.
+// No runtime invariant: this package carries only a static patch list. The
+// mounted fork packages own the runtime relations and their package-specific
+// invariant companions.
 const install: InvariantInstaller = () => {}
 
 /**

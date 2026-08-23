@@ -2,11 +2,13 @@
 
 [English](README.md) | 中文
 
-可选的 Host fork 组合包：[`cordis.patch.yml`](cordis.patch.yml) 在 [`dsh-base`](../base/README.zh.md) 之后插入三个由独立包拥有的 fork 包。当部署需要会话来源、工作区置顶状态以及 LLM 流首个结果之前的有界等待时，将此组合包添加到 `@deepseek-ai/dsh-base` 之后。
+可选的 Host fork 组合包：[`cordis.patch.yml`](cordis.patch.yml) 在 [`dsh-base`](../base/README.zh.md) 之后插入三个由独立包拥有的 fork 包，并以可移植的 Knyazev AI 默认值覆盖上游模型行。当部署需要 fork Host 能力和 Knyazev AI 路由时，将此组合包添加到 `@deepseek-ai/dsh-base` 之后。
 
 ## 组合方式
 
-该 patch 仅包含 insert。它按顺序添加 `fork-session-source`、`fork-workspace-session-state` 和 `fork-llm-first-chunk-timeout`。超时行携带显式且经过校验的 `firstChunkIdleTimeoutMs: 120000`；profile 或后续 `--patch` 层可以按 id 禁用或重新配置任意一行。该组合包不挂载 provider-neutral external-session registry，也不挂载 Codex provider。
+该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state` 和 `fork-llm-first-chunk-timeout`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000`；模型行在 `https://knyazevai.work/v1` 配置 `knyazev-ai`、三个随附模型、`high` reasoning 以及最多 20 次重试的 normal 模式。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段。
+
+路由只保存凭据引用 `apiKeyEnv: KNYAZEV_AI_API_KEY`；密钥值保留在外部凭据或环境层，绝不进入 Git。用户 settings 文档位于该 composition base 之上，因此不完整的 `llm-pi-ai` 或 `agent-default-model` 设置会覆盖对应字段，省略字段则继承可移植默认值。profile、home 或 `--patch` 行仍会按 id 整体替换目标插件的 config。该组合包不挂载 provider-neutral external-session registry，也不挂载 Codex provider。
 
 会话状态行等待 Host 表层提供 `workspaceRegistry`。这样 fork 组合包可以在不同 Host 组合中复用，同时保持 Loader 的依赖顺序。
 
@@ -24,7 +26,7 @@
 
 #### 模型看到的内容
 
-不会添加 prompt section、工具 schema、消息或请求字段。组合包的超时行只在 provider 未在配置期限内产生首个结果时改变失败路径；来源和置顶行始终仅属于 Host。
+不会添加 prompt section、工具 schema、消息或请求字段。可移植路由只改变默认 provider/model 和请求 endpoint；超时行只在 provider 未在配置期限内产生首个结果时改变失败路径，来源和置顶行始终仅属于 Host。
 
 #### Token 影响
 
@@ -37,4 +39,6 @@
 ## 已知限制与延期工作
 
 - 工作区会话状态行需要提供 `workspaceRegistry` 的 Host 组合；不挂载该服务的 profile 会让该行等待其声明的依赖。
+- Knyazev AI 请求鉴权前必须通过进程环境或 credentials service 解析 `KNYAZEV_AI_API_KEY`；缺少该值时请求会失败，而该值不会写入组合包。
+- 用户 settings 分节可以替换可移植 provider 或 default-model 值，后续 patch 也可以按 id 整体替换它们的插件 config。
 - 该组合包有意将 external-session provider 选择和 Codex 集成留给未来显式组合的 overlay。

@@ -1,5 +1,5 @@
 /**
- * The fork-base bundle is an insert-only layer over dsh-base. These tests read
+ * The fork-base bundle is a fork-owned overlay over dsh-base. These tests read
  * the same YAML dialect used by the Loader and compose the two patch lists
  * through the include's patch implementation.
  */
@@ -66,10 +66,14 @@ describe('dsh-fork-base bundle', () => {
     ])
   })
 
-  it('is an insert-only patch with ordered, unique, Codex-free rows', () => {
+  it('inserts ordered, unique, Codex-free fork rows without secret literals', () => {
     const patches = readPatch('./cordis.patch.yml')
-    expect(patches).toHaveLength(1)
+    expect(patches).toHaveLength(3)
     expect(Object.keys(patches[0] ?? {})).toEqual(['insert'])
+    expect(patches.slice(1).map(patch => patch.id)).toEqual([
+      'llm-pi-ai',
+      'agent-default-model',
+    ])
 
     const rows = flattenInsertRows(patches)
     expect(rows.map(row => row.id)).toEqual([
@@ -87,9 +91,12 @@ describe('dsh-fork-base bundle', () => {
       .toEqual({ firstChunkIdleTimeoutMs: 120000 })
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
     expect(rows.some(row => row.name === '@deepseek-ai/dsh-fork-external-session')).toBe(false)
+    const serialized = JSON.stringify(patches)
+    expect(serialized).not.toMatch(/"apiKey"\s*:/)
+    expect(serialized).not.toMatch(/(?:sk-|AIza|gh[pousr]_|xox[baprs]-)\w{8,}/i)
   })
 
-  it('appends after upstream dependencies and remains patchable by a later layer', () => {
+  it('composes portable defaults over upstream rows and accepts a later replacement layer', () => {
     const base = readPatch(resolve(root, '../base/cordis.patch.yml'))
     const overlay = readPatch('./cordis.patch.yml')
     const upstreamRows = flattenInsertRows(base)
@@ -98,7 +105,77 @@ describe('dsh-fork-base bundle', () => {
     expect(new Set(ids).size).toBe(ids.length)
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
     expect(rows.some(row => row.name === '@deepseek-ai/dsh-fork-external-session')).toBe(false)
+    const llm = rows.find(row => row.id === 'llm-pi-ai')
+    const defaultModel = rows.find(row => row.id === 'agent-default-model')
+    expect(llm?.config).toEqual({
+      providers: {
+        'knyazev-ai': {
+          apiKeyEnv: 'KNYAZEV_AI_API_KEY',
+          api: 'openai-completions',
+          baseURL: 'https://knyazevai.work/v1',
+          streamIdleTimeoutMs: 900000,
+          timeoutMs: 1800000,
+          retryPolicy: {
+            mode: 'normal',
+            maxRetries: 20,
+            retryableCodes: [
+              'RATE_LIMIT',
+              'QUOTA',
+              'SERVER',
+              'TIMEOUT',
+              'FIRST_CHUNK_TIMEOUT',
+              'TRANSPORT',
+              'STREAM_CLOSED',
+              'EMPTY_RESPONSE',
+            ],
+          },
+          compat: {
+            thinkingFormat: 'qwen',
+            supportsReasoningEffort: false,
+          },
+          reasoning: 'high',
+          models: [
+            {
+              id: 'deepseek-v4-flash',
+              name: 'DeepSeek V4 Flash',
+              contextWindow: 400000,
+              maxTokens: 128000,
+              reasoningEfforts: {
+                off: null,
+                high: 'high',
+                max: 'max',
+              },
+            },
+            {
+              id: 'kimi-2.6',
+              name: 'Kimi 2.6',
+              contextWindow: 262144,
+              maxTokens: 40000,
+              reasoningEfforts: {
+                off: null,
+                high: 'high',
+                max: 'max',
+              },
+            },
+            {
+              id: 'minimax-2.7',
+              name: 'MiniMax 2.7',
+              contextWindow: 204800,
+            },
+          ],
+        },
+      },
+    })
+    expect(defaultModel?.config).toEqual({
+      provider: 'knyazev-ai',
+      model: 'deepseek-v4-flash',
+    })
+    expect(llm?.config).not.toHaveProperty('providers.knyazev-ai.apiKey')
+    expect(defaultModel?.config).not.toHaveProperty('reasoningEffort')
+
+    const overridden = new Set(['llm-pi-ai', 'agent-default-model'])
     for (const upstreamRow of upstreamRows) {
+      if (overridden.has(upstreamRow.id)) continue
       expect(rows.find(row => row.id === upstreamRow.id)).toEqual(upstreamRow)
     }
     for (const id of ['llm', 'session', 'session-projection', 'settings']) {
@@ -109,10 +186,34 @@ describe('dsh-fork-base bundle', () => {
     }
 
     const later = applyEntryPatches(rows, [
+      {
+        id: 'llm-pi-ai',
+        config: {
+          providers: {
+            'knyazev-ai': {
+              apiKeyEnv: 'USER_API_KEY_REF',
+              baseURL: 'https://user.example/v1',
+            },
+          },
+        },
+      },
+      { id: 'agent-default-model', config: { provider: 'deepseek-official', model: 'deepseek-reasoner' } },
       { id: 'fork-session-source', disabled: true },
       { id: 'fork-workspace-session-state', disabled: true },
       { id: 'fork-llm-first-chunk-timeout', config: { firstChunkIdleTimeoutMs: 60000 } },
     ], () => {})
+    expect(later.find(row => row.id === 'llm-pi-ai')?.config).toEqual({
+      providers: {
+        'knyazev-ai': {
+          apiKeyEnv: 'USER_API_KEY_REF',
+          baseURL: 'https://user.example/v1',
+        },
+      },
+    })
+    expect(later.find(row => row.id === 'agent-default-model')?.config).toEqual({
+      provider: 'deepseek-official',
+      model: 'deepseek-reasoner',
+    })
     expect(later.find(row => row.id === 'fork-session-source')?.disabled).toBe(true)
     expect(later.find(row => row.id === 'fork-workspace-session-state')?.disabled).toBe(true)
     expect(later.find(row => row.id === 'fork-llm-first-chunk-timeout')?.config)

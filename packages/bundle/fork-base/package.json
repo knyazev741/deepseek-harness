@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-fork-base",
-  "description": "The opt-in Host fork overlay bundle: insert-only session provenance, workspace pin state, and first-result LLM timeout rows over dsh-base",
+  "description": "The opt-in Host fork overlay bundle: fork capabilities plus portable Knyazev AI and default-model configuration over dsh-base",
   "version": "0.1.1-rc.2",
   "private": true,
   "repository": {

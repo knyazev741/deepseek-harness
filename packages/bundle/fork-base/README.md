@@ -2,11 +2,13 @@
 
 English | [中文](README.zh.md)
 
-The opt-in Host fork overlay: [`cordis.patch.yml`](cordis.patch.yml) inserts three independently owned fork packages after [`dsh-base`](../base/README.md). Add this bundle after `@deepseek-ai/dsh-base` when a deployment wants session provenance, workspace pin state, and a bounded wait for the first LLM stream result.
+The opt-in Host fork overlay: [`cordis.patch.yml`](cordis.patch.yml) inserts three independently owned fork packages after [`dsh-base`](../base/README.md) and overrides upstream model rows with portable Knyazev AI defaults. Add this bundle after `@deepseek-ai/dsh-base` when a deployment wants the fork Host capabilities and the Knyazev AI route.
 
 ## Composition
 
-The patch is insert-only. It adds `fork-session-source`, `fork-workspace-session-state`, and `fork-llm-first-chunk-timeout` in that order. The timeout row carries the explicit validated value `firstChunkIdleTimeoutMs: 120000`; a profile or later `--patch` layer may disable or reconfigure any row by id. The bundle does not mount the provider-neutral external-session registry or any Codex provider.
+The patch first inserts `fork-session-source`, `fork-workspace-session-state`, and `fork-llm-first-chunk-timeout` in that order, then replaces the complete config of the upstream `llm-pi-ai` and `agent-default-model` rows by id. The timeout row carries `firstChunkIdleTimeoutMs: 120000`; the model row configures `knyazev-ai` at `https://knyazevai.work/v1`, its three shipped models, `high` reasoning, and normal-mode retries capped at 20. The default-model row selects `knyazev-ai/deepseek-v4-flash` and intentionally carries no `reasoningEffort` composition field.
+
+The route stores only the credential reference `apiKeyEnv: KNYAZEV_AI_API_KEY`; the key value remains in the external credentials or environment layer and never enters Git. The user settings document is above this composition base, so partial `llm-pi-ai` or `agent-default-model` settings override matching fields while omitted fields inherit the portable defaults. A profile, home, or `--patch` row still replaces its targeted plugin config wholesale. The bundle does not mount the provider-neutral external-session registry or any Codex provider.
 
 The session-state row waits for the `workspaceRegistry` supplied by a Host surface. This keeps the fork bundle reusable across Host compositions while preserving Loader dependency ordering.
 
@@ -24,7 +26,7 @@ Each capability remains owned by its package and can be removed or replaced inde
 
 #### What the model sees
 
-No prompt section, tool schema, message, or request field is added. The bundle's timeout row changes only the failure path when a provider produces no first result before the configured deadline; the provenance and pin rows remain Host-only.
+No prompt section, tool schema, message, or request field is added. The portable route changes the default provider/model and request endpoint, while the timeout row changes only the failure path when a provider produces no first result before the configured deadline; the provenance and pin rows remain Host-only.
 
 #### Token effect
 
@@ -37,4 +39,6 @@ The mounted packages do not rewrite model-visible input or alter a successful re
 ## Known Limitations and Deferred Work
 
 - The workspace-session row requires a Host composition that provides `workspaceRegistry`; a profile that does not mount that service leaves the row waiting for its declared dependency.
+- `KNYAZEV_AI_API_KEY` must resolve through the process environment or credentials service before a Knyazev AI request can authenticate; a missing value fails the request instead of being committed to the bundle.
+- A user settings section can replace the portable provider or default-model values, and a later patch can replace their complete plugin configs by id.
 - The bundle intentionally leaves external-session provider selection and the Codex integration to a future, explicitly composed overlay.
