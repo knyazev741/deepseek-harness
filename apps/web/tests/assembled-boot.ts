@@ -17,6 +17,8 @@ import { bootInjections, orderByModuleGraph } from '@deepseek-ai/dsh-client-modu
 import type { ClientModuleLoaderTarget, WebBootEntry } from '@deepseek-ai/dsh-client-modules/client'
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
 
+export type AssembledWebProfile = 'web' | 'fork-web'
+
 interface AssembledPlugin extends WebBootEntry {
   /** Absolute path to the built client artifact declared by this package. */
   bundlePath: string
@@ -46,23 +48,141 @@ interface BootComposition {
 }
 
 const REPO_ROOT = process.cwd()
-const BUNDLE_LAYERS = [
-  {
-    manifest: join(REPO_ROOT, 'packages/bundle/base/package.json'),
-    patch: join(REPO_ROOT, 'packages/bundle/base/cordis.patch.yml'),
-  },
-  {
-    manifest: join(REPO_ROOT, 'packages/bundle/web-app/package.json'),
-    patch: join(REPO_ROOT, 'packages/bundle/web-app/cordis.patch.yml'),
-  },
-] as const
-const bundleResolvers = BUNDLE_LAYERS.map(layer => createRequire(layer.manifest))
-const webBundleResolver = bundleResolvers[1]
+const PROFILE_LAYERS: Record<AssembledWebProfile, readonly {
+  manifest: string
+  patch: string
+}[]> = {
+  web: [
+    {
+      manifest: join(REPO_ROOT, 'packages/bundle/base/package.json'),
+      patch: join(REPO_ROOT, 'packages/bundle/base/cordis.patch.yml'),
+    },
+    {
+      manifest: join(REPO_ROOT, 'packages/bundle/web-app/package.json'),
+      patch: join(REPO_ROOT, 'packages/bundle/web-app/cordis.patch.yml'),
+    },
+  ],
+  'fork-web': [
+    {
+      manifest: join(REPO_ROOT, 'packages/bundle/base/package.json'),
+      patch: join(REPO_ROOT, 'packages/bundle/base/cordis.patch.yml'),
+    },
+    {
+      manifest: join(REPO_ROOT, 'packages/bundle/web-app/package.json'),
+      patch: join(REPO_ROOT, 'packages/bundle/web-app/cordis.patch.yml'),
+    },
+    {
+      manifest: join(REPO_ROOT, 'packages/bundle/fork-base/package.json'),
+      patch: join(REPO_ROOT, 'packages/bundle/fork-base/cordis.patch.yml'),
+    },
+    {
+      manifest: join(REPO_ROOT, 'packages/bundle/fork-web/package.json'),
+      patch: join(REPO_ROOT, 'packages/bundle/fork-web/cordis.patch.yml'),
+    },
+  ],
+}
+
+const webBundleResolver = createRequire(PROFILE_LAYERS.web[1]!.manifest)
 if (webBundleResolver === undefined) throw new Error('assembled boot: web bundle resolver missing')
 const appBoot = await import(pathToFileURL(webBundleResolver.resolve('@deepseek-ai/dsh-app-boot')).href) as unknown as BootComposition
 
-function resolvePackageManifest(specifier: string): string | undefined {
-  for (const require of bundleResolvers) {
+/*
+ * The keyless FixtureApiClient predates the fork Host Remote. This browser-only
+ * test seam supplies the generated namespace with an in-memory CAS and marks
+ * one resident fixture row as GitHub Actions. The application still boots the
+ * real built fork bundle; the seam only replaces the unavailable Host calls.
+ */
+const FORK_FIXTURE_PLUGIN_ID = '@deepseek-ai/dsh-fork-web-smoke-fixture'
+const FORK_FIXTURE_PLUGIN_URL = `/plugins/${FORK_FIXTURE_PLUGIN_ID}/client.js?rev=fx`
+const FORK_FIXTURE_PLUGIN_CODE = `window.__ModuleLoader__.load({
+  id: ${JSON.stringify(FORK_FIXTURE_PLUGIN_ID)},
+  factory: (require) => {
+    var module = { exports: {} };
+    var exports = module.exports;
+    Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+    const inject = ["remote", "remote.forkWorkspaceSessionState", "sessions"];
+    function apply(ctx) {
+      ctx.effect(() => {
+        const namespace = ctx.remote.forkWorkspaceSessionState;
+        let revision = 1;
+        let pinnedSessionIds = [];
+        const list = () => Promise.resolve({
+          ok: true,
+          value: { revision, pinnedSessionIds: [...pinnedSessionIds] },
+        });
+        const setPinned = (input) => {
+          pinnedSessionIds = input.pinned
+            ? [...new Set([...pinnedSessionIds, input.sessionId])]
+            : pinnedSessionIds.filter((id) => id !== input.sessionId);
+          revision += 1;
+          return Promise.resolve({
+            ok: true,
+            value: { ok: true, value: { revision, pinnedSessionIds: [...pinnedSessionIds] } },
+          });
+        };
+        const priorList = namespace.list;
+        const priorSetPinned = namespace.setPinned;
+        Object.defineProperty(namespace, "list", { configurable: true, enumerable: true, value: list });
+        Object.defineProperty(namespace, "setPinned", { configurable: true, enumerable: true, value: setPinned });
+
+        const store = ctx.sessions.list;
+        const priorGetSnapshot = store.getSnapshot;
+        let rawSnapshot;
+        let projectedSnapshot;
+        const getSnapshot = () => {
+          const snapshot = priorGetSnapshot();
+          if (snapshot === rawSnapshot) return projectedSnapshot;
+          rawSnapshot = snapshot;
+          const candidate = snapshot.byId["fx-beta"];
+          if (candidate === undefined) {
+            projectedSnapshot = snapshot;
+            return projectedSnapshot;
+          }
+          projectedSnapshot = {
+            ...snapshot,
+            byId: {
+              ...snapshot.byId,
+              "fx-beta": {
+                ...candidate,
+                projectionValues: {
+                  ...candidate.projectionValues,
+                  forkSessionSource: "github-actions",
+                },
+              },
+            },
+          };
+          return projectedSnapshot;
+        };
+        Object.defineProperty(store, "getSnapshot", { configurable: true, value: getSnapshot });
+        return () => {
+          Object.defineProperty(namespace, "list", { configurable: true, enumerable: true, value: priorList });
+          Object.defineProperty(namespace, "setPinned", { configurable: true, enumerable: true, value: priorSetPinned });
+          Object.defineProperty(store, "getSnapshot", { configurable: true, value: priorGetSnapshot });
+        };
+      }, "fork-web smoke: fixture Host overlay");
+    }
+    exports.inject = inject;
+    exports.apply = apply;
+    return module.exports;
+  }
+});`
+
+function profileLayers(profile: AssembledWebProfile): readonly {
+  manifest: string
+  patch: string
+}[] {
+  return PROFILE_LAYERS[profile]
+}
+
+function profileResolvers(profile: AssembledWebProfile): ReturnType<typeof createRequire>[] {
+  return profileLayers(profile).map(layer => createRequire(layer.manifest))
+}
+
+function resolvePackageManifest(
+  specifier: string,
+  resolvers: readonly ReturnType<typeof createRequire>[],
+): string | undefined {
+  for (const require of resolvers) {
     try {
       return require.resolve(`${specifier}/package.json`)
     } catch {
@@ -82,13 +202,15 @@ function resolveClientExport(packagePath: string, pkg: ClientPackageManifest): s
 }
 
 /** Derive the assembled browser graph from the same bundle patches and package declarations as `dsh web`. */
-function loadAssembledPlugins(): readonly AssembledPlugin[] {
-  const entries = appBoot.composeEntries(BUNDLE_LAYERS.map(layer =>
+function loadAssembledPlugins(profile: AssembledWebProfile): readonly AssembledPlugin[] {
+  const layers = profileLayers(profile)
+  const resolvers = profileResolvers(profile)
+  const entries = appBoot.composeEntries(layers.map(layer =>
     appBoot.loadOverlayPatches('assembled boot', layer.patch)))
   const plugins = new Map<string, AssembledPlugin>()
   for (const entry of entries) {
     if (entry.disabled === true || typeof entry.name !== 'string') continue
-    const packagePath = resolvePackageManifest(entry.name)
+    const packagePath = resolvePackageManifest(entry.name, resolvers)
     if (packagePath === undefined) continue
     const pkg = JSON.parse(readFileSync(packagePath, 'utf8')) as ClientPackageManifest
     const declaration = pkg.dsh?.client
@@ -106,6 +228,15 @@ function loadAssembledPlugins(): readonly AssembledPlugin[] {
       ...(declaration.immediately === true ? { immediately: true } : {}),
     })
   }
+  if (profile === 'fork-web') {
+    plugins.set(FORK_FIXTURE_PLUGIN_ID, {
+      id: FORK_FIXTURE_PLUGIN_ID,
+      bundlePath: '',
+      url: FORK_FIXTURE_PLUGIN_URL,
+      rev: 'fx',
+      inject: ['remote', 'remote.forkWorkspaceSessionState', 'sessions'],
+    })
+  }
   return orderByModuleGraph([...plugins.values()]).map(({ id }) => {
     const plugin = plugins.get(id)
     /* v8 ignore next -- orderByModuleGraph returns the input row identities */
@@ -114,12 +245,18 @@ function loadAssembledPlugins(): readonly AssembledPlugin[] {
   })
 }
 
-const PLUGINS = loadAssembledPlugins()
+const DEFAULT_PLUGINS = loadAssembledPlugins('web')
 
-const bundles = new Map(PLUGINS.map(plugin => [
-  plugin.url,
-  readFileSync(plugin.bundlePath, 'utf8'),
-]))
+function loadBundles(
+  plugins: readonly AssembledPlugin[],
+): ReadonlyMap<string, string> {
+  return new Map(plugins.map(plugin => [
+    plugin.url,
+    plugin.id === FORK_FIXTURE_PLUGIN_ID
+      ? FORK_FIXTURE_PLUGIN_CODE
+      : readFileSync(plugin.bundlePath, 'utf8'),
+  ]))
+}
 
 interface FixtureWindow extends Window {
   __DSH_BOOT__?: { rev: string; entries: WebBootEntry[] }
@@ -188,18 +325,24 @@ export function installAssembledBootEnv(): void {
  * registered by installAssembledBootEnv disposes it.
  * @param search - fixture query string used to select deterministic host behavior.
  */
-export function mountAssembledApp(search = '?fixture'): void {
+export function mountAssembledApp(
+  searchOrOptions: string | { search?: string; profile?: AssembledWebProfile } = '?fixture',
+): void {
+  const search = typeof searchOrOptions === 'string' ? searchOrOptions : searchOrOptions.search ?? '?fixture'
+  const profile = typeof searchOrOptions === 'string' ? 'web' : searchOrOptions.profile ?? 'web'
+  const plugins = profile === 'web' ? DEFAULT_PLUGINS : loadAssembledPlugins(profile)
+  const bundles = loadBundles(plugins)
   history.replaceState(null, '', `/${search}`)
   const root = document.createElement('div')
   root.id = 'root'
   document.body.appendChild(root)
-  win.__DSH_BOOT__ = { rev: 'fx', entries: PLUGINS.map(({ bundlePath: _bundlePath, ...plugin }) => plugin) }
+  win.__DSH_BOOT__ = { rev: 'fx', entries: plugins.map(({ bundlePath: _bundlePath, ...plugin }) => plugin) }
   const [facadeRow] = bootInjections(win.__DSH_BOOT__)
   if (facadeRow?.kind !== 'script') throw new Error('missing injected ModuleLoader facade row')
   ;(0, eval)(facadeRow.text)
   // Mirror the blocking Host-injected scripts before the Vite entry calls create().
   for (const id of ['@deepseek-ai/dsh-client-modules', '@deepseek-ai/dsh-client-runtime']) {
-    const plugin = PLUGINS.find(candidate => candidate.id === id)
+    const plugin = plugins.find(candidate => candidate.id === id)
     if (plugin === undefined) throw new Error(`missing parser-preloaded fixture row ${id}`)
     const code = bundles.get(plugin.url)
     if (code === undefined) throw new Error(`missing built bundle ${plugin.url}`)
