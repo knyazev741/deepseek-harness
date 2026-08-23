@@ -117,6 +117,7 @@ flowchart TD
   subgraph group_bundle["packages/bundle"]
     pkg_base["base"]
     pkg_fork_base["fork-base"]
+    pkg_fork_web["fork-web"]
     pkg_headless["headless"]
     pkg_web_app["web-app"]
   end
@@ -355,6 +356,7 @@ flowchart TD
   pkg_cmdline --> pkg_invariants
   pkg_base --> pkg_invariants
   pkg_fork_base --> pkg_invariants
+  pkg_fork_web --> pkg_invariants
   pkg_client_ui_primitives --> pkg_invariants
   pkg_client_ui_slots --> pkg_invariants
   pkg_client_web --> pkg_invariants
@@ -1506,6 +1508,7 @@ flowchart TD
 | [`cmdline`](../packages/boot/cmdline) | `boot` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`base`](../packages/bundle/base) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`fork-base`](../packages/bundle/fork-base) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`fork-web`](../packages/bundle/fork-web) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-ui-primitives`](../packages/client/ui-primitives) | `client` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-ui-slots`](../packages/client/ui-slots) | `client` | [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-web`](../packages/client/web) | `client` | [`invariants`](../packages/runtime-diagnostics/invariants) |

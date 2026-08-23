@@ -34,7 +34,7 @@
 - `packages/fork/ui-workspace-overlay/`：所有 fork workspace 行为和展示。
 - `packages/bundle/fork-web/`：添加 fork-base 和浏览器插件 row 的组合层。
 - `scripts/verify-web-composition.ts`：干净的 built-artifact CSS/bootstrap/plugin-roster 验证器。
-- `packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`：已组合浏览器交互证明。
+- `apps/web/tests/fork-web-smoke.snapshot.ts`：已组合浏览器交互证明。
 
 ### 任务 1：建立完整的上游 client 基线
 
@@ -345,7 +345,7 @@ git commit -m "test(web): verify assembled compositions"
 ### 任务 6：添加 built browser smoke
 
 **文件：**
-- 创建：`packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+- 创建：`apps/web/tests/fork-web-smoke.snapshot.ts`
 - 仅在需要选择 `fork-web` 时修改：`vitest.web.config.ts` 或现有 Web snapshot fixture registry。
 - 修改：`.fork/features.yaml`
 
@@ -359,7 +359,7 @@ git commit -m "test(web): verify assembled compositions"
 
 - [ ] **步骤 2：运行并确认 RED**
 
-运行：`pnpm run test:web:built -- packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+运行：`pnpm run test:web:built -- apps/web/tests/fork-web-smoke.snapshot.ts`
 
 预期：失败，直到 built fixture 能够选择 fork profile。
 
@@ -373,7 +373,7 @@ git commit -m "test(web): verify assembled compositions"
 
 运行：`pnpm run verify-web-composition -- --profile fork-web`
 
-运行：`pnpm run test:web:built -- packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+运行：`pnpm run test:web:built -- apps/web/tests/fork-web-smoke.snapshot.ts`
 
 运行：`pnpm run website:build`
 
@@ -382,7 +382,7 @@ git commit -m "test(web): verify assembled compositions"
 - [ ] **步骤 5：提交**
 
 ```bash
-git add packages/client/web-react/tests/fork-web-smoke.client.spec.tsx vitest.web.config.ts .fork/features.yaml
+git add apps/web/tests/fork-web-smoke.snapshot.ts vitest.web.config.ts .fork/features.yaml
 git commit -m "test(web): prove fork overlay interaction"
 ```
 

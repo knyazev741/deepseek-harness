@@ -10,7 +10,7 @@
 
 ## Model Experience
 
-没有直接影响。该覆盖层只改变工作区导航和浏览器本地控件；置顶 mutation 是持久化 UI 状态，不会添加模型可见的 prompt 或 transcript 内容。
+无，因为仅浏览器侧的覆盖层只改变工作区控件，不提供模型上下文。
 
 #### KV Cache effect
 

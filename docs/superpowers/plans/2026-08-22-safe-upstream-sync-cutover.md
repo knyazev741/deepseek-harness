@@ -382,7 +382,7 @@ Run: `pnpm run verify-web-composition -- --profile web`
 
 Run: `pnpm run verify-web-composition -- --profile fork-web`
 
-Run: `pnpm run test:web:built -- packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+Run: `pnpm run test:web:built -- apps/web/tests/fork-web-smoke.snapshot.ts`
 
 Run: `pnpm run doc-sync`
 

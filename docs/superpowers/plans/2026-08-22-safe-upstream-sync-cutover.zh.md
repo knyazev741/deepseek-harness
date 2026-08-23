@@ -382,7 +382,7 @@ git commit -m "test(sync): simulate overlay merge failures"
 
 运行：`pnpm run verify-web-composition -- --profile fork-web`
 
-运行：`pnpm run test:web:built -- packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+运行：`pnpm run test:web:built -- apps/web/tests/fork-web-smoke.snapshot.ts`
 
 运行：`pnpm run doc-sync`
 

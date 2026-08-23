@@ -1888,8 +1888,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     key: 'workspace.session-row.actions',
     kind: 'list',
     scope: 'root',
-    summary: 'Row actions contributed by registrants; each receives the session/workspace owner context, and an empty list leaves the row without actions.',
-    doc: 'Row actions contributed by registrants; each receives the session/workspace owner context, and an empty list leaves the row without actions.',
+    summary: 'Row actions contributed by registrants; each receives the session/workspace owner context.',
+    doc: 'Row actions contributed by registrants; each receives the session/workspace owner context. */\n/** An empty list leaves the row without actions.',
     registerOptions: [
       {
         name: 'id',
@@ -1932,14 +1932,14 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'workspace.session-row.actions\', () => ctx.slots.register(\n      { name: \'workspace.session-row.actions\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:64',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:66',
   },
   {
     key: 'workspace.session-row.badges',
     kind: 'list',
     scope: 'root',
-    summary: 'Row badges contributed by registrants; each receives the session/workspace owner context, and an empty list leaves the row without badges.',
-    doc: 'Row badges contributed by registrants; each receives the session/workspace owner context, and an empty list leaves the row without badges.',
+    summary: 'Row badges contributed by registrants; each receives the session/workspace owner context.',
+    doc: 'Row badges contributed by registrants; each receives the session/workspace owner context. */\n/** An empty list leaves the row without badges.',
     registerOptions: [
       {
         name: 'id',
@@ -1980,7 +1980,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'workspace.session-row.badges\', () => ctx.slots.register(\n      { name: \'workspace.session-row.badges\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:62',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:63',
   },
 ]
 /* jscpd:ignore-end */

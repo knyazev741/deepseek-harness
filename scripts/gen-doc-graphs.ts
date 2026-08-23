@@ -240,6 +240,21 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns WorkspaceId-branded records over the domain facility; stable sessionIds accounts drive Host RPC and GUI projections.',
   },
   {
+    key: 'externalSessions',
+    pkg: 'external-session',
+    title: 'External-session provider registry',
+    mode: 'seam',
+    note: 'Registers explicitly composed external-session providers by mode; transports, permissions, and transcript policy remain owned by each provider package.',
+  },
+  {
+    key: 'forkWorkspaceSessionState',
+    pkg: 'workspace-session-state',
+    title: 'Fork workspace session state',
+    mode: 'core',
+    consumers: ['ui-workspace-overlay'],
+    note: 'Persists the ordered global pin list and exposes the compare-and-set Host Remote consumed by the opt-in browser overlay.',
+  },
+  {
     key: 'sessionQuery',
     pkg: 'session-query',
     title: 'Session reads, traces, filters, and search',

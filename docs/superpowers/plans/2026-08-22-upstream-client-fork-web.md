@@ -34,7 +34,7 @@ English | [中文](2026-08-22-upstream-client-fork-web.zh.md)
 - `packages/fork/ui-workspace-overlay/`: all fork workspace behavior and presentation.
 - `packages/bundle/fork-web/`: composition layer adding fork-base and browser plugin rows.
 - `scripts/verify-web-composition.ts`: clean built-artifact CSS/bootstrap/plugin-roster verifier.
-- `packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`: assembled browser interaction proof.
+- `apps/web/tests/fork-web-smoke.snapshot.ts`: assembled browser interaction proof.
 
 ### Task 1: Establish the complete upstream client baseline
 
@@ -345,7 +345,7 @@ git commit -m "test(web): verify assembled compositions"
 ### Task 6: Add the built browser smoke
 
 **Files:**
-- Create: `packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+- Create: `apps/web/tests/fork-web-smoke.snapshot.ts`
 - Modify: `vitest.web.config.ts` or the existing Web snapshot fixture registry only where required to select `fork-web`.
 - Modify: `.fork/features.yaml`
 
@@ -359,7 +359,7 @@ For `web`, boot the built application, create/open a session, type `hello`, subm
 
 - [ ] **Step 2: Run and confirm RED**
 
-Run: `pnpm run test:web:built -- packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+Run: `pnpm run test:web:built -- apps/web/tests/fork-web-smoke.snapshot.ts`
 
 Expected: FAIL until the built fixture can select the fork profile.
 
@@ -373,7 +373,7 @@ Run: `pnpm run verify-web-composition -- --profile web`
 
 Run: `pnpm run verify-web-composition -- --profile fork-web`
 
-Run: `pnpm run test:web:built -- packages/client/web-react/tests/fork-web-smoke.client.spec.tsx`
+Run: `pnpm run test:web:built -- apps/web/tests/fork-web-smoke.snapshot.ts`
 
 Run: `pnpm run website:build`
 
@@ -382,7 +382,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/client/web-react/tests/fork-web-smoke.client.spec.tsx vitest.web.config.ts .fork/features.yaml
+git add apps/web/tests/fork-web-smoke.snapshot.ts vitest.web.config.ts .fork/features.yaml
 git commit -m "test(web): prove fork overlay interaction"
 ```
 

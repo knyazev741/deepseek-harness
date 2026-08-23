@@ -10,7 +10,7 @@ Read watermarks persist only under `dsh.fork.workspaceReadWatermarks.v1` and rej
 
 ## Model Experience
 
-None directly. The overlay changes Workspace navigation and browser-local controls; pin mutations are durable UI state and do not add prompt or transcript content visible to the model.
+None, as the browser-only overlay changes Workspace controls and contributes no model context.
 
 #### KV Cache effect
 
