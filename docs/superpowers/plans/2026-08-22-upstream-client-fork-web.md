@@ -20,6 +20,7 @@ English | [中文](2026-08-22-upstream-client-fork-web.zh.md)
 - Client feature packages register through `ctx.effect()`, `ctx.slots.inject()`, or documented Client services and dispose synchronously.
 - General extension patches preserve byte-for-byte observable upstream behavior when no contributor is mounted.
 - Extension patch budget: at most 6 upstream ui-workspace source files and 260 changed lines, including tests but excluding generated catalogs.
+- The only upstream client change outside `ui-workspace` is the generic `SessionSummary.projectionAsOfSeq` projection-watermark seam in `packages/client/runtime`; it contains no fork behavior and preserves the Host projection cut needed by browser-local unread state.
 - The fork UI package never imports a private file from an upstream client package.
 - The default upstream Web bundle contains no fork row and passes its own built proof.
 
@@ -388,7 +389,7 @@ git commit -m "test(web): prove fork overlay interaction"
 
 ## Plan 3 Acceptance
 
-- `git diff "$(tr -d '\n' < .fork/migration/upstream-commit)" -- packages/client` contains only the bounded ui-workspace extension patch; fork client code lives under `packages/fork/`.
+- `git diff "$(tr -d '\n' < .fork/migration/upstream-commit)" -- packages/client` contains the bounded ui-workspace extension patch plus the one generic projection-watermark seam described above; fork client behavior lives under `packages/fork/`.
 - Legacy `ui-session-mode` and all Codex transcript UI are absent.
 - Upstream `web` has no fork plugin and passes CSS/bootstrap/input/settings evidence.
 - `fork-web` adds the fork roster and passes the same evidence plus workspace actions.

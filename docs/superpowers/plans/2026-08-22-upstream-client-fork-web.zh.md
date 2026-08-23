@@ -20,6 +20,7 @@
 - Client feature 包通过 `ctx.effect()`、`ctx.slots.inject()` 或记录在案的 Client service 注册，并同步 dispose。
 - 没有 contributor 挂载时，通用扩展 patch 保持上游可观察行为逐字节不变。
 - Extension patch 预算：最多 6 个上游 ui-workspace source 文件和 260 行变更，包括测试但不包括生成 catalog。
+- 唯一位于 `ui-workspace` 之外的上游 client 变更，是 `packages/client/runtime` 中通用的 `SessionSummary.projectionAsOfSeq` projection-watermark seam；它不包含 fork 行为，并保留浏览器本地未读状态所需的 Host projection cut。
 - Fork UI 包绝不从上游 client 包导入私有文件。
 - 默认上游 Web bundle 不包含 fork row，并通过自身的 built proof。
 
@@ -388,7 +389,7 @@ git commit -m "test(web): prove fork overlay interaction"
 
 ## Plan 3 验收
 
-- `git diff "$(tr -d '\n' < .fork/migration/upstream-commit)" -- packages/client` 只包含有界的 ui-workspace extension patch；fork client 代码位于 `packages/fork/` 下。
+- `git diff "$(tr -d '\n' < .fork/migration/upstream-commit)" -- packages/client` 包含有界的 ui-workspace extension patch 以及上文所述的一个通用 projection-watermark seam；fork client 行为位于 `packages/fork/` 下。
 - 旧的 `ui-session-mode` 和所有 Codex transcript UI 都不存在。
 - 上游 `web` 不包含 fork plugin，并通过 CSS/bootstrap/input/settings 证据。
 - `fork-web` 添加 fork roster，并通过相同证据以及 workspace action。

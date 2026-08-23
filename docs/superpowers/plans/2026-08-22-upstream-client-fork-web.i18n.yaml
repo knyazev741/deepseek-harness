@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/superpowers/plans/2026-08-22-upstream-client-fork-web.md
-2026-08-22-upstream-client-fork-web.md: 95b4826b7b9e2c754faec1fa2caefbc2f46a440b
-2026-08-22-upstream-client-fork-web.zh.md: dfcc751234ff32aac300095fef44b78deaf8c4c3
+2026-08-22-upstream-client-fork-web.md: ee41680a3487862cd8812d0d3453f99a78e2655c
+2026-08-22-upstream-client-fork-web.zh.md: 83e1b3200e9930a58b46057dde519041a5bc1fba
