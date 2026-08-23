@@ -426,11 +426,16 @@ describe('compactNow transaction and failure classification', () => {
       maxSummarizationInputTokens: 600,
     })
     const session = closedConversation(8)
-    const agent = fakeAgent(session, () => () => undefined)
+    let maintenanceRuns = 0
+    const agent = fakeAgent(session, () => {
+      maintenanceRuns += 1
+      return () => undefined
+    })
 
     const result = await compact.compactNow(agent, SIGNAL)
 
     expect(result).not.toBeNull()
+    expect(maintenanceRuns).toBe(1)
     // Sixteen ~368-token messages at a 600-token budget need several bounded
     // passes; each pass flushes its own standalone bracket.
     expect(flushes()).toBeGreaterThan(1)
@@ -446,6 +451,34 @@ describe('compactNow transaction and failure classification', () => {
     const markers = compactEvents(session)
     expect(markers.filter(event => event.type === 'compaction/start')).toHaveLength(flushes())
     expect(markers.filter(event => event.type === 'compaction/end')).toHaveLength(flushes())
+  })
+
+  it('stops at a prior checkpoint without another summarizer call or bracket', async () => {
+    const { compact, flushes } = detachedService({
+      auto: false,
+      maxSummarizationInputTokens: 1,
+    })
+    const session = closedConversation(3)
+    let maintenanceRuns = 0
+    const agent = fakeAgent(session, () => {
+      maintenanceRuns += 1
+      return () => undefined
+    })
+
+    const result = await compact.compactNow(agent, SIGNAL)
+
+    expect(result).not.toBeNull()
+    // The first bounded pass leaves its checkpoint at the head. The next
+    // selection is terminal prior-checkpoint content and must return without
+    // opening another transaction inside the same maintenance reservation.
+    expect(maintenanceRuns).toBe(1)
+    expect(compact.calls).toHaveLength(1)
+    expect(flushes()).toBe(1)
+    expect(compactEvents(session).map(event => event.type)).toEqual([
+      'compaction/start',
+      'compaction/summary',
+      'compaction/end',
+    ])
   })
 
   it('falls back to the service-wide policy when the agent has no target', async () => {

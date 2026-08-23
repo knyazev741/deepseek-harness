@@ -882,6 +882,30 @@ describe('bounded summarization input', () => {
       expect(summarizedText(call.input)).not.toContain('fixture user 20')
     }
   })
+
+  it('uses an unlimited input budget on the real pressure compaction path', async () => {
+    const ctx = createContext(100_000)
+    const compact = service({
+      auto: false,
+      thresholdRatio: 0.8,
+      retainTokens: 300,
+      maxSummarizationInputTokens: 0,
+      compactionRetries: 6,
+    }, ctx)
+    const session = conversation(20, 'fixture '.repeat(5_000).trim())
+
+    const result = await compactIfNeeded(compact, session)
+
+    expect(result).not.toBeNull()
+    expect(compact.calls).toHaveLength(1)
+    const input = compact.calls[0]!.input
+    // The zero policy must replay the whole selected head even when it is
+    // larger than the finite default budget; a finite pass would stop earlier.
+    expect(input.messages.length).toBeGreaterThan(20)
+    expect(summarizedText(input)).toContain('fixture user 19')
+    expect(summarizedText(input)).toContain('fixture assistant 19')
+    expect(summarizedText(input)).toContain('fixture user 20')
+  })
 })
 
 describe('optional model-free tool-result pruning', () => {
