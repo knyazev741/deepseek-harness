@@ -88,3 +88,28 @@ Tests, README updates, the report, and the bilingual Agent Note are outside this
 ### Concerns
 
 The focused callback-failure tests intentionally emit React error stacks while asserting that failures are surfaced; the test processes exit successfully. No fork UI behavior was changed.
+
+## Review fix round 2
+
+### Loader composition evidence
+
+The prior applied-runtime test mounted `ctx.plugin` directly, so it did not prove the browser package entry can be composed through the repository's Cordis loader path. Added a static `cordis.yml` fixture with the real package id (`@deepseek-ai/dsh-client-ui-workspace`) and a test-only contributor id. The Loader resolves that config through `cordis:include`; the module table maps the package id to the package's public `/client` entry namespace, matching the client module system's bare-id convention rather than importing a `src` path. The test proves the runtime service publishes the contributor view, removes it when the contributor entry is removed, and tears down `workspaceContributions` when the composed root is disposed.
+
+The source patch remains unchanged: six source files and exactly 260 changed source lines against the selected upstream parent. The new loader fixture and test are outside that budget.
+
+### Review-fix commands and results
+
+- `node_modules/.bin/vitest run packages/client/ui-workspace/tests/apply.client.spec.ts` — PASS, 1 file and 8 tests; includes the real Loader/cordis.yml composition test.
+- `node_modules/.bin/vitest run packages/client/ui-workspace/tests` — PASS, 9 files and 137 tests. Expected comparator/predicate callback diagnostics were emitted while their surfacing assertions passed.
+- `node_modules/.bin/tsc -p packages/client/ui-workspace/tsconfig.json --noEmit` — PASS.
+- `node_modules/.bin/oxlint` on the six changed source files plus `tests/contributions.client.spec.tsx` and `tests/apply.client.spec.ts` — PASS.
+- `pnpm run verify-export-jsdoc` — PASS.
+- `pnpm run verify-translation-pairing packages/client/ui-workspace/README.md` — PASS.
+- `pnpm run verify-translation-pairing .agents/notes/implemented/architecture/2026-08-23-workspace-list-contributions.md` — PASS.
+- `pnpm run verify-agent-note-format .agents/notes/implemented/architecture/2026-08-23-workspace-list-contributions.md` — PASS.
+- `BASE=b150a551b8d465e31e418e1b2eaf5e79bbb7d28e; git diff --numstat "$BASE" -- packages/client/ui-workspace/src` — PASS: six files, 230 additions and 30 deletions, 260 changed lines.
+- `git diff --check HEAD` — PASS.
+
+### Review-fix concerns
+
+The Loader fixture intentionally uses the repository's package `/client` export as the module-table value while the config retains the bare package id used by browser boot; it does not exercise a built bundle transport. No fork UI behavior was changed.

@@ -1,8 +1,11 @@
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
+import Include from '@deepseek-ai/cordis-plugin-include'
+import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import * as workspaceClient from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { WorkspaceListView } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
@@ -132,6 +135,53 @@ describe('ui-workspace apply', () => {
     expect(browser.hooks.views.getSnapshot()).toEqual([view])
     await contributor.dispose()
     expect(browser.hooks.views.getSnapshot()).toEqual([])
+  })
+
+  it('composes the package client entry through Loader and cordis.yml', async () => {
+    const b = await bench()
+    declare(b.slots, 'sidebar.workspaces')
+    const view: WorkspaceListView = { id: 'loader-view', order: 0, label: 'Loader', include: () => true }
+    const contributor = {
+      inject: ['workspaceContributions'],
+      apply: (scope: { workspaceContributions: { registerView(value: WorkspaceListView): () => void } }) => {
+        scope.workspaceContributions.registerView(view)
+      },
+    }
+    let disposed = false
+    try {
+      const configUrl = new URL('./fixtures/loader-composition/cordis.yml', import.meta.url)
+      b.ctx.baseUrl = new URL('./fixtures/loader-composition/', import.meta.url).href
+      await b.ctx.plugin(Loader)
+      b.ctx.loader.builtins.include = Include
+      const modules = new Map<string, unknown>([
+        ['@deepseek-ai/dsh-client-ui-workspace', workspaceClient],
+        ['@fixture/workspace-contributor', contributor],
+      ])
+      b.ctx.loader.internal = {
+        version: 'v2',
+        async import(specifier: string) {
+          if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
+          return modules.get(specifier)
+        },
+      } as unknown as NonNullable<typeof b.ctx.loader.internal>
+      await b.ctx.loader.create({ name: 'cordis:include', config: { path: configUrl.href } })
+      await b.ctx.loader.await()
+
+      const service = b.ctx.workspaceContributions
+      expect(service.views.getSnapshot()).toEqual([view])
+      const contributorEntry = [...b.ctx.loader.entries()].find(
+        entry => entry.options.name === '@fixture/workspace-contributor',
+      )
+      if (contributorEntry === undefined) throw new Error('Loader did not mount the workspace contributor')
+      await contributorEntry.parent.remove(contributorEntry.options.id)
+      expect(service.views.getSnapshot()).toEqual([])
+
+      await b.ctx.fiber.dispose()
+      disposed = true
+      expect(b.ctx.get('workspaceContributions')).toBeUndefined()
+    } finally {
+      if (!disposed) await b.ctx.fiber.dispose()
+    }
   })
 
   it('declares the two directory-flow holes and reports their occupancy per surface', async () => {
