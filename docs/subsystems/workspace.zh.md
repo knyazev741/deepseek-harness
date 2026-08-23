@@ -149,6 +149,31 @@ abstract capability(): DirectoryPickerCapability
 
 Source: [`packages/host/directory-picker/src/index.ts`](../../packages/host/directory-picker/src/index.ts)
 
+<a id="ctxforkworkspacesessionstate--forkworkspacesessionstate"></a>
+
+### `ctx.forkWorkspaceSessionState` — `ForkWorkspaceSessionState`
+
+Persisted global pin list with serialized mutations and a generated Remote face.
+
+```ts cordis-catalog
+/**
+ * Read the ordered pin list and the Settings descriptor revision.
+ * @returns a detached view of the persisted pin list.
+ */
+@Remote('list') list(): Promise<ForkWorkspaceSessionStateView>
+
+/**
+ * Set one session's global pin state with an optimistic Settings revision.
+ * Unknown sessions and revision races are returned as typed results because
+ * thrown method errors become generic Remote `internal` failures.
+ * @param input - session id, desired pin state, and observed Settings revision.
+ * @returns the committed view or one expected business rejection.
+ */
+@Remote('setPinned') setPinned(input: ForkWorkspaceSessionStateSetPinnedInput): Promise<ForkWorkspaceSessionStateSetResult>
+```
+
+Source: [`packages/fork/workspace-session-state/src/index.ts`](../../packages/fork/workspace-session-state/src/index.ts)
+
 <a id="ctxworkspaceregistry--workspaceregistry"></a>
 
 ### `ctx.workspaceRegistry` — `WorkspaceRegistry`

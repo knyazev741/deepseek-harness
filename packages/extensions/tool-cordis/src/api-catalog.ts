@@ -715,6 +715,26 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'externalSessions',
+    summary: 'Effect-owned registry for external-session providers.',
+    description: 'Effect-owned registry for external-session providers.\n\nThe service is intentionally valid with zero registrations. A provider package must explicitly compose itself and contribute its mode type; this registry never selects or mounts a default implementation.',
+    methods: [
+      {
+        signature: 'register<Mode extends ExternalSessionMode>(mode: Mode, provider: ExternalSessionProvider<Mode>): () => void',
+        description: 'Register one provider under its unique mode id.',
+        parameters: [{ name: 'mode', description: 'provider mode declared in {@link ExternalSessionModeMap}.' }, { name: 'provider', description: 'implementation owned by the registering plugin.' }],
+        returns: 'a disposer that removes this exact registration.',
+      },
+      {
+        signature: 'lookup<Mode extends ExternalSessionMode>(mode: Mode): ExternalSessionProvider<Mode>',
+        description: 'Resolve a provider for a mode and fail explicitly when it is absent.',
+        parameters: [{ name: 'mode', description: 'provider mode declared in {@link ExternalSessionModeMap}.' }],
+        returns: 'the provider registered for `mode`.',
+        throws: ['`Error` when no provider owns `mode`.'],
+      },
+    ],
+  },
+  {
     key: 'fileReferences',
     summary: 'Host capability for cancellable file-reference discovery.',
     description: 'Host capability for cancellable file-reference discovery.',
@@ -730,6 +750,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Remote face of list; the decorator cannot mark the abstract member, so this concrete adapter carries the identical contract.',
         parameters: [{ name: 'agent', description: 'target agent whose session cwd bounds discovery.' }, { name: 'query', description: 'path text following `@` or `@"`.' }, { name: 'signal', description: 'caller cancellation.' }],
         returns: 'deterministic path-only candidates.',
+      },
+    ],
+  },
+  {
+    key: 'forkWorkspaceSessionState',
+    summary: 'Persisted global pin list with serialized mutations and a generated Remote face.',
+    description: 'Persisted global pin list with serialized mutations and a generated Remote face.',
+    methods: [
+      {
+        signature: '@Remote(\'list\') list(): Promise<ForkWorkspaceSessionStateView>',
+        description: 'Read the ordered pin list and the Settings descriptor revision.',
+        parameters: [],
+        returns: 'a detached view of the persisted pin list.',
+      },
+      {
+        signature: '@Remote(\'setPinned\') setPinned(input: ForkWorkspaceSessionStateSetPinnedInput): Promise<ForkWorkspaceSessionStateSetResult>',
+        description: 'Set one session\'s global pin state with an optimistic Settings revision. Unknown sessions and revision races are returned as typed results because thrown method errors become generic Remote `internal` failures.',
+        parameters: [{ name: 'input', description: 'session id, desired pin state, and observed Settings revision.' }],
+        returns: 'the committed view or one expected business rejection.',
       },
     ],
   },
@@ -3338,6 +3377,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
   },
   {
+    name: 'ExternalSessionMode',
+    declaration: 'export type ExternalSessionMode = Extract<keyof ExternalSessionModeMap, string>;',
+  },
+  {
+    name: 'ExternalSessionModeMap',
+    declaration: 'export interface ExternalSessionModeMap {\n}',
+  },
+  {
+    name: 'ExternalSessionProvider',
+    declaration: 'export type ExternalSessionProvider<Mode extends ExternalSessionMode> = ExternalSessionModeMap[Mode];',
+  },
+  {
     name: 'FileDiff',
     declaration: 'export interface FileDiff {\n    path: string;\n    oldText: string | null;\n    newText: string;\n}',
   },
@@ -3356,6 +3407,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FinishReasonMap',
     declaration: 'export interface FinishReasonMap {\n    \'stop\': {\n        kind: \'stop\';\n    };\n    \'tool-calls\': {\n        kind: \'tool-calls\';\n    };\n    \'max-tokens\': {\n        kind: \'max-tokens\';\n    };\n    \'aborted\': {\n        kind: \'aborted\';\n        failure: LlmFailure;\n    };\n    \'error\': {\n        kind: \'error\';\n        failure: LlmFailure;\n    };\n}',
+  },
+  {
+    name: 'ForkWorkspaceSessionStateConflict',
+    declaration: 'export interface ForkWorkspaceSessionStateConflict {\n    readonly code: \'revision-conflict\';\n    readonly current: ForkWorkspaceSessionStateView;\n}',
+  },
+  {
+    name: 'ForkWorkspaceSessionStateSetPinnedInput',
+    declaration: 'export interface ForkWorkspaceSessionStateSetPinnedInput {\n    readonly sessionId: SessionId;\n    readonly pinned: boolean;\n    readonly expectedRevision: number;\n}',
+  },
+  {
+    name: 'ForkWorkspaceSessionStateSetResult',
+    declaration: 'export type ForkWorkspaceSessionStateSetResult = {\n    readonly ok: true;\n    readonly value: ForkWorkspaceSessionStateView;\n} | {\n    readonly ok: false;\n    readonly error: ForkWorkspaceSessionStateConflict | ForkWorkspaceSessionStateUnknownSession;\n};',
+  },
+  {
+    name: 'ForkWorkspaceSessionStateUnknownSession',
+    declaration: 'export interface ForkWorkspaceSessionStateUnknownSession {\n    readonly code: \'session-not-in-workspace\';\n    readonly sessionId: SessionId;\n}',
+  },
+  {
+    name: 'ForkWorkspaceSessionStateView',
+    declaration: 'export interface ForkWorkspaceSessionStateView {\n    readonly revision: number;\n    readonly pinnedSessionIds: readonly SessionId[];\n}',
   },
   {
     name: 'FsDirEntry',
@@ -4939,7 +5010,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'WebBootEntry',
-    declaration: 'export interface WebBootEntry {\n    id: string;\n    url: string;\n    rev: string;\n    inject?: string[];\n    immediately?: boolean;\n    external?: string[];\n}',
+    declaration: 'export interface WebBootEntry {\n    id: string;\n    url: string;\n    rev: string;\n    inject?: string[];\n    immediately?: boolean;\n}',
   },
   {
     name: 'WebBootGraph',

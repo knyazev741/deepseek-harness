@@ -29,7 +29,7 @@ function deferredSignal(): DeferredSignal {
 class MemorySettings extends SettingsProvider {
   readonly doc: Record<string, unknown>
   readonly writes: Array<{ ns: string; section: Record<string, unknown> }> = []
-  readonly failure?: Error
+  readonly failure: Error | undefined
 
   constructor(ctx: Context, config?: { doc?: Record<string, unknown>; failure?: Error }) {
     super(ctx)
@@ -90,7 +90,11 @@ async function setup(options: {
 }> {
   const ctx = new Context()
   activeContexts.push(ctx)
-  const settingsFiber = ctx.plugin(MemorySettings, { doc: options.doc, failure: options.failure })
+  const settingsConfig = {
+    ...(options.doc === undefined ? {} : { doc: options.doc }),
+    ...(options.failure === undefined ? {} : { failure: options.failure }),
+  }
+  const settingsFiber = ctx.plugin(MemorySettings, settingsConfig)
   await settingsFiber
   const settings = ctx.settings as MemorySettings
   const workspaces: WorkspaceRecord[] = [{

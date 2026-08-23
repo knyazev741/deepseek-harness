@@ -123,11 +123,22 @@ Exact-read consumer that prepares immutable cross-session message context.
 async listCandidates( agent: Agent, query: string = '', limit: number = this.config.candidateLimit, signal?: AbortSignal, ): Promise<SessionReferenceCandidate[]>
 
 /**
- * Snapshot all references before enqueue and return one aggregated durable context.
+ * Remote face of {@link listCandidates}: the configured candidate limit
+ * applies, and every candidate carries the canonical mention a host inserts
+ * into the prompt draft.
+ * @param agent - target agent; self is excluded and its cwd drives ranking.
+ * @param query - optional case-insensitive session-id/cwd/title substring.
+ * @param signal - caller cancellation.
+ * @returns mention-carrying candidates in rank order.
+ */
+@Remote('candidates') async remoteExportCandidates( agent: Agent, query: string, signal: AbortSignal, ): Promise<SessionReferenceMentionCandidate[]>
+
+/**
+ * Snapshot all references for one accepted direct message and return one aggregated durable context.
  * @param agent - target agent; references to it are rejected.
  * @param content - already host-normalized readable message content.
  * @param references - structured source sessions in mention order.
- * @param signal - optional cancellation boundary for host request teardown.
+ * @param signal - optional cancellation boundary for the active turn.
  * @returns detached content and optional referenced-session context.
  */
 async prepare( agent: Agent, content: ContentBlock[], references: SessionReferenceInput[], signal?: AbortSignal, ): Promise<PreparedReferencedMessage>

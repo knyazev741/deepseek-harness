@@ -113,6 +113,8 @@ export const SERVICE_PAGE: Record<string, string> = {
   web: 'web.md',
   workflowEngine: 'workflow.md',
   workspaceRegistry: 'workspace.md',
+  externalSessions: 'extensions.md',
+  forkWorkspaceSessionState: 'workspace.md',
 }
 
 /**
@@ -142,8 +144,7 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   dshHomePath: 'not a service: boot-provided root accessor function (typeof dshHomePath | undefined) for Loader !!js config expressions — packages/boot/app-boot/README.md owns the boot contract',
   launchEnvironment: 'not a service: launcher-provided root accessor value (LaunchEnvironmentSnapshot | undefined) — packages/util/launch-environment/README.md owns this launcher contract',
   connection: 'interface-typed (HostConnectionHandle); implementing class HostConnectionService is declared in rpc-host.ts — packages/client/connection/README.md owns the API',
-  uiRenderer: 'client-side interface-typed browser service — packages/client/ui-renderer/README.md owns the API',
-  settingsSchema: 'client-side schema introspection service — packages/client/ui-settings/README.md owns the API',
+  appShell: 'client-side web application shell service — packages/client/web/README.md owns the API',
   settingsScope: 'client-side settings-namespace transport service — packages/client/ui-settings/README.md owns the API',
   chatFileMentions: 'client-side slot-contract accessor (ChatFileMentions) — packages/client/ui-conversation/README.md owns the API',
   commandUi: 'client-side interface-typed browser service — packages/client/ui-commands/README.md owns the API',
@@ -625,6 +626,11 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   WorkflowAgentEndInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowAgentInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowResultInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
+  ExternalSessionMode: 'provider-neutral mode id is owned by packages/fork/external-session/README.md',
+  ExternalSessionProvider: 'provider-neutral implementation type is owned by packages/fork/external-session/README.md',
+  ForkWorkspaceSessionStateView: 'workspace pin view is owned by packages/fork/workspace-session-state/README.md',
+  ForkWorkspaceSessionStateSetPinnedInput: 'workspace pin request is owned by packages/fork/workspace-session-state/README.md',
+  ForkWorkspaceSessionStateSetResult: 'workspace pin result is owned by packages/fork/workspace-session-state/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

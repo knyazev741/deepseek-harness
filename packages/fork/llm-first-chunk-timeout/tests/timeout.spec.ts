@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import LlmRuntime, { resolveRetryPolicy, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { resolveRetryPolicy, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import * as FirstChunkTimeout from '../src/index.ts'
 
@@ -26,7 +26,7 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
-function options(signal?: AbortSignal): Parameters<NonNullable<Parameters<Context['waterfall']>[2]>>[0] {
+function options(signal?: AbortSignal): GenerateOptions {
   return {
     provider: 'test-provider',
     model: 'test-model',
@@ -188,7 +188,9 @@ describe('first-chunk idle timeout waterfall', () => {
         },
       },
     })
-    expect(resolveRetryPolicy(undefined, 'test').retryableCodes).toContain('TIMEOUT')
+    const policy = resolveRetryPolicy(undefined, 'test')
+    if (policy.mode !== 'normal') throw new Error('default retry policy must be bounded')
+    expect(policy.retryableCodes).toContain('TIMEOUT')
     expect(source.returnCalls).toBe(1)
     await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
 
@@ -342,7 +344,7 @@ describe('first-chunk idle timeout waterfall', () => {
 
   it('delegates consumer throw before the first read', async () => {
     const thrown = new Error('consumer stopped')
-    const throwResult = { done: true, value: undefined }
+    const throwResult: IteratorResult<StreamChunk> = { done: true, value: undefined }
     let received: unknown
     const source: AsyncIterable<StreamChunk> = {
       [Symbol.asyncIterator]() {
@@ -415,7 +417,7 @@ describe('first-chunk idle timeout waterfall', () => {
 
   it('delegates consumer throw and preserves its result after the first chunk', async () => {
     const thrown = new Error('consumer stopped')
-    const throwResult = { done: true, value: undefined }
+    const throwResult: IteratorResult<StreamChunk> = { done: true, value: undefined }
     let received: unknown
     const source: AsyncIterable<StreamChunk> = {
       [Symbol.asyncIterator]() {
@@ -444,7 +446,7 @@ describe('first-chunk idle timeout waterfall', () => {
     vi.useFakeTimers()
     const pending = deferred<IteratorResult<StreamChunk>>()
     let nextCalls = 0
-    const throwResult = { done: false, value: SECOND }
+    const throwResult: IteratorResult<StreamChunk> = { done: false, value: SECOND }
     const source: AsyncIterable<StreamChunk> = {
       [Symbol.asyncIterator]() {
         return {
@@ -535,7 +537,7 @@ describe('first-chunk idle timeout waterfall', () => {
     const pending = deferred<IteratorResult<StreamChunk>>()
     const thrown = new Error('consumer failed')
     let throwCalls = 0
-    const throwResult = { done: true, value: undefined }
+    const throwResult: IteratorResult<StreamChunk> = { done: true, value: undefined }
     const source: AsyncIterable<StreamChunk> = {
       [Symbol.asyncIterator]() {
         return {

@@ -51,9 +51,9 @@ describe('fork session source invariant', () => {
       time: Date.now(),
       data: { title: 'unrelated' },
     } as never
-    expect(() => { ctx.emit('internal/dispatch', 'emit', 'session/event', [session, unrelatedCandidate]) })
+    expect(() => { ctx.events.emit('internal/dispatch', 'emit', 'session/event', [session, unrelatedCandidate]) })
       .not.toThrow()
-    expect(() => { ctx.emit('internal/dispatch', 'emit', 'other/event', []) }).not.toThrow()
+    expect(() => { ctx.events.emit('internal/dispatch', 'emit', 'other/event', []) }).not.toThrow()
   })
 
   it('rejects duplicate, malformed, non-literal, and non-ignorable markers', async () => {
@@ -85,7 +85,7 @@ describe('fork session source invariant', () => {
       ignorable: true,
       surfaceOp: 'append',
     } as never
-    expect(() => { ctx.emit('internal/dispatch', 'emit', 'session/event', [dispatchSession, surfaceCandidate]) })
+    expect(() => { ctx.events.emit('internal/dispatch', 'emit', 'session/event', [dispatchSession, surfaceCandidate]) })
       .toThrow(/surface metadata/)
   })
 
