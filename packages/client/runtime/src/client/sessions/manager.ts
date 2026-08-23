@@ -117,9 +117,7 @@ export class SessionManager {
   /**
    * Sessions that finished running while not selected — the sidebar's green
    * "done" reminder (manager-owned, survives connection generations; cleared
-   * on select and session-removed, re-armed by the next completion). Marking
-   * a session unread re-arms it through the same set, so the dot reads and
-   * clears through one fact regardless of how it was armed.
+   * on select and session-removed, re-armed by the next completion).
    */
   private readonly completedNotifications = new Set<SessionId>()
   /** Last-observed running bits per session; the true→false edge here arms {@link completedNotifications}. */
@@ -218,17 +216,6 @@ export class SessionManager {
     this.selected = address.childSessionId
     this.completedNotifications.delete(address.childSessionId)
     void this.refreshSubagents(address.childSessionId)
-    this.notifier.notifyNow()
-  }
-
-  /**
-   * Re-arm a session's green "done" reminder after a prior view consumed it
-   * (mark-as-unread). Presentation-only: never touches the session log. The
-   * next select() or a fresh run disarms it via the shared set.
-   * @param sessionId - a listed session id.
-   */
-  markUnread(sessionId: SessionId): void {
-    this.completedNotifications.add(sessionId)
     this.notifier.notifyNow()
   }
 
@@ -547,17 +534,13 @@ export class SessionManager {
    * @returns the create result.
    */
   async create(
-    opts: { workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId; mode?: string; model?: string } = {},
+    opts: { workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId } = {},
   ): Promise<RpcResult<{ sessionId: SessionId }>> {
     try {
       const shared = opts.sessionId === undefined ? {} : { sessionId: opts.sessionId }
-      const modeModel = {
-        ...(opts.mode === undefined ? {} : { mode: opts.mode }),
-        ...(opts.model === undefined ? {} : { model: opts.model }),
-      }
       const payload = opts.workspaceId !== undefined
-        ? { workspaceId: opts.workspaceId, ...shared, ...modeModel }
-        : { ...(opts.cwd === undefined ? {} : { cwd: opts.cwd }), ...shared, ...modeModel }
+        ? { workspaceId: opts.workspaceId, ...shared }
+        : { ...(opts.cwd === undefined ? {} : { cwd: opts.cwd }), ...shared }
       const { result } = await this.api.sessions.create(payload)
       if (result.ok) {
         this.recordMutation({ kind: 'upsert', summary: {

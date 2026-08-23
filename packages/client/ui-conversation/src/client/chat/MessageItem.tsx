@@ -8,11 +8,9 @@ import type { ReactNode } from 'react'
 import type {
   ModelRetryNode, TurnErrorNode, UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ContextPressureProjection } from '@deepseek-ai/dsh-token-meter/client'
 import { JsonBlock, MessageText, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts'
-import { ImageGallery, type ImageLoader } from '@deepseek-ai/dsh-client-ui-attachment'
-import { messageImageLabels } from '../image-labels.ts'
+import type { ChatNodeOwnerProps, ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts'
+import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
 import { CompactionItem } from './CompactionItem.tsx'
 import { ContextInjectionRow } from './ContextInjectionRow.tsx'
 import { MessageIconActions } from './MessageIconActions.tsx'
@@ -43,33 +41,14 @@ function retrySeconds(milliseconds: number): number {
   return Math.max(1, Math.ceil(milliseconds / 1_000))
 }
 
-/** Provider-neutral failure codes that mean a too-large prompt stalled the first chunk. */
-const TIMEOUT_CODES = new Set(['FIRST_CHUNK_TIMEOUT', 'TIMEOUT'])
-
-/** Prompt-side share of route capacity at which a stalled first chunk reads as a too-large context. */
-const HIGH_CONTEXT_PRESSURE_RATIO = 0.5
-
-/**
- * Whether the session's context is under enough pressure that a first-chunk
- * timeout is most plausibly a too-large prompt rather than a transient drop.
- * @param pressure - the session's context-pressure projection value.
- * @returns true when both figures are present and prompt size is at least half the capacity.
- */
-function isHighContextPressure(pressure: ContextPressureProjection | undefined): boolean {
-  return pressure?.pressureTokens !== undefined
-    && pressure?.contextWindow !== undefined
-    && pressure.pressureTokens / pressure.contextWindow >= HIGH_CONTEXT_PRESSURE_RATIO
-}
-
 interface RetryCountdown {
   deadline: number
   seconds: number
 }
 
-function ModelRetryItem({ node, active, highPressure, t }: {
+function ModelRetryItem({ node, active, t }: {
   node: ModelRetryNode
   active: boolean
-  highPressure: boolean
   t: ChatViewSlotProps['t']
 }) {
   // Anchor the host-scheduled delay to this browser's first render of the
@@ -111,11 +90,6 @@ function ModelRetryItem({ node, active, highPressure, t }: {
         ? t('message.retry.started')
         : t('message.retry.scheduled')
   const seconds = active ? remainingSeconds : scheduledSeconds
-  // A first-chunk timeout under a high-pressure context is a size problem the
-  // retry will repeat; surface the /compact remedy right at the disclosure.
-  const showCompactHint = highPressure
-    && node.failure.code !== undefined
-    && TIMEOUT_CODES.has(node.failure.code)
 
   return (
     <details className={css.retryRow} data-active={active || undefined}>
@@ -133,11 +107,6 @@ function ModelRetryItem({ node, active, highPressure, t }: {
           <span className={css.retryDetailLabel}>{t('message.retry.failure')}</span>
           {node.failure.message}
         </div>
-        {showCompactHint && (
-          <p className={css.retryCompactHint}>
-            {t('message.retry.compactHint')}
-          </p>
-        )}
       </div>
     </details>
   )
@@ -184,21 +153,59 @@ function TurnMaxTokensItem({ t }: {
  * scan as the composer, minus the lexicon: sent tokens were validated at
  * compose time, so shape alone decorates).
  */
-function projectUserText(text: string): ReactNode {
-  const re = /(^|\s)([/@][\w-]+)(?=\s|$)/g
-  const parts: ReactNode[] = []
-  let cursor = 0
+function projectUserText(text: string, sessionLabels: readonly string[]): ReactNode {
+  const ranges: { start: number; end: number; label: string; kind: 'session' | 'plain' }[] = []
+  for (const rawLabel of [...new Set(sessionLabels)].sort((a, b) => b.length - a.length)) {
+    const label = `@${rawLabel}`
+    let start = text.indexOf(label)
+    while (start >= 0) {
+      ranges.push({ start, end: start + label.length, label, kind: 'session' })
+      start = text.indexOf(label, start + label.length)
+    }
+  }
+  const re = /(^|\s)(\/[\w-]+|@"[^"\n]+"|@[^\s]+)/gu
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
     const tokenStart = m.index + (m[1]?.length ?? 0)
-    const label = m[2] ?? ''
+    const rawLabel = m[2] ?? ''
+    const label = rawLabel.startsWith('@"')
+      ? rawLabel
+      : rawLabel.replace(/[.,;:!?，。；：！？]+$/gu, '')
+    if (label.length <= 1) continue
+    ranges.push({ start: tokenStart, end: tokenStart + label.length, label, kind: 'plain' })
+  }
+  ranges.sort((a, b) => a.start - b.start
+    || (a.kind === b.kind ? b.end - a.end : a.kind === 'session' ? -1 : 1))
+  const parts: ReactNode[] = []
+  let cursor = 0
+  for (const range of ranges) {
+    if (range.start < cursor) continue
+    const { start: tokenStart, end, label, kind } = range
     if (tokenStart > cursor) parts.push(<MessageText key={cursor} text={text.slice(cursor, tokenStart)} />)
+    const referenceKind = kind === 'session'
+      ? 'session'
+      : label.startsWith('@')
+        ? label.endsWith('/') ? 'folder' : 'file'
+        : undefined
+    const displayLabel = referenceKind === undefined
+      ? label
+      : referenceKind === 'session'
+        ? label.slice(1)
+        : label.slice(1).replace(/^"|"$/gu, '').split(/[\\/]/u).filter(Boolean).at(-1) ?? label.slice(1)
     parts.push(
-      <span key={tokenStart} className={css.refChip} data-ref-chip={label.startsWith('@') ? 'subagent' : 'skill'}>
-        {label}
+      <span
+        key={tokenStart}
+        className={css.refChip}
+        data-ref-chip={referenceKind ?? 'skill'}
+        title={label}
+      >
+        {referenceKind !== undefined && (
+          <ReferenceIcon kind={referenceKind} size={16} className={css.refIcon} />
+        )}
+        {displayLabel}
       </span>,
     )
-    cursor = tokenStart + label.length
+    cursor = end
   }
   if (parts.length === 0) return <MessageText text={text} />
   if (cursor < text.length) parts.push(<MessageText key={cursor} text={text.slice(cursor)} />)
@@ -207,14 +214,16 @@ function projectUserText(text: string): ReactNode {
 
 /** Right-aligned bubble shared by user and steering rows. */
 function UserStyleBubble({
-  content, imageLoader, actions, pending = false, t,
+  content, renderMessageImages, actions, pending = false, referenceLabels = [], t,
 }: {
   content: readonly unknown[]
-  imageLoader: ImageLoader
+  renderMessageImages: ChatNodeOwnerProps['renderMessageImages']
   /** Optional IconActions (or similar) below the bubble; receives the joined text. */
   actions?: (text: string) => ReactNode
   /** Whether this is the Host-authoritative pre-admission steering projection. */
   pending?: boolean
+  /** Exact session mention labels associated by the adjacent recall node. */
+  referenceLabels?: readonly string[]
   t: ChatViewSlotProps['t']
 }): ReactNode {
   const { text, images, rest } = contentParts(content)
@@ -223,11 +232,16 @@ function UserStyleBubble({
   return (
     <div className={css.userRow} data-pending-steering={pending || undefined} data-time-hover-root>
       <div className={css.userStack}>
-        <ImageGallery images={images} load={imageLoader} align="end" labels={messageImageLabels(t)} />
+        {renderMessageImages({ images, align: 'end' })}
         {showBubble && <div className={css.bubble}>
-          {projectUserText(text)}
+          {projectUserText(text, referenceLabels)}
           {rest.map((block, i) => <JsonBlock key={i} label={t('message.extraBlock')} payload={block} truncatedLabel={truncated} />)}
         </div>}
+        {referenceLabels.length > 0 && (
+          <div className={css.referenceSummary}>
+            {t('message.referenceSummary', { labels: referenceLabels.join(t('message.referenceSeparator')) })}
+          </div>
+        )}
       </div>
       {actions?.(text)}
     </div>
@@ -240,16 +254,15 @@ function UserStyleBubble({
  * @param props - Pending message content and conversation translator.
  * @returns the pending steering bubble.
  */
-export function PendingSteeringBubble({ content, loadImage, t }: {
+export function PendingSteeringBubble({ content, renderMessageImages, t }: {
   content: readonly unknown[]
-  loadImage?: ImageLoader
+  renderMessageImages: ChatNodeOwnerProps['renderMessageImages']
   t: ChatViewSlotProps['t']
 }): ReactNode {
-  const imageLoader = loadImage ?? (() => Promise.reject(new Error(t('image.serviceUnavailable'))))
   return (
     <UserStyleBubble
       content={content}
-      imageLoader={imageLoader}
+      renderMessageImages={renderMessageImages}
       pending
       t={t}
       actions={text => (
@@ -266,13 +279,14 @@ export function PendingSteeringBubble({ content, loadImage, t }: {
 
 /** User and admitted-steering keyed Chat renderer. */
 export const UserMessageNodeView = memo(function UserMessageNodeView({
-  node, loadImage, t,
+  node, renderMessageImages, t,
 }: ChatNodeViewProps<'user' | 'steering'>) {
   const data = node.data
   return (
     <UserStyleBubble
       content={data.content}
-      imageLoader={loadImage}
+      renderMessageImages={renderMessageImages}
+      {...data.referenceLabels === undefined ? {} : { referenceLabels: data.referenceLabels }}
       t={t}
       actions={text => (
         <MessageIconActions
@@ -307,17 +321,9 @@ export const CompactionNodeView = memo(function CompactionNodeView({ node, t }: 
 })
 
 /** Correlated retry-chain keyed Chat renderer. */
-export const RetryNodeView = memo(function RetryNodeView({ node, t, useProjection }: ChatNodeViewProps<'model-retry'>) {
+export const RetryNodeView = memo(function RetryNodeView({ node, t }: ChatNodeViewProps<'model-retry'>) {
   const data = node.data
-  const highPressure = isHighContextPressure(useProjection('contextPressure'))
-  return (
-    <ModelRetryItem
-      node={data.current}
-      active={data.current.retryState === 'scheduled'}
-      t={t}
-      highPressure={highPressure}
-    />
-  )
+  return <ModelRetryItem node={data.current} active={data.current.retryState === 'scheduled'} t={t} />
 })
 
 /** Terminal turn-error keyed Chat renderer. */

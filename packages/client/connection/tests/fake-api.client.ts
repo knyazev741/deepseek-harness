@@ -70,15 +70,15 @@ export class FakeApiClient implements IApiClient {
     () => Promise.resolve(ok({ attachment: { attachmentId: 'a' as never, mediaType: 'image/png', bytes: 1, width: 1, height: 1 }, data: 'AA==' }))
   onUpdateQueue: (payload: unknown) => Promise<RpcResponse<{ accepted: true }>> = () => Promise.resolve(ok({ accepted: true as const }))
   onCancel: (payload: unknown) => Promise<RpcResponse<{ accepted: true }>> = () => Promise.resolve(ok({ accepted: true as const }))
-  onCommand: (payload: unknown) => Promise<RpcResponse<{ kind: 'success' }>> = () => Promise.resolve(ok({ kind: 'success' as const }))
   onDescribe: (payload: unknown) => Promise<RpcResponse<{
     version: string
     cwd: string
     attachedSessions: number
+    home: string
     canOpenPath: boolean
   }>> =
     () => Promise.resolve(ok({
-      version: '0-fake', cwd: '/f', attachedSessions: 0, canOpenPath: true,
+      version: '0-fake', cwd: '/f', attachedSessions: 0, home: '/h', canOpenPath: true,
     }))
   onPickDirectory: (payload: unknown) => Promise<RpcResponse<{ path: string | null }>> =
     () => Promise.resolve(ok({ path: null }))
@@ -122,8 +122,6 @@ export class FakeApiClient implements IApiClient {
     attachment: (payload: unknown) => this.record('session.attachment', payload, this.onAttachment(payload)),
     updateQueue: (payload: unknown) => this.record('session.updateQueue', payload, this.onUpdateQueue(payload)),
     cancel: (payload: unknown) => this.record('session.cancel', payload, this.onCancel(payload)),
-    command: (payload: unknown) => this.record('session.command', payload, this.onCommand(payload)),
-    externalModes: (payload: unknown) => this.record('session.externalModes', payload, Promise.resolve(ok({ groups: [], failures: [] }))),
   }
 
   readonly subagents: IApiClient['subagents'] = {
@@ -152,7 +150,7 @@ export class FakeApiClient implements IApiClient {
   }
 
   readonly workspace: IApiClient['workspace'] = {
-    list: (payload: unknown) => this.record('workspace.list', payload, Promise.resolve(ok({ items: [], archivedSessionIds: [], pinnedSessionIds: [] }))),
+    list: (payload: unknown) => this.record('workspace.list', payload, Promise.resolve(ok({ items: [], archivedSessionIds: [] }))),
     create: (payload: unknown) => this.record('workspace.create', payload, Promise.resolve(ok({
       workspace: { workspaceId: 'fk-ws' as never, path: '/f/ws', title: 'ws', sessionIds: [], createdAt: '0', updatedAt: '0' },
       created: true,
@@ -170,12 +168,6 @@ export class FakeApiClient implements IApiClient {
     archiveSession: (payload: unknown) => this.record('workspace.archiveSession', payload, Promise.resolve(ok({
       archivedSessionIds: [(payload as { sessionId: SessionId }).sessionId],
     }))),
-    setSessionPinned: (payload: unknown) => {
-      const { sessionId, pinned } = payload as { sessionId: SessionId; pinned: boolean }
-      return this.record('workspace.setSessionPinned', payload, Promise.resolve(ok({
-        pinnedSessionIds: pinned ? [sessionId] : [],
-      })))
-    },
   }
 
   // Payloads stay `unknown` (lint-lane note above); response rows are the real

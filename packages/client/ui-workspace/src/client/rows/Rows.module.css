@@ -196,21 +196,6 @@
   flex: 1;
 }
 
-/* CI-review origin: a compact inline pill riding the row's secondary
-   caption treatment — no new palette, only existing semantic tokens. */
-.githubBadge {
-  flex: none;
-  margin-right: 6px;
-  padding: 0 6px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 999px;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-  font-size: 11px;
-  line-height: 16px;
-  white-space: nowrap;
-}
-
 .meta {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -229,21 +214,6 @@
 
 .dot {
   flex: none;
-}
-
-/* Pinned-session thumbtack leading the title (row already sorts to the top
-   of its section); secondary grey so it reads without competing with the
-   row's status dot. */
-.pinSlot {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  margin-right: 4px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.pinIcon {
-  display: block;
 }
 
 /* Trailing action buttons surface on hover only (figma 27:4668 / 27:4656):

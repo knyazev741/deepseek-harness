@@ -54,7 +54,7 @@ export interface SessionSummary {
   agentPreset?: string
   parentId?: SessionId
   /** Coarse durable origin for navigation filtering; not a continuation capability. */
-  origin?: 'subagent' | 'github-actions'
+  origin?: 'subagent'
   running: boolean
   /** User interaction currently blocking this session (sidebar amber-dot state). */
   pendingInteraction?: PendingInteractionStatus
@@ -374,16 +374,6 @@ export class SessionRuntime implements ISessions {
   }
 
   /**
-   * Re-arm a session's green "done" reminder after a prior view consumed it
-   * (mark-as-unread). Presentation-only; the next open() or a fresh run
-   * disarms it again.
-   * @param id - a listed session id.
-   */
-  markUnread(id: SessionId): void {
-    this.manager.markUnread(id)
-  }
-
-  /**
    * Open a healthy catalog child through its direct-parent address.
    * @param address - catalog-derived parent and child ids.
    */
@@ -492,13 +482,7 @@ export class SessionRuntime implements ISessions {
    * @returns the new session id.
    * @throws {SessionCreateError} with the requested id.
    */
-  async create(opts: {
-    workspaceId?: WorkspaceId
-    cwd?: string
-    sessionId?: SessionId
-    mode?: string
-    model?: string
-  } = {}): Promise<SessionId> {
+  async create(opts: { workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId } = {}): Promise<SessionId> {
     const result = await this.manager.create(opts)
     if (!result.ok) throw new SessionCreateError(result.error, opts.sessionId)
     this.projectList()

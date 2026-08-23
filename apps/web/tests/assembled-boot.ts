@@ -13,8 +13,8 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
-import { bootInjections } from '@deepseek-ai/dsh-client-modules'
-import type { WebBootEntry } from '@deepseek-ai/dsh-client-modules/client'
+import { bootInjections, orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
+import type { ClientModuleLoaderTarget, WebBootEntry } from '@deepseek-ai/dsh-client-modules/client'
 import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
 
 interface AssembledPlugin extends WebBootEntry {
@@ -29,6 +29,7 @@ interface ClientPackageManifest {
     client?: {
       platform?: string
       inject?: string[]
+      external?: string[]
       immediately?: boolean
     }
   }
@@ -101,11 +102,16 @@ function loadAssembledPlugins(): readonly AssembledPlugin[] {
       url: `/plugins/${entry.name}/client.js?rev=fx`,
       rev: 'fx',
       ...(declaration.inject === undefined ? {} : { inject: declaration.inject }),
+      ...(declaration.external === undefined ? {} : { external: declaration.external }),
       ...(declaration.immediately === true ? { immediately: true } : {}),
     })
   }
-  // Graph order carries no boot semantics (fiber inject waiting owns activation).
-  return [...plugins.values()]
+  return orderByModuleGraph([...plugins.values()]).map(({ id }) => {
+    const plugin = plugins.get(id)
+    /* v8 ignore next -- orderByModuleGraph returns the input row identities */
+    if (plugin === undefined) throw new Error(`assembled boot: ordered unknown client package ${id}`)
+    return plugin
+  })
 }
 
 const PLUGINS = loadAssembledPlugins()
@@ -117,7 +123,7 @@ const bundles = new Map(PLUGINS.map(plugin => [
 
 interface FixtureWindow extends Window {
   __DSH_BOOT__?: { rev: string; entries: WebBootEntry[] }
-  __ModuleLoader__?: DshWindow['__ModuleLoader__']
+  __ModuleLoader__?: ClientModuleLoaderTarget
 }
 
 class ResizeObserverStub {
@@ -208,7 +214,7 @@ export function mountAssembledApp(search = '?fixture'): void {
       },
     })
     void entry.run()
-    unmount = async () => { entry.dispose() }
+    unmount = () => entry.dispose()
   })
 }
 

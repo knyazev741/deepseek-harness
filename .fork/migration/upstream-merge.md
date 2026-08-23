@@ -226,6 +226,12 @@ The six `DU` entries are modify/delete conflicts: `packages/client/ui-brand-offi
 - The ACP example tree is byte-identical to selected upstream after the per-path fix. Its replay passes 90 of 93 tests with two skips; the single normal-environment failure is Node's SQLite `ExperimentalWarning` emitted on stderr, and the isolated scenario passes with `NODE_OPTIONS=--disable-warning=ExperimentalWarning`.
 - The remaining Host typecheck errors have only two owners: Plan 3 client/client-runtime/Web-app and client build-script paths, or Task 7 external, external-permission, and session-projection paths. No unowned Host or example source error remains.
 
+## Plan 3 Task 1 client baseline
+
+- Upstream parent resolved from `.fork/migration/upstream-commit`: `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`.
+- Pre-reset client diff: 466 path entries from `git diff --name-status "$UPSTREAM_PARENT" -- packages/client`.
+- The upstream-owned `packages/client/` tree, Web-app patch/package metadata, client test-runtime support, assembled Web boot fixture, and `tsconfig.client.json` are restored to that parent. `tsconfig.base.json` keeps the Plan 2 fork aliases while migrating only the client aliases from `schema-form`/`web-react` to upstream `ui-renderer`, `ui-brand-official`, and `ui-reference`. Upstream does not contain `packages/client/ui-session-mode/package.json`; its tracked legacy package is removed, while Codex mode selection remains deferred.
+
 ## Merge-side preference
 
 No merge-side preference is used. The merge invocation contains only `--no-commit --no-ff`; no side-selection option appears in the procedure or history.

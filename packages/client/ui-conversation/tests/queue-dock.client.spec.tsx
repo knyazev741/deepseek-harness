@@ -294,7 +294,7 @@ describe('QueueDock', () => {
     })
   })
 
-  it('steers complete row content while running and delivers idle queued messages', async () => {
+  it('strictly steers complete row content only while the agent is running', async () => {
     const running = snapshotWith([row('i-steer', null, 'image [image]')])
     const source = liveSession(running)
     const updateQueue = vi.fn(() => Promise.resolve())
@@ -309,15 +309,9 @@ describe('QueueDock', () => {
       expect(updateQueue).toHaveBeenCalledWith(iid('i-steer'), { kind: 'steer' })
     })
 
-    // An idle agent can still push the queued next-turn message forward.
     act(() => { source.push({ ...running, running: false }) })
-    const idleButton = rendered.getByLabelText('插话发送')
-    expect(idleButton).toHaveProperty('disabled', false)
-    expect(idleButton.getAttribute('title')).toBeNull()
-    fireEvent.click(idleButton)
-    await waitFor(() => {
-      expect(updateQueue).toHaveBeenCalledWith(iid('i-steer'), { kind: 'steer' })
-    })
+    expect(rendered.getByLabelText('插话发送')).toHaveProperty('disabled', true)
+    expect(rendered.getByLabelText('插话发送').getAttribute('title')).toBe('仅运行中可插话发送')
   })
 
   it('renders a session-backed subagent Queue without unsupported actions', () => {

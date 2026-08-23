@@ -31,9 +31,10 @@ import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
-import { stripClientSuffix } from './client/manifest.ts'
+import { optionalStringArray, stripClientSuffix } from './client/manifest.ts'
 import type { WebBootEntry, WebBootGraph } from './client/manifest.ts'
 
+export { stripClientSuffix } from './client/manifest.ts'
 export type {
   BootManifest, BootModuleRow, BootPluginRow, WebBootEntry, WebBootGraph,
 } from './client/manifest.ts'
@@ -51,13 +52,27 @@ interface DshClientDeclaration {
   platform: string
   /** Boot phase-one prefetch mark; absent means lazy (fetched on demand). */
   immediately?: boolean
+  /**
+   * Exact module-table requests beyond the implicit client baseline. Any
+   * specifier is valid, including subpaths such as `<pkg>/client`; each
+   * importing package declares its own exceptional requests. A type-only
+   * import is not a request because the transform erases it before resolution.
+   * Absent means the package uses only the baseline externals.
+   */
+  external?: string[]
+}
+
+/** The declared fields a graph row carries, normalized (absent array declarations become empty). */
+interface WebBootRowFields {
+  inject?: string[]
+  /** Module specifiers the package requests from the module table. */
+  external: string[]
+  immediately: boolean
 }
 
 /** Resolved package metadata for one `dsh.client` package (cached per name, never expires). */
-interface PkgMeta {
+interface PkgMeta extends WebBootRowFields {
   clientPath: string
-  inject?: string[]
-  immediately: boolean
 }
 
 /** Recovery instruction shared by grouped startup and steady-state bundle diagnostics. */
@@ -101,10 +116,10 @@ class ClientPackageCompositionError extends AggregateError {
   }
 }
 
-/** One composed table row: the wire entry plus its bundle path. */
+/** One composed table row: the wire entry plus the resolved package metadata behind it. */
 interface WebPluginRecord {
   entry: WebBootEntry
-  clientPath: string
+  meta: PkgMeta
 }
 
 /** Narrow an unknown parsed JSON value to the `dsh.client` declaration, throwing on malformed fields. */
@@ -117,15 +132,15 @@ function parseDshClient(pkgName: string, value: unknown): DshClientDeclaration |
   if (typeof decl.platform !== 'string') {
     throw new Error(`client-modules: ${pkgName} dsh.client.platform must be a string`)
   }
-  if (decl.inject !== undefined && (!Array.isArray(decl.inject) || decl.inject.some(i => typeof i !== 'string'))) {
-    throw new Error(`client-modules: ${pkgName} dsh.client.inject must be a string array`)
-  }
+  const inject = optionalStringArray(pkgName, 'dsh.client.inject', decl.inject)
+  const external = optionalStringArray(pkgName, 'dsh.client.external', decl.external)
   if (decl.immediately !== undefined && typeof decl.immediately !== 'boolean') {
     throw new Error(`client-modules: ${pkgName} dsh.client.immediately must be a boolean`)
   }
   return {
     platform: decl.platform,
-    ...(decl.inject !== undefined ? { inject: decl.inject as string[] } : {}),
+    ...(inject !== undefined ? { inject } : {}),
+    ...(external !== undefined ? { external } : {}),
     ...(decl.immediately !== undefined ? { immediately: decl.immediately } : {}),
   }
 }
@@ -149,13 +164,14 @@ function shortHash(input: string | Buffer): string {
 }
 
 /** Graph row for one bundle rev (url carries the rev as its cache-busting query). */
-function graphRow(id: string, rev: string, injectEdges: string[] | undefined, immediately: boolean): WebBootEntry {
+function graphRow(id: string, rev: string, fields: WebBootRowFields): WebBootEntry {
   return {
     id,
     url: `/plugins/${id}/client.js?rev=${rev}`,
     rev,
-    ...(injectEdges !== undefined ? { inject: injectEdges } : {}),
-    ...(immediately ? { immediately: true } : {}),
+    ...(fields.inject !== undefined ? { inject: fields.inject } : {}),
+    ...(fields.immediately ? { immediately: true } : {}),
+    ...(fields.external.length > 0 ? { external: fields.external } : {}),
   }
 }
 
@@ -343,7 +359,7 @@ export class ClientModuleRegistry extends Service {
    * @returns the path, or undefined for an unknown id.
    */
   clientPath(id: string): string | undefined {
-    return this.table.get(id)?.clientPath
+    return this.table.get(id)?.meta.clientPath
   }
 
   /**
@@ -355,9 +371,9 @@ export class ClientModuleRegistry extends Service {
   rebuilt(id: string): string | undefined {
     const record = this.table.get(id)
     if (record === undefined) return undefined
-    const rev = shortHash(readFileSync(record.clientPath))
+    const rev = shortHash(readFileSync(record.meta.clientPath))
     if (rev === record.entry.rev) return rev
-    record.entry = graphRow(id, rev, record.entry.inject, record.entry.immediately === true)
+    record.entry = graphRow(id, rev, record.meta)
     this.composed = this.compose()
     for (const notify of this.rebuildListeners) {
       // Containment: rebuilt() runs inside the HMR watch callback — a
@@ -394,7 +410,7 @@ export class ClientModuleRegistry extends Service {
   }
 
   private compose(): WebBootGraph {
-    const entries = [...this.table.values()].map(record => record.entry)
+    const entries = orderByModuleGraph([...this.table.values()].map(record => record.entry))
     return { rev: shortHash(JSON.stringify(entries)), entries }
   }
 
@@ -439,6 +455,7 @@ export class ClientModuleRegistry extends Service {
     const meta: PkgMeta = {
       clientPath: join(dirname(pkgPath), clientRel),
       ...(decl.inject !== undefined ? { inject: decl.inject } : {}),
+      external: decl.external ?? [],
       immediately: decl.immediately === true,
     }
     this.pkgMeta.set(pkgName, meta)
@@ -477,7 +494,7 @@ export class ClientModuleRegistry extends Service {
     // The rev rides the row from here on: a fiber restart reuses the row (and
     // its rev) untouched; only rebuilt() re-reads the bundle.
     const rev = this.initialBundleRevision(entryName, meta.clientPath)
-    this.table.set(entryName, { entry: graphRow(entryName, rev, meta.inject, meta.immediately), clientPath: meta.clientPath })
+    this.table.set(entryName, { entry: graphRow(entryName, rev, meta), meta })
     return true
   }
 
@@ -493,10 +510,20 @@ export class ClientModuleRegistry extends Service {
         onError(error instanceof Error ? error : new Error(String(error)))
       }
     }
-    if (changed) {
-      this.composed = this.compose()
-      this.notifyGraphChanged()
+    if (!changed) return
+    let composed: WebBootGraph
+    try {
+      composed = this.compose()
+    } catch (error) {
+      // An unorderable module graph is a property of the whole table, not of
+      // the arriving package, so it surfaces here: aggregated into the
+      // activation throw, or warned in steady state while the last orderable
+      // graph stays served.
+      onError(error as Error)
+      return
     }
+    this.composed = composed
+    this.notifyGraphChanged()
   }
 
   private readonly serveBundle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {

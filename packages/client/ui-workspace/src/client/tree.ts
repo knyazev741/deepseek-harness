@@ -15,20 +15,13 @@ export const UNGROUPED_KEY = ''
 /** Display label for the ungrouped bucket row. */
 export const UNGROUPED_LABEL = 'Ungrouped'
 
-/** Coarse durable origin of a session (subagent child or CI-review run). */
-export type SessionOrigin = 'subagent' | 'github-actions'
-
 /** One top-level session row in a group or the flat list. */
 export interface SessionNode {
   id: SessionId
   /** Stored display title; the renderer substitutes the localized New Session label for blank rows. */
   title: string
-  /** Coarse durable origin; CI-review runs surface the Background tab and a badge. */
-  origin?: SessionOrigin
   /** The provisional blank session (renderer shows the localized New Session title). */
   blank: boolean
-  /** In the registry-global pin set: the renderer surfaces a pin affordance and the row sorts first. */
-  pinned: boolean
   /** The runtime Session list reports an interaction awaiting this user. */
   pendingInteraction?: PendingInteractionStatus
   running: boolean
@@ -66,8 +59,6 @@ export interface SearchResultNode {
   id: SessionId
   title: string
   workspace: string
-  /** Coarse durable origin; CI-review runs surface the GitHub Actions badge. */
-  origin?: SessionOrigin
   /** The runtime Session list reports an interaction awaiting this user. */
   pendingInteraction?: PendingInteractionStatus
   running: boolean
@@ -139,28 +130,6 @@ function sessionTitle(session: SessionSummary): string {
   return session.blank ? 'New Session' : session.displayTitle
 }
 
-/**
- * Move pinned sessions to the front of a section. Pinned rows keep their
- * registry pin order; unpinned rows keep their prior relative order. The
- * element id is the only field consulted, so it reorders summary and node
- * arrays alike.
- * @param sessions - section members in base (account/recency) order.
- * @param pinnedOrder - registry pin set in pin order.
- * @returns pinned-first ordering.
- */
-export function pinFirst<T extends { id: SessionId }>(sessions: readonly T[], pinnedOrder: readonly SessionId[]): T[] {
-  const rank = new Map(pinnedOrder.map((id, index) => [id as string, index]))
-  const pinned: T[] = []
-  const unpinned: T[] = []
-  for (const session of sessions) {
-    if (rank.has(session.id as string)) pinned.push(session)
-    else unpinned.push(session)
-  }
-  pinned.sort((a, b) =>
-    (rank.get(a.id as string) ?? 0) - (rank.get(b.id as string) ?? 0))
-  return [...pinned, ...unpinned]
-}
-
 /** Build one group without projecting session lineage into presentation. */
 function buildGroup(
   key: string,
@@ -170,13 +139,12 @@ function buildGroup(
   label: string,
   members: readonly SessionSummary[],
   order: 'account' | 'recency',
-  pinnedOrder: readonly SessionId[],
 ): Group {
   const sessions = [...members]
   // Real Workspace order comes from sessionIds. Ungrouped falls back to
   // recency until the browser supplies its persisted local order.
   if (order === 'recency') sessions.sort(byRecency)
-  return { key, workspaceId, cwd, createdAt, label, sessions: pinFirst(sessions, pinnedOrder) }
+  return { key, workspaceId, cwd, createdAt, label, sessions }
 }
 
 /** Apply a stored Ungrouped order and append newly loose Sessions by recency. */
@@ -208,31 +176,27 @@ function groupByWorkspace(
   workspaces: readonly WorkspaceView[],
   archived: ReadonlySet<SessionId>,
   ungroupedOrder: readonly string[] | undefined,
-  origin: SessionOrigin | undefined,
-  pinnedOrder: readonly SessionId[],
 ): Group[] {
   const groups: Group[] = []
   const accounted = new Set<SessionId>()
-  const matchesOrigin = (session: SessionSummary): boolean => origin === undefined || session.origin === origin
   for (const workspace of workspaces) {
     const members: SessionSummary[] = []
     for (const id of workspace.sessionIds) {
       const summary = list.byId[id]
       if (summary === undefined) continue // account may lead the list pull; the row appears when the summary lands
       accounted.add(id)
-      if (!sessionVisible(summary, list.current, archived) || !matchesOrigin(summary)) continue
+      if (!sessionVisible(summary, list.current, archived)) continue
       members.push(summary)
     }
     groups.push(buildGroup(
       workspace.workspaceId, workspace.workspaceId, workspace.path,
-      Date.parse(workspace.createdAt), workspace.title, members, 'account', pinnedOrder,
+      Date.parse(workspace.createdAt), workspace.title, members, 'account',
     ))
   }
   const stray = list.ids
     .map(id => list.byId[id])
     .filter((s): s is SessionSummary =>
-      s !== undefined && !accounted.has(s.id)
-        && sessionVisible(s, list.current, archived) && matchesOrigin(s))
+      s !== undefined && !accounted.has(s.id) && sessionVisible(s, list.current, archived))
   if (stray.length > 0) {
     groups.push(buildGroup(
       UNGROUPED_KEY,
@@ -242,7 +206,6 @@ function groupByWorkspace(
       UNGROUPED_LABEL,
       ungroupedOrder === undefined ? stray : orderedUngrouped(stray, ungroupedOrder),
       ungroupedOrder === undefined ? 'recency' : 'account',
-      pinnedOrder,
     ))
   }
   return groups
@@ -251,18 +214,15 @@ function groupByWorkspace(
 function sessionNode(
   s: SessionSummary,
   descendants: ReadonlyMap<SessionId, SubagentDescendantSummary>,
-  pinned: boolean,
 ): SessionNode {
   return {
     id: s.id,
     title: sessionTitle(s),
     blank: s.blank,
-    pinned,
     running: s.running,
     runningSubagentCount: descendants.get(s.id)?.runningCount ?? 0,
     completed: s.completed === true,
     updatedAt: s.updatedAt,
-    ...(s.origin === undefined ? {} : { origin: s.origin }),
     ...(s.pendingInteraction === undefined ? {} : { pendingInteraction: s.pendingInteraction }),
   }
 }
@@ -279,8 +239,6 @@ function sessionNode(
  * @param workspaces - real workspaces in stable Host order.
  * @param archivedSessionIds - registry-global archive set.
  * @param view - local expansion arrays.
- * @param origin - optional durable-origin filter (the Background tab narrows to CI-review runs).
- * @param pinnedSessionIds - registry pin set in pin order (pinned rows lead each section).
  * @returns group sections in render order.
  */
 export function deriveGroups(
@@ -288,19 +246,16 @@ export function deriveGroups(
   workspaces: readonly WorkspaceView[],
   archivedSessionIds: readonly SessionId[],
   view: TreeView,
-  origin?: SessionOrigin,
-  pinnedSessionIds: readonly SessionId[] = [],
 ): GroupNode[] {
   const archived = new Set(archivedSessionIds)
   const expandedGroups = new Set(view.expandedGroups)
   const descendants = indexSubagentDescendants(list.byId)
-  const pinned = new Set(pinnedSessionIds.map(id => id as string))
   const currentGroup = list.current === undefined
     ? undefined
     : (workspaces.find(w => w.sessionIds.includes(list.current as SessionId))?.workspaceId as string | undefined)
         ?? UNGROUPED_KEY
   const groups: GroupNode[] = []
-  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder, origin, pinnedSessionIds)) {
+  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
     const expanded = expandedGroups.has(g.key)
     groups.push({
       key: g.key,
@@ -311,7 +266,7 @@ export function deriveGroups(
       sessionCount: g.sessions.length,
       expanded,
       containsCurrent: g.key === currentGroup,
-      sessions: expanded ? g.sessions.map(session => sessionNode(session, descendants, pinned.has(session.id as string))) : [],
+      sessions: expanded ? g.sessions.map(session => sessionNode(session, descendants)) : [],
     })
   }
   return groups
@@ -324,16 +279,13 @@ export function deriveGroups(
  * (see {@link deriveSearchResults}).
  * @param list - sessions list snapshot.
  * @param archivedSessionIds - registry-global archive set.
- * @param pinnedSessionIds - registry pin set in pin order (pinned rows lead the list).
  * @returns flat rows in render order.
  */
 export function deriveFlat(
   list: SessionListState,
   archivedSessionIds: readonly SessionId[],
-  pinnedSessionIds: readonly SessionId[] = [],
 ): SessionNode[] {
   const archived = new Set(archivedSessionIds)
-  const pinned = new Set(pinnedSessionIds.map(id => id as string))
   const descendants = indexSubagentDescendants(list.byId)
   const rows: SessionSummary[] = []
   for (const id of list.ids) {
@@ -342,8 +294,7 @@ export function deriveFlat(
     rows.push(s)
   }
   rows.sort(byRecency)
-  return pinFirst(rows, pinnedSessionIds)
-    .map(session => sessionNode(session, descendants, pinned.has(session.id as string)))
+  return rows.map(session => sessionNode(session, descendants))
 }
 
 /** Relative-time bucket of a session row's trailing label. */
@@ -434,7 +385,6 @@ export function deriveSearchResults(
           ? {}
           : { pendingInteraction: summary.pendingInteraction }),
         completed: summary.completed === true,
-        ...(summary.origin === undefined ? {} : { origin: summary.origin }),
         ...match === undefined ? {} : { snippet: match.snippet },
       }
     }),

@@ -223,14 +223,14 @@
       "@deepseek-ai/dsh-client-ui-primitives": [
         "./packages/client/ui-primitives/src"
       ],
-      "@deepseek-ai/dsh-client-schema-form": [
-        "./packages/client/schema-form/src"
+      "@deepseek-ai/dsh-client-ui-renderer": [
+        "./packages/client/ui-renderer/src"
       ],
-      "@deepseek-ai/dsh-client-schema-form/invariant": [
-        "./packages/client/schema-form/src/invariant.ts"
+      "@deepseek-ai/dsh-client-ui-renderer/client": [
+        "./packages/client/ui-renderer/src/client"
       ],
-      "@deepseek-ai/dsh-client-web-react": [
-        "./packages/client/web-react/src"
+      "@deepseek-ai/dsh-client-ui-renderer/invariant": [
+        "./packages/client/ui-renderer/src/invariant.ts"
       ],
       "@deepseek-ai/dsh-client-connection": [
         "./packages/client/connection/src"
@@ -283,6 +283,9 @@
       "@deepseek-ai/dsh-client-ui-sidebar": [
         "./packages/client/ui-sidebar/src"
       ],
+      "@deepseek-ai/dsh-client-ui-brand-official": [
+        "./packages/client/ui-brand-official/src"
+      ],
       "@deepseek-ai/dsh-client-ui-conversation": [
         "./packages/client/ui-conversation/src"
       ],
@@ -297,6 +300,9 @@
       ],
       "@deepseek-ai/dsh-client-ui-input-trigger": [
         "./packages/client/ui-input-trigger/src"
+      ],
+      "@deepseek-ai/dsh-client-ui-reference": [
+        "./packages/client/ui-reference/src"
       ],
       "@deepseek-ai/dsh-client-ui-commands": [
         "./packages/client/ui-commands/src"
