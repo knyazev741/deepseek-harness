@@ -280,7 +280,7 @@ function resolveDelegationRun(
 
 /** Model-facing hint appended to the tool description: per-call route override. */
 const ROUTING_WORDING
-  = ' You may pass optional `provider` and `model` to route the child to a specific model; omit them to inherit the parent\'s route.'
+  = ' You may pass optional `provider` and `model` for a per-call route override. Each supplied field overrides the configured `agentOptions` value; each omitted field falls back to the configured value, then the parent agent\'s option, and finally the provider\'s own default resolution.'
 
 /**
  * Resolve and validate a model-requested child route at the tool boundary so
@@ -365,11 +365,11 @@ export function apply(ctx: Context, config: Config): void {
         },
         provider: {
           type: 'string' as const,
-          description: 'Optional provider route for the child. Omit to inherit the parent route or the configured default.',
+          description: 'Optional provider route for the child. A supplied value overrides `agentOptions.provider`; when omitted, the configured value takes precedence, then the parent agent\'s option, then the provider\'s default resolution.',
         },
         model: {
           type: 'string' as const,
-          description: 'Optional model id for the child. Omit to inherit the parent route or the configured default.',
+          description: 'Optional model id for the child. A supplied value overrides `agentOptions.model`; when omitted, the configured value takes precedence, then the parent agent\'s option, then the provider\'s default resolution.',
         },
         ...backgroundEnabled ? {
           run_in_background: {
