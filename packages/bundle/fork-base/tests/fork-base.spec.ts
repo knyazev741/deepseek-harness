@@ -5,12 +5,19 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as yaml from 'js-yaml'
-import { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
+import { Context } from '@deepseek-ai/cordis'
+import Include, { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
+import Loader from '@deepseek-ai/cordis-plugin-loader'
+import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
+import LlmRuntime from '@deepseek-ai/dsh-llm'
+import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
+import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 
 interface Manifest {
@@ -219,6 +226,114 @@ describe('dsh-fork-base bundle', () => {
     expect(later.find(row => row.id === 'fork-llm-first-chunk-timeout')?.config)
       .toEqual({ firstChunkIdleTimeoutMs: 60000 })
     expect(later.find(row => row.id === 'agent')?.name).toBe('@deepseek-ai/dsh-agent')
+  })
+
+  it('loads portable defaults through Loader and layers a settings file over them', async () => {
+    const rootDir = mkdtempSync(resolve(tmpdir(), 'dsh-fork-loader-'))
+    let ctx: Context | undefined
+    try {
+      const overlay = readPatch('./cordis.patch.yml')
+      const llmConfig = overlay.find(patch => patch.id === 'llm-pi-ai')?.config
+      const defaultModelConfig = overlay.find(patch => patch.id === 'agent-default-model')?.config
+      if (llmConfig === undefined || defaultModelConfig === undefined) {
+        throw new Error('fork-base portable config rows are missing')
+      }
+      const settingsPath = resolve(rootDir, 'settings.yaml')
+      writeFileSync(settingsPath, [
+        'llm-pi-ai:',
+        '  providers:',
+        '    knyazev-ai:',
+        '      baseURL: https://settings.example/v1',
+        'agent-default-model:',
+        '  provider: settings-provider',
+        '  model: settings-model',
+        '',
+      ].join('\n'))
+      const configPath = resolve(rootDir, 'cordis.yml')
+      writeFileSync(configPath, yaml.dump([
+        { id: 'llm', name: 'test-llm-service' },
+        {
+          id: 'settings',
+          name: '@deepseek-ai/dsh-settings-file',
+          config: { path: settingsPath, watch: false },
+        },
+        { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', config: llmConfig },
+        {
+          id: 'agent-default-model',
+          name: '@deepseek-ai/dsh-agent-default-model',
+          config: defaultModelConfig,
+        },
+      ]))
+
+      ctx = new Context()
+      ctx.baseUrl = pathToFileURL(rootDir).href + '/'
+      await ctx.plugin(Loader)
+      ctx.loader.builtins.include = Include
+      const modules = new Map<string, unknown>([
+        ['test-llm-service', LlmRuntime],
+        ['@deepseek-ai/dsh-settings-file', FileSettingsProvider],
+        ['@deepseek-ai/dsh-llm-pi-ai', LlmPiAi],
+        ['@deepseek-ai/dsh-agent-default-model', AgentDefaultModelConfig],
+      ])
+      ctx.loader.internal = {
+        version: 'v2',
+        async import(specifier: string) {
+          if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
+          return modules.get(specifier)
+        },
+      } as unknown as NonNullable<typeof ctx.loader.internal>
+      await ctx.loader.create({
+        name: 'cordis:include',
+        config: { path: pathToFileURL(configPath).href },
+      })
+      await ctx.loader.await()
+
+      expect(ctx.agentDefaultModel.currentSelection()).toEqual({
+        provider: 'settings-provider',
+        model: 'settings-model',
+      })
+      expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(['knyazev-ai'])
+      expect(ctx.llm.providerRetryPolicy('knyazev-ai')).toMatchObject({
+        mode: 'normal',
+        maxRetries: 20,
+        retryableCodes: [
+          'RATE_LIMIT',
+          'QUOTA',
+          'SERVER',
+          'TIMEOUT',
+          'FIRST_CHUNK_TIMEOUT',
+          'TRANSPORT',
+          'STREAM_CLOSED',
+          'EMPTY_RESPONSE',
+        ],
+      })
+      await expect(ctx.llm.listModels('knyazev-ai')).resolves.toMatchObject([
+        { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'knyazev-ai' },
+        { id: 'kimi-2.6', name: 'Kimi 2.6', provider: 'knyazev-ai' },
+        { id: 'minimax-2.7', name: 'MiniMax 2.7', provider: 'knyazev-ai' },
+      ])
+      expect(ctx.settings.describe().find(entry => entry.ns === 'llm-pi-ai')?.value)
+        .toMatchObject({
+          providers: {
+            'knyazev-ai': {
+              apiKeyEnv: 'KNYAZEV_AI_API_KEY',
+              baseURL: 'https://settings.example/v1',
+              streamIdleTimeoutMs: 900000,
+              timeoutMs: 1800000,
+              models: [
+                { id: 'deepseek-v4-flash', contextWindow: 400000, maxTokens: 128000 },
+                { id: 'kimi-2.6', contextWindow: 262144, maxTokens: 40000 },
+                { id: 'minimax-2.7', contextWindow: 204800 },
+              ],
+            },
+          },
+        })
+      expect(ctx.settings.describe().find(entry => entry.ns === 'agent-default-model')?.value)
+        .toEqual({ provider: 'settings-provider', model: 'settings-model' })
+    } finally {
+      await ctx?.fiber.dispose()
+      rmSync(rootDir, { recursive: true, force: true })
+    }
   })
 
   it('keeps the upstream base patch bytes unchanged', () => {

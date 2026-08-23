@@ -177,6 +177,12 @@ importers:
       '@deepseek-ai/dsh-cordis-client-runner':
         specifier: workspace:^
         version: link:../../packages/extensions/cordis-client-runner
+      '@deepseek-ai/dsh-fork-base':
+        specifier: workspace:^
+        version: link:../../packages/bundle/fork-base
+      '@deepseek-ai/dsh-fork-web':
+        specifier: workspace:^
+        version: link:../../packages/bundle/fork-web
       '@deepseek-ai/dsh-fs-local':
         specifier: workspace:^
         version: link:../../packages/fs/fs-local

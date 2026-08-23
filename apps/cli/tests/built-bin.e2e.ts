@@ -723,6 +723,70 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(stdout).toContain("name: '@deepseek-ai/dsh-host-webserver'")
     }, 30_000)
 
+    it('resolves the shipped fork-web defaults from an empty harness home', async () => {
+      const { stdout, code, stderr } = await runBuiltBin(
+        ['--profile', 'fork-web', '--dump-default-config'],
+        { DSH_HOME: home },
+      )
+      expect(code).toBe(0)
+      expect(stderr).toBe('')
+      expect(stdout).toContain('# == @deepseek-ai/dsh-fork-base')
+      expect(stdout).toContain([
+        '      knyazev-ai:',
+        '        apiKeyEnv: KNYAZEV_AI_API_KEY',
+        '        api: openai-completions',
+        '        baseURL: https://knyazevai.work/v1',
+        '        streamIdleTimeoutMs: 900000',
+        '        timeoutMs: 1800000',
+        '        retryPolicy:',
+        '          mode: normal',
+        '          maxRetries: 20',
+        '          retryableCodes:',
+        '            - RATE_LIMIT',
+        '            - QUOTA',
+        '            - SERVER',
+        '            - TIMEOUT',
+        '            - FIRST_CHUNK_TIMEOUT',
+        '            - TRANSPORT',
+        '            - STREAM_CLOSED',
+        '            - EMPTY_RESPONSE',
+        '        compat:',
+        '          thinkingFormat: qwen',
+        '          supportsReasoningEffort: false',
+        '        reasoning: high',
+      ].join('\n'))
+      expect(stdout).toContain([
+        '          - id: deepseek-v4-flash',
+        '            name: DeepSeek V4 Flash',
+        '            contextWindow: 400000',
+        '            maxTokens: 128000',
+        '            reasoningEfforts:',
+        "              'off': null",
+        '              high: high',
+        '              max: max',
+        '          - id: kimi-2.6',
+        '            name: Kimi 2.6',
+        '            contextWindow: 262144',
+        '            maxTokens: 40000',
+        '            reasoningEfforts:',
+        "              'off': null",
+        '              high: high',
+        '              max: max',
+        '          - id: minimax-2.7',
+        '            name: MiniMax 2.7',
+        '            contextWindow: 204800',
+      ].join('\n'))
+      expect(stdout).toContain([
+        '- id: agent-default-model',
+        "  name: '@deepseek-ai/dsh-agent-default-model'",
+        '  config:',
+        '    provider: knyazev-ai',
+        '    model: deepseek-v4-flash',
+      ].join('\n'))
+      expect(stdout).not.toContain('apiKey:')
+      expect(stdout).not.toContain('reasoningEffort:')
+    }, 30_000)
+
     it('prints the headless profile without Host or browser layers', async () => {
       const { stdout, code, stderr } = await runBuiltBin(
         ['--profile', 'headless', '--dump-default-config'],
