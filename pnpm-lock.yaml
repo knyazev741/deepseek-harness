@@ -1258,6 +1258,28 @@ importers:
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
 
+  packages/bundle/fork-web:
+    dependencies:
+      '@deepseek-ai/dsh-base':
+        specifier: workspace:^
+        version: link:../base
+      '@deepseek-ai/dsh-fork-base':
+        specifier: workspace:^
+        version: link:../fork-base
+      '@deepseek-ai/dsh-fork-ui-workspace-overlay':
+        specifier: workspace:^
+        version: link:../../fork/ui-workspace-overlay
+      '@deepseek-ai/dsh-web-app':
+        specifier: workspace:^
+        version: link:../web-app
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
   packages/bundle/headless:
     dependencies:
       '@deepseek-ai/dsh-cmdline':

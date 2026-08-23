@@ -151,7 +151,11 @@ describe('loadProfile', () => {
     // The web template auto-initializes on first load. Bundle resolution
     // cannot be asserted to fail here: the source-plane test runner resolves
     // @deepseek-ai/* through tsconfig paths regardless of the staged anchor.
-    expect(PROFILE_TEMPLATES.web).toContain('@deepseek-ai/dsh-base')
+    expect(PROFILE_TEMPLATES.web).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+    ])
+    expect(PROFILE_TEMPLATES.web?.some(bundle => bundle.includes('fork-'))).toBe(false)
     try {
       loadProfile('t', 'web', anchor, home)
     } catch {
@@ -159,6 +163,17 @@ describe('loadProfile', () => {
     }
     expect(readProfileManifest('t', resolveProfileDir('web', home)).dsh?.profile?.bundles)
       .toEqual([...PROFILE_TEMPLATES.web ?? []])
+
+    expect(PROFILE_TEMPLATES['fork-web']).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-fork-base',
+      '@deepseek-ai/dsh-fork-web',
+    ])
+    expect(PROFILE_TEMPLATES.headless).toEqual([
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-headless',
+    ])
   })
 
   it('normalizes only the exact installation-owned headless bundle tuple', () => {

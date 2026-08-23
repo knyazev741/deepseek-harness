@@ -11,6 +11,7 @@ Bundle 身份由 manifest 声明决定，而不是由本目录决定。领域包
 | [`base/`](base/README.zh.md) | 每个 profile 最先应用的共享 dsh 核心 | —（仅 patch） |
 | [`fork-base/`](fork-base/README.zh.md) | 可选的 Host fork 表层：来源、工作区置顶和首个结果超时 | 挂载三个 fork 行 |
 | [`web-app/`](web-app/README.zh.md) | 浏览器表层：web patch 层 + 运行时粘合插件 | 挂载多条配置行 |
+| [`fork-web/`](fork-web/README.zh.md) | 基于上游 Web 表层的可选 fork Web 组合 | 挂载 Workspace UI overlay |
 | [`headless/`](headless/README.zh.md) | 直接运行在 base 之上的一次性任务模式，不含 Host 或 Web 层 | 挂载 `headless-runner` |
 
 内置组合包从 dsh 安装目录解析；树外（out-of-tree）组合包通过 `dsh plugin --profile <name> add <package>` 安装进 profile。
