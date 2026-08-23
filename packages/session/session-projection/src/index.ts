@@ -31,29 +31,6 @@ import type { SessionProjectionMap, SessionProjectionStateMap } from './types.ts
 
 export type { SessionProjectionMap, SessionProjectionStateMap } from './types.ts'
 
-export { externalTranscriptProjectionDefinition } from './external-transcript.ts'
-export type {
-  ExternalTranscriptProjection,
-  ExternalTranscriptTurn,
-  ExternalTranscriptMessage,
-  ExternalTranscriptToolActivity,
-  ExternalTranscriptPermission,
-  ExternalTurnStopReason,
-  ExternalPermissionOutcome,
-  ExternalMessageRole,
-  ExternalToolActivityKind,
-  ExternalSessionStartedData,
-  ExternalTurnStartedData,
-  ExternalMessageAddedData,
-  ExternalToolActivityData,
-  ExternalPermissionAskedData,
-  ExternalPermissionDecidedData,
-  ExternalModelSwitchedData,
-  ExternalCompactionNoticedData,
-  ExternalTurnEndedData,
-  ExternalSessionEndedData,
-} from './external-transcript.ts'
-
 /**
  * One domain's state-driven computation unit: a pure synchronous fold plus
  * declarations and an optional client view — never an opaque getter. The framework drives

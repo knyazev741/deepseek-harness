@@ -6,7 +6,7 @@ Status: proposed
 
 ## 问题
 
-本 harness 运行自己的 agent loop；控制台编码智能体（Codex、Claude Code、讲 ACP 的客户端）在这里仅作为一次性 subagent provider 存在（[Codex 与 Claude Code 后端](../../implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md)），把一次子运行收敛为一条最终 tool result。用户无法在本 GUI 中打开一个由外部智能体驱动的会话，之后智能体也无法托管这样的会话：多轮延续、实时流式输出、智能体原生压缩、斜杠命令、原生模型目录与权限请求都没有承载面。subagent seam 的 continuation manager 在构造上就是进程内的——外部进程无法进入其 inbox 契约——因此交互性无法回填到 `SubagentProvider.start()` 上。
+本 harness 运行自己的 agent loop；控制台编码智能体（Codex、Claude Code、讲 ACP 的客户端）在这里仅作为一次性 subagent provider 存在（[Codex 与 Claude Code 后端](../../implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.zh.md)），把一次子运行收敛为一条最终 tool result。用户无法在本 GUI 中打开一个由外部智能体驱动的会话，之后智能体也无法托管这样的会话：多轮延续、实时流式输出、智能体原生压缩、斜杠命令、原生模型目录与权限请求都没有承载面。subagent seam 的 continuation manager 在构造上就是进程内的——外部进程无法进入其 inbox 契约——因此交互性无法回填到 `SubagentProvider.start()` 上。
 
 ## 提案
 
@@ -20,20 +20,20 @@ Status: proposed
 
 会话日志：桥接驱动追加只记录的 `external/*` 事件（消息增量、工具活动、权限结果、压缩通知），携带 `ignorable: true`；重放渲染转录。外部内容都不进入模型可见面，因此「模型可见⟺已记录」规则天然成立，父上下文零影响。帧级增量按客户端 notifier 纪律合并。
 
-策略继承，三层：子进程在本 harness 的每会话沙箱约束下生成，无论该智能体自身声明的沙箱如何；来自子进程的每个权限请求由人类通过 ask-user 交互通道回答（第一阶段没有打开的 DSH turn，而[审批 seam](../../implemented/feature/2026-07-06-approval-seam.md) 要求一个——智能体驱动的会话之后改走 `ctx.approval`，携带同一审计对）；MCP 暴露以网关形式落地，把选定的 `ctx.tools` 作为 MCP 服务器提供给子进程，使经 harness 中介的动作运行在 harness 策略之下。
+策略继承，三层：子进程在本 harness 的每会话沙箱约束下生成，无论该智能体自身声明的沙箱如何；来自子进程的每个权限请求由人类通过 ask-user 交互通道回答（第一阶段没有打开的 DSH turn，而[审批 seam](../../implemented/feature/2026-07-06-approval-seam.zh.md) 要求一个——智能体驱动的会话之后改走 `ctx.approval`，携带同一审计对）；MCP 暴露以网关形式落地，把选定的 `ctx.tools` 作为 MCP 服务器提供给子进程，使经 harness 中介的动作运行在 harness 策略之下。
 
 压缩与命令：外部智能体拥有自己的上下文压缩——harness 绝不跨线重新实现；harness 的 `/compact` 命令映射到智能体原生机制并记录通知。命令命名空间区分 harness 命令与透传 prompt。
 
 智能体驱动的会话通过一个构建在 `ctx.externalSessions` 之上的 `subagent` provider 复用同一能力族；会话本身不区分握方向盘的是人还是智能体。
 
-### 第 1 阶段已定稿的落地面
+### 迁移状态
 
-第 1 阶段交付 Codex 方言。已定稿的实现名称：`ctx.externalSessions` 位于 `packages/external/external-session`；宿主机桥驱动是 `packages/external/external-session-bridge`；Codex provider 是 `packages/external/external-session-codex`（以 `@openai/codex@0.147.0` 钉证据）；第 1 阶段 ask-user 权限桥是 `packages/interaction/external-permission`；客户端插件（模式选择器 + 外部转录本节点）是 `packages/client/ui-session-mode`。会话的模式在创建时持久地盖章在头部，默认 `dsh`。
+此前的第 1 阶段 Codex 实现已退出。当前迁移只保留 `packages/fork/external-session` 中 provider-neutral 的 `ctx.externalSessions` 注册表；未来的 Codex provider、权限桥、转录投影与客户端 bundle 都是单独的选择性工作。会话 mode 仍属于未来 provider 自己负责的决定，而不是默认 Host 路径。
 
 ## 备选方案
 
 - **基于 `packages/terminal` 的 PTY 终端适配器：** 否决——没有结构化流、没有会话日志投影、没有策略继承；转录将是一段录像而非数据。
-- **在既有一次性 subagent provider 上原地扩展：** 否决——其契约是一段最终文本；交互式会话由用户持有、多轮、寿命超过任何父 turn。[交互式侧会话](2026-07-08-interactive-side-sessions.md)从用户驱动侧以同样理由否决了 subagent seam。
+- **在既有一次性 subagent provider 上原地扩展：** 否决——其契约是一段最终文本；交互式会话由用户持有、多轮、寿命超过任何父 turn。[交互式侧会话](2026-07-08-interactive-side-sessions.zh.md)从用户驱动侧以同样理由否决了 subagent seam。
 - **单一通用线路覆盖一切：** 否决——ACP 丢失 Codex 线程恢复与 Claude Code `canUseTool` 细节；方言保留。
 - **整体依赖社区适配包：** 作为政策否决——采用 ACP 线路可以，但权限、沙箱与 MCP 决策保持 harness 自有。
 

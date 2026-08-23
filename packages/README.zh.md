@@ -42,7 +42,7 @@ npm scope 为 `@deepseek-ai/dsh-*`；Cordis `Service` 子类和函数插件通�
 | [`guard/`](guard/README.zh.md) | 循环卫生守卫：建议性重复调用提醒 + `tools/execute` 截止时间强制执行器 | 产品：稳定 API |
 | [`bundle/`](bundle/README.zh.md) | 可安装的 `dsh --profile` 补丁层 | 产品：稳定 API |
 | [`extensions/`](extensions/README.zh.md) | agent 运行时自修改：实时插件／服务检查和模型所写插件挂载／卸载（[设计](../.agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.zh.md)） | 产品：稳定 API |
-| [`external/`](external/README.zh.md) | 外部交互式 agent 会话系列：Service Definition + 提供方方言（Codex、ACP） | 产品：稳定 API |
+| [`fork/`](fork/README.zh.md) | fork 所有的选择性能力覆盖层，包括 provider-neutral 外部会话注册表 | 产品：fork 覆盖层 |
 | [`hooks/`](hooks/README.zh.md) | 钩子桥接 + 共享的 Claude Code／Codex 线协议库 | 产品：稳定 API |
 | [`session/`](session/README.zh.md) | 持久会话数据平面：持久化 seam + JSONL/SQLite 后端、投影 seam、基于日志的标题、会话上报 | 产品：稳定 API |
 | [`session-query/`](session-query/README.zh.md) | 会话检索系列：逻辑语料库、有界读取、血缘、事件关系、语义过滤和 SQLite 全文搜索 | 产品：稳定 API |

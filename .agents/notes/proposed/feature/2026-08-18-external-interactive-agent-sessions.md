@@ -26,16 +26,9 @@ Compaction and commands: the external agent owns its context compaction — the 
 
 Agent-driven sessions reuse the same family through one `subagent` provider over `ctx.externalSessions`; a session does not distinguish whether a human or an agent holds the steering wheel.
 
-### Phase 1 settled surface
+### Migration status
 
-Phase 1 ships the Codex dialect. Settled implementation names: `ctx.externalSessions`
-lives in `packages/external/external-session`; the host bridge driver is
-`packages/external/external-session-bridge`; the Codex provider is
-`packages/external/external-session-codex` (evidence-pinned at
-`@openai/codex@0.147.0`); the Phase 1 ask-user permission bridge is
-`packages/interaction/external-permission`; and the client plugin (mode picker +
-external transcript nodes) is `packages/client/ui-session-mode`. A session's mode is
-stamped durably on its header at creation, defaulting to `dsh`.
+The earlier Phase 1 Codex implementation is retired. The current migration keeps only the provider-neutral `ctx.externalSessions` registry in `packages/fork/external-session`; a future Codex provider, permission bridge, transcript projection, and client bundle are separate opt-in work. A session's mode remains a future provider-owned decision rather than a default Host path.
 
 ## Alternatives considered
 

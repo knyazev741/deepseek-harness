@@ -191,6 +191,7 @@
     { "path": "./packages/fork/session-source" },
     { "path": "./packages/fork/workspace-session-state/tsconfig.host.json" },
     { "path": "./packages/fork/llm-first-chunk-timeout" },
+    { "path": "./packages/fork/external-session" },
     { "path": "./packages/session-query/session-query" },
     { "path": "./packages/session-query/session-query-sqlite" },
     { "path": "./packages/settings/settings" },
