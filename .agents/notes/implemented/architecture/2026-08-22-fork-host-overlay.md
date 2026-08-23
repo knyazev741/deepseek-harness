@@ -37,4 +37,5 @@ The session-source tests cover the event marker, projection, and effect-owned wi
 ## Consequences
 
 Fork Host overlays remain independently composable and removable, while the core session format and model request remain unchanged. Unknown source events are safely skippable only because their producer supplies the explicit marker; any future fork event that affects reconstruction must use a required event or a separately reviewed core seam. Existing pins remain durable when workspace membership changes, so membership is an admission rule rather than a cleanup invariant.
+
 The first-result timing policy is independently removable and opt-in, with no effect on inter-chunk timing or provider transport cancellation. A deployment that needs guaranteed transport cancellation must extend the provider-owned request contract rather than infer it from this wrapper.

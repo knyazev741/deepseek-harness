@@ -36,4 +36,6 @@ Session-source 测试覆盖 event marker、projection 和 effect 所有权的 wi
 
 ## 后果
 
-Fork Host overlay 可以独立组合和移除，同时不改变 core session format 与 model request。只有 producer 提供了明确标记，未知 source event 才能安全跳过；任何影响 reconstruction 的未来 fork event 都必须使用 required event 或另行评审的 core 接缝。Workspace membership 改变时已有 pin 仍保持持久化，因此 membership 是准入规则而不是清理不变量。首个结果 timing policy 可以独立移除并保持 opt-in，不影响 inter-chunk timing 或 provider transport cancellation。需要保证 transport cancellation 的 deployment 必须扩展 provider-owned request contract，而不是从该 wrapper 推断。
+Fork Host overlay 可以独立组合和移除，同时不改变 core session format 与 model request。只有 producer 提供了明确标记，未知 source event 才能安全跳过；任何影响 reconstruction 的未来 fork event 都必须使用 required event 或另行评审的 core 接缝。Workspace membership 改变时已有 pin 仍保持持久化，因此 membership 是准入规则而不是清理不变量。
+
+首个结果 timing policy 可以独立移除并保持 opt-in，不影响 inter-chunk timing 或 provider transport cancellation。需要保证 transport cancellation 的 deployment 必须扩展 provider-owned request contract，而不是从该 wrapper 推断。
