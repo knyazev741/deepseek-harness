@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/plans/2026-08-22-safe-upstream-sync-cutover.md
+2026-08-22-safe-upstream-sync-cutover.md: fd77594b251be27249069a0cd1c8951cd75f7137
+2026-08-22-safe-upstream-sync-cutover.zh.md: a6736c9025afd273df16bd4457f17980cbc703cf

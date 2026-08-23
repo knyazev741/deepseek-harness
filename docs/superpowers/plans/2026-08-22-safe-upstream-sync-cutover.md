@@ -1,5 +1,7 @@
 # Safe Upstream Sync and Cutover Implementation Plan
 
+English | [中文](2026-08-22-safe-upstream-sync-cutover.zh.md)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Activate the complete overlay manifest, replace fork-preferred sync with a fail-closed candidate workflow, prove conflict and UI failure simulations, and merge the reviewed migration into `master`.

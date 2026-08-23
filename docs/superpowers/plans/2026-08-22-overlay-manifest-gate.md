@@ -1,5 +1,7 @@
 # Overlay Manifest and Verification Gate Implementation Plan
 
+English | [中文](2026-08-22-overlay-manifest-gate.zh.md)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a source-plane verifier that classifies every fork diff against an immutable upstream commit and rejects overlap, stale entries, ownership collisions, whole-package claims, invalid verification targets, and patch-budget violations.

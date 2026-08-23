@@ -1,5 +1,7 @@
 # Upstream Client and Fork Web Composition Implementation Plan
 
+English | [中文](2026-08-22-upstream-client-fork-web.zh.md)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the complete selected upstream client the baseline and restore fork workspace behavior through additive client plugins and a separate fork Web bundle without replacing the conversation shell, InputBar, theme, runtime, or upstream Web bundle.
