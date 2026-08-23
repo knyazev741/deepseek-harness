@@ -1,5 +1,7 @@
 # Plugin-First Fork Overlay Design
 
+English | [中文](2026-08-22-plugin-first-fork-overlay-design.zh.md)
+
 ## Goal
 
 The fork keeps `master` as its deployable product branch while regularly consuming `upstream/master`. Fork features live in independent plugins and bundles whenever the existing extension system can express them. The remaining modifications to upstream-owned files form a small, declared, tested overlay that an agent can adapt or retire during each upstream merge without silently preserving obsolete code.

@@ -1,5 +1,7 @@
 # Plugin-First Fork Overlay Roadmap
 
+English | [中文](2026-08-22-plugin-first-fork-overlay-roadmap.zh.md)
+
 This roadmap splits the approved [plugin-first fork overlay design](../specs/2026-08-22-plugin-first-fork-overlay-design.md) into four dependent implementation plans. Execute them in order on one isolated migration branch. Each plan ends in a reviewable, testable checkpoint; no plan may hide a failing check for the next plan.
 
 1. [Overlay Manifest and Verification Gate](2026-08-22-overlay-manifest-gate.md) builds the manifest parser, Git diff classifier, budgets, collision checks, and fixture tests without yet making the incomplete legacy fork inventory a required repository gate.
