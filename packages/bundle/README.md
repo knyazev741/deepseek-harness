@@ -9,6 +9,7 @@ The manifest declaration, not this directory, defines Bundle identity. Domain pa
 | Package | Role | ctx key |
 |---|---|---|
 | [`base/`](base/README.md) | The shared dsh core every profile applies first | — (patch only) |
+| [`fork-base/`](fork-base/README.md) | Opt-in Host fork overlay: provenance, workspace pins, and first-result timeout | mounts three fork rows |
 | [`web-app/`](web-app/README.md) | Browser surface: web patch layer + runtime glue plugin | mounts rows |
 | [`headless/`](headless/README.md) | Direct one-shot task mode over base, with no Host or Web layer | mounts `headless-runner` |
 

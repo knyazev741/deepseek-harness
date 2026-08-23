@@ -1230,6 +1230,25 @@ importers:
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
 
+  packages/bundle/fork-base:
+    dependencies:
+      '@deepseek-ai/dsh-fork-llm-first-chunk-timeout':
+        specifier: workspace:^
+        version: link:../../fork/llm-first-chunk-timeout
+      '@deepseek-ai/dsh-fork-session-source':
+        specifier: workspace:^
+        version: link:../../fork/session-source
+      '@deepseek-ai/dsh-fork-workspace-session-state':
+        specifier: workspace:^
+        version: link:../../fork/workspace-session-state
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
   packages/bundle/headless:
     dependencies:
       '@deepseek-ai/dsh-cmdline':

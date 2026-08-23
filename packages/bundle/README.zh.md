@@ -9,6 +9,7 @@ Bundle 身份由 manifest 声明决定，而不是由本目录决定。领域包
 | 包 | 职责 | ctx key |
 |---|---|---|
 | [`base/`](base/README.zh.md) | 每个 profile 最先应用的共享 dsh 核心 | —（仅 patch） |
+| [`fork-base/`](fork-base/README.zh.md) | 可选的 Host fork 表层：来源、工作区置顶和首个结果超时 | 挂载三个 fork 行 |
 | [`web-app/`](web-app/README.zh.md) | 浏览器表层：web patch 层 + 运行时粘合插件 | 挂载多条配置行 |
 | [`headless/`](headless/README.zh.md) | 直接运行在 base 之上的一次性任务模式，不含 Host 或 Web 层 | 挂载 `headless-runner` |
 
