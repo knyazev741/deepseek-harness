@@ -119,8 +119,9 @@ function anchorPathSpec(argument: string, cwd: string): string {
  */
 export function runPlugin(profile: string, args: readonly string[]): number {
   const dir = resolveProfileDir(profile)
-  if (!existsSync(join(dir, 'package.json'))) {
-    initProfile(dir, PROFILE_TEMPLATES[profile] ?? DEFAULT_PROFILE_BUNDLES)
+  const isNewProfile = !existsSync(join(dir, 'package.json'))
+  initProfile(dir, PROFILE_TEMPLATES[profile] ?? DEFAULT_PROFILE_BUNDLES)
+  if (isNewProfile) {
     process.stderr.write(`${NAME}: initialized profile ${profile} at ${dir}\n`)
   }
   const before = readProfileManifest(NAME, dir)

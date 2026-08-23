@@ -56,19 +56,37 @@ describe('resolveProfileDir', () => {
 })
 
 describe('initProfile', () => {
-  it('creates manifest, user patch layer, and pnpm workspace once, never overwriting', () => {
+  it('creates manifest, user patch layer, and the maintained pnpm workspace', () => {
     const home = tmp()
     const dir = resolveProfileDir('tui', home)
     initProfile(dir, ['@deepseek-ai/dsh-base'])
     const manifest = readProfileManifest('t', dir)
     expect(manifest.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base'])
     expect(readFileSync(join(dir, PROFILE_PATCH_FILENAME), 'utf8')).toContain('[]')
-    expect(readFileSync(join(dir, 'pnpm-workspace.yaml'), 'utf8')).toContain('nodeLinker: hoisted')
+    const workspacePath = join(dir, 'pnpm-workspace.yaml')
+    const workspace = readFileSync(workspacePath, 'utf8')
+    expect(workspace).toContain('nodeLinker: hoisted')
+    expect(workspace).toContain("minimumReleaseAgeExclude:\n  - '@knyazevai/dsh@0.1.3'")
     // Re-init keeps user edits.
     writeFileSync(join(dir, PROFILE_PATCH_FILENAME), '- id: x\n  config: {}\n')
     initProfile(dir, ['other'])
     expect(readProfileManifest('t', dir).dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base'])
     expect(readFileSync(join(dir, PROFILE_PATCH_FILENAME), 'utf8')).toContain('- id: x')
+  })
+
+  it('upgrades only the legacy generated pnpm workspace', () => {
+    const home = tmp()
+    const dir = resolveProfileDir('tui', home)
+    initProfile(dir, ['@deepseek-ai/dsh-base'])
+    const workspacePath = join(dir, 'pnpm-workspace.yaml')
+    writeFileSync(workspacePath, 'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n')
+
+    initProfile(dir, ['other'])
+    expect(readFileSync(workspacePath, 'utf8')).toContain("  - '@knyazevai/dsh@0.1.3'")
+
+    writeFileSync(workspacePath, 'packages:\n  - .\n\nnodeLinker: isolated\n')
+    initProfile(dir, ['other'])
+    expect(readFileSync(workspacePath, 'utf8')).toBe('packages:\n  - .\n\nnodeLinker: isolated\n')
   })
 })
 
