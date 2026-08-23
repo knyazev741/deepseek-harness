@@ -27,11 +27,19 @@ const resolved = ctx.externalSessions.lookup('example')
 
 ## 模型体验
 
-无。注册表仅位于 Host，不贡献提示词、工具 schema、消息、流、持久事件或模型请求。
+### Host 注册表
+
+#### 模型看到的内容
+
+该注册表仅位于 Host，不贡献提示词、工具 schema、消息、流、持久事件或模型请求。它的 `register()` 和 `lookup()` 操作只影响 Host 侧 provider 选择。
+
+#### Token 影响
+
+为零。注册和查找只改变 Host 侧 provider 选择，不增加任何模型 token。
 
 #### KV Cache 影响
 
-无；不会组装或发送 provider 请求。
+为零。该注册表不会组装 provider 请求，也不会改变模型可见前缀，因此既不增加也不使模型 KV cache 输入失效。
 
 ## 已知限制与暂缓事项
 

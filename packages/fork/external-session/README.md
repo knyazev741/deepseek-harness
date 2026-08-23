@@ -27,11 +27,19 @@ This package owns only the mode-to-provider table. A provider owns its process, 
 
 ## Model Experience
 
-None. The registry is Host-only and contributes no prompt, tool schema, message, stream, durable event, or model request.
+### Host registry
+
+#### What the model sees
+
+The registry is Host-only and contributes no prompt, tool schema, message, stream, durable event, or model request. Its `register()` and `lookup()` operations affect only Host-side provider selection.
+
+#### Token effect
+
+Zero. Registration and lookup change only Host-side provider selection; they add no model tokens.
 
 #### KV Cache effect
 
-None; no provider request is assembled or sent.
+Zero. The registry assembles no provider request and changes no model-visible prefix, so it neither adds to nor invalidates model KV-cache input.
 
 ## Known Limitations and Deferred Work
 
