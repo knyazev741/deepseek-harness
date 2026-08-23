@@ -58,7 +58,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    /** Row badges contributed by registrants; each receives the session/workspace owner context. */
+    /** An empty list leaves the row without badges. */
     'workspace.session-row.badges': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
+    /** Row actions contributed by registrants; each receives the session/workspace owner context. */
+    /** An empty list leaves the row without actions. */
     'workspace.session-row.actions': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
   }
 }

@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, cleanup } from '@testing-library/react'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import Include from '@deepseek-ai/cordis-plugin-include'
+import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type {
   SessionId, SessionSummary, WorkspaceId, WorkspaceView,
@@ -12,19 +16,28 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { ForkWorkspaceSessionStateView } from '@deepseek-ai/dsh-fork-workspace-session-state/types'
 import type {} from '@deepseek-ai/dsh-fork-session-source/types'
-import { apply, inject, NS, parseReadWatermarks, READ_WATERMARKS_STORAGE_KEY } from '../src/client/index.ts'
+import * as overlayClient from '@deepseek-ai/dsh-fork-ui-workspace-overlay/client'
+import { apply, inject, NS } from '../src/client/index.ts'
+import { parseReadWatermarks, READ_WATERMARKS_STORAGE_KEY } from '../src/client/store.ts'
 
 afterEach(cleanup)
 
 const sid = (value: string): SessionId => value as SessionId
 const wid = (value: string): WorkspaceId => value as WorkspaceId
 
-type OverlaySummary = Partial<Omit<SessionSummary, 'id'>> & { lastSeq?: number }
+type OverlaySummary = Partial<Omit<SessionSummary, 'id'>> & { projectionAsOfSeq?: number }
 
 interface RemoteFixture {
   readonly list: ReturnType<typeof vi.fn>
   readonly setPinned: ReturnType<typeof vi.fn>
   setView(view: ForkWorkspaceSessionStateView): void
+  queueList(result: Promise<{ ok: true; value: ForkWorkspaceSessionStateView }>): void
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((next) => { resolve = next })
+  return { promise, resolve }
 }
 
 function createContributions(): WorkspaceContributions {
@@ -52,7 +65,8 @@ function createContributions(): WorkspaceContributions {
 
 function makeRemote(initial: ForkWorkspaceSessionStateView): RemoteFixture {
   let view = initial
-  const list = vi.fn(async () => ({ ok: true as const, value: view }))
+  const queuedLists: Array<Promise<{ ok: true; value: ForkWorkspaceSessionStateView }>> = []
+  const list = vi.fn(async () => queuedLists.shift() ?? ({ ok: true as const, value: view }))
   const setPinned = vi.fn(async (input: { sessionId: SessionId; pinned: boolean; expectedRevision: number }) => {
     if (input.expectedRevision !== view.revision) {
       return {
@@ -75,6 +89,7 @@ function makeRemote(initial: ForkWorkspaceSessionStateView): RemoteFixture {
     list,
     setPinned,
     setView(next) { view = next },
+    queueList(result) { queuedLists.push(result) },
   }
 }
 
@@ -103,6 +118,8 @@ function workspace(sessionIds: readonly string[]): WorkspaceView {
 async function bench(options: {
   summaries?: readonly SessionSummary[]
   pins?: ForkWorkspaceSessionStateView
+  initialList?: Promise<{ ok: true; value: ForkWorkspaceSessionStateView }>
+  mountOverlay?: boolean
 } = {}) {
   const runtime = await SlotTestRuntime.create()
   runtime.provide('workspaceContributions', createContributions())
@@ -110,6 +127,7 @@ async function bench(options: {
   runtime.provide('locale', locale)
   runtime.slots.installLocale(locale)
   const remote = makeRemote(options.pins ?? { revision: 1, pinnedSessionIds: [] })
+  if (options.initialList !== undefined) remote.queueList(options.initialList)
   runtime.provide('remote', { forkWorkspaceSessionState: remote } as never)
   runtime.provide('remote.forkWorkspaceSessionState', remote as never)
   for (const item of options.summaries ?? []) {
@@ -121,7 +139,9 @@ async function bench(options: {
     'workspace.session-row.badges': { kind: 'list', scope: 'root' },
     'workspace.session-row.actions': { kind: 'list', scope: 'root' },
   })
-  const feature = await runtime.mount({ inject: [...inject], apply })
+  const feature = options.mountOverlay === false
+    ? undefined
+    : await runtime.mount({ inject: [...inject], apply })
   await runtime.flush()
   return { runtime, remote, feature, workspace: workspace(ids) }
 }
@@ -134,13 +154,19 @@ describe('fork workspace overlay assembled client fixture', () => {
   it('uses an empty fallback for malformed browser state and keeps pins out of localStorage', async () => {
     localStorage.setItem(READ_WATERMARKS_STORAGE_KEY, '{"read-me":"not-a-sequence"}')
     expect(parseReadWatermarks(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY))).toEqual({})
-    const session = summary('read-me', { lastSeq: 4 })
+    const session = summary('read-me', { projectionAsOfSeq: 4 })
     const b = await bench({ summaries: [session], pins: { revision: 3, pinnedSessionIds: [sid('read-me')] } })
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
     fireEvent.click(view.view.getByRole('button', { name: 'Mark unread' }))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toEqual({ 'read-me': 3 })
     expect(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)).not.toContain('pinnedSessionIds')
     await b.runtime.dispose()
+  })
+
+  it('parses an opaque __proto__ id without changing the watermark map prototype', () => {
+    const parsed = parseReadWatermarks('{"__proto__":4}')
+    expect(Object.getPrototypeOf(parsed)).toBeNull()
+    expect(parsed['__proto__']).toBe(4)
   })
 
   it('copies the exact opaque id and reports clipboard rejection accessibly', async () => {
@@ -159,18 +185,32 @@ describe('fork workspace overlay assembled client fixture', () => {
   })
 
   it('stores unread below lastSeq and advances the watermark when opening', async () => {
-    const session = summary('read-me', { lastSeq: 9 })
-    const other = summary('other', { lastSeq: 2 })
+    const session = summary('read-me', { projectionAsOfSeq: 9 })
+    const other = summary('other', { projectionAsOfSeq: 2 })
     const b = await bench({ summaries: [session, other] })
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
     fireEvent.click(view.view.getByRole('button', { name: 'Mark unread' }))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'read-me': 8 })
 
     await b.runtime.sessions.setCurrent(String(session.id))
-    await b.runtime.sessions.updateSummary(String(session.id), { lastSeq: 10 } as never)
+    await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 10 } as never)
     await b.runtime.sessions.setCurrent(String(other.id))
     await b.runtime.sessions.setCurrent(String(session.id))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'read-me': 10 })
+    await b.runtime.dispose()
+  })
+
+  it('does not lower a newer read watermark when a stale summary is marked read', async () => {
+    const session = summary('stale-read', { projectionAsOfSeq: 9 })
+    const b = await bench({ summaries: [session] })
+    await b.runtime.sessions.setCurrent(String(session.id))
+    await b.runtime.sessions.setCurrent(undefined)
+    await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 10 } as never)
+    await b.runtime.sessions.setCurrent(String(session.id))
+    await b.runtime.sessions.setCurrent(undefined)
+    await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 3 } as never)
+    await b.runtime.sessions.setCurrent(String(session.id))
+    expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'stale-read': 10 })
     await b.runtime.dispose()
   })
 
@@ -185,6 +225,15 @@ describe('fork workspace overlay assembled client fixture', () => {
     expect(result(live)).toBe(true)
     expect(result(github)).toBe(true)
     expect(result(idle)).toBe(false)
+    await b.runtime.dispose()
+  })
+
+  it('updates the Background label when the runtime locale changes', async () => {
+    const b = await bench({ summaries: [summary('locale-me', { running: true })] })
+    b.runtime.ctx.locale.setLocale('zh')
+    await vi.waitFor(() => expect(
+      b.runtime.ctx.workspaceContributions.views.getSnapshot().find(view => view.id === 'fork.background')?.label,
+    ).toBe('后台'))
     await b.runtime.dispose()
   })
 
@@ -217,6 +266,46 @@ describe('fork workspace overlay assembled client fixture', () => {
     await b.runtime.dispose()
   })
 
+  it('keeps an accepted pin when an older initial list resolves late', async () => {
+    const initial = { revision: 0, pinnedSessionIds: [] as SessionId[] }
+    const initialList = deferred<{ ok: true; value: ForkWorkspaceSessionStateView }>()
+    const b = await bench({ summaries: [summary('pin-race')], pins: initial, initialList: initialList.promise })
+    const session = summary('pin-race')
+    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
+    fireEvent.click(view.view.getByRole('button', { name: 'Pin session' }))
+    await vi.waitFor(() => expect(view.view.getByRole('button', { name: 'Unpin session' })).toBeTruthy())
+    initialList.resolve({ ok: true, value: initial })
+    await Promise.resolve()
+    expect(view.view.getByRole('button', { name: 'Unpin session' })).toBeTruthy()
+    await b.runtime.dispose()
+  })
+
+  it('accepts pin then unpin with each current revision', async () => {
+    const session = summary('toggle-pin')
+    const b = await bench({ summaries: [session] })
+    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
+    fireEvent.click(view.view.getByRole('button', { name: 'Pin session' }))
+    await vi.waitFor(() => expect(view.view.getByRole('button', { name: 'Unpin session' })).toBeTruthy())
+    fireEvent.click(view.view.getByRole('button', { name: 'Unpin session' }))
+    await vi.waitFor(() => expect(view.view.getByRole('button', { name: 'Pin session' })).toBeTruthy())
+    expect(b.remote.setPinned.mock.calls.map(call => call[0])).toMatchObject([
+      { expectedRevision: 1, pinned: true },
+      { expectedRevision: 2, pinned: false },
+    ])
+    await b.runtime.dispose()
+  })
+
+  it('ignores a late initial pin list after disposal', async () => {
+    const initialList = deferred<{ ok: true; value: ForkWorkspaceSessionStateView }>()
+    const b = await bench({ summaries: [summary('dispose-race')], initialList: initialList.promise })
+    await b.feature?.dispose()
+    initialList.resolve({ ok: true, value: { revision: 9, pinnedSessionIds: [sid('dispose-race')] } })
+    await Promise.resolve()
+    expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toEqual([])
+    expect(b.runtime.ctx.workspaceContributions.policies.getSnapshot()).toEqual([])
+    await b.runtime.dispose()
+  })
+
   it('partitions pinned sessions first and returns zero within each stable partition', async () => {
     const first = summary('first')
     const pinned = summary('pinned')
@@ -236,13 +325,13 @@ describe('fork workspace overlay assembled client fixture', () => {
   })
 
   it('disposes contributions, row entries, read subscription, and locale namespace', async () => {
-    const session = summary('dispose-me', { lastSeq: 4 })
+    const session = summary('dispose-me', { projectionAsOfSeq: 4 })
     const b = await bench({ summaries: [session] })
     expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toHaveLength(1)
     expect(b.runtime.slots.entries('workspace.session-row.badges')).toHaveLength(1)
     expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(3)
     expect(b.runtime.ctx.locale.bind(NS)('background')).toBe('Background')
-    await b.feature.dispose()
+    await b.feature?.dispose()
     expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toEqual([])
     expect(b.runtime.ctx.workspaceContributions.policies.getSnapshot()).toEqual([])
     expect(b.runtime.slots.entries('workspace.session-row.badges')).toEqual([])
@@ -251,5 +340,50 @@ describe('fork workspace overlay assembled client fixture', () => {
     await b.runtime.sessions.setCurrent(String(session.id))
     expect(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)).toBeNull()
     await b.runtime.dispose()
+  })
+
+  it('loads the public client entry through Loader and exposes only the bootstrap face', async () => {
+    expect(Object.keys(overlayClient).sort()).toEqual(['NS', 'apply', 'inject'])
+  })
+
+  it('composes the package client entry through Loader and cordis.yml', async () => {
+    const b = await bench({ summaries: [summary('loader-me')], mountOverlay: false })
+    let disposed = false
+    try {
+      const configUrl = pathToFileURL(join(
+        process.cwd(), 'packages/fork/ui-workspace-overlay/tests/fixtures/loader-composition/cordis.yml',
+      ))
+      b.runtime.ctx.baseUrl = pathToFileURL(join(
+        process.cwd(), 'packages/fork/ui-workspace-overlay/tests/fixtures/loader-composition/',
+      )).href
+      await b.runtime.ctx.plugin(Loader)
+      b.runtime.ctx.loader.builtins.include = Include
+      const modules = new Map<string, unknown>([
+        ['@deepseek-ai/dsh-fork-ui-workspace-overlay', overlayClient],
+      ])
+      b.runtime.ctx.loader.internal = {
+        version: 'v2',
+        async import(specifier: string) {
+          if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
+          return modules.get(specifier)
+        },
+      } as unknown as NonNullable<typeof b.runtime.ctx.loader.internal>
+      await b.runtime.ctx.loader.create({ name: 'cordis:include', config: { path: configUrl.href } })
+      await b.runtime.ctx.loader.await()
+
+      expect(b.runtime.ctx.workspaceContributions.views.getSnapshot().map(view => view.id)).toEqual(['fork.background'])
+      expect(b.runtime.slots.entries('workspace.session-row.badges')).toHaveLength(1)
+      expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(3)
+      const entry = [...b.runtime.ctx.loader.entries()].find(
+        candidate => candidate.options.name === '@deepseek-ai/dsh-fork-ui-workspace-overlay',
+      )
+      expect(entry).toBeDefined()
+
+      await b.runtime.ctx.fiber.dispose()
+      disposed = true
+      expect(b.runtime.ctx.get('workspaceContributions')).toBeUndefined()
+    } finally {
+      if (!disposed) await b.runtime.ctx.fiber.dispose()
+    }
   })
 })

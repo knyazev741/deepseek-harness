@@ -18,5 +18,5 @@ None. This plugin does not change model-visible history or prompt assembly.
 
 ## Known Limitations and Deferred Work
 
-- Browser-local unread state uses the public summary's optional sequence adapter when available and falls back to `updatedAt` for summaries that do not expose a sequence.
+- Browser-local unread state uses the public summary's `projectionAsOfSeq` when the Host supplies a projection cut; summaries without that durable sequence do not advance a watermark.
 - A stale pin click refreshes the server snapshot but requires a second explicit click, so the browser never guesses a mutation against newer server state.

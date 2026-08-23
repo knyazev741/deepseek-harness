@@ -16,6 +16,10 @@ Read watermarks use the versioned browser key `dsh.fork.workspaceReadWatermarks.
 
 All registrations, the current-session subscription, local store, and locale dictionary are effect-owned by the client fiber. Disposal therefore removes contributions, slots, subscriptions, and the namespace together.
 
+## Alternatives considered
+
+**Use `updatedAt` or a private `lastSeq` adapter.** Rejected because wall-clock metadata is not a durable log sequence and a private structural field is not a public client contract. The runtime now exposes the Host projection cut as `SessionSummary.projectionAsOfSeq`; the overlay leaves watermarks unchanged when that field is absent.
+
 ## Consequences
 
-The public session summary does not require a sequence field. An optional sequence supplied by an adapter is preferred for unread marks; summaries without one use `updatedAt` as a monotonic fallback. The overlay adds no model-visible or transcript state.
+The client runtime carries the highest Host projection cut observed for each list row as `SessionSummary.projectionAsOfSeq`, separately from `updatedAt`. The overlay uses that durable sequence for unread marks, does not invent a sequence when the field is absent, and keeps pin snapshots revision-safe across late reads. The overlay adds no model-visible or transcript state.

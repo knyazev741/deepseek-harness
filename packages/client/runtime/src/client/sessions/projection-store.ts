@@ -78,6 +78,7 @@ export class ProjectionValueStore {
   private readonly rows = new Map<string, Row>()
   private readonly channels = new Map<string, Channel>()
   private valuesCache: Readonly<Partial<SessionProjectionMap>> | undefined
+  private watermark = -1
   /** Coarse any-key channel (no snapshot cache to rebuild: reads hit rows directly). */
   private readonly anyNotifier = new Notifier(() => {})
 
@@ -116,6 +117,14 @@ export class ProjectionValueStore {
   }
 
   /**
+   * Read the highest projection sequence observed for this session.
+   * @returns the observed sequence, or undefined before any baseline/frame.
+   */
+  latestSeq(): number | undefined {
+    return this.watermark < 0 ? undefined : this.watermark
+  }
+
+  /**
    * Subscribe to any-key changes (microtask-batched) — the manager's list
    * rebuild channel.
    * @param listener - change callback.
@@ -135,7 +144,18 @@ export class ProjectionValueStore {
     const row = this.rows.get(key)
     if (row !== undefined && seq <= row.seq) return // higher seq wins; replays and stale frames drop
     this.rows.set(key, { value, seq })
+    this.watermark = Math.max(this.watermark, seq)
     this.changed(key)
+  }
+
+  /**
+   * Record a projection baseline sequence even when the baseline has no values.
+   * @param seq - the host-provided sequence cut.
+   */
+  advanceWatermark(seq: number): void {
+    if (seq <= this.watermark) return
+    this.watermark = seq
+    this.anyNotifier.markDirty()
   }
 
   /**
@@ -147,6 +167,7 @@ export class ProjectionValueStore {
    * @param baseline - the response's projections block.
    */
   seed(baseline: ProjectionsBaseline): void {
+    this.advanceWatermark(baseline.asOfSeq)
     // Erased walk: the framework crosses the open key space; per-key typing
     // is re-established at the consumer (useProjection's map lookup).
     const values = baseline.values as Record<string, unknown>
@@ -169,11 +190,14 @@ export class ProjectionValueStore {
    * @param lastSeq - the subscribed frame's durable baseline seq.
    */
   truncate(lastSeq: number): void {
+    const previousWatermark = this.watermark
+    this.watermark = Math.min(this.watermark, lastSeq)
     for (const [key, row] of this.rows) {
       if (row.seq <= lastSeq) continue
       this.rows.delete(key)
       this.changed(key)
     }
+    if (this.watermark !== previousWatermark) this.anyNotifier.markDirty()
   }
 
   private changed(key: string): void {

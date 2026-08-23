@@ -239,6 +239,24 @@ describe('list lifecycle', () => {
     expect(items.find(item => item.sessionId === S2)?.title).toBe('Pushed')
   })
 
+  it('projects the public sequence cut separately from updatedAt', async () => {
+    const api = new FakeApiClient()
+    const manager = new SessionManager(api, fakeRemote())
+    manager.handleMuxEnvelope({
+      rpcId: 'push-newer-cut' as never,
+      payload: { type: 'session/projection', sessionId: S1, key: 'title', value: 'Pushed', seq: 9 } as never,
+    })
+    api.onList = () => Promise.resolve(ok({
+      items: [{
+        ...summary(S1, { updatedAt: 500 }),
+        projections: { asOfSeq: 5, values: { title: 'List stale' } },
+      }] as never[],
+    }))
+    await manager.refreshList()
+    expect((manager.getListSnapshot().items[0] as { projectionAsOfSeq?: number }).projectionAsOfSeq).toBe(9)
+    expect((manager.getListSnapshot().items[0] as { updatedAt: number }).updatedAt).toBe(500)
+  })
+
   it('drops a projection row beyond the subscription baseline before accepting its durable replay', async () => {
     const api = new FakeApiClient()
     api.onList = () => Promise.resolve(ok({ items: [summary(S1)] as never[] }))

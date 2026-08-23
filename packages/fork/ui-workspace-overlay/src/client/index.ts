@@ -12,12 +12,8 @@ import { WorkspaceRowBadges } from './WorkspaceRowBadges.tsx'
 import { en, NS, zh, type WorkspaceOverlayLocaleKey } from './locales.ts'
 import { createWorkspaceOverlayStore } from './store.ts'
 
-export { NS, en, zh }
+export { NS }
 export type { WorkspaceOverlayLocaleKey } from './locales.ts'
-export { createWorkspaceOverlayStore, lastSequenceOf, parseReadWatermarks, READ_WATERMARKS_STORAGE_KEY } from './store.ts'
-export { isBackgroundSession, createBackgroundView } from './BackgroundView.tsx'
-export { WorkspaceRowActions, type WorkspaceRowActionsInjected, type WorkspaceRowActionsProps, type PinMutationResult } from './WorkspaceRowActions.tsx'
-export { WorkspaceRowBadges, type WorkspaceRowBadgesProps } from './WorkspaceRowBadges.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -43,24 +39,25 @@ export function apply(ctx: ClientContext): void {
   const store = createWorkspaceOverlayStore()
   const t = ctx.locale.bind(NS)
   const contributions = ctx.workspaceContributions
+  let disposed = false
 
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'fork-ui-workspace-overlay: dictionaries')
 
   // The server snapshot is authoritative. Initial loading and conflict refresh
   // update this separate pin compartment; no browser-local write is involved.
-  const refreshPins = async (): Promise<void> => {
-    const result = await ctx.remote.forkWorkspaceSessionState.list()
-    if (result.ok) store.installPins(result.value)
-  }
   ctx.effect(() => {
-    void refreshPins().catch(() => {
+    let cancelled = false
+    void ctx.remote.forkWorkspaceSessionState.list().then((result) => {
+      if (cancelled || disposed) return
+      if (result.ok) store.installPins(result.value)
+    }).catch(() => {
       // A disconnected Host leaves the empty pin view; the next explicit pin
       // action observes revision zero and reports the Host result to the row.
     })
-    return () => {}
+    return () => { cancelled = true }
   }, 'fork-ui-workspace-overlay: initial pin snapshot')
 
-  ctx.effect(() => () => { store.dispose() }, 'fork-ui-workspace-overlay: store')
+  ctx.effect(() => () => { disposed = true; store.dispose() }, 'fork-ui-workspace-overlay: store')
 
   ctx.effect(() => {
     let previous: SessionId | undefined
@@ -78,11 +75,13 @@ export function apply(ctx: ClientContext): void {
   }, 'fork-ui-workspace-overlay: current-session read watermark')
 
   const setPinned = async (session: SessionSummary, pinned: boolean): Promise<PinMutationResult> => {
+    if (disposed) return { accepted: false }
     const result = await ctx.remote.forkWorkspaceSessionState.setPinned({
       sessionId: session.id,
       pinned,
       expectedRevision: store.observedPinRevision(),
     })
+    if (disposed) return { accepted: false }
     if (!result.ok) return { accepted: false }
     if (result.value.ok) {
       store.installPins(result.value.value)
@@ -92,7 +91,7 @@ export function apply(ctx: ClientContext): void {
       // Refresh once after a stale CAS. Deliberately do not replay the write;
       // a second click is the explicit user acknowledgement of new state.
       const refreshed = await ctx.remote.forkWorkspaceSessionState.list()
-      if (refreshed.ok) store.installPins(refreshed.value)
+      if (!disposed && refreshed.ok) store.installPins(refreshed.value)
       return { accepted: false, stale: true }
     }
     return { accepted: false }
@@ -105,7 +104,17 @@ export function apply(ctx: ClientContext): void {
     setPinned,
   })
 
-  ctx.effect(() => contributions.registerView(createBackgroundView(t)), 'fork-ui-workspace-overlay: Background view')
+  ctx.effect(() => {
+    let dispose = contributions.registerView(createBackgroundView(t))
+    const unsubscribe = ctx.locale.subscribe(() => {
+      dispose()
+      if (!disposed) dispose = contributions.registerView(createBackgroundView(t))
+    })
+    return () => {
+      unsubscribe()
+      dispose()
+    }
+  }, 'fork-ui-workspace-overlay: Background view')
   const pinPolicy = {
     id: 'fork.pinned-first',
     order: 100,

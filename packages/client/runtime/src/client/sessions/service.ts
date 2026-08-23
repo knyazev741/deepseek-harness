@@ -70,6 +70,8 @@ export interface SessionSummary {
   updatedAt: number
   /** Current host-computed projection values retained by the object layer. */
   projectionValues?: Readonly<Partial<SessionProjectionMap>>
+  /** Highest host projection sequence observed for this row; absent when no cut is available. */
+  projectionAsOfSeq?: number
 }
 
 /**
@@ -678,6 +680,9 @@ export class SessionRuntime implements ISessions {
         ...(entry.projectionValues === undefined
           ? {}
           : { projectionValues: entry.projectionValues }),
+        ...(entry.projectionAsOfSeq === undefined
+          ? {}
+          : { projectionAsOfSeq: entry.projectionAsOfSeq }),
         ...(entry.title !== undefined ? { title: entry.title } : {}),
         ...(entry.cwd !== undefined ? { cwd: entry.cwd } : {}),
         ...(entry.parentSessionId !== undefined ? { parentId: entry.parentSessionId } : {}),

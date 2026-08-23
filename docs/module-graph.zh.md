@@ -214,6 +214,7 @@ flowchart TD
     pkg_fork_external_session["fork-external-session"]
     pkg_fork_llm_first_chunk_timeout["fork-llm-first-chunk-timeout"]
     pkg_fork_session_source["fork-session-source"]
+    pkg_fork_ui_workspace_overlay["fork-ui-workspace-overlay"]
     pkg_fork_workspace_session_state["fork-workspace-session-state"]
   end
   subgraph group_guard["packages/guard"]
@@ -1475,6 +1476,14 @@ flowchart TD
   pkg_client_ui_cordis --> pkg_client_ui_tool
   pkg_client_ui_cordis --> pkg_cordis_client_runner
   pkg_client_ui_cordis --> pkg_invariants
+  pkg_fork_ui_workspace_overlay --> pkg_api_remotes
+  pkg_fork_ui_workspace_overlay --> pkg_client_locale
+  pkg_fork_ui_workspace_overlay --> pkg_client_runtime
+  pkg_fork_ui_workspace_overlay --> pkg_client_ui_workspace
+  pkg_fork_ui_workspace_overlay --> pkg_fork_session_source
+  pkg_fork_ui_workspace_overlay --> pkg_fork_workspace_session_state
+  pkg_fork_ui_workspace_overlay --> pkg_invariants
+  pkg_fork_ui_workspace_overlay --> pkg_typert_protocol
   pkg_host_directory_picker_auto --> pkg_client_ui_directory_picker_browse
   pkg_host_directory_picker_auto --> pkg_client_ui_directory_picker_native
   pkg_host_directory_picker_auto --> pkg_host_directory_picker_browse
@@ -1716,4 +1725,5 @@ flowchart TD
 | [`client-ui-permission-presets`](../packages/client/ui-permission-presets) | `client` | [`api-remotes`](../packages/api/remotes), [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-runtime`](../packages/client/runtime), [`client-ui-commands`](../packages/client/ui-commands), [`client-ui-input-trigger`](../packages/client/ui-input-trigger), [`client-ui-settings`](../packages/client/ui-settings), [`invariants`](../packages/runtime-diagnostics/invariants), [`permission-presets`](../packages/interaction/permission-presets) |
 | [`client-ui-skill`](../packages/client/ui-skill) | `client` | [`api-remotes`](../packages/api/remotes), [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-runtime`](../packages/client/runtime), [`client-ui-input-trigger`](../packages/client/ui-input-trigger), [`client-ui-tool`](../packages/client/ui-tool), [`invariants`](../packages/runtime-diagnostics/invariants) |
 | [`client-ui-cordis`](../packages/extensions/ui-cordis) | `extensions` | [`api-remotes`](../packages/api/remotes), [`client-connection`](../packages/client/connection), [`client-locale`](../packages/client/locale), [`client-runtime`](../packages/client/runtime), [`client-ui-input-trigger`](../packages/client/ui-input-trigger), [`client-ui-sidebar`](../packages/client/ui-sidebar), [`client-ui-tool`](../packages/client/ui-tool), [`cordis-client-runner`](../packages/extensions/cordis-client-runner), [`invariants`](../packages/runtime-diagnostics/invariants) |
+| [`fork-ui-workspace-overlay`](../packages/fork/ui-workspace-overlay) | `fork` | [`api-remotes`](../packages/api/remotes), [`client-locale`](../packages/client/locale), [`client-runtime`](../packages/client/runtime), [`client-ui-workspace`](../packages/client/ui-workspace), [`fork-session-source`](../packages/fork/session-source), [`fork-workspace-session-state`](../packages/fork/workspace-session-state), [`invariants`](../packages/runtime-diagnostics/invariants), [`typert-protocol`](../packages/typert/protocol) |
 | [`host-directory-picker-auto`](../packages/host/directory-picker-auto) | `host` | [`client-ui-directory-picker-browse`](../packages/client/ui-directory-picker-browse), [`client-ui-directory-picker-native`](../packages/client/ui-directory-picker-native), [`host-directory-picker-browse`](../packages/host/directory-picker-browse), [`host-directory-picker-native`](../packages/host/directory-picker-native), [`host-webserver`](../packages/host/webserver), [`invariants`](../packages/runtime-diagnostics/invariants) |

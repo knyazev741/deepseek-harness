@@ -11,6 +11,8 @@ export interface TitledSessionSummary extends SessionSummary {
   title?: string
   /** Current host-computed projection values for list consumers. */
   projectionValues?: Readonly<Partial<SessionProjectionMap>>
+  /** Highest host projection sequence observed for this row. */
+  projectionAsOfSeq?: number
 }
 
 /** One flattened session-list row with lineage depth and live pending interaction. */
@@ -29,6 +31,8 @@ export interface SessionListEntry {
   agentPreset?: string
   /** Current host-computed projection values for list consumers. */
   projectionValues?: Readonly<Partial<SessionProjectionMap>>
+  /** Highest host projection sequence observed for this row. */
+  projectionAsOfSeq?: number
   /** User interaction currently blocking this session, derived from live mux frames. */
   pendingInteraction?: PendingInteractionStatus
   /** Finished running while not selected and not yet opened — the sidebar's green "done" reminder (clears on select or the next run). */

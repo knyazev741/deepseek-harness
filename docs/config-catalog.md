@@ -3305,6 +3305,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-commands` ([`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts))
 - `@deepseek-ai/dsh-cordis-client-runner` ([`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts))
 - `@deepseek-ai/dsh-fork-external-session` ([`packages/fork/external-session/src/index.ts`](../packages/fork/external-session/src/index.ts))
+- `@deepseek-ai/dsh-fork-ui-workspace-overlay` ([`packages/fork/ui-workspace-overlay/src/index.ts`](../packages/fork/ui-workspace-overlay/src/index.ts))
 - `@deepseek-ai/dsh-fork-workspace-session-state` — requires `settings` · `workspaceRegistry` ([`packages/fork/workspace-session-state/src/index.ts`](../packages/fork/workspace-session-state/src/index.ts))
 - `@deepseek-ai/dsh-fs-e2b` — requires `e2b` ([`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts))
 - `@deepseek-ai/dsh-fs-observation-policy` ([`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts))

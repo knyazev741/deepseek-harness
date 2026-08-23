@@ -32,19 +32,17 @@ export interface WorkspaceOverlayStore extends HostObservable<WorkspaceOverlaySn
 }
 
 /**
- * Read the last sequence carried by a public session summary.
+ * Read the host projection cut carried by a public session summary.
  *
- * The current public summary type does not require a sequence field, while
- * assembled clients may carry one from a projection adapter. The adapter is
- * therefore read structurally and falls back to `updatedAt`, which preserves
- * a monotonic browser-local watermark for summaries that have no sequence.
- * @param session - public session summary, possibly extended by an adapter.
- * @returns a finite non-negative sequence-like value.
+ * This is a durable event sequence supplied by the generic projection seam;
+ * it is intentionally distinct from the wall-clock `updatedAt` field and is
+ * absent when the host has not supplied a projection cut.
+ * @param session - public session summary.
+ * @returns a finite non-negative projection sequence, or undefined.
  */
-export function lastSequenceOf(session: SessionSummary): number {
-  const candidate = (session as SessionSummary & { readonly lastSeq?: unknown }).lastSeq
-  if (typeof candidate === 'number' && Number.isSafeInteger(candidate) && candidate >= 0) return candidate
-  return Number.isSafeInteger(session.updatedAt) && session.updatedAt >= 0 ? session.updatedAt : 0
+export function lastSequenceOf(session: SessionSummary): number | undefined {
+  const sequence = session.projectionAsOfSeq
+  return sequence !== undefined && Number.isSafeInteger(sequence) && sequence >= 0 ? sequence : undefined
 }
 
 /**
@@ -60,7 +58,7 @@ export function parseReadWatermarks(raw: string | null): Readonly<Record<string,
     const value: unknown = JSON.parse(raw)
     if (value === null || typeof value !== 'object' || Array.isArray(value)) return Object.freeze({})
     const entries = Object.entries(value)
-    const result: Record<string, number> = {}
+    const result = Object.create(null) as Record<string, number>
     for (const [sessionId, watermark] of entries) {
       if (sessionId.length === 0 || !Number.isSafeInteger(watermark) || watermark < 0) return Object.freeze({})
       result[sessionId] = watermark
@@ -96,7 +94,10 @@ function immutableSnapshot(
   return Object.freeze({ readWatermarks, pins })
 }
 
-/** Create the plugin-owned browser state store. */
+/**
+ * Create the plugin-owned browser state store.
+ * @returns an isolated store whose subscriptions and writes stop after dispose.
+ */
 export function createWorkspaceOverlayStore(): WorkspaceOverlayStore {
   let readWatermarks = readInitialWatermarks()
   let pins: ForkWorkspaceSessionStateView | undefined
@@ -108,9 +109,11 @@ export function createWorkspaceOverlayStore(): WorkspaceOverlayStore {
     snapshot = immutableSnapshot(readWatermarks, pins)
     for (const listener of [...listeners]) listener()
   }
-  const writeWatermark = (session: SessionSummary, watermark: number): void => {
+  const writeWatermark = (session: SessionSummary, watermark: number, monotonic: boolean): void => {
     if (disposed) return
     const id = String(session.id)
+    const current = readWatermarks[id]
+    if (monotonic && current !== undefined && watermark < current) return
     if (readWatermarks[id] === watermark) return
     readWatermarks = Object.freeze({ ...readWatermarks, [id]: watermark })
     persistWatermarks(readWatermarks)
@@ -125,14 +128,23 @@ export function createWorkspaceOverlayStore(): WorkspaceOverlayStore {
       return () => { listeners.delete(listener) }
     },
     markUnread: (session) => {
-      writeWatermark(session, Math.max(0, lastSequenceOf(session) - 1))
+      const sequence = lastSequenceOf(session)
+      if (sequence === undefined) return
+      writeWatermark(session, Math.max(0, sequence - 1), false)
     },
     markRead: (session) => {
-      writeWatermark(session, lastSequenceOf(session))
+      const sequence = lastSequenceOf(session)
+      if (sequence === undefined) return
+      writeWatermark(session, sequence, true)
     },
     readWatermark: sessionId => readWatermarks[String(sessionId)],
     installPins: (view) => {
       if (disposed) return
+      const current = pins
+      if (current !== undefined) {
+        if (view.revision < current.revision) return
+        if (view.revision === current.revision) return
+      }
       pins = Object.freeze({
         revision: view.revision,
         pinnedSessionIds: Object.freeze([...view.pinnedSessionIds]),

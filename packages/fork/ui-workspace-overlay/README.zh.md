@@ -18,5 +18,5 @@
 
 ## Known Limitations and Deferred Work
 
-- 浏览器本地未读状态优先使用公共 summary 中可选的 sequence adapter；没有 sequence 时回退到 `updatedAt`。
+- 浏览器本地未读状态使用 Host 提供 projection cut 时公共 summary 的 `projectionAsOfSeq`；没有该持久化 sequence 的 summary 不会推进水印。
 - 过期 revision 的置顶点击会刷新服务器快照，但要求第二次显式点击，因此浏览器不会针对更新后的服务器状态猜测 mutation。

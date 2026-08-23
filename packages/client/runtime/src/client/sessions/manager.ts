@@ -487,6 +487,7 @@ export class SessionManager {
             const block = s.projections
             if (block === undefined) continue
             const store = this.projectionStore(s.sessionId)
+            store.advanceWatermark(block.asOfSeq)
             const values = block.values as Record<string, unknown>
             for (const key of Object.keys(values)) store.apply(key, values[key], block.asOfSeq)
           }
@@ -1024,10 +1025,12 @@ export class SessionManager {
       const projectionStore = this.projectionStores.get(summary.sessionId)
       const title = projectionStore?.get('title')
       const projectionValues = projectionStore?.values()
+      const projectionAsOfSeq = projectionStore?.latestSeq() ?? summary.projections?.asOfSeq
       return {
         ...summary,
         ...(typeof title === 'string' && title !== '' ? { title } : {}),
         ...(projectionValues === undefined ? {} : { projectionValues }),
+        ...(projectionAsOfSeq === undefined || projectionAsOfSeq < 0 ? {} : { projectionAsOfSeq }),
       }
     })
     const pendingInteractions = new Map<SessionId, PendingInteractionStatus>()
@@ -1048,6 +1051,7 @@ export class SessionManager {
         && prev.origin === entry.origin && prev.title === entry.title && prev.depth === entry.depth
         && prev.pendingInteraction === entry.pendingInteraction
         && prev.projectionValues === entry.projectionValues
+        && prev.projectionAsOfSeq === entry.projectionAsOfSeq
         && prev.completed === entry.completed
       ) return prev
       this.entryCache.set(entry.sessionId, entry)

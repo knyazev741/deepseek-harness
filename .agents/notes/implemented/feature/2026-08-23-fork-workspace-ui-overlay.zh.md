@@ -16,6 +16,10 @@ fork 需要后台筛选、来源标记、本地未读标记和服务器置顶操
 
 所有注册项、当前会话订阅、本地 store 和 locale dictionary 都由 client fiber 的 effect 管理，因此销毁会同时移除 contribution、slot、订阅和命名空间。
 
+## 考虑过的替代方案
+
+**使用 `updatedAt` 或私有的 `lastSeq` adapter。** 这两种方案都被拒绝，因为 wall-clock 元数据不是持久化日志 sequence，私有结构字段也不是公共 client contract。现在 client runtime 将 Host projection cut 作为 `SessionSummary.projectionAsOfSeq` 暴露；缺少该字段时，覆盖层保持水印不变。
+
 ## 结果
 
-公共 session summary 不要求 sequence 字段。若 adapter 提供可选 sequence，未读标记优先使用它；没有 sequence 时使用 `updatedAt` 作为单调回退值。覆盖层不增加模型可见或 transcript 状态。
+client runtime 将每个列表行观察到的最高 Host projection cut 作为 `SessionSummary.projectionAsOfSeq` 传递，并与 `updatedAt` 分离。覆盖层使用该持久化 sequence 推进未读标记，字段缺失时不臆造 sequence，并在延迟读取到达时按 revision 保持置顶快照安全。覆盖层不增加模型可见或 transcript 状态。

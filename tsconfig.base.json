@@ -68,6 +68,9 @@
       "@deepseek-ai/dsh-fork-workspace-session-state/remote": ["./packages/fork/workspace-session-state/lib/typert.remote-client.d.ts"],
       "@deepseek-ai/dsh-fork-llm-first-chunk-timeout": ["./packages/fork/llm-first-chunk-timeout/src/index.ts"],
       "@deepseek-ai/dsh-fork-llm-first-chunk-timeout/invariant": ["./packages/fork/llm-first-chunk-timeout/src/invariant.ts"],
+      "@deepseek-ai/dsh-fork-ui-workspace-overlay": ["./packages/fork/ui-workspace-overlay/src/index.ts"],
+      "@deepseek-ai/dsh-fork-ui-workspace-overlay/invariant": ["./packages/fork/ui-workspace-overlay/src/invariant.ts"],
+      "@deepseek-ai/dsh-fork-ui-workspace-overlay/client": ["./packages/fork/ui-workspace-overlay/src/client"],
       "@deepseek-ai/dsh-plan-mode/types": ["./packages/plan/plan-mode/src/types.ts"],
       "@deepseek-ai/dsh-plan-mode/client": ["./packages/plan/plan-mode/src/client.ts"],
       "@deepseek-ai/dsh-agent-presets/types": ["./packages/preset/agent-presets/src/types.ts"],
@@ -345,6 +348,9 @@
       ],
       "@deepseek-ai/dsh-client-ui-workspace": [
         "./packages/client/ui-workspace/src"
+      ],
+      "@deepseek-ai/dsh-fork-ui-workspace-overlay": [
+        "./packages/fork/ui-workspace-overlay/src"
       ],
       "@deepseek-ai/dsh-client-ui-theme": [
         "./packages/client/ui-theme/src"
