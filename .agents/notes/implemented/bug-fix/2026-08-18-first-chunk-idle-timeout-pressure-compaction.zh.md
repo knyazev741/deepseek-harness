@@ -34,6 +34,6 @@ Web GUI 让这一状态可见。当失败的尝试携带 `FIRST_CHUNK_TIMEOUT` �
 
 ## Related
 
-- [调用后压缩压力与溢出恢复](../architecture/2026-07-10-after-call-compaction-pressure-and-overflow-recovery.md) —— 本变更用基于压力的 `FIRST_CHUNK_TIMEOUT` 触发器扩展的恢复流程。
-- [路由模型上下文与压缩策略](../architecture/2026-07-20-routed-model-context-and-compaction-policy.md) —— `idleTimeoutPressureRatio` 加入的 `thresholdRatio`/按模型策略解析机制。
-- [从压平的报错文本分类 pi-ai 传输截断](2026-07-22-pi-ai-transport-truncation-classification.md) —— 相邻的 pi-ai 失败分类工作，它先把可恢复的断连措辞映射为可重试代码。
+- [调用后压缩压力与溢出恢复](../architecture/2026-07-10-after-call-compaction-pressure-and-overflow-recovery.zh.md) —— 本变更用基于压力的 `FIRST_CHUNK_TIMEOUT` 触发器扩展的恢复流程。
+- [路由模型上下文与压缩策略](../architecture/2026-07-20-routed-model-context-and-compaction-policy.zh.md) —— `idleTimeoutPressureRatio` 加入的 `thresholdRatio`/按模型策略解析机制。
+- [从压平的报错文本分类 pi-ai 传输截断](2026-07-22-pi-ai-transport-truncation-classification.zh.md) —— 相邻的 pi-ai 失败分类工作，它先把可恢复的断连措辞映射为可重试代码。

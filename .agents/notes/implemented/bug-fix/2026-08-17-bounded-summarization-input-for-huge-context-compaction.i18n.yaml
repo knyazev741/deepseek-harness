@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-17-bounded-summarization-input-for-huge-context-compaction.md
 2026-08-17-bounded-summarization-input-for-huge-context-compaction.md: f174b6dd7dde3d5b76f22ce5d0418f30f29f6019
-2026-08-17-bounded-summarization-input-for-huge-context-compaction.zh.md: cb5f91cd936baff653aabdd55f25ca755afb1afd
+2026-08-17-bounded-summarization-input-for-huge-context-compaction.zh.md: d32f439955536b46cba4fd0de68980e3c88cfa6f
