@@ -210,10 +210,13 @@ export function writeClientBuildRecord(
   return record
 }
 
-/** Fail a complete build whose Vite output lost the shell's global theme. */
+/** Fail a complete build whose static or dynamic Web output lost the shell theme. */
 function assertWebThemeArtifact(root: string): void {
   const sheets = globSync('apps/web/dist/**/*.css', { cwd: root })
-  const hasTheme = sheets.some(path => readFileSync(resolve(root, path), 'utf8').includes('--dsw-font-family:'))
+  const hasThemeSheet = sheets.some(path => readFileSync(resolve(root, path), 'utf8').includes('--dsw-font-family:'))
+  const dynamicThemeBundles = globSync('packages/client/ui-theme/lib/client.js', { cwd: root })
+  const hasDynamicTheme = dynamicThemeBundles.some(path => readFileSync(resolve(root, path), 'utf8').includes('--dsw-font-family:'))
+  const hasTheme = hasThemeSheet || hasDynamicTheme
   if (!hasTheme) throw new Error('Web bundle is missing the shell theme')
 }
 

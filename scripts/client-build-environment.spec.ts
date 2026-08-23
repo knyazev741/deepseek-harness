@@ -21,4 +21,18 @@ describe('complete client build record', () => {
 
     expect(() => writeClientBuildRecord(root, {})).toThrow('Web bundle is missing the shell theme')
   })
+
+  it('accepts the current dynamic ui-theme client artifact', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-client-build-record-'))
+    roots.push(root)
+    const assets = join(root, 'apps/web/dist/assets')
+    const theme = join(root, 'packages/client/ui-theme/lib')
+    mkdirSync(assets, { recursive: true })
+    mkdirSync(theme, { recursive: true })
+    writeFileSync(join(root, 'apps/web/dist/index.html'), '<script type="module" src="/assets/index.js"></script>\n')
+    writeFileSync(join(assets, 'index.js'), 'export {}\n')
+    writeFileSync(join(theme, 'client.js'), 'const css = "--dsw-font-family: sans-serif"\n')
+
+    expect(() => writeClientBuildRecord(root, {})).not.toThrow()
+  })
 })
