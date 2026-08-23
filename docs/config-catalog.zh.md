@@ -526,7 +526,7 @@ export interface ModelCompactPolicyConfig extends CompactionPolicyConfig {
 }
 ```
 
-来源：[`packages/compaction/compaction-basic/src/types.ts:38`](../packages/compaction/compaction-basic/src/types.ts)
+来源：[`packages/compaction/compaction-basic/src/types.ts:45`](../packages/compaction/compaction-basic/src/types.ts)
 
 <a id="deepseek-aidsh-compaction-tool-result-pruner"></a>
 
@@ -678,7 +678,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/fork/llm-first-chunk-timeout/src/index.ts:19`](../packages/fork/llm-first-chunk-timeout/src/index.ts)
+来源：[`packages/fork/llm-first-chunk-timeout/src/index.ts:20`](../packages/fork/llm-first-chunk-timeout/src/index.ts)
 
 <a id="deepseek-aidsh-fork-session-source"></a>
 
@@ -1745,7 +1745,7 @@ export interface JsonRpcConfig {
 
 依赖：`Readable`（`node:stream`）· `Writable`（`node:stream`）
 
-来源：[`packages/sdk/server/src/index.ts:29`](../packages/sdk/server/src/index.ts)
+来源：[`packages/sdk/server/src/index.ts:25`](../packages/sdk/server/src/index.ts)
 
 <a id="deepseek-aidsh-session-persistence-jsonl"></a>
 
@@ -2582,7 +2582,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/shell/tool-bash-persistent/src/index.ts:400`](../packages/shell/tool-bash-persistent/src/index.ts)
+来源：[`packages/shell/tool-bash-persistent/src/index.ts:432`](../packages/shell/tool-bash-persistent/src/index.ts)
 
 <a id="deepseek-aidsh-tool-fs"></a>
 
