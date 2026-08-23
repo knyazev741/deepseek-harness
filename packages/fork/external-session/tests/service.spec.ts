@@ -84,4 +84,30 @@ describe('fork external-session registry', () => {
 
     expect(ctx.externalSessions.lookup('alpha')).toBe(second)
   })
+
+  it('unloads an injected provider with its fiber and allows it to be mounted again', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(ExternalSessionRegistry)
+    const provider: StubProvider = { id: 'hmr-provider' }
+    const providerPlugin = {
+      name: 'external-session-test-provider',
+      inject: ['externalSessions'],
+      apply(providerCtx: Context) {
+        providerCtx.externalSessions.register('alpha', provider)
+      },
+    }
+
+    const firstFiber = ctx.plugin(providerPlugin)
+    await firstFiber
+    expect(ctx.externalSessions.lookup('alpha')).toBe(provider)
+
+    await firstFiber.dispose()
+    expect(() => ctx.externalSessions.lookup('alpha')).toThrow(/not registered/u)
+
+    const replacementFiber = ctx.plugin(providerPlugin)
+    await replacementFiber
+    expect(ctx.externalSessions.lookup('alpha')).toBe(provider)
+    await replacementFiber.dispose()
+  })
 })

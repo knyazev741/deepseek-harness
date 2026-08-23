@@ -34,7 +34,7 @@ packages/    @deepseek-ai/dsh-<pkg> workspaces at packages/<group>/<pkg>/
   guard/       loop-hygiene + tool-timeout plugins
   self-modification/  the agent inspects/mounts its own plugins
   hooks/       Claude Code/Codex hook bridges + wire-protocol library
-  external/    sessions driven by external console agents (Codex, ACP clients)
+  fork/        fork-owned opt-in overlays: session source, workspace session state, LLM stream timeout, and external-session registry
   session/     durable session data: persistence, projection, titles, telemetry
   identity/    anonymous identity
   settings/    user-settings capability + file provider

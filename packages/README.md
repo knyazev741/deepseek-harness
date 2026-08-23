@@ -16,7 +16,7 @@ Groups hold `packages/<group>/<pkg>/`; names stay `@deepseek-ai/dsh-<pkg>`. **Gr
 | [`goal/`](goal/README.md) | Same-session goal persistence and lifecycle | Product — stable API |
 | [`schedule/`](schedule/README.md) | Session-local scheduled follow-ups | Product — stable API |
 | [`feedback/`](feedback/README.md) | Human feedback | Product — stable API |
-| [`fork/`](fork/README.md) | Fork-owned opt-in capability overlays | Product — stable API |
+| [`fork/`](fork/README.md) | Fork-owned opt-in capability overlays, including the provider-neutral external-session registry | Product — stable API |
 | [`identity/`](identity/README.md) | Shared anonymous identity | Product — stable API |
 | [`llm/`](llm/README.md) | LLM capability family: the abstract service + provider adapters | Product — stable API |
 | [`e2b/`](e2b/README.md) | E2B providers | POC |
@@ -42,7 +42,6 @@ Groups hold `packages/<group>/<pkg>/`; names stay `@deepseek-ai/dsh-<pkg>`. **Gr
 | [`guard/`](guard/README.md) | Loop-hygiene guards: advisory repeat-call reminders + the `tools/execute` deadline enforcer | Product — stable API |
 | [`bundle/`](bundle/README.md) | Installable `dsh --profile` patch layers | Product — stable API |
 | [`extensions/`](extensions/README.md) | Agent runtime self-modification: live plugin/service inspection and model-written plugin mount/unmount ([design](../.agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md)) | Product — stable API |
-| [`fork/`](fork/README.md) | Fork-owned opt-in capability overlays, including the provider-neutral external-session registry | Product — fork overlay |
 | [`hooks/`](hooks/README.md) | Hook bridges + the shared Claude Code / Codex wire-protocol library | Product — stable API |
 | [`session/`](session/README.md) | Durable session data plane: persistence seam + JSONL/SQLite backends, projection seam, log-backed titles, session reporting | Product — stable API |
 | [`session-query/`](session-query/README.md) | Session retrieval family: logical corpus, bounded reads, lineage, event relationships, semantic filtering, and SQLite full-text search | Product — stable API |
