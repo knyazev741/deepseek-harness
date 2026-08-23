@@ -110,6 +110,7 @@ New behavior attaches to a documented extension point. Changing the loop itself 
 | Add a model provider | register its adapter on `ctx.llm` |
 | Add a model-facing capability | register on `ctx.tools`; its schema joins prompt assembly |
 | Give one session a different capability set | compose an agent preset; a service row there needs an `isolate` realm |
+| Extend an existing preset for one deployment | feature-detect `AGENT_PRESET_PATCH_CONTRIBUTOR` and register ordered mount-time patches |
 | Add shell execution | register a `ctx.shell` backend; the local one spawns through `ctx.subprocess` |
 | Add persistent terminal execution | register a `ctx.terminals` backend plus `dsh-tool-terminal` |
 | Add a human command | register on `ctx.commands`; it dispatches without a model turn |

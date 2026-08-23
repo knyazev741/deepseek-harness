@@ -85,6 +85,30 @@ beforeEach(async () => {
 })
 
 describe('composing an agent from a preset', () => {
+  it('applies Include patches supplied by a standing mount', async () => {
+    const preset = await ctx.agentPresets.resolve('standard')
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('sess-mounted-patch'),
+      setup: async (agentCtx: Context) => {
+        await mountPreset(agentCtx, preset, [{ id: 'alpha', config: { tool: 'mounted-patch' } }])
+      },
+    })
+
+    expect(toolNames(ctx, handle.agent)).toEqual(['mounted-patch'])
+  })
+
+  it('accepts a scoped mount without patches', async () => {
+    const preset = await ctx.agentPresets.resolve('standard')
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('sess-unpatched-mount'),
+      setup: async (agentCtx: Context) => {
+        await mountPreset(agentCtx, preset)
+      },
+    })
+
+    expect(toolNames(ctx, handle.agent)).toEqual(['alpha'])
+  })
+
   it('hands an absolute plugin path to Node as a file URL', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-preset-absolute-plugin-'))
     const presetDir = join(root, 'absolute')

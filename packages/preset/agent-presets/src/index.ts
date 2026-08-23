@@ -24,6 +24,7 @@
 import { stat } from 'node:fs/promises'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import { bindScopeParent, createScope, scopeOf, type Scope, type ScopeKey, type ScopeParentBinding } from '@deepseek-ai/dsh-scope'
 // Type-only: resolves the `agent/created` lifecycle event this service watches.
 import type {} from '@deepseek-ai/dsh-agent'
@@ -34,6 +35,11 @@ import { copyComposition, deleteComposition, readComposition } from './authoring
 import { mountPreset, serviceForAgent, standingMountFor } from './mount.ts'
 import { PresetExistsError } from './authoring.ts'
 import { PresetMountError, UnknownPresetError, type AgentPreset, type Config, type PresetRoot } from './preset.ts'
+import {
+  AGENT_PRESET_PATCH_CONTRIBUTOR,
+  type AgentPresetPatchContribution,
+  type AgentPresetPatchContributor,
+} from './contributor.ts'
 import type {} from './types.ts'
 
 /** Settings namespace carrying the user's chosen default preset. */
@@ -65,6 +71,11 @@ export {
 export { resolveSessionPreset, type PresetBearingSession } from './session.ts'
 export { PresetMountError, UnknownPresetError } from './preset.ts'
 export type { AgentPreset, Config, PresetRoot, PresetTrust } from './preset.ts'
+export {
+  AGENT_PRESET_PATCH_CONTRIBUTOR,
+  type AgentPresetPatchContribution,
+  type AgentPresetPatchContributor,
+} from './contributor.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -193,6 +204,18 @@ export class AgentPresets extends Service {
   }
 
   /**
+   * Feature-detected registration face for deployment-owned preset patches.
+   *
+   * The getter captures the service proxy's caller context, so a plugin that
+   * reads this symbol and calls `register()` owns the contribution effect.
+   */
+  get [AGENT_PRESET_PATCH_CONTRIBUTOR](): AgentPresetPatchContributor {
+    return {
+      register: contribution => this.registerPatchContribution(contribution),
+    }
+  }
+
+  /**
    * Every preset the configured roots currently supply.
    * @returns the presets, first-root-wins per id.
    */
@@ -258,6 +281,9 @@ export class AgentPresets extends Service {
    * standing compositions. WeakMap: entries die with their agents.
    */
   private readonly bindings = new WeakMap<ScopeKey, ScopeParentBinding>()
+
+  /** Ordered deployment patch contributions, grouped by target preset id. */
+  private readonly patchContributions = new Map<string, PatchTarget>()
 
   /**
    * Compose one agent from a preset: ensure the preset's standing mount, then
@@ -487,6 +513,21 @@ export class AgentPresets extends Service {
     return (await this.ensureStanding(preset)).key
   }
 
+  /** Register one deployment patch contribution under the caller's effect. */
+  private registerPatchContribution(contribution: AgentPresetPatchContribution): () => void {
+    return registerPatchContribution(this.ctx, this.patchContributions, contribution)
+  }
+
+  /** Snapshot the target's ordered patches and generation for one mount. */
+  private patchSnapshot(presetId: string): PatchSnapshot {
+    const target = this.patchContributions.get(presetId)
+    const patches = target?.contributions.flatMap(contribution => contribution.patches) ?? []
+    return {
+      generation: target?.generation ?? 0,
+      patches: Object.freeze(patches),
+    }
+  }
+
   /** Resolve (or create, single-flight) the standing mount of one preset. */
   private async ensureStanding(preset: AgentPreset): Promise<StandingMount> {
     const pending = this.standing.get(preset.id)
@@ -498,7 +539,9 @@ export class AgentPresets extends Service {
       // serves the current generation — a mount must survive its file
       // disappearing, and failing the session over a stat would not.
       const current = await compositionStamp(preset.path)
-      if (current === undefined || sameStamp(mounted.stamp, current)) return mounted
+      const patches = this.patchSnapshot(preset.id)
+      if (mounted.contributionGeneration === patches.generation
+        && (current === undefined || sameStamp(mounted.stamp, current))) return mounted
       // TODO: reclaim the superseded generation once the last agent joined to
       // it is gone. The subtree is not inert — `dsh-skill-filesystem` watches its
       // roots — and the settings-page authoring flow turns "a composition
@@ -510,6 +553,7 @@ export class AgentPresets extends Service {
       if (this.standing.get(preset.id) === pending) this.standing.delete(preset.id)
       return this.ensureStanding(preset)
     }
+    const patches = this.patchSnapshot(preset.id)
     const created = (async (): Promise<StandingMount> => {
       const key: ScopeKey = { agentPreset: preset.id }
       const scope = createScope(this.selfCtx, key)
@@ -521,8 +565,8 @@ export class AgentPresets extends Service {
         if (stamp === undefined) {
           throw new PresetMountError(preset.id, `composition file is unreadable: ${preset.path}`)
         }
-        await mountPreset(scope.ctx, preset)
-        return { key, scope, stamp }
+        await mountPreset(scope.ctx, preset, patches.patches)
+        return { key, scope, stamp, contributionGeneration: patches.generation }
       } catch (error) {
         this.standing.delete(preset.id)
         await scope.dispose()
@@ -567,6 +611,67 @@ interface StandingMount {
   readonly scope: Scope
   /** Stamp of the composition file this generation was mounted from. */
   readonly stamp: CompositionStamp
+  /** Contribution generation applied to this standing mount. */
+  readonly contributionGeneration: number
+}
+
+/** Contributions accumulated for one target preset. */
+interface PatchTarget {
+  /** Registration records in insertion order. */
+  readonly contributions: AgentPresetPatchContribution[]
+  /** Monotonic generation invalidating standing mounts after changes. */
+  generation: number
+}
+
+/** Immutable patch snapshot passed to one standing mount. */
+interface PatchSnapshot {
+  /** Monotonic target generation represented by this snapshot. */
+  readonly generation: number
+  /** Flattened patch list in contribution and per-contribution order. */
+  readonly patches: readonly PatchOptions[]
+}
+
+/** Register one deployment patch contribution under the caller's effect. */
+function registerPatchContribution(
+  owner: Context,
+  targets: Map<string, PatchTarget>,
+  contribution: AgentPresetPatchContribution,
+): () => void {
+  const presetId = contribution.presetId
+  if (typeof presetId !== 'string' || presetId.trim().length === 0) {
+    throw new TypeError('agent-presets patch contribution preset id must be non-empty')
+  }
+  const patches = contribution.patches
+  if (!Array.isArray(patches) || patches.length === 0) {
+    throw new TypeError(`agent-presets patch contribution for "${presetId}" must have a non-empty patch list`)
+  }
+
+  const stored: AgentPresetPatchContribution = Object.freeze({
+    presetId,
+    patches: freezeDeep(structuredClone(patches)) as readonly PatchOptions[],
+  })
+  const target = targets.get(presetId) ?? { contributions: [], generation: 0 }
+  targets.set(presetId, target)
+  const dispose = owner.effect(() => {
+    target.contributions.push(stored)
+    target.generation += 1
+    return () => {
+      const index = target.contributions.indexOf(stored)
+      /* v8 ignore next -- Cordis invokes an effect cleanup at most once; this guard protects a stale owner race. */
+      if (index === -1) return
+      target.contributions.splice(index, 1)
+      target.generation += 1
+    }
+  }, `agentPresets.patchContribution(${JSON.stringify(presetId)})`)
+  return () => void dispose()
+}
+
+/** Deeply freeze a structured-cloned patch list before it enters the registry. */
+function freezeDeep(value: unknown, seen = new Set<object>()): unknown {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return value
+  seen.add(value)
+  for (const child of Object.values(value)) freezeDeep(child, seen)
+  return Object.freeze(value)
 }
 
 export default AgentPresets

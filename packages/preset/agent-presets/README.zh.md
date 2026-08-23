@@ -26,6 +26,14 @@
 
 `AgentPreset` 携带 `id`（目录名）、`trust`（`system` 或 `user`，取自它所在的根目录）、`path`（组装文件的绝对路径），以及——仅当该 preset 无法组装会话时——`broken`（一条人类可读的原因，名单界面原样展示）。
 
+### 部署 patch 贡献
+
+部署插件可以通过带 symbol key 的 `AGENT_PRESET_PATCH_CONTRIBUTOR` 接口，向既有 preset 可选地添加按序排列、只在挂载时应用的 Include patch。该 key 是 `Symbol.for('dsh.agent-presets.patch-contributor')`，因此 JavaScript 插件无需导入特定版本的包，就能探测宿主是否兼容。
+
+`ctx.agentPresets[AGENT_PRESET_PATCH_CONTRIBUTOR].register({ presetId, patches })` 要求目标 id 和 patch 列表都非空，按注册顺序保存不可变副本，并返回由调用插件副作用所有者持有的 disposer。注册时目标 id 不必存在于文件系统 roster；缺失的 preset 仍会在 `resolve()` 或之后的挂载处失败。
+
+只有创建新的常驻代际时，贡献才会展平后传给 `Include.Config.patches`。注册或释放贡献会使该目标的后续挂载失效，而已经加入的 agent 以及通过 `composeFrom()` 加入的子 agent 会保留各自原来的代际。`read()` 与 `copy()` 仍然操作磁盘中的组装文件，不会把部署 patch 物化进去。
+
 ### 应在何处调用 `mount()`
 
 agent 工厂的 `setup(agentCtx)` 钩子是唯一受支持的调用点。只有在那里，认父是在 agent 尚未发布时完成的，因此组装被拒绝会让整次创建回滚，而不会留下一个组装到一半的会话。常驻子树归 roster 服务自己的 fiber 所有——刻意用其未追踪的上下文，因为从被追踪的 `this.ctx` 派生的子树会经调用方的 shadow fiber 解析一切服务、无视各 entry 自己的 inject store——所以它比任何 agent 都活得久，只随整棵树卸载。每个代际记录其组装文件的 stamp（mtime 与大小）：发现 stamp 过期的会话会开启下一个代际，而所有已加入的会话保持各自正在运行的那个——正在运行的会话所加入的组装在其文件被修改或删除后继续存活；文件是唯一的组装编辑器，stamp 正是把编辑送达后续会话的机制。
@@ -150,5 +158,5 @@ Indirectly, through the plugins a standing composition registers, which own ever
 - **被替代的代际永不回收** —— 已加入的会话保持其运行所在的代际，而名单没有加入计数可以判断最后一个何时离开，因此整棵子树一直挂到进程结束。代价按代际计而非按会话计，但并非为零：`dsh-skill-filesystem` 默认监听自己的根目录，因此每一轮「编辑后建会话」都会新增一套活的 watcher。上限取决于组装被编辑的频率——而设置页的编写流程把这件事从「每次部署」变成了「每次保存」。要回收就需要给常驻挂载加上已加入 agent 的计数；见 `ensureStanding` 处的 `TODO`。
 - **副本从不被实际挂载以校验** —— 它与来源逐字节相同，因此磁盘上已坏的来源会产出与来源同样损坏的副本；发现过程的健康检查会在下一次读取名单时把两行都标出来，而不是把失败推迟到会话启动。
 - **健康是形状检查，不是挂载** —— 发现过程只证明组装能以加载器方言解析、由具名行组成，不证明每一行的模块都能解析并激活；引用不存在的包的行仍在第一个会话处失败，并回滚该会话的创建。
-- **副本是会漂移的快照** —— 升级部署不会更新随附 preset 的副本，本层也没有表达「standard 加一处改动」的 patch 语义（那是 bundle 层 `cordis.patch.yml` 的能力）；随附集合自己也接受同样的代价——`cordis` 与 `code` 就是 `standard` 的完整副本——换来整份组装在一个文件里可读。
+- **副本是会漂移的快照** —— 升级部署不会更新随附 preset 的副本，磁盘上的 preset 文件不表达「standard 加一处改动」；部署插件可以通过上面的 patch 贡献接口在挂载时提供这种变体，而随附集合自己也接受复制代价——`cordis` 与 `code` 就是 `standard` 的完整副本——换来每份组装在一个文件里可读。
 - **根目录扫描不做监听** —— 每次读取都实际访问文件系统，这让名单保持新鲜，但每次 `list()` 会对每个根目录产生一次 `readdir`。
