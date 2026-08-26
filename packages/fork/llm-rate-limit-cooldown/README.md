@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Fork-owned LLM plugin that keeps a rate-limited request alive after `dsh-llm-retry`'s bounded budget is exhausted. It waits a long cooldown and returns one retry action so the agent loop re-attempts the same request, instead of letting a `429` that outlasts fast backoff end the turn.
+Fork-owned LLM plugin that keeps a provider-limited request alive after `dsh-llm-retry`'s bounded budget is exhausted. It waits a long cooldown and returns one retry action so the agent loop re-attempts the same request, instead of letting a persistent `429` (rate limit) or upstream `5xx` (`502`/`503`, provider down) that outlasts fast backoff end the turn.
 
 ## Composition
 
@@ -19,10 +19,10 @@ The plugin requires `agents` and listens on the `agent/request-error` waterfall.
 
 `dsh-llm-retry` owns fast exponential backoff for transient failures up to each provider's `retryPolicy.maxRetries` and, for `mode: always`, retries every failure unboundedly. This plugin extends the bounded (`mode: normal`) path only:
 
-- It claims a failure only when `failure.code` matches `retryableCode` (default `RATE_LIMIT`, the normalization of HTTP `429`) and the request's durable `llm/retry` chain for that `turn`/`step`/`provider` has reached the provider's `maxRetries`.
+- It claims a failure only when `failure.code` is in `retryableCodes` (default `['RATE_LIMIT', 'SERVER']`: `RATE_LIMIT` is the normalization of HTTP `429`, `SERVER` is an upstream 5xx such as `502`/`503`) and the request's durable `llm/retry` chain for that `turn`/`step`/`provider` has reached the provider's `maxRetries`.
 - Anything else — a different code, an unbounded/absent policy, or a budget not yet exhausted — is delegated through `next()`, leaving ownership with `dsh-llm-retry` or a later listener.
 
-The claim waits `cooldownMs` (default `600000` = 10 minutes, non-zero and no greater than Node's reliable timer maximum `2147483647`) on a delay cancellable by the turn `signal` and by plugin disposal, then returns `{ kind: 'retry' }`. The loop then re-runs the same request; if it is rate-limited again, the plugin claims again and waits again — so a persistent `429` is retried roughly every `cooldownMs`.
+The claim waits `cooldownMs` (default `600000` = 10 minutes, non-zero and no greater than Node's reliable timer maximum `2147483647`) on a delay cancellable by the turn `signal` and by plugin disposal, then returns `{ kind: 'retry' }`. The loop then re-runs the same request; if it is limited again, the plugin claims again and waits again — so a persistent `429` or upstream `5xx` is retried roughly every `cooldownMs`.
 
 Because the claim is a pure function of the durable retry count, the plugin is order-independent on the waterfall: whether it or `dsh-llm-retry` fires first, only the exhausted case escalates.
 
@@ -30,7 +30,7 @@ Because the claim is a pure function of the durable retry count, the plugin is o
 
 ### What the model sees
 
-The plugin adds no prompt, tool schema, or other model-visible text. When it claims an exhausted rate-limited request, the model simply sees the request eventually succeed after the cooldown, or fail terminally if the turn is cancelled. No durable session event is appended.
+The plugin adds no prompt, tool schema, or other model-visible text. When it claims an exhausted limited request, the model simply sees the request eventually succeed after the cooldown, or fail terminally if the turn is cancelled. No durable session event is appended.
 
 ### Token effect
 

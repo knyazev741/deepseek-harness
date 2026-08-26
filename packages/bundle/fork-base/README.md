@@ -17,7 +17,7 @@ The session-state row waits for the `workspaceRegistry` supplied by a Host surfa
 - [`fork-session-source/`](../../fork/session-source/README.md) records the optional GitHub Actions source marker and exposes its nullable projection.
 - [`fork-workspace-session-state/`](../../fork/workspace-session-state/README.md) persists the ordered workspace-session pin list and exposes its generated Remote.
 - [`fork-llm-first-chunk-timeout/`](../../fork/llm-first-chunk-timeout/README.md) bounds only the idle wait before the first LLM stream result.
-- [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.md) retries a persistently rate-limited request (default `RATE_LIMIT`/`429`) after `cooldownMs` once the provider's bounded `llm-retry` budget is exhausted.
+- [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.md) retries a persistently limited request (default `RATE_LIMIT`/`429` or upstream `SERVER`/`5xx`) after `cooldownMs` once the provider's bounded `llm-retry` budget is exhausted.
 
 Each capability remains owned by its package and can be removed or replaced independently when the upstream base changes.
 

@@ -27,17 +27,20 @@ export const inject = ['agents']
 export interface Config {
   /** Cooldown before one retry of an exhausted rate-limited request, in ms (default 600000). */
   readonly cooldownMs?: number
-  /** Normalized provider failure code that triggers escalation (default "RATE_LIMIT"). */
-  readonly retryableCode?: string
+  /** Normalized provider failure codes that trigger escalation (default ["RATE_LIMIT", "SERVER"]). */
+  readonly retryableCodes?: string[]
 }
 
 /** Default long cooldown before one post-budget retry. */
 const DEFAULT_COOLDOWN_MS = 600_000
 
+/** Trigger codes for a rate limit (HTTP 429) and an upstream provider 5xx (HTTP 502/503). */
+const DEFAULT_RETRYABLE_CODES = ['RATE_LIMIT', 'SERVER']
+
 /** Loader schema for {@link Config}. */
 export const Config: z<Config> = z.object({
   cooldownMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_COOLDOWN_MS),
-  retryableCode: z.string().min(1).default('RATE_LIMIT'),
+  retryableCodes: z.array(z.string().min(1)).default(DEFAULT_RETRYABLE_CODES),
 })
 
 /**
@@ -49,7 +52,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const { lifetime, active, listener } = createEscalator(
     ctx,
     config.cooldownMs ?? DEFAULT_COOLDOWN_MS,
-    config.retryableCode ?? 'RATE_LIMIT',
+    config.retryableCodes ?? DEFAULT_RETRYABLE_CODES,
   )
   const disposeListener = ctx.on('agent/request-error', listener)
   ctx.effect(() => async () => {

@@ -61,13 +61,13 @@ export interface EscalatorHandle {
  * Build a rate-limit cooldown escalator for one installed plugin instance.
  * @param ctx - context whose logger reports the escalation steps.
  * @param cooldownMs - delay before one post-budget retry.
- * @param retryableCode - normalized failure code that triggers escalation.
+ * @param retryableCodes - normalized failure codes that trigger escalation.
  * @returns the listener and the per-instance state it owns.
  */
 export function createEscalator(
   ctx: Context,
   cooldownMs: number,
-  retryableCode: string,
+  retryableCodes: readonly string[],
 ): EscalatorHandle {
   const lifetime = new AbortController()
   const active = new Set<Promise<RequestErrorAction>>()
@@ -79,7 +79,7 @@ export function createEscalator(
     // A stale waterfall callback captured before disposal must not enter
     // downstream recovery after the plugin is gone.
     if (lifetime.signal.aborted) return Promise.resolve<RequestErrorAction>(undefined)
-    const operation = recover(ctx, lifetime.signal, cooldownMs, retryableCode, payload, next)
+    const operation = recover(ctx, lifetime.signal, cooldownMs, retryableCodes, payload, next)
     const tracked = operation.finally(() => active.delete(tracked))
     active.add(tracked)
     return tracked
@@ -92,11 +92,11 @@ async function recover(
   ctx: Context,
   lifetimeSignal: AbortSignal,
   cooldownMs: number,
-  retryableCode: string,
+  retryableCodes: readonly string[],
   { agent, turn, step, provider, failure, retryPolicy, signal }: Parameters<Events['agent/request-error']>[0],
   next: () => Promise<RequestErrorAction>,
 ): Promise<RequestErrorAction> {
-  if (failure.code !== retryableCode) return next()
+  if (!retryableCodes.includes(failure.code)) return next()
   // An unbounded or absent policy never exposes an exhausted budget to this
   // plugin: `always` is owned by dsh-llm-retry, and an unprepared route has
   // no bounded chain to escalate past.

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-fork-llm-rate-limit-cooldown.md
-2026-08-24-fork-llm-rate-limit-cooldown.md: 7dc5cdf555fb1eae164879471544091f9e6bc16b
-2026-08-24-fork-llm-rate-limit-cooldown.zh.md: e2c285bc0d997f71acf505faf2c5fff6ed7063fb
+2026-08-24-fork-llm-rate-limit-cooldown.md: f8430374e9dcc911a630032032d047b70165d22b
+2026-08-24-fork-llm-rate-limit-cooldown.zh.md: f0b96e69c1f9dafc7fec5979870d63787fa8eeb9

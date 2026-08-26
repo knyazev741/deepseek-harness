@@ -72,8 +72,12 @@ function rateLimited(): Error {
   return new LlmError('rate limited', 'RATE_LIMIT', { status: 429 })
 }
 
-function wrongCode(): Error {
-  return new LlmError('server exploded', 'SERVER', { status: 500 })
+function serverDown(): Error {
+  return new LlmError('upstream provider error', 'SERVER', { status: 503 })
+}
+
+function nonTriggerCode(): Error {
+  return new LlmError('bad payload', 'INVALID_REQUEST', { status: 400 })
 }
 
 interface HarnessOptions {
@@ -83,8 +87,8 @@ interface HarnessOptions {
   retryPolicy?: RetryPolicyConfig
   /** Cooldown installed on this plugin (omitted exercises the default). */
   cooldownMs?: number
-  /** Code escalation responds to (omitted exercises the default). */
-  retryableCode?: string
+  /** Codes escalation responds to (omitted exercises the default). */
+  retryableCodes?: string[]
 }
 
 async function harness(
@@ -94,7 +98,7 @@ async function harness(
   const ctx = new Context()
   const pluginConfig = {
     ...(options.cooldownMs !== undefined ? { cooldownMs: options.cooldownMs } : {}),
-    ...(options.retryableCode !== undefined ? { retryableCode: options.retryableCode } : {}),
+    ...(options.retryableCodes !== undefined ? { retryableCodes: options.retryableCodes } : {}),
   }
   await ctx.plugin(LlmRuntime)
   await ctx.plugin(SessionStore)
@@ -207,12 +211,12 @@ describe('fork-llm-rate-limit-cooldown', () => {
     expect(agent.session.events.filter(event => event.type === 'llm/retry')).toHaveLength(2)
   })
 
-  it('delegates a failure with a non-retryable code to a terminal outcome', async () => {
-    const adapter = new ScriptedAdapter([wrongCode()])
+  it('delegates a failure with a non-trigger code to a terminal outcome', async () => {
+    const adapter = new ScriptedAdapter([nonTriggerCode()])
     const { ctx, disposeAdapter } = await harness(adapter, {
       includeRetry: false,
-      retryableCode: 'RATE_LIMIT',
-      retryPolicy: normalConfig({ retryableCodes: ['RATE_LIMIT'] }),
+      retryableCodes: ['RATE_LIMIT', 'SERVER'],
+      retryPolicy: normalConfig({ retryableCodes: ['RATE_LIMIT', 'SERVER'] }),
     })
     disposed = disposeAdapter
     context = ctx
@@ -221,8 +225,38 @@ describe('fork-llm-rate-limit-cooldown', () => {
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
 
-    expectTerminal(agent, 'SERVER')
+    expectTerminal(agent, 'INVALID_REQUEST')
     expect(adapter.requests).toHaveLength(1)
+  })
+
+  it('escalates an upstream 5xx (SERVER) whose bounded budget is exhausted, waits, then retries to success', async () => {
+    const adapter = new ScriptedAdapter([
+      serverDown(),
+      serverDown(),
+      serverDown(),
+      textResponse('done'),
+    ])
+    const { ctx, disposeAdapter } = await harness(adapter, {
+      includeRetry: true,
+      cooldownMs: 20,
+      retryPolicy: normalConfig({
+        retryableCodes: ['RATE_LIMIT', 'SERVER'],
+        backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
+      }),
+    })
+    disposed = disposeAdapter
+    context = ctx
+    const agent = ctx.agentLoop.create(SessionId('cooldown-server-success'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+
+    expect(adapter.requests).toHaveLength(4)
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'done' }],
+    })
+    expect(agent.session.events.filter(event => event.type === 'llm/retry')).toHaveLength(2)
   })
 
   it('delegates while the bounded retry budget is not yet exhausted', async () => {
@@ -341,28 +375,28 @@ describe('fork-llm-rate-limit-cooldown internals', () => {
   })
 
   it('delegates an unclaimed failure through the continuation', async () => {
-    const escalator = createEscalator(new Context(), 100, 'RATE_LIMIT')
+    const escalator = createEscalator(new Context(), 100, ['RATE_LIMIT', 'SERVER'])
     const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
-    await escalator.listener(makePayload({ failure: { code: 'SERVER' } }), next)
+    await escalator.listener(makePayload({ failure: { code: 'INVALID_REQUEST' } }), next)
     expect(next).toHaveBeenCalledTimes(1)
   })
 
   it('delegates when the provider exposes no bounded retry policy', async () => {
-    const escalator = createEscalator(new Context(), 100, 'RATE_LIMIT')
+    const escalator = createEscalator(new Context(), 100, ['RATE_LIMIT', 'SERVER'])
     const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
     await escalator.listener(makePayload({ retryPolicy: undefined }), next)
     expect(next).toHaveBeenCalledTimes(1)
   })
 
   it('delegates an unbounded always policy owned by dsh-llm-retry', async () => {
-    const escalator = createEscalator(new Context(), 100, 'RATE_LIMIT')
+    const escalator = createEscalator(new Context(), 100, ['RATE_LIMIT', 'SERVER'])
     const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
     await escalator.listener(makePayload({ retryPolicy: { mode: 'always' } }), next)
     expect(next).toHaveBeenCalledTimes(1)
   })
 
   it('aborts at entry when the turn signal is already aborted, without recovering', async () => {
-    const escalator = createEscalator(new Context(), 100, 'RATE_LIMIT')
+    const escalator = createEscalator(new Context(), 100, ['RATE_LIMIT', 'SERVER'])
     const controller = new AbortController()
     controller.abort()
     const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
@@ -377,7 +411,7 @@ describe('fork-llm-rate-limit-cooldown internals', () => {
   })
 
   it('short-circuits a stale waterfall callback captured before disposal', async () => {
-    const escalator = createEscalator(new Context(), 100, 'RATE_LIMIT')
+    const escalator = createEscalator(new Context(), 100, ['RATE_LIMIT', 'SERVER'])
     const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
     escalator.lifetime.abort()
     const result = await escalator.listener(makePayload(), next)
