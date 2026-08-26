@@ -57,7 +57,7 @@ function flattenInsertRows(patches: Patch[]): Row[] {
 }
 
 describe('dsh-fork-base bundle', () => {
-  it('declares the patch file and exactly the three accepted fork packages', () => {
+  it('declares the patch file and exactly the four accepted fork packages', () => {
     const manifest = readManifest()
     expect(manifest.private).toBe(true)
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
@@ -65,9 +65,11 @@ describe('dsh-fork-base bundle', () => {
       '@deepseek-ai/dsh-fork-session-source': 'workspace:^',
       '@deepseek-ai/dsh-fork-workspace-session-state': 'workspace:^',
       '@deepseek-ai/dsh-fork-llm-first-chunk-timeout': 'workspace:^',
+      '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown': 'workspace:^',
     })
     expect(Object.keys(manifest.dependencies ?? {}).sort()).toEqual([
       '@deepseek-ai/dsh-fork-llm-first-chunk-timeout',
+      '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown',
       '@deepseek-ai/dsh-fork-session-source',
       '@deepseek-ai/dsh-fork-workspace-session-state',
     ])
@@ -87,15 +89,19 @@ describe('dsh-fork-base bundle', () => {
       'fork-session-source',
       'fork-workspace-session-state',
       'fork-llm-first-chunk-timeout',
+      'fork-llm-rate-limit-cooldown',
     ])
     expect(new Set(rows.map(row => row.id)).size).toBe(rows.length)
     expect(rows.map(row => row.name)).toEqual([
       '@deepseek-ai/dsh-fork-session-source',
       '@deepseek-ai/dsh-fork-workspace-session-state',
       '@deepseek-ai/dsh-fork-llm-first-chunk-timeout',
+      '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown',
     ])
     expect(rows.find(row => row.id === 'fork-llm-first-chunk-timeout')?.config)
       .toEqual({ firstChunkIdleTimeoutMs: 120000 })
+    expect(rows.find(row => row.id === 'fork-llm-rate-limit-cooldown')?.config)
+      .toEqual({ cooldownMs: 600000 })
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
     expect(rows.some(row => row.name === '@deepseek-ai/dsh-fork-external-session')).toBe(false)
     const serialized = JSON.stringify(patches)
@@ -188,7 +194,7 @@ describe('dsh-fork-base bundle', () => {
     for (const id of ['llm', 'session', 'session-projection', 'settings']) {
       expect(ids.indexOf(id)).toBeGreaterThanOrEqual(0)
     }
-    for (const id of ['fork-session-source', 'fork-workspace-session-state', 'fork-llm-first-chunk-timeout']) {
+    for (const id of ['fork-session-source', 'fork-workspace-session-state', 'fork-llm-first-chunk-timeout', 'fork-llm-rate-limit-cooldown']) {
       expect(ids.indexOf(id)).toBeGreaterThan(ids.indexOf('settings'))
     }
 

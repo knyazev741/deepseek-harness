@@ -2,11 +2,11 @@
 
 [English](README.md) | 中文
 
-可选的 Host fork 组合包：[`cordis.patch.yml`](cordis.patch.yml) 在 [`dsh-base`](../base/README.zh.md) 之后插入三个由独立包拥有的 fork 包，并以可移植的 Knyazev AI 默认值覆盖上游模型行。当部署需要 fork Host 能力和 Knyazev AI 路由时，将此组合包添加到 `@deepseek-ai/dsh-base` 之后。
+可选的 Host fork 组合包：[`cordis.patch.yml`](cordis.patch.yml) 在 [`dsh-base`](../base/README.zh.md) 之后插入四个由独立包拥有的 fork 包，并以可移植的 Knyazev AI 默认值覆盖上游模型行。当部署需要 fork Host 能力和 Knyazev AI 路由时，将此组合包添加到 `@deepseek-ai/dsh-base` 之后。
 
 ## 组合方式
 
-该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state` 和 `fork-llm-first-chunk-timeout`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000`；模型行配置 `knyazev-ai`，使用 `api: openai-completions` 和 `https://knyazevai.work/v1`，并设置 `streamIdleTimeoutMs: 900000`、`timeoutMs: 1800000`、`compat.thinkingFormat: qwen`、`compat.supportsReasoningEffort: false`、`reasoning: high`，以及 `retryPolicy.mode: normal`、`maxRetries: 20`；可重试代码严格按 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT`、`STREAM_CLOSED`、`EMPTY_RESPONSE` 排序。其模型为 `deepseek-v4-flash`（context window `400000`、max tokens `128000`）、`kimi-2.6`（`262144`、`40000`）和 `minimax-2.7`（`204800`，不覆盖 max-token）。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段。
+该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state`、`fork-llm-first-chunk-timeout` 和 `fork-llm-rate-limit-cooldown`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000`；冷却行携带 `cooldownMs: 600000`；模型行配置 `knyazev-ai`，使用 `api: openai-completions` 和 `https://knyazevai.work/v1`，并设置 `streamIdleTimeoutMs: 900000`、`timeoutMs: 1800000`、`compat.thinkingFormat: qwen`、`compat.supportsReasoningEffort: false`、`reasoning: high`，以及 `retryPolicy.mode: normal`、`maxRetries: 20`；可重试代码严格按 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT`、`STREAM_CLOSED`、`EMPTY_RESPONSE` 排序。其模型为 `deepseek-v4-flash`（context window `400000`、max tokens `128000`）、`kimi-2.6`（`262144`、`40000`）和 `minimax-2.7`（`204800`，不覆盖 max-token）。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段。
 
 路由只保存凭据引用 `apiKeyEnv: KNYAZEV_AI_API_KEY`；密钥值保留在外部凭据或环境层，绝不进入 Git。用户 settings 文档位于该 composition base 之上，因此不完整的 `llm-pi-ai` 或 `agent-default-model` 设置会覆盖对应字段，省略字段则继承可移植默认值。profile、home 或 `--patch` 行仍会按 id 整体替换目标插件的 config。该组合包不挂载 provider-neutral external-session registry，也不挂载 Codex provider。
 
@@ -17,6 +17,7 @@
 - [`fork-session-source/`](../../fork/session-source/README.zh.md) 记录可选的 GitHub Actions 来源标记，并提供可空 projection。
 - [`fork-workspace-session-state/`](../../fork/workspace-session-state/README.zh.md) 持久化有序的工作区会话置顶列表，并提供生成的 Remote。
 - [`fork-llm-first-chunk-timeout/`](../../fork/llm-first-chunk-timeout/README.zh.md) 仅限制 LLM 流首个结果之前的空闲等待。
+- [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.zh.md) 在 provider 的有界 `llm-retry` 预算法尽后，等待 `cooldownMs` 再重试持续限流（默认 `RATE_LIMIT`/`429`）的请求。
 
 每项能力仍由自己的包拥有；上游 base 更新时可以分别移除或替换它们。
 

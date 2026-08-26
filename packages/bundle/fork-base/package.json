@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-fork-llm-first-chunk-timeout": "workspace:^",
+    "@deepseek-ai/dsh-fork-llm-rate-limit-cooldown": "workspace:^",
     "@deepseek-ai/dsh-fork-session-source": "workspace:^",
     "@deepseek-ai/dsh-fork-workspace-session-state": "workspace:^"
   },

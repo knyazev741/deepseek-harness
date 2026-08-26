@@ -25,6 +25,15 @@
       config:
         firstChunkIdleTimeoutMs: 120000
 
+    # Keep a persistently rate-limited request alive after dsh-llm-retry's
+    # bounded budget is exhausted: wait a long cooldown, then retry. The knyazev-ai
+    # route below retries fast 20 times; this escalation covers the 429 that
+    # outlives that budget without ending the turn.
+    - id: fork-llm-rate-limit-cooldown
+      name: '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown'
+      config:
+        cooldownMs: 600000
+
 # The upstream adapter row is dormant without a settings section. The fork
 # composition supplies a portable route while keeping the credential external.
 - id: llm-pi-ai
