@@ -76,6 +76,14 @@ function serverDown(): Error {
   return new LlmError('upstream provider error', 'SERVER', { status: 503 })
 }
 
+function quotaExceeded(): Error {
+  return new LlmError('quota exceeded', 'QUOTA', { status: 429 })
+}
+
+function piAiCatchAll(): Error {
+  return new LlmError('upstream stream failed.', 'PI_AI_ERROR', {})
+}
+
 function nonTriggerCode(): Error {
   return new LlmError('bad payload', 'INVALID_REQUEST', { status: 400 })
 }
@@ -209,6 +217,64 @@ describe('fork-llm-rate-limit-cooldown', () => {
       content: [{ type: 'text', text: 'done' }],
     })
     expect(agent.session.events.filter(event => event.type === 'llm/retry')).toHaveLength(2)
+  })
+
+  it('escalates QUOTA via the default code set', async () => {
+    const adapter = new ScriptedAdapter([
+      quotaExceeded(),
+      quotaExceeded(),
+      quotaExceeded(),
+      textResponse('done'),
+    ])
+    const { ctx, disposeAdapter } = await harness(adapter, {
+      includeRetry: true,
+      cooldownMs: 20,
+      retryPolicy: normalConfig({
+        retryableCodes: ['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR'],
+        backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
+      }),
+    })
+    disposed = disposeAdapter
+    context = ctx
+    const agent = ctx.agentLoop.create(SessionId('cooldown-quota'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+
+    expect(adapter.requests).toHaveLength(4)
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'done' }],
+    })
+  })
+
+  it('escalates the pi-ai catch-all PI_AI_ERROR via the default code set', async () => {
+    const adapter = new ScriptedAdapter([
+      piAiCatchAll(),
+      piAiCatchAll(),
+      piAiCatchAll(),
+      textResponse('done'),
+    ])
+    const { ctx, disposeAdapter } = await harness(adapter, {
+      includeRetry: true,
+      cooldownMs: 20,
+      retryPolicy: normalConfig({
+        retryableCodes: ['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR'],
+        backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
+      }),
+    })
+    disposed = disposeAdapter
+    context = ctx
+    const agent = ctx.agentLoop.create(SessionId('cooldown-piai'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+
+    expect(adapter.requests).toHaveLength(4)
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'done' }],
+    })
   })
 
   it('delegates a failure with a non-trigger code to a terminal outcome', async () => {

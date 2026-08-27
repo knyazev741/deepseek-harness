@@ -19,10 +19,12 @@ The plugin requires `agents` and listens on the `agent/request-error` waterfall.
 
 `dsh-llm-retry` owns fast exponential backoff for transient failures up to each provider's `retryPolicy.maxRetries` and, for `mode: always`, retries every failure unboundedly. This plugin extends the bounded (`mode: normal`) path only:
 
-- It claims a failure only when `failure.code` is in `retryableCodes` (default `['RATE_LIMIT', 'SERVER']`: `RATE_LIMIT` is the normalization of HTTP `429`, `SERVER` is an upstream 5xx such as `502`/`503`) and the request's durable `llm/retry` chain for that `turn`/`step`/`provider` has reached the provider's `maxRetries`.
+- It claims a failure only when `failure.code` is in `retryableCodes` (default `['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR']`: `RATE_LIMIT` is HTTP `429`, `SERVER` is an upstream 5xx such as `502`/`503`, `QUOTA` is capacity-quota exhaustion, `TIMEOUT` is a request timeout, `TRANSPORT` is a stream/connection truncation, and `PI_AI_ERROR` is the pi-ai provider catch-all) and the request's durable `llm/retry` chain for that `turn`/`step`/`provider` has reached the provider's `maxRetries`.
 - Anything else — a different code, an unbounded/absent policy, or a budget not yet exhausted — is delegated through `next()`, leaving ownership with `dsh-llm-retry` or a later listener.
 
-The claim waits `cooldownMs` (default `600000` = 10 minutes, non-zero and no greater than Node's reliable timer maximum `2147483647`) on a delay cancellable by the turn `signal` and by plugin disposal, then returns `{ kind: 'retry' }`. The loop then re-runs the same request; if it is limited again, the plugin claims again and waits again — so a persistent `429` or upstream `5xx` is retried roughly every `cooldownMs`.
+The claim waits `cooldownMs` (default `600000` = 10 minutes, non-zero and no greater than Node's reliable timer maximum `2147483647`) on a delay cancellable by the turn `signal` and by plugin disposal, then returns `{ kind: 'retry' }`. The loop then re-runs the same request; if it is limited again, the plugin claims again and waits again — so a persistent `429`, upstream `5xx`, quota, timeout, or transport fall is retried roughly every `cooldownMs`.
+
+The default code set is keyed to live-session evidence: these are the transient provider and upstream falls observed on real `knyazev-ai` sessions. `PI_AI_ERROR` is included by default despite also carrying a non-transient module-resolution environment error in rare cases, per the deployment's preference for aggressive provider-outage coverage; drop it from `retryableCodes` if you prefer to surface those failures terminally instead of retrying them.
 
 Because the claim is a pure function of the durable retry count, the plugin is order-independent on the waterfall: whether it or `dsh-llm-retry` fires first, only the exhausted case escalates.
 

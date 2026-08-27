@@ -27,15 +27,22 @@ export const inject = ['agents']
 export interface Config {
   /** Cooldown before one retry of an exhausted rate-limited request, in ms (default 600000). */
   readonly cooldownMs?: number
-  /** Normalized provider failure codes that trigger escalation (default ["RATE_LIMIT", "SERVER"]). */
+  /** Normalized failure codes that trigger escalation (default rate limit, 5xx, quota, timeout, transport, pi-ai catch-all). */
   readonly retryableCodes?: string[]
 }
 
 /** Default long cooldown before one post-budget retry. */
 const DEFAULT_COOLDOWN_MS = 600_000
 
-/** Trigger codes for a rate limit (HTTP 429) and an upstream provider 5xx (HTTP 502/503). */
-const DEFAULT_RETRYABLE_CODES = ['RATE_LIMIT', 'SERVER']
+/**
+ * Trigger codes observed on live sessions as transient provider/upstream falls:
+ * `RATE_LIMIT` (HTTP 429), `SERVER` (upstream 5xx such as 502/503), `QUOTA`,
+ * `TIMEOUT`, `TRANSPORT` (stream/connection truncation), and `PI_AI_ERROR` (the
+ * pi-ai provider catch-all). `PI_AI_ERROR` is opt-in by default even though it
+ * can also carry a non-transient `Cannot find module` environment error, per
+ * deployment preference for aggressive provider-outage coverage.
+ */
+const DEFAULT_RETRYABLE_CODES = ['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR']
 
 /** Loader schema for {@link Config}. */
 export const Config: z<Config> = z.object({

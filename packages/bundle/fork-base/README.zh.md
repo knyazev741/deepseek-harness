@@ -17,7 +17,7 @@
 - [`fork-session-source/`](../../fork/session-source/README.zh.md) 记录可选的 GitHub Actions 来源标记，并提供可空 projection。
 - [`fork-workspace-session-state/`](../../fork/workspace-session-state/README.zh.md) 持久化有序的工作区会话置顶列表，并提供生成的 Remote。
 - [`fork-llm-first-chunk-timeout/`](../../fork/llm-first-chunk-timeout/README.zh.md) 仅限制 LLM 流首个结果之前的空闲等待。
-- [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.zh.md) 在 provider 的有界 `llm-retry` 预算法尽后，等待 `cooldownMs` 再重试持续受限（默认 `RATE_LIMIT`/`429` 或上游 `SERVER`/`5xx`）的请求。
+- [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.zh.md) 在 provider 的有界 `llm-retry` 预算法尽后，等待 `cooldownMs` 再重试持续受限（默认 `RATE_LIMIT`、`SERVER`、`QUOTA`、`TIMEOUT`、`TRANSPORT`、`PI_AI_ERROR`）的请求。
 
 每项能力仍由自己的包拥有；上游 base 更新时可以分别移除或替换它们。
 
