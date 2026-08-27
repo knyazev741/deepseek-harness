@@ -28,10 +28,11 @@
         firstChunkIdleTimeoutMs: 120000
         maxFirstChunkCompactionRetries: 3
 
-    # Keep a persistently rate-limited request alive after dsh-llm-retry's
-    # bounded budget is exhausted: wait a long cooldown, then retry. The knyazev-ai
-    # route below retries fast 20 times; this escalation covers the 429 that
-    # outlives that budget without ending the turn.
+    # Keep a persistently failing request alive after dsh-llm-retry's bounded
+    # budget is exhausted: wait a long cooldown, then retry. The knyazev-ai
+    # route below retries fast 20 times per attempt; this escalation keeps
+    # re-claiming every later exhausted budget on an unstable upstream without
+    # ending the turn.
     - id: fork-llm-rate-limit-cooldown
       name: '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown'
       config:
@@ -60,6 +61,7 @@
             - TRANSPORT
             - STREAM_CLOSED
             - EMPTY_RESPONSE
+            - PI_AI_ERROR
         compat:
           thinkingFormat: qwen
           supportsReasoningEffort: false

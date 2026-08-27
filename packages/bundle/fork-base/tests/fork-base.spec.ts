@@ -140,6 +140,7 @@ describe('dsh-fork-base bundle', () => {
               'TRANSPORT',
               'STREAM_CLOSED',
               'EMPTY_RESPONSE',
+              'PI_AI_ERROR',
             ],
           },
           compat: {
@@ -311,6 +312,7 @@ describe('dsh-fork-base bundle', () => {
           'TRANSPORT',
           'STREAM_CLOSED',
           'EMPTY_RESPONSE',
+          'PI_AI_ERROR',
         ],
       })
       await expect(ctx.llm.listModels('knyazev-ai')).resolves.toMatchObject([
