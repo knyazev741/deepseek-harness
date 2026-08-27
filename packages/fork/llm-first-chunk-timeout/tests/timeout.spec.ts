@@ -118,6 +118,11 @@ async function firstResult(stream: AsyncIterable<StreamChunk>): Promise<Iterator
   return stream[Symbol.asyncIterator]().next()
 }
 
+/** Emit one agent-status notification for the partial test agent without building a full Agent instance. */
+function emitAgentStatus(ctx: Context, agent: object, status: 'idle' | 'running'): void {
+  ctx.emit('agent/status', { agent, status } as never)
+}
+
 describe('first-chunk idle timeout waterfall', () => {
   it('leaves the upstream waterfall unchanged when the plugin is absent', async () => {
     const ctx = new Context()
@@ -807,7 +812,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
       failure,
       retryPolicy: undefined,
       signal,
-    }, next)
+    } as never, next)
   }
 
   function delegated(): Promise<RequestErrorAction> {
@@ -829,7 +834,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
     expect(fake.compactIfNeeded).toHaveBeenCalledWith(agent, 'context-overflow', expect.any(AbortSignal))
     expect(agent.followup).not.toHaveBeenCalled()
-    ctx.emit('agent/status', { agent, status: 'idle' })
+    emitAgentStatus(ctx, agent, 'idle')
     expect(agent.followup).toHaveBeenCalledTimes(1)
     expect(agent.followup).toHaveBeenCalledWith(expect.objectContaining({
       role: 'user',
@@ -951,7 +956,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     const outcomes: Array<unknown> = []
     for (let i = 0; i < 3; i += 1) {
       outcomes.push(await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated))
-      ctx.emit('agent/status', { agent, status: 'idle' })
+      emitAgentStatus(ctx, agent, 'idle')
     }
     expect(outcomes).toEqual([undefined, undefined, undefined])
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
@@ -977,7 +982,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
         new AbortController().signal,
         { turn, step: 1 },
       )
-      ctx.emit('agent/status', { agent, status: 'idle' })
+      emitAgentStatus(ctx, agent, 'idle')
     }
 
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
@@ -1029,7 +1034,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(result).toBeUndefined()
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
     expect(agent.followup).not.toHaveBeenCalled()
-    ctx.emit('agent/status', { agent, status: 'idle' })
+    emitAgentStatus(ctx, agent, 'idle')
     expect(agent.followup).toHaveBeenCalledTimes(1)
   })
 
@@ -1057,13 +1062,13 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
     await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
 
-    ctx.emit('agent/status', { agent, status: 'idle' })
+    emitAgentStatus(ctx, agent, 'idle')
     expect(agent.followup).toHaveBeenCalledTimes(1)
-    ctx.emit('agent/status', { agent, status: 'running' })
-    ctx.emit('agent/status', { agent, status: 'idle' })
+    emitAgentStatus(ctx, agent, 'running')
+    emitAgentStatus(ctx, agent, 'idle')
 
     await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
-    ctx.emit('agent/status', { agent, status: 'idle' })
+    emitAgentStatus(ctx, agent, 'idle')
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
     expect(agent.followup).toHaveBeenCalledTimes(2)
   })
