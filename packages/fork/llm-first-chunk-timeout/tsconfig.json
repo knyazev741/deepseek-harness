@@ -21,6 +21,12 @@
       "path": "../../runtime-diagnostics/invariants"
     },
     {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../compaction/compaction"
+    },
+    {
       "path": "../../llm/llm"
     },
     {

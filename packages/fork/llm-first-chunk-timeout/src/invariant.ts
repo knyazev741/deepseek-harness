@@ -13,9 +13,11 @@ export const name = 'fork-llm-first-chunk-timeout-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant: this package retains no durable event sequence or
- * shared mutable relation; each wrapper owns one transient timer, while the
- * LLM and provider contracts own request cancellation and emitted chunks.
+ * No runtime invariant: this package writes no durable session event sequence.
+ * Each wrapper owns one transient timer, the first-chunk recovery keeps only a
+ * transient per-agent compaction counter, while the LLM and provider contracts
+ * own request cancellation and emitted chunks, and the compaction service owns
+ * any durable surface reduction.
  */
 const install: InvariantInstaller = () => {}
 

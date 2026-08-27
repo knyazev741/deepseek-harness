@@ -18,12 +18,15 @@
     - id: fork-workspace-session-state
       name: '@deepseek-ai/dsh-fork-workspace-session-state'
 
-    # Bound only the idle time before the first LLM stream result. The explicit
-    # value keeps the deployment policy visible and patchable at this layer.
+    # Bound the idle time before the first LLM stream result and, when that
+    # deadline wins (FIRST_CHUNK_TIMEOUT), force one context compaction before
+    # retrying the request. The explicit values keep the deployment policy visible
+    # and patchable at this layer.
     - id: fork-llm-first-chunk-timeout
       name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
       config:
         firstChunkIdleTimeoutMs: 120000
+        maxFirstChunkCompactionRetries: 3
 
     # Keep a persistently rate-limited request alive after dsh-llm-retry's
     # bounded budget is exhausted: wait a long cooldown, then retry. The knyazev-ai

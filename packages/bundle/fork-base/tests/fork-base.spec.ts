@@ -99,7 +99,7 @@ describe('dsh-fork-base bundle', () => {
       '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown',
     ])
     expect(rows.find(row => row.id === 'fork-llm-first-chunk-timeout')?.config)
-      .toEqual({ firstChunkIdleTimeoutMs: 120000 })
+      .toEqual({ firstChunkIdleTimeoutMs: 120000, maxFirstChunkCompactionRetries: 3 })
     expect(rows.find(row => row.id === 'fork-llm-rate-limit-cooldown')?.config)
       .toEqual({ cooldownMs: 600000 })
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)

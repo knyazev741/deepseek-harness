@@ -1,6 +1,9 @@
 /**
  * Bounds the wait for the first result from an LLM stream while preserving
- * provider cancellation and every later iterator result.
+ * provider cancellation and every later iterator result. When that first-read
+ * deadline wins, the stream ends with a `FIRST_CHUNK_TIMEOUT` failure and the
+ * companion `agent/request-error` recovery forces one context compaction
+ * before retrying the request from the replacement surface.
  *
  * @module @deepseek-ai/dsh-fork-llm-first-chunk-timeout
  */
@@ -9,6 +12,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { LlmError, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { createRecovery, FIRST_CHUNK_TIMEOUT_CODE } from './recovery.ts'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'fork-llm-first-chunk-timeout'
@@ -16,18 +20,24 @@ export const name = 'fork-llm-first-chunk-timeout'
 /** The LLM service whose stream waterfall this plugin wraps. */
 export const inject = ['llm']
 
-/** Configuration for the first result deadline. */
+/** Configuration for the first result deadline and its compaction recovery. */
 export interface Config {
   /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
   readonly firstChunkIdleTimeoutMs?: number
+  /** Maximum forced compactions per failing step before ending the turn (default 3). */
+  readonly maxFirstChunkCompactionRetries?: number
 }
 
 /** The default agent-facing first-result deadline. */
 const DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS = 120_000
 
+/** The default ceiling on first-chunk compactions for one failing step. */
+const DEFAULT_MAX_FIRST_CHUNK_COMPACTION_RETRIES = 3
+
 /** Loader schema for {@link Config}. */
 export const Config: z<Config> = z.object({
   firstChunkIdleTimeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS),
+  maxFirstChunkCompactionRetries: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_MAX_FIRST_CHUNK_COMPACTION_RETRIES),
 })
 
 type StreamIterator = AsyncIterator<StreamChunk>
@@ -291,19 +301,23 @@ function doneResult(): StreamResult {
 
 /** Build the terminal chunk emitted when this plugin's first-read timer wins. */
 function timeoutChunk(timeoutMs: number): StreamChunk {
-  const failure = new LlmError(`first LLM chunk idle timeout after ${timeoutMs}ms`, 'TIMEOUT').failure
+  const failure = new LlmError(`first LLM chunk idle timeout after ${timeoutMs}ms`, FIRST_CHUNK_TIMEOUT_CODE).failure
   return { type: 'finish', reason: { kind: 'error', failure } }
 }
 
 /** Validate the resolved timeout independently of loader schema normalization. */
-function resolveTimeout(config: Config | undefined): number {
+function resolveConfig(config: Config | undefined): { timeoutMs: number; maxCompactionRetries: number } {
   const timeoutMs = config?.firstChunkIdleTimeoutMs ?? DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS
+  const maxCompactionRetries = config?.maxFirstChunkCompactionRetries ?? DEFAULT_MAX_FIRST_CHUNK_COMPACTION_RETRIES
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_TIMER_DELAY_MS) {
     throw new Error(
       `fork-llm-first-chunk-timeout: firstChunkIdleTimeoutMs must be a positive safe integer no greater than ${MAX_TIMER_DELAY_MS}`,
     )
   }
-  return timeoutMs
+  if (!Number.isSafeInteger(maxCompactionRetries) || maxCompactionRetries <= 0) {
+    throw new Error('fork-llm-first-chunk-timeout: maxFirstChunkCompactionRetries must be a positive safe integer')
+  }
+  return { timeoutMs, maxCompactionRetries }
 }
 
 /** Wrap one downstream stream until its first iterator result. */
@@ -320,16 +334,23 @@ function wrapStream(
 
 /** Register the first-result deadline around the `llm/stream` waterfall. */
 export function apply(ctx: Context, config?: Config): void {
-  const timeoutMs = resolveTimeout(config)
+  const { timeoutMs, maxCompactionRetries } = resolveConfig(config)
   const active = new Set<FirstChunkStream>()
   const disposeListener = ctx.on('llm/stream', (options, next) => {
     const source = next()
     return wrapStream(source, options, timeoutMs, active)
   })
+  // The recovery listener is prepended so it claims the first-chunk timeout
+  // before `dsh-llm-retry`'s fast backoff, which cannot fix a stalled first
+  // chunk: compact the context, then let the loop retry the same request.
+  const recovery = createRecovery(ctx, maxCompactionRetries)
+  const disposeRecovery = ctx.on('agent/request-error', recovery.listener, { prepend: true })
 
   ctx.effect(() => () => {
     for (const stream of active) stream.dispose()
     active.clear()
+    disposeRecovery()
+    recovery.dispose()
     disposeListener()
   }, 'fork-llm-first-chunk-timeout: clear active deadlines')
 }

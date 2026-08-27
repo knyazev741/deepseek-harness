@@ -11,6 +11,7 @@
   name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
   config:
     firstChunkIdleTimeoutMs: 120000
+    maxFirstChunkCompactionRetries: 3
 ```
 
 插件要求 `llm`，并且每次 waterfall 调用恰好调用一次无参数 continuation。插件只读取冻结请求，不会修改它；请求自带的调用方 `signal` 仍是提供方的取消输入。
@@ -19,7 +20,11 @@
 
 `firstChunkIdleTimeoutMs` 默认值为 `120000`，必须是正的安全整数，且不得超过 Node 可靠定时器的上限 `2147483647`。计时器只与下游第一次 `iterator.next()` 结果竞争。产生值或正常返回 `done` 都会清除计时器并原样转发迭代器，因此不会施加分片之间的截止时间。
 
-计时器先到时，包装器会产生一个带可重试 `TIMEOUT` 失败码的终端 `finish` 分片，并开始调用下游 `return()`，但不会等待它。调用方中止时，插件只清除自己的计时器，并保留下游提供方的取消结果。下游拒绝会保持同一个拒绝。消费方提前返回或插件卸载时会清除插件状态，并尽力关闭下游。消费方调用 `throw(error)` 时，如果下游提供 `throw` 就委托并保留其结果或拒绝；否则会尽力关闭下游，并以调用方错误拒绝。
+计时器先到时，包装器会产生一个带 `FIRST_CHUNK_TIMEOUT` 失败码的终端 `finish` 分片，并开始调用下游 `return()`，但不会等待它。调用方中止时，插件只清除自己的计时器，并保留下游提供方的取消结果。下游拒绝会保持同一个拒绝。消费方提前返回或插件卸载时会清除插件状态，并尽力关闭下游。消费方调用 `throw(error)` 时，如果下游提供 `throw` 就委托并保留其结果或拒绝；否则会尽力关闭下游，并以调用方错误拒绝。
+
+## 首个分片压缩恢复
+
+发生 `FIRST_CHUNK_TIMEOUT` 失败时，插件会在 `agent/request-error` 前插入一个监听器，先通过 `compaction` 服务强制压缩一次上下文（`context-overflow` 触发器），然后返回重试动作，让 agent 循环从新的替换 surface 重新发起同一请求。会跳过 `dsh-llm-retry` 的快速退避，因为它无法修复卡住的首个分片。`maxFirstChunkCompactionRetries`（默认 `3`）限制每个失败请求步骤的压缩次数：当同一步骤在超过上限后仍持续超时，或压缩没有产生持久进展时，监听器会否决整条链，让原始 `FIRST_CHUNK_TIMEOUT` 错误结束该轮。在没有 `compaction` 引擎时，监听器会通过 `next()` 委托，保留插件的独立行为。
 
 ## 模型体验
 
@@ -27,7 +32,7 @@
 
 #### 模型看到的内容
 
-插件不会新增提示词或工具 schema。首个结果截止时间先到时，流会以以下稳定诊断和 `TIMEOUT` 失败码终止：
+插件不会新增提示词或工具 schema。首个结果截止时间先到时，流会以以下稳定诊断和 `FIRST_CHUNK_TIMEOUT` 失败码终止：
 
 ##### 超时诊断
 

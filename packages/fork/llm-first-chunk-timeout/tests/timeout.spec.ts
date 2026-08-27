@@ -9,6 +9,9 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import LlmRuntime, { resolveRetryPolicy, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import * as FirstChunkTimeout from '../src/index.ts'
+import { CompactionEngine } from '@deepseek-ai/dsh-compaction'
+import type { RequestErrorAction } from '@deepseek-ai/dsh-agent'
+
 
 interface Deferred<T> {
   readonly promise: Promise<T>
@@ -166,7 +169,7 @@ describe('first-chunk idle timeout waterfall', () => {
     expect(request).toEqual(options())
   })
 
-  it('yields one retryable TIMEOUT terminal chunk and initiates downstream close', async () => {
+  it('yields one retryable FIRST_CHUNK_TIMEOUT terminal chunk and initiates downstream close', async () => {
     vi.useFakeTimers()
     const pending = deferred<IteratorResult<StreamChunk>>()
     const source = scriptedStream([{ promise: pending.promise }])
@@ -183,14 +186,16 @@ describe('first-chunk idle timeout waterfall', () => {
           kind: 'error',
           failure: {
             message: 'first LLM chunk idle timeout after 10ms',
-            code: 'TIMEOUT',
+            code: 'FIRST_CHUNK_TIMEOUT',
           },
         },
       },
     })
-    const policy = resolveRetryPolicy(undefined, 'test')
-    if (policy.mode !== 'normal') throw new Error('default retry policy must be bounded')
-    expect(policy.retryableCodes).toContain('TIMEOUT')
+    // The code is retryable only when the deployment's retry policy lists it,
+    // as the fork provider configuration does.
+    const policy = resolveRetryPolicy({ mode: 'normal', maxRetries: 0, retryableCodes: ['FIRST_CHUNK_TIMEOUT'] }, 'test')
+    if (policy.mode !== 'normal') throw new Error('explicit retry policy must be bounded')
+    expect(policy.retryableCodes).toContain('FIRST_CHUNK_TIMEOUT')
     expect(source.returnCalls).toBe(1)
     await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
 
@@ -291,7 +296,7 @@ describe('first-chunk idle timeout waterfall', () => {
     await expect(fastIterator.next()).resolves.toEqual({ done: false, value: FIRST })
     expect(vi.getTimerCount()).toBe(1)
     await vi.advanceTimersByTimeAsync(10)
-    await expect(slowRead).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'TIMEOUT' } } } })
+    await expect(slowRead).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'FIRST_CHUNK_TIMEOUT' } } } })
     expect(slow.returnCalls).toBe(1)
     pending.resolve({ done: true, value: undefined })
   })
@@ -637,7 +642,7 @@ describe('first-chunk idle timeout waterfall', () => {
     const { ctx } = await setup(10)
     const asyncRead = waterfall(ctx, asyncCloseSource)[Symbol.asyncIterator]().next()
     await vi.advanceTimersByTimeAsync(10)
-    await expect(asyncRead).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'TIMEOUT' } } } })
+    await expect(asyncRead).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'FIRST_CHUNK_TIMEOUT' } } } })
     pending.resolve({ done: true, value: undefined })
     await Promise.resolve()
 
@@ -652,7 +657,7 @@ describe('first-chunk idle timeout waterfall', () => {
     }
     const syncRead = waterfall(ctx, syncCloseSource)[Symbol.asyncIterator]().next()
     await vi.advanceTimersByTimeAsync(10)
-    await expect(syncRead).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'TIMEOUT' } } } })
+    await expect(syncRead).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'FIRST_CHUNK_TIMEOUT' } } } })
     syncClosePending.resolve({ done: true, value: undefined })
     await Promise.resolve()
   })
@@ -669,7 +674,7 @@ describe('first-chunk idle timeout waterfall', () => {
     const read = waterfall(ctx, source)[Symbol.asyncIterator]().next()
 
     await vi.advanceTimersByTimeAsync(10)
-    await expect(read).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'TIMEOUT' } } } })
+    await expect(read).resolves.toMatchObject({ value: { reason: { kind: 'error', failure: { code: 'FIRST_CHUNK_TIMEOUT' } } } })
     pending.resolve({ done: true, value: undefined })
     await Promise.resolve()
   })
@@ -677,7 +682,7 @@ describe('first-chunk idle timeout waterfall', () => {
 
 describe('first-chunk idle timeout configuration', () => {
   it('defaults to 120000ms', () => {
-    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 120_000 })
+    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 120_000, maxFirstChunkCompactionRetries: 3 })
   })
 
   it('resolves the default through plugin application when config is omitted', async () => {
@@ -705,6 +710,13 @@ describe('first-chunk idle timeout configuration', () => {
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
     expect(() => { FirstChunkTimeout.apply(ctx, { firstChunkIdleTimeoutMs: Number.NaN }) }).toThrow(/firstChunkIdleTimeoutMs/u)
+  })
+
+  it('rejects invalid maxFirstChunkCompactionRetries at load', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    expect(() => { FirstChunkTimeout.apply(ctx, { maxFirstChunkCompactionRetries: 0 }) }).toThrow(/maxFirstChunkCompactionRetries/u)
   })
 })
 
@@ -764,5 +776,198 @@ describe('first-chunk idle timeout Loader composition', () => {
     expect([...ctx.loader.entries()].some(item => item.options.name === '@deepseek-ai/dsh-llm')).toBe(true)
     await entry.parent.remove(entry.options.id)
     expect([...ctx.loader.entries()].some(item => item.options.name === '@deepseek-ai/dsh-fork-llm-first-chunk-timeout')).toBe(false)
+  })
+})
+
+describe('first-chunk compaction recovery (agent/request-error)', () => {
+  class FakeCompaction extends CompactionEngine {
+    readonly compactIfNeeded = vi.fn<CompactionEngine['compactIfNeeded']>().mockResolvedValue(null)
+    readonly compactNow = vi.fn<CompactionEngine['compactNow']>().mockResolvedValue(null)
+    readonly compactRegion = vi.fn<CompactionEngine['compactRegion']>()
+  }
+
+  function fireError(
+    ctx: Context,
+    agent: { readonly session: { readonly surface: { replaceGeneration: number } }; readonly options: object },
+    failure: { readonly message: string; readonly code: string },
+    next: () => Promise<RequestErrorAction>,
+    signal: AbortSignal = new AbortController().signal,
+  ): Promise<RequestErrorAction> {
+    return ctx.waterfall(ctx as never, 'agent/request-error', {
+      agent,
+      turn: 1,
+      step: 1,
+      provider: 'provider',
+      failure,
+      retryPolicy: undefined,
+      signal,
+    }, next)
+  }
+
+  function delegated(): Promise<RequestErrorAction> {
+    return Promise.resolve('delegated' as unknown as RequestErrorAction)
+  }
+
+  it('claims a FIRST_CHUNK_TIMEOUT and retries after a successful compaction', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+    expect(result).toEqual({ kind: 'retry' })
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
+    expect(fake.compactIfNeeded).toHaveBeenCalledWith(agent, 'context-overflow', expect.any(AbortSignal))
+  })
+
+  it('vetoes the chain when compaction makes no durable progress', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {} }
+    const fake = new FakeCompaction(ctx)
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+    expect(result).toBeUndefined()
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
+    expect(surface.replaceGeneration).toBe(0)
+  })
+
+  it('delegates a non-first-chunk code through next()', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const agent = { session: { surface: { replaceGeneration: 0 } }, options: {} }
+    const fake = new FakeCompaction(ctx)
+
+    const result = await fireError(ctx, agent, { message: 'upstream 502', code: 'SERVER' }, delegated)
+    expect(result).toBe('delegated')
+    expect(fake.compactIfNeeded).not.toHaveBeenCalled()
+  })
+
+  it('delegates through next() when no compaction engine is installed', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const agent = { session: { surface: { replaceGeneration: 0 } }, options: {} }
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+    expect(result).toBe('delegated')
+  })
+
+  it('gives up after maxFirstChunkCompactionRetries and vetoes the chain', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10, maxFirstChunkCompactionRetries: 2 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
+
+    const outcomes: Array<unknown> = []
+    for (let i = 0; i < 3; i += 1) {
+      outcomes.push(await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated))
+    }
+    expect(outcomes).toEqual([{ kind: 'retry' }, { kind: 'retry' }, undefined])
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
+  })
+
+  it('delegates through next() when the signal is already aborted', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const agent = { session: { surface: { replaceGeneration: 0 } }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    const controller = new AbortController()
+    controller.abort()
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated, controller.signal)
+    expect(result).toBe('delegated')
+    expect(fake.compactIfNeeded).not.toHaveBeenCalled()
+  })
+
+  it('delegates through next() when the signal aborts during compaction', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    const controller = new AbortController()
+    fake.compactIfNeeded.mockImplementation(async () => { controller.abort(); return null })
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated, controller.signal)
+    expect(result).toBe('delegated')
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries when compaction throws after durable surface progress', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; throw new Error('summary failed') })
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+    expect(result).toEqual({ kind: 'retry' })
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
+  })
+
+  it('vetoes the chain when compaction throws without durable progress', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const agent = { session: { surface: { replaceGeneration: 0 } }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockRejectedValue('summary failed')
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+    expect(result).toBeUndefined()
+  })
+
+  it('drops per-agent bookkeeping when the agent turns idle', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
+    await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+
+    ctx.emit('agent/status', { agent, status: 'idle' })
+    ctx.emit('agent/status', { agent, status: 'connecting' })
+  })
+
+  it('vetoes the chain when the signal aborts during a throwing compaction', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {} }
+    const fake = new FakeCompaction(ctx)
+    const controller = new AbortController()
+    fake.compactIfNeeded.mockImplementation(async () => { controller.abort(); throw new Error('summary failed') })
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated, controller.signal)
+    expect(result).toBeUndefined()
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
   })
 })
