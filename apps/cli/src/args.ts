@@ -153,6 +153,8 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     }
   }
 
+  const webProfile = process.env.DSH_REPOSITORY_WEB_PROFILE ?? 'web'
+  if (webProfile === '') program.error('error: DSH_REPOSITORY_WEB_PROFILE needs a profile name')
   const web = program.command('web').description('boot the web profile (alias of --profile web); the web app\'s own flags follow')
   web
     .helpOption(false)
@@ -165,7 +167,7 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     .option('--dump-default-config', 'print the web profile\'s bundle layers (no user layer) and exit')
     .action((args: string[], options: BootOptions) => {
       rejectParentOptions('web')
-      resolved = resolveBoot(web, 'web', options, args)
+      resolved = resolveBoot(web, webProfile, options, args)
     })
 
   const plugin = program.command('plugin').description('manage a profile\'s plugins by forwarding the remaining arguments to pnpm in the profile directory')

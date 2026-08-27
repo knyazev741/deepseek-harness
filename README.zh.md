@@ -40,6 +40,8 @@ pnpm dsh web
 
 `pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
 
+在本仓库 checkout 中，`pnpm dsh web` 会启动完整的 `fork-web` 组合。如需显式运行仅包含上游层的组合，请使用 `pnpm dsh --profile web`。
+
 ## 社区与支持
 
 - 欢迎通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。

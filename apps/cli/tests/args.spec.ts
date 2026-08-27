@@ -30,6 +30,21 @@ describe('parseDshArgs', () => {
       .toEqual({ mode: 'profile', profile: 'web', patches: ['web.yml'], args: [] })
   })
 
+  it('lets the repository launcher select the web-alias profile without changing app arguments', () => {
+    process.env.DSH_REPOSITORY_WEB_PROFILE = 'fork-web'
+    try {
+      expect(parse(['web', '--host', '127.0.0.1', '--port', '3080', '--no-open']))
+        .toEqual({
+          mode: 'profile',
+          profile: 'fork-web',
+          patches: [],
+          args: ['--host', '127.0.0.1', '--port', '3080', '--no-open'],
+        })
+    } finally {
+      delete process.env.DSH_REPOSITORY_WEB_PROFILE
+    }
+  })
+
   it('ends the launcher flags at the first token it does not own', () => {
     // App flags, including its -h, and positionals reach the app verbatim.
     expect(parse(['--profile', 'tui', '--resume', 'abc']))

@@ -34,6 +34,8 @@ pnpm run build
 pnpm dsh web
 ```
 
+In this repository checkout, `pnpm dsh web` starts the complete `fork-web` composition. Use `pnpm dsh --profile web` to run the upstream-only composition explicitly.
+
 ## Community and support
 
 - Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
