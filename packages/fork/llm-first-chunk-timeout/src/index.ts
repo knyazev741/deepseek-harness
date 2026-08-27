@@ -3,7 +3,7 @@
  * provider cancellation and every later iterator result. When that first-read
  * deadline wins, the stream ends with a `FIRST_CHUNK_TIMEOUT` failure and the
  * companion `agent/request-error` recovery forces one context compaction
- * before retrying the request from the replacement surface.
+ * before queuing a `continue` follow-up from the replacement surface.
  *
  * @module @deepseek-ai/dsh-fork-llm-first-chunk-timeout
  */
@@ -24,14 +24,14 @@ export const inject = ['llm']
 export interface Config {
   /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
   readonly firstChunkIdleTimeoutMs?: number
-  /** Maximum forced compactions per failing step before ending the turn (default 3). */
+  /** Maximum consecutive first-chunk compaction follow-ups before idle (default 3). */
   readonly maxFirstChunkCompactionRetries?: number
 }
 
 /** The default agent-facing first-result deadline. */
 const DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS = 120_000
 
-/** The default ceiling on first-chunk compactions for one failing step. */
+/** The default ceiling on consecutive first-chunk compaction follow-ups. */
 const DEFAULT_MAX_FIRST_CHUNK_COMPACTION_RETRIES = 3
 
 /** Loader schema for {@link Config}. */
@@ -342,7 +342,7 @@ export function apply(ctx: Context, config?: Config): void {
   })
   // The recovery listener is prepended so it claims the first-chunk timeout
   // before `dsh-llm-retry`'s fast backoff, which cannot fix a stalled first
-  // chunk: compact the context, then let the loop retry the same request.
+  // chunk: compact the context, then queue a new `continue` turn.
   const recovery = createRecovery(ctx, maxCompactionRetries)
   const disposeRecovery = ctx.on('agent/request-error', recovery.listener, { prepend: true })
 

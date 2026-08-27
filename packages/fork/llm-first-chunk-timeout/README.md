@@ -24,7 +24,7 @@ When the timer wins, the wrapper yields one terminal `finish` chunk with a `FIRS
 
 ## First-chunk compaction recovery
 
-On a `FIRST_CHUNK_TIMEOUT` failure the plugin prepends an `agent/request-error` listener that forces one context compaction through the `compaction` service (`context-overflow` trigger), then returns a retry action so the agent loop re-attempts the same request from the replacement surface. Fast `dsh-llm-retry` backoff is skipped because it cannot fix a stalled first chunk. `maxFirstChunkCompactionRetries` (default `3`) bounds compactions per failing request step: when the same step keeps timing out across the ceiling, or compaction makes no durable progress, the listener vetoes the chain so the original `FIRST_CHUNK_TIMEOUT` error ends the turn. Without a `compaction` engine the listener delegates through `next()`, preserving the plugin's standalone behavior.
+On a `FIRST_CHUNK_TIMEOUT` failure the plugin prepends an `agent/request-error` listener that forces one context compaction through the `compaction` service (`context-overflow` trigger). Durable compaction progress stages a plugin-authored message containing exactly `continue`, while the listener returns no retry action. The timed-out request ends with its original error; when its driver reaches `idle`, `agent.followup()` inserts the staged message and wakes a new turn from the replacement surface. Delaying insertion until `idle` is required because a follow-up inserted inside the failing driver remains queued after that driver exits. Fast `dsh-llm-retry` backoff is skipped because it cannot fix a stalled first chunk. `maxFirstChunkCompactionRetries` (default `3`) bounds consecutive compaction follow-ups until the recovery activity completes; reaching the ceiling or making no durable progress ends the timeout turn without another continuation. Without a `compaction` engine the listener delegates through `next()`, preserving the plugin's standalone behavior.
 
 ## Model Experience
 
@@ -32,7 +32,7 @@ On a `FIRST_CHUNK_TIMEOUT` failure the plugin prepends an `agent/request-error` 
 
 #### What the model sees
 
-The plugin adds no prompt or tool schema. When the first-result deadline wins, the stream terminates with this stable diagnostic and the `FIRST_CHUNK_TIMEOUT` failure code:
+The plugin adds no prompt section or tool schema. When the first-result deadline wins, the stream terminates with the stable diagnostic and `FIRST_CHUNK_TIMEOUT` failure code below. After successful recovery the next turn receives the durable user-role continuation message with plugin provenance.
 
 ##### Timeout diagnostic
 
@@ -40,13 +40,19 @@ The plugin adds no prompt or tool schema. When the first-result deadline wins, t
 first LLM chunk idle timeout after <firstChunkIdleTimeoutMs>ms
 ```
 
+##### Continuation message
+
+```markdown
+continue
+```
+
 #### Token effect
 
-Zero while a stream produces a result before the deadline; a timeout replaces the absent provider result with one terminal failure chunk.
+Zero while a stream produces a result before the deadline. Successful timeout recovery adds the short `continue` message and a new model request after compaction.
 
 #### KV Cache effect
 
-Independent; the plugin does not rewrite the request or any model-visible prefix.
+Successful recovery uses the compaction replacement surface and appends `continue`, so the new request has a different model-visible prefix and does not reuse the timed-out request verbatim.
 
 ## Known Limitations and Deferred Work
 

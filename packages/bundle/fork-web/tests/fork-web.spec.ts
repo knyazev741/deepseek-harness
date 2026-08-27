@@ -93,11 +93,13 @@ describe('dsh-fork-web bundle', () => {
     expect(counts.get('fork-session-source')).toBe(1)
     expect(counts.get('fork-workspace-session-state')).toBe(1)
     expect(counts.get('fork-llm-first-chunk-timeout')).toBe(1)
+    expect(counts.get('fork-llm-rate-limit-cooldown')).toBe(1)
     expect(counts.get('ui-workspace-overlay')).toBe(1)
     expect(rows.filter(row => row.id.startsWith('fork-')).map(row => row.id)).toEqual([
       'fork-session-source',
       'fork-workspace-session-state',
       'fork-llm-first-chunk-timeout',
+      'fork-llm-rate-limit-cooldown',
     ])
     expect(Object.fromEntries(rows
       .filter(row => ['ui-theme', 'client-runtime', 'ui-conversation', 'ui-workspace'].includes(row.id))

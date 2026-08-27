@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-27-fork-llm-first-chunk-compaction.md
-2026-08-27-fork-llm-first-chunk-compaction.md: 974b669876bc77ce81da97aa1fb37827ed873d76
-2026-08-27-fork-llm-first-chunk-compaction.zh.md: 4be517a7a349d396f4546c8391ddd515b381748a
+2026-08-27-fork-llm-first-chunk-compaction.md: 9545d7c201aff42f047f37e3feead634f34fff89
+2026-08-27-fork-llm-first-chunk-compaction.zh.md: 015bafb2c2076937f414ad8d31397637a1f79e9b

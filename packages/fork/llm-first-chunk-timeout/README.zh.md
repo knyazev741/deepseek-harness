@@ -24,7 +24,7 @@
 
 ## 首个分片压缩恢复
 
-发生 `FIRST_CHUNK_TIMEOUT` 失败时，插件会在 `agent/request-error` 前插入一个监听器，先通过 `compaction` 服务强制压缩一次上下文（`context-overflow` 触发器），然后返回重试动作，让 agent 循环从新的替换 surface 重新发起同一请求。会跳过 `dsh-llm-retry` 的快速退避，因为它无法修复卡住的首个分片。`maxFirstChunkCompactionRetries`（默认 `3`）限制每个失败请求步骤的压缩次数：当同一步骤在超过上限后仍持续超时，或压缩没有产生持久进展时，监听器会否决整条链，让原始 `FIRST_CHUNK_TIMEOUT` 错误结束该轮。在没有 `compaction` 引擎时，监听器会通过 `next()` 委托，保留插件的独立行为。
+发生 `FIRST_CHUNK_TIMEOUT` 失败时，插件会在 `agent/request-error` 前插入一个监听器，先通过 `compaction` 服务强制压缩一次上下文（`context-overflow` 触发器）。压缩产生持久进展后，会暂存一条内容严格为 `continue`、来源属于插件的消息，同时监听器不返回重试动作。超时请求以原始错误结束；其 driver 到达 `idle` 时，`agent.followup()` 才插入暂存消息并唤醒从替换 surface 开始的新一轮。必须延迟到 `idle` 再插入，因为在失败 driver 内插入的 follow-up 会在该 driver 退出后留在队列中。会跳过 `dsh-llm-retry` 的快速退避，因为它无法修复卡住的首个分片。`maxFirstChunkCompactionRetries`（默认 `3`）限制本次恢复活动完成前连续触发的压缩 follow-up 次数；达到上限或没有持久进展时，该超时轮会结束且不再追加 continuation。在没有 `compaction` 引擎时，监听器会通过 `next()` 委托，保留插件的独立行为。
 
 ## 模型体验
 
@@ -32,7 +32,7 @@
 
 #### 模型看到的内容
 
-插件不会新增提示词或工具 schema。首个结果截止时间先到时，流会以以下稳定诊断和 `FIRST_CHUNK_TIMEOUT` 失败码终止：
+插件不会新增 prompt section 或工具 schema。首个结果截止时间先到时，流会以以下稳定诊断和 `FIRST_CHUNK_TIMEOUT` 失败码终止。恢复成功后，下一轮会收到以下带插件来源的持久 user-role 继续消息。
 
 ##### 超时诊断
 
@@ -40,13 +40,19 @@
 first LLM chunk idle timeout after <firstChunkIdleTimeoutMs>ms
 ```
 
+##### 继续消息
+
+```markdown
+continue
+```
+
 #### Token 影响
 
-流在截止时间前产生结果时为零；超时时，用一个终端失败分片替代缺失的提供方结果。
+流在截止时间前产生结果时为零。超时恢复成功时会在压缩后增加短消息 `continue` 和一次新的模型请求。
 
 #### KV Cache 影响
 
-独立；插件不会重写请求或任何模型可见前缀。
+恢复成功时会使用压缩后的替换 surface 并追加 `continue`，因此新请求具有不同的模型可见前缀，不会逐字复用超时请求。
 
 ## 已知限制与延后工作
 

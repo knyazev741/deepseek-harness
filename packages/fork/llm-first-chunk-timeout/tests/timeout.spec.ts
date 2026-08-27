@@ -6,11 +6,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import LlmRuntime, { resolveRetryPolicy, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, LlmAdapter, resolveRetryPolicy, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import * as FirstChunkTimeout from '../src/index.ts'
 import { CompactionEngine } from '@deepseek-ai/dsh-compaction'
 import type { RequestErrorAction } from '@deepseek-ai/dsh-agent'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
+import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 
 interface Deferred<T> {
@@ -792,11 +797,12 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     failure: { readonly message: string; readonly code: string },
     next: () => Promise<RequestErrorAction>,
     signal: AbortSignal = new AbortController().signal,
+    position: { readonly turn: number; readonly step: number } = { turn: 1, step: 1 },
   ): Promise<RequestErrorAction> {
     return ctx.waterfall(ctx as never, 'agent/request-error', {
       agent,
-      turn: 1,
-      step: 1,
+      turn: position.turn,
+      step: position.step,
       provider: 'provider',
       failure,
       retryPolicy: undefined,
@@ -808,20 +814,89 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     return Promise.resolve('delegated' as unknown as RequestErrorAction)
   }
 
-  it('claims a FIRST_CHUNK_TIMEOUT and retries after a successful compaction', async () => {
+  it('ends the timed-out request and follows up with continue after a successful compaction', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
     const surface = { replaceGeneration: 0 }
-    const agent = { session: { surface }, options: {} }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
     const fake = new FakeCompaction(ctx)
     fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
 
     const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
-    expect(result).toEqual({ kind: 'retry' })
+    expect(result).toBeUndefined()
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
     expect(fake.compactIfNeeded).toHaveBeenCalledWith(agent, 'context-overflow', expect.any(AbortSignal))
+    expect(agent.followup).not.toHaveBeenCalled()
+    ctx.emit('agent/status', { agent, status: 'idle' })
+    expect(agent.followup).toHaveBeenCalledTimes(1)
+    expect(agent.followup).toHaveBeenCalledWith(expect.objectContaining({
+      role: 'user',
+      content: [{ type: 'text', text: 'continue' }],
+      source: { kind: 'plugin', plugin: 'fork-llm-first-chunk-timeout' },
+    }))
+  })
+
+  it('wakes a real agent driver with continue after the failed turn reaches idle', async () => {
+    class RecoveryAdapter extends LlmAdapter {
+      readonly requests: GenerateOptions[] = []
+
+      async * stream(request: GenerateOptions): AsyncIterable<StreamChunk> {
+        this.requests.push(request)
+        if (this.requests.length === 1) {
+          await new Promise(resolve => setTimeout(resolve, 20))
+        }
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: 'resumed' }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: 'resumed' } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      }
+    }
+
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 5 })
+    const fake = new FakeCompaction(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    const adapter = new RecoveryAdapter()
+    ctx.llm.registerAdapter(['recovery'], adapter)
+    const agent = ctx.agentLoop.create(SessionId('first-chunk-followup-driver'), {
+      provider: 'recovery',
+      model: 'recovery',
+    })
+    fake.compactIfNeeded.mockImplementation(async () => {
+      const nodes = agent.session.surface.nodes
+      agent.session.append('user/message', createUserMessage({
+        content: [{ type: 'text', text: 'compacted history' }],
+        source: { kind: 'plugin', plugin: 'test-compaction' },
+      }), {
+        surfaceOp: { op: 'replace', start: nodes[0]!, end: nodes.at(-1)! },
+        sourceEventSeqs: [...nodes],
+      })
+      return null
+    })
+
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: 'start' }],
+      source: { kind: 'user' },
+    }))
+    await agent.whenIdle()
+
+    expect(adapter.requests).toHaveLength(2)
+    expect(adapter.requests[1]?.messages).toContainEqual(expect.objectContaining({
+      role: 'user',
+      content: [{ type: 'text', text: 'continue' }],
+      source: { kind: 'plugin', plugin: 'fork-llm-first-chunk-timeout' },
+    }))
+    expect(agent.session.events.filter(event => event.type === 'turn/start')).toHaveLength(2)
+    expect(agent.session.events.filter(event => event.type === 'turn/end').map(event => event.data.reason.kind))
+      .toEqual(['error', 'completed'])
   })
 
   it('vetoes the chain when compaction makes no durable progress', async () => {
@@ -830,7 +905,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
     const surface = { replaceGeneration: 0 }
-    const agent = { session: { surface }, options: {} }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
     const fake = new FakeCompaction(ctx)
 
     const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
@@ -869,16 +944,44 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10, maxFirstChunkCompactionRetries: 2 })
     const surface = { replaceGeneration: 0 }
-    const agent = { session: { surface }, options: {} }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
     const fake = new FakeCompaction(ctx)
     fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
 
     const outcomes: Array<unknown> = []
     for (let i = 0; i < 3; i += 1) {
       outcomes.push(await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated))
+      ctx.emit('agent/status', { agent, status: 'idle' })
     }
-    expect(outcomes).toEqual([{ kind: 'retry' }, { kind: 'retry' }, undefined])
+    expect(outcomes).toEqual([undefined, undefined, undefined])
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
+    expect(agent.followup).toHaveBeenCalledTimes(2)
+  })
+
+  it('bounds consecutive compaction follow-ups across their new turns', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10, maxFirstChunkCompactionRetries: 2 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
+
+    for (let turn = 1; turn <= 3; turn += 1) {
+      await fireError(
+        ctx,
+        agent,
+        { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' },
+        delegated,
+        new AbortController().signal,
+        { turn, step: 1 },
+      )
+      ctx.emit('agent/status', { agent, status: 'idle' })
+    }
+
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
+    expect(agent.followup).toHaveBeenCalledTimes(2)
   })
 
   it('delegates through next() when the signal is already aborted', async () => {
@@ -902,7 +1005,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
     const surface = { replaceGeneration: 0 }
-    const agent = { session: { surface }, options: {} }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
     const fake = new FakeCompaction(ctx)
     const controller = new AbortController()
     fake.compactIfNeeded.mockImplementation(async () => { controller.abort(); return null })
@@ -912,19 +1015,22 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
   })
 
-  it('retries when compaction throws after durable surface progress', async () => {
+  it('follows up when compaction throws after durable surface progress', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
     const surface = { replaceGeneration: 0 }
-    const agent = { session: { surface }, options: {} }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
     const fake = new FakeCompaction(ctx)
     fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; throw new Error('summary failed') })
 
     const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
-    expect(result).toEqual({ kind: 'retry' })
+    expect(result).toBeUndefined()
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
+    expect(agent.followup).not.toHaveBeenCalled()
+    ctx.emit('agent/status', { agent, status: 'idle' })
+    expect(agent.followup).toHaveBeenCalledTimes(1)
   })
 
   it('vetoes the chain when compaction throws without durable progress', async () => {
@@ -940,19 +1046,26 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(result).toBeUndefined()
   })
 
-  it('drops per-agent bookkeeping when the agent turns idle', async () => {
+  it('drops per-agent bookkeeping after the recovery follow-up activity turns idle', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
-    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10, maxFirstChunkCompactionRetries: 1 })
     const surface = { replaceGeneration: 0 }
-    const agent = { session: { surface }, options: {} }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
     const fake = new FakeCompaction(ctx)
     fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
     await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
 
     ctx.emit('agent/status', { agent, status: 'idle' })
-    ctx.emit('agent/status', { agent, status: 'connecting' })
+    expect(agent.followup).toHaveBeenCalledTimes(1)
+    ctx.emit('agent/status', { agent, status: 'running' })
+    ctx.emit('agent/status', { agent, status: 'idle' })
+
+    await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+    ctx.emit('agent/status', { agent, status: 'idle' })
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
+    expect(agent.followup).toHaveBeenCalledTimes(2)
   })
 
   it('vetoes the chain when the signal aborts during a throwing compaction', async () => {

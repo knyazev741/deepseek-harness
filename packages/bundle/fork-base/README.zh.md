@@ -6,7 +6,7 @@
 
 ## 组合方式
 
-该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state`、`fork-llm-first-chunk-timeout` 和 `fork-llm-rate-limit-cooldown`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000`；冷却行携带 `cooldownMs: 600000`；模型行配置 `knyazev-ai`，使用 `api: openai-completions` 和 `https://knyazevai.work/v1`，并设置 `streamIdleTimeoutMs: 900000`、`timeoutMs: 1800000`、`compat.thinkingFormat: qwen`、`compat.supportsReasoningEffort: false`、`reasoning: high`，以及 `retryPolicy.mode: normal`、`maxRetries: 20`；可重试代码严格按 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT`、`STREAM_CLOSED`、`EMPTY_RESPONSE` 排序。其模型为 `deepseek-v4-flash`（context window `400000`、max tokens `128000`）、`kimi-2.6`（`262144`、`40000`）和 `minimax-2.7`（`204800`，不覆盖 max-token）。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段。
+该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state`、`fork-llm-first-chunk-timeout` 和 `fork-llm-rate-limit-cooldown`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000` 和 `maxFirstChunkCompactionRetries: 3`；冷却行携带 `cooldownMs: 600000`；模型行配置 `knyazev-ai`，使用 `api: openai-completions` 和 `https://knyazevai.work/v1`，并设置 `streamIdleTimeoutMs: 900000`、`timeoutMs: 1800000`、`compat.thinkingFormat: qwen`、`compat.supportsReasoningEffort: false`、`reasoning: high`，以及 `retryPolicy.mode: normal`、`maxRetries: 20`；可重试代码严格按 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT`、`STREAM_CLOSED`、`EMPTY_RESPONSE` 排序。其模型为 `deepseek-v4-flash`（context window `400000`、max tokens `128000`）、`kimi-2.6`（`262144`、`40000`）和 `minimax-2.7`（`204800`，不覆盖 max-token）。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段。
 
 路由只保存凭据引用 `apiKeyEnv: KNYAZEV_AI_API_KEY`；密钥值保留在外部凭据或环境层，绝不进入 Git。用户 settings 文档位于该 composition base 之上，因此不完整的 `llm-pi-ai` 或 `agent-default-model` 设置会覆盖对应字段，省略字段则继承可移植默认值。profile、home 或 `--patch` 行仍会按 id 整体替换目标插件的 config。该组合包不挂载 provider-neutral external-session registry，也不挂载 Codex provider。
 
@@ -16,7 +16,7 @@
 
 - [`fork-session-source/`](../../fork/session-source/README.zh.md) 记录可选的 GitHub Actions 来源标记，并提供可空 projection。
 - [`fork-workspace-session-state/`](../../fork/workspace-session-state/README.zh.md) 持久化有序的工作区会话置顶列表，并提供生成的 Remote。
-- [`fork-llm-first-chunk-timeout/`](../../fork/llm-first-chunk-timeout/README.zh.md) 仅限制 LLM 流首个结果之前的空闲等待。
+- [`fork-llm-first-chunk-timeout/`](../../fork/llm-first-chunk-timeout/README.zh.md) 限制 LLM 流首个结果之前的空闲等待，并在压缩产生持久进展后于新一轮排入 `continue` follow-up。
 - [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.zh.md) 在 provider 的有界 `llm-retry` 预算法尽后，等待 `cooldownMs` 再重试持续受限（默认 `RATE_LIMIT`、`SERVER`、`QUOTA`、`TIMEOUT`、`TRANSPORT`、`PI_AI_ERROR`）的请求。
 
 每项能力仍由自己的包拥有；上游 base 更新时可以分别移除或替换它们。
@@ -27,15 +27,15 @@
 
 #### 模型看到的内容
 
-不会添加 prompt section、工具 schema、消息或请求字段。可移植路由只改变默认 provider/model 和请求 endpoint；超时行只在 provider 未在配置期限内产生首个结果时改变失败路径，来源和置顶行始终仅属于 Host。
+不会添加 prompt section 或工具 schema。可移植路由会改变默认 provider/model 和请求 endpoint。首个分片超时恢复成功压缩后，会添加一条内容为 `continue`、由插件生成的持久 user-role 消息，并开启新请求；来源和置顶行始终仅属于 Host。
 
 #### Token 影响
 
-成功请求为零。首个结果超时会用一条终结性的 `TIMEOUT` 失败 chunk 替代缺失的 provider 结果，但自身不会添加重试请求。
+成功请求为零。首个分片超时恢复成功时，会在压缩后添加短消息 `continue` 和一次新的模型请求。
 
 #### KV Cache 影响
 
-所挂载的包不改写模型可见输入，也不改变成功请求的前缀，因此没有直接的缓存失效。
+首个分片超时恢复成功时会使用压缩后的替换 surface 并追加 `continue`，因此该新请求具有不同的模型可见前缀。未进入恢复路径的请求不受影响。
 
 ## 已知限制与延期工作
 
