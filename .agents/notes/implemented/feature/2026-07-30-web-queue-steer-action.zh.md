@@ -36,7 +36,7 @@ Composer 对新输入采用另一套尽力而为约定。所寻址会话空闲�
 
 Host 仍以现有 `queuedMirror` 作为唯一的瞬态 inbox 权威。`session/queue` 快照会携带所有存活单次入队项及其 `placement: 'queued' | 'steering'`：QueueDock 只渲染 queued 行，ChatView 则在会话流末尾、`Deep diving...` 运行状态行之后渲染待处理 steering，提供复制操作，但不提供 fork、编辑或删除操作。重连会重放同一份快照，因此这项可见性既不依赖客户端乐观展示，也不需要第二个注册表。
 
-AgentLoop 认领待处理 steering 时，会在同步追加持久 `user/message` 之前立即发出 `agent/inbox/dequeue`。Host 会等到下一个微任务才退役该 steering 行，让持久会话事件先进入线性 mux 流。客户端 Session 接纳该实时事件时，会在发布快照前退役第一个匹配的当前 steering 单次入队项；历史回放不会消费后来复用同一 `MessageId` 的单次入队项。因此，ChatView 无需扫描持久历史就能每次只渲染一份权威，持久投影则会根据已记录的事件时间与序号恢复时钟、复制与 fork 操作。追加失败时，已认领行仍会退役。
+AgentLoop 认领待处理 steering 时，会在同步追加持久 `user/message` 之前立即发出 `agent/inbox/dequeue`。Host 会等到下一个微任务才退役该 steering 行，让持久会话事件先进入线性 mux 流。客户端 Session 接纳该实时事件时，会退役第一个具有该 `MessageId` 的当前单次入队项，无论其为 queued 还是 steering；这一精确 identity 回退还会避免维护期间接纳的输入因遗漏替代 queue frame 而继续显示为 queued。历史回放不会消费后来复用同一 `MessageId` 的单次入队项。因此，ChatView 无需扫描持久历史就能每次只渲染一份权威，持久投影则会根据已记录的事件时间与序号恢复时钟、复制与 fork 操作。追加失败时，已认领行仍会退役。
 
 现有 `session.prompt(mode: 'steer')` 对主会话新输入仍采用尽力而为的约定：在 next-step 窗口之外，它会变为唤醒 agent 的后续轮次。Composer 会让显式 `queue | steer` 模式经过 slash 裁决与引用序列化，再调用该约定。浏览器提交策略拥有实时繁忙态 Enter 偏好，而 Host settings 服务拥有持久性；该策略只为支持 steering 的会话把普通 Enter 与加速 Enter 解析为互补手势，Settings 行和 InputBar 共享该策略，不重复实现存储或投递窗口权威。只有 Queue 行操作采用严格语义，因为任一种负面结果都会经原 Queue 单次入队项收敛。
 

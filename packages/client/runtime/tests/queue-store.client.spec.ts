@@ -193,6 +193,32 @@ describe('queue snapshot intake', () => {
 
     expect(session.getSnapshot().queue).toEqual([])
   })
+
+  it('retires a queued row when its message becomes durable without a replacement queue frame', async () => {
+    const session = makeSession()
+    await session.open()
+    const message = createUserMessage({
+      content: text('submitted during maintenance'),
+      source: { kind: 'user' },
+    })
+    session.handleMuxEnvelope(rid('env-maintenance-queue'), queueFrame([
+      { id: 'q-maintenance', body: '', placement: 'queued', message },
+    ]))
+
+    session.handleMuxEnvelope(rid('env-maintenance-durable'), {
+      type: 'session/event',
+      sessionId: SID,
+      event: {
+        seq: 0,
+        time: 1_700_000_000_000,
+        type: 'user/message',
+        surfaceOp: 'append',
+        data: message,
+      },
+    })
+
+    expect(session.getSnapshot().queue).toEqual([])
+  })
 })
 
 describe('queue operation transport', () => {
