@@ -20,7 +20,7 @@ Host 服务通过 `ctx.forkWorkspaceSessionState` 提供。生成的 Remote 命�
 - `list()` 返回 `{ revision, pinnedSessionIds }`。
 - `setPinned({ sessionId, pinned, expectedRevision })` 返回成功值，或类型化的 `revision-conflict` / `session-not-in-workspace` 结果。
 
-`workspaceRegistry.list()` 是准入判定的权威来源。置顶只追加一次，取消置顶保留其余置顶项的相对顺序，幂等请求不会写入 Settings。修改操作会串行执行，并使用 Settings 描述符 revision 做 compare-and-set。过期请求会在幂等判断前检查；竞争性的 Settings 写入会返回同样的类型化 revision 冲突。工作区成员关系后续变化时，已持久化的置顶项不会被删除。
+`workspaceRegistry.list()` 是新置顶准入判定的权威来源。置顶只追加一次，取消置顶保留其余置顶项的相对顺序，幂等请求不会写入 Settings。会话离开注册表后，包括归档或 Workspace 删除后，已有持久置顶仍可随时移除。修改操作会串行执行，并使用 Settings 描述符 revision 做 compare-and-set。过期请求会在幂等判断前检查；竞争性的 Settings 写入会返回同样的类型化 revision 冲突。工作区成员关系后续变化时，已持久化的置顶项会一直保留，直到显式取消置顶。
 
 生成的 `./remote` 和 `./typert` 构件由 Host 构建产生。API Proxy 保持不变；Client 组装可通过 `packages/api/remotes` 挂载此命名空间。
 
@@ -35,5 +35,5 @@ Host 服务通过 `ctx.forkWorkspaceSessionState` 提供。生成的 Remote 命�
 ## 已知限制与延后工作
 
 - 本包不提供 UI。未来的 Client 贡献可以通过生成的 Remote 展示并编辑列表。
-- 成员关系只在修改准入时检查。工作区注册表变化时，不会自动清理已有置顶项。
+- 成员关系只在新置顶准入时检查。工作区注册表变化时，不会自动清理已有置顶项，但仍可显式取消置顶。
 - 列表属于当前组合的工作区注册表全局范围；Remote 有意不包含 `workspaceId` 字段。

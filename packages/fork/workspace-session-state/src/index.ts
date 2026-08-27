@@ -81,7 +81,7 @@ function conflict(current: ForkWorkspaceSessionStateView): {
   })
 }
 
-/** Build the typed workspace-membership result. */
+/** Build the typed new-pin admission result. */
 function unknownSession(sessionId: SessionIdType): {
   readonly ok: false
   readonly error: ForkWorkspaceSessionStateUnknownSession
@@ -135,7 +135,7 @@ export class ForkWorkspaceSessionState extends TypertRemoteService {
 
   /**
    * Set one session's global pin state with an optimistic Settings revision.
-   * Unknown sessions and revision races are returned as typed results because
+   * New pins for unknown sessions and revision races are returned as typed results because
    * thrown method errors become generic Remote `internal` failures.
    * @param input - session id, desired pin state, and observed Settings revision.
    * @returns the committed view or one expected business rejection.
@@ -145,10 +145,10 @@ export class ForkWorkspaceSessionState extends TypertRemoteService {
     return this.enqueue(async () => {
       const current = this.readView()
       if (input.expectedRevision !== current.revision) return conflict(current)
-      if (!this.isInWorkspace(input.sessionId)) return unknownSession(input.sessionId)
       const currentIds = [...current.pinnedSessionIds]
       const present = currentIds.includes(input.sessionId)
       if (present === input.pinned) return success(current)
+      if (input.pinned && !this.isInWorkspace(input.sessionId)) return unknownSession(input.sessionId)
 
       const next = input.pinned
         ? [...currentIds, input.sessionId]
@@ -181,7 +181,7 @@ export class ForkWorkspaceSessionState extends TypertRemoteService {
     return viewFromDescriptor(this.readDescriptor())
   }
 
-  /** Check current workspace membership at mutation admission time. */
+  /** Check current workspace membership when admitting a new pin. */
   private isInWorkspace(sessionId: SessionIdType): boolean {
     return this.ctx.workspaceRegistry.list().some(workspace => workspace.sessionIds.includes(sessionId))
   }

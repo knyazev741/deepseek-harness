@@ -164,7 +164,7 @@ Persisted global pin list with serialized mutations and a generated Remote face.
 
 /**
  * Set one session's global pin state with an optimistic Settings revision.
- * Unknown sessions and revision races are returned as typed results because
+ * New pins for unknown sessions and revision races are returned as typed results because
  * thrown method errors become generic Remote `internal` failures.
  * @param input - session id, desired pin state, and observed Settings revision.
  * @returns the committed view or one expected business rejection.

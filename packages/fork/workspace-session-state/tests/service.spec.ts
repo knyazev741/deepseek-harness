@@ -159,6 +159,22 @@ describe('fork workspace session state', () => {
     expect(settings.writes).toEqual([])
   })
 
+  it('removes a persisted pin after the session leaves every workspace', async () => {
+    const { service, settings } = await setup({
+      sessionIds: ['s1'],
+      doc: { [NAMESPACE]: { pins: { sessionIds: ['detached'] } } },
+    })
+
+    const result = expectSuccess(await service.setPinned({
+      sessionId: SessionId('detached'),
+      pinned: false,
+      expectedRevision: 0,
+    }))
+
+    expect(result).toEqual({ revision: 1, pinnedSessionIds: [] })
+    expect(settings.writes).toEqual([{ ns: NAMESPACE, section: { pins: { sessionIds: [] } } }])
+  })
+
   it('keeps the persisted pin list across service and provider remounts', async () => {
     const first = await setup()
     expectSuccess(await first.service.setPinned({ sessionId: SessionId('s3'), pinned: true, expectedRevision: 0 }))

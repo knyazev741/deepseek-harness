@@ -766,7 +766,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote(\'setPinned\') setPinned(input: ForkWorkspaceSessionStateSetPinnedInput): Promise<ForkWorkspaceSessionStateSetResult>',
-        description: 'Set one session\'s global pin state with an optimistic Settings revision. Unknown sessions and revision races are returned as typed results because thrown method errors become generic Remote `internal` failures.',
+        description: 'Set one session\'s global pin state with an optimistic Settings revision. New pins for unknown sessions and revision races are returned as typed results because thrown method errors become generic Remote `internal` failures.',
         parameters: [{ name: 'input', description: 'session id, desired pin state, and observed Settings revision.' }],
         returns: 'the committed view or one expected business rejection.',
       },

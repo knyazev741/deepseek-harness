@@ -20,7 +20,7 @@ The Host service is available as `ctx.forkWorkspaceSessionState`. Its generated 
 - `list()` returns `{ revision, pinnedSessionIds }`.
 - `setPinned({ sessionId, pinned, expectedRevision })` returns a success value or a typed `revision-conflict` / `session-not-in-workspace` result.
 
-`workspaceRegistry.list()` is authoritative for admission. A pin is appended once, an unpin retains the relative order of other pins, and an idempotent request performs no Settings write. Mutations are serialized and use the Settings descriptor revision for compare-and-set. Stale requests are checked before idempotence, and a competing Settings write is returned as the same typed revision conflict. Persisted pins are retained when workspace membership later changes.
+`workspaceRegistry.list()` is authoritative when admitting a new pin. A pin is appended once, an unpin retains the relative order of other pins, and an idempotent request performs no Settings write. An existing persisted pin can always be removed after its session leaves the registry, including after archival or Workspace deletion. Mutations are serialized and use the Settings descriptor revision for compare-and-set. Stale requests are checked before idempotence, and a competing Settings write is returned as the same typed revision conflict. Persisted pins are retained when workspace membership later changes until an explicit unpin removes them.
 
 The generated `./remote` and `./typert` artifacts are produced by the Host build. The API Proxy is unchanged; a Client assembly may mount this namespace through `packages/api/remotes`.
 
@@ -35,5 +35,5 @@ None; pin state is not included in model-visible input.
 ## Known Limitations and Deferred Work
 
 - The package provides no UI. A future Client contribution may render and edit the list through the generated Remote.
-- Membership is checked when a mutation is admitted. Existing pins are not pruned when the workspace registry changes.
+- Membership is checked when a new pin is admitted. Existing pins are not pruned when the workspace registry changes, but explicit unpin remains available.
 - The list is global to the currently composed workspace registry; the Remote intentionally has no `workspaceId` field.
