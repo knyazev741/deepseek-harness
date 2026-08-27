@@ -5,7 +5,8 @@
  */
 
 import { existsSync } from 'node:fs'
-import { boot, installFailLoud, loadEnv, resolveConfigPath } from '@deepseek-ai/dsh-app-boot'
+import { boot, installFailLoud, loadLayeredEnv, resolveConfigPath } from '@deepseek-ai/dsh-app-boot'
+import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 
 /* v8 ignore start -- composition over tested app-boot/jsonrpc and executable acceptance paths */
 const NAME = 'dsh-jsonrpc-agent'
@@ -19,10 +20,10 @@ const NAME = 'dsh-jsonrpc-agent'
  */
 export async function runJsonrpcAgent(bareModuleBaseUrl?: string): Promise<void> {
   installFailLoud(NAME)
-  loadEnv(NAME)
+  const environment = loadLayeredEnv(NAME)
 
   // Env wins over argv; empty values are absent. External config defines the deployment.
-  const fromEnv = process.env['DSH_CORDIS_CONFIG']
+  const fromEnv = environment.get('DSH_CORDIS_CONFIG')?.value
   const fromArgv = process.argv[2]
   const requested = fromEnv !== undefined && fromEnv !== ''
     ? fromEnv
@@ -35,7 +36,13 @@ export async function runJsonrpcAgent(bareModuleBaseUrl?: string): Promise<void>
     process.exit(1)
   }
 
-  const ctx = await boot(NAME, configPath, undefined, undefined, bareModuleBaseUrl)
+  const ctx = await boot(
+    NAME,
+    configPath,
+    undefined,
+    (hostCtx) => { hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, environment) },
+    bareModuleBaseUrl,
+  )
   let exiting = false
 
   async function disposeAndExit(code: number): Promise<void> {

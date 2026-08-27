@@ -11,7 +11,13 @@
  */
 
 import { parseArgs } from 'node:util'
-import { boot, installFailLoud, loadEnv, resolveConfigPath } from '@deepseek-ai/dsh-app-boot'
+import {
+  boot,
+  installFailLoud,
+  loadLayeredEnv,
+  resolveConfigPath,
+} from '@deepseek-ai/dsh-app-boot'
+import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 
 const NAME = 'dsh-acp-demo'
 
@@ -19,14 +25,19 @@ const NAME = 'dsh-acp-demo'
    dsh-app-boot helpers; exercised end-to-end by the snapshot suite and the
    built-bin smoke */
 installFailLoud(NAME)
-const snapshotMode = process.env['DSH_SNAPSHOT']
-if (snapshotMode !== 'replay') loadEnv(NAME)
+const environment = loadLayeredEnv(NAME)
+const snapshotMode = environment.get('DSH_SNAPSHOT')?.value
 const { values } = parseArgs({
   args: process.argv.slice(2),
   options: { config: { type: 'string', short: 'c' } },
   strict: true,
 })
-const ctx = await boot(NAME, resolveConfigPath(values.config ?? './cordis.yml', snapshotMode))
+const ctx = await boot(
+  NAME,
+  resolveConfigPath(values.config ?? './cordis.yml', snapshotMode),
+  undefined,
+  (hostCtx) => { hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, environment) },
+)
 if (snapshotMode !== undefined) {
   process.stdin.on('end', () => {
     void ctx.fiber.dispose().then(() => { process.exit(0) })
