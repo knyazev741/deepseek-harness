@@ -1,16 +1,13 @@
-.actions {
+.menuActions {
   display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-inline-start: 4px;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
 }
 
-.action {
-  min-width: 28px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.actionText {
+.menuSymbol {
   display: inline-flex;
   align-items: center;
   justify-content: center;

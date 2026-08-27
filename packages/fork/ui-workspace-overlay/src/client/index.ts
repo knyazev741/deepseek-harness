@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-fork-workspace-session-state/remote'
 import type { WorkspaceSessionRowContext } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { createBackgroundView } from './BackgroundView.tsx'
 import { WorkspaceRowActions, type PinMutationResult, type WorkspaceRowActionsInjected } from './WorkspaceRowActions.tsx'
+import { WorkspaceRowStatus } from './WorkspaceRowStatus.tsx'
 import { WorkspaceRowBadges } from './WorkspaceRowBadges.tsx'
 import { en, NS, zh, type WorkspaceOverlayLocaleKey } from './locales.ts'
 import { createWorkspaceOverlayStore } from './store.ts'
@@ -64,9 +65,12 @@ export function apply(ctx: ClientContext): void {
     const syncCurrentRead = (): void => {
       const snapshot = ctx.sessions.list.getSnapshot()
       const current = snapshot.current
-      if (current !== undefined && current !== previous) {
+      if (current !== undefined) {
         const summary = sessionFrom(snapshot, current)
-        if (summary !== undefined) store.markRead(summary)
+        if (summary !== undefined) {
+          if (current === previous) store.observeRead(summary)
+          else store.markRead(summary)
+        }
       }
       previous = current
     }
@@ -88,17 +92,29 @@ export function apply(ctx: ClientContext): void {
       return { accepted: true }
     }
     if (result.value.error.code === 'revision-conflict') {
-      // Refresh once after a stale CAS. Deliberately do not replay the write;
-      // a second click is the explicit user acknowledgement of new state.
+      // A browser tab can retain the previous Settings revision across a Host
+      // restart (or lose the initial list race). Refresh and replay this one
+      // explicit intent so a normal click is not converted into a no-op.
       const refreshed = await ctx.remote.forkWorkspaceSessionState.list()
-      if (!disposed && refreshed.ok) store.installPins(refreshed.value)
-      return { accepted: false, stale: true }
+      if (disposed || !refreshed.ok) return { accepted: false }
+      store.installPins(refreshed.value)
+      const retry = await ctx.remote.forkWorkspaceSessionState.setPinned({
+        sessionId: session.id,
+        pinned,
+        expectedRevision: store.observedPinRevision(),
+      })
+      if (disposed) return { accepted: false }
+      if (!retry.ok) return { accepted: false }
+      if (retry.value.ok) {
+        store.installPins(retry.value.value)
+        return { accepted: true }
+      }
+      return { accepted: false, stale: retry.value.error.code === 'revision-conflict' }
     }
     return { accepted: false }
   }
 
-  const actions = (action: WorkspaceRowActionsInjected['action']): WorkspaceRowActionsInjected => ({
-    action,
+  const actions = (): WorkspaceRowActionsInjected => ({
     hooks: { overlay: store },
     markUnread: (session) => { store.markUnread(session) },
     setPinned,
@@ -123,6 +139,7 @@ export function apply(ctx: ClientContext): void {
   const pinPolicy = {
     id: 'fork.pinned-first',
     order: 100,
+    promote: (context: WorkspaceSessionRowContext): boolean => store.isPinned(context.session.id),
     compare: (left: WorkspaceSessionRowContext, right: WorkspaceSessionRowContext): number => {
       const leftPinned = store.isPinned(left.session.id)
       const rightPinned = store.isPinned(right.session.id)
@@ -159,27 +176,17 @@ export function apply(ctx: ClientContext): void {
 
   ctx.slots.inject('workspace.session-row.actions', () => ctx.slots.register({
     name: 'workspace.session-row.actions',
-    id: 'fork.copy-session-id',
+    id: 'fork.session-menu-actions',
     order: 100,
     locale: NS,
-    inject: () => actions('copy-session-id'),
+    inject: () => actions(),
   }, WorkspaceRowActions))
 
-  // The slot ledger has one cell per action id, so the three user-facing verbs
-  // share one visual component while keeping distinct registration identities.
-  ctx.slots.inject('workspace.session-row.actions', () => ctx.slots.register({
-    name: 'workspace.session-row.actions',
-    id: 'fork.mark-unread',
-    order: 101,
+  ctx.slots.inject('workspace.session-row.status', () => ctx.slots.register({
+    name: 'workspace.session-row.status',
+    id: 'fork.session-unread-status',
+    order: 100,
     locale: NS,
-    inject: () => actions('mark-unread'),
-  }, WorkspaceRowActions))
-
-  ctx.slots.inject('workspace.session-row.actions', () => ctx.slots.register({
-    name: 'workspace.session-row.actions',
-    id: 'fork.pin-session',
-    order: 102,
-    locale: NS,
-    inject: () => actions('pin-session'),
-  }, WorkspaceRowActions))
+    inject: () => ({ hooks: { overlay: store } }),
+  }, WorkspaceRowStatus))
 }

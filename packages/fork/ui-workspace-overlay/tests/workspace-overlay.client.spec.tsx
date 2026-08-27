@@ -12,7 +12,7 @@ import type {
 import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
-  WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext,
+  WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowMenuContext,
 } from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { ForkWorkspaceSessionStateView } from '@deepseek-ai/dsh-fork-workspace-session-state/types'
 import type {} from '@deepseek-ai/dsh-fork-session-source/types'
@@ -140,6 +140,7 @@ async function bench(options: {
   await runtime.workspaces.update((draft) => { draft.items = [workspace(ids)] })
   await runtime.declare({
     'workspace.session-row.badges': { kind: 'list', scope: 'root' },
+    'workspace.session-row.status': { kind: 'list', scope: 'root' },
     'workspace.session-row.actions': { kind: 'list', scope: 'root' },
   })
   options.beforeMount?.(runtime)
@@ -150,18 +151,68 @@ async function bench(options: {
   return { runtime, remote, feature, workspace: workspace(ids) }
 }
 
-function owner(session: SessionSummary, workspaceView: WorkspaceView = workspace([String(session.id)])): WorkspaceSessionRowContext {
-  return { session, workspace: workspaceView, selected: false }
+function owner(
+  session: SessionSummary,
+  workspaceView: WorkspaceView = workspace([String(session.id)]),
+  selected = false,
+): WorkspaceSessionRowMenuContext {
+  return { session, workspace: workspaceView, selected, closeMenu: vi.fn() }
 }
 
 describe('fork workspace overlay assembled client fixture', () => {
+  it('shows the green done dot after Mark unread and removes it when the session is opened', async () => {
+    localStorage.clear()
+    const session = summary('unread-dot', { projectionAsOfSeq: 4 })
+    const b = await bench({ summaries: [session] })
+    const status = b.runtime.renderSlot('workspace.session-row.status', owner(session, b.workspace))
+    expect(status.container.querySelector('[data-state="done"]')).toBeNull()
+
+    const actions = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
+    fireEvent.click(actions.view.getByRole('menuitem', { name: 'Mark unread' }))
+    expect(status.container.querySelector('[data-state="done"]')).toBeTruthy()
+
+    await b.runtime.sessions.setCurrent(String(session.id))
+    expect(status.container.querySelector('[data-state="done"]')).toBeNull()
+    await b.runtime.dispose()
+  })
+
+  it('keeps an explicit Mark unread dot on a selected session until it is opened', async () => {
+    localStorage.clear()
+    const session = summary('selected-unread', { projectionAsOfSeq: 4 })
+    const b = await bench({ summaries: [session] })
+    const selectedOwner = owner(session, b.workspace, true)
+    const status = b.runtime.renderSlot('workspace.session-row.status', selectedOwner)
+    const actions = b.runtime.renderSlot('workspace.session-row.actions', selectedOwner)
+
+    fireEvent.click(actions.view.getByRole('menuitem', { name: 'Mark unread' }))
+    expect(status.container.querySelector('[data-state="done"]')).toBeTruthy()
+
+    await b.runtime.sessions.setCurrent(String(session.id))
+    expect(status.container.querySelector('[data-state="done"]')).toBeNull()
+    await b.runtime.dispose()
+  })
+
+  it('does not show a stale watermark while the session is running or selected', async () => {
+    localStorage.clear()
+    localStorage.setItem(READ_WATERMARKS_STORAGE_KEY, JSON.stringify({ 'running-unread': 1, 'selected-unread': 1 }))
+    const running = summary('running-unread', { projectionAsOfSeq: 4, running: true })
+    const selected = summary('selected-unread', { projectionAsOfSeq: 4 })
+    const b = await bench({ summaries: [running, selected] })
+
+    const runningStatus = b.runtime.renderSlot('workspace.session-row.status', owner(running, workspace([String(running.id)])))
+    const selectedStatus = b.runtime.renderSlot('workspace.session-row.status', owner(selected, workspace([String(selected.id)]), true))
+    expect(runningStatus.container.querySelector('[data-state="done"]')).toBeNull()
+    expect(selectedStatus.container.querySelector('[data-state="done"]')).toBeNull()
+    await b.runtime.dispose()
+  })
+
   it('uses an empty fallback for malformed browser state and keeps pins out of localStorage', async () => {
     localStorage.setItem(READ_WATERMARKS_STORAGE_KEY, '{"read-me":"not-a-sequence"}')
     expect(parseReadWatermarks(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY))).toEqual({})
     const session = summary('read-me', { projectionAsOfSeq: 4 })
     const b = await bench({ summaries: [session], pins: { revision: 3, pinnedSessionIds: [sid('read-me')] } })
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('button', { name: 'Mark unread' }))
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Mark unread' }))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toEqual({ 'read-me': 3 })
     expect(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)).not.toContain('pinnedSessionIds')
     await b.runtime.dispose()
@@ -179,11 +230,11 @@ describe('fork workspace overlay assembled client fixture', () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('button', { name: 'Copy session ID' }))
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Copy session ID' }))
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('opaque/session::7'))
 
     writeText.mockRejectedValueOnce(new Error('denied'))
-    fireEvent.click(view.view.getByRole('button', { name: 'Copy session ID' }))
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Copy session ID' }))
     expect((await view.view.findByRole('status')).textContent).toContain('Clipboard access was denied')
     await b.runtime.dispose()
   })
@@ -193,7 +244,7 @@ describe('fork workspace overlay assembled client fixture', () => {
     const other = summary('other', { projectionAsOfSeq: 2 })
     const b = await bench({ summaries: [session, other] })
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('button', { name: 'Mark unread' }))
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Mark unread' }))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'read-me': 8 })
 
     await b.runtime.sessions.setCurrent(String(session.id))
@@ -201,6 +252,25 @@ describe('fork workspace overlay assembled client fixture', () => {
     await b.runtime.sessions.setCurrent(String(other.id))
     await b.runtime.sessions.setCurrent(String(session.id))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'read-me': 10 })
+    await b.runtime.dispose()
+  })
+
+  it('keeps progress observed in the open session read after switching away', async () => {
+    localStorage.clear()
+    const session = summary('observed-progress', { projectionAsOfSeq: 4 })
+    const other = summary('other', { projectionAsOfSeq: 2 })
+    const b = await bench({ summaries: [session, other] })
+
+    await b.runtime.sessions.setCurrent(String(session.id))
+    await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 7 })
+    await b.runtime.sessions.setCurrent(String(other.id))
+
+    const updated = b.runtime.sessions.list.getSnapshot().byId[session.id]!
+    const status = b.runtime.renderSlot('workspace.session-row.status', owner(updated, b.workspace))
+    expect(status.container.querySelector('[data-state="done"]')).toBeNull()
+    expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({
+      'observed-progress': 7,
+    })
     await b.runtime.dispose()
   })
 
@@ -279,21 +349,29 @@ describe('fork workspace overlay assembled client fixture', () => {
     await b.runtime.dispose()
   })
 
-  it('uses the observed revision and does not replay a stale pin mutation', async () => {
+  it('refreshes and replays a stale pin mutation after a Host restart', async () => {
     const session = summary('pin-me')
     const b = await bench({ summaries: [session] })
     b.remote.setView({ revision: 2, pinnedSessionIds: [] })
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('button', { name: 'Pin session' }))
-    await vi.waitFor(() => expect(b.remote.setPinned).toHaveBeenCalledTimes(1))
-    expect(b.remote.setPinned.mock.calls[0]?.[0]).toMatchObject({ expectedRevision: 1 })
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
+    await vi.waitFor(() => expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy())
+    expect(b.remote.setPinned.mock.calls.map(call => call[0])).toMatchObject([
+      { expectedRevision: 1, pinned: true },
+      { expectedRevision: 2, pinned: true },
+    ])
     expect(b.remote.list).toHaveBeenCalledTimes(2)
-    expect(b.remote.setPinned).toHaveBeenCalledTimes(1)
+    expect(b.remote.setPinned).toHaveBeenCalledTimes(2)
+    await b.runtime.dispose()
+  })
 
-    await vi.waitFor(() => expect(view.view.getByRole('button', { name: 'Pin session' }).getAttribute('disabled')).toBeNull())
-    fireEvent.click(view.view.getByRole('button', { name: 'Pin session' }))
-    await vi.waitFor(() => expect(b.remote.setPinned).toHaveBeenCalledTimes(2))
-    expect(b.remote.setPinned.mock.calls[1]?.[0]).toMatchObject({ expectedRevision: 2, pinned: true })
+  it('uses the pushpin icon for Pin session instead of a text star', async () => {
+    const session = summary('pin-icon')
+    const b = await bench({ summaries: [session] })
+    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
+    const pin = view.view.getByRole('menuitem', { name: 'Pin session' })
+    expect(pin.querySelector('svg[data-icon="pushpin-outline"]')).toBeTruthy()
+    expect(pin.textContent).not.toContain('☆')
     await b.runtime.dispose()
   })
 
@@ -303,11 +381,45 @@ describe('fork workspace overlay assembled client fixture', () => {
     const b = await bench({ summaries: [summary('pin-race')], pins: initial, initialList: initialList.promise })
     const session = summary('pin-race')
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('button', { name: 'Pin session' }))
-    await vi.waitFor(() => expect(view.view.getByRole('button', { name: 'Unpin session' })).toBeTruthy())
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
+    await vi.waitFor(() => expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy())
     initialList.resolve({ ok: true, value: initial })
     await Promise.resolve()
-    expect(view.view.getByRole('button', { name: 'Unpin session' })).toBeTruthy()
+    expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy()
+    await b.runtime.dispose()
+  })
+
+  it('refreshes and retries a pin mutation after a stale revision conflict', async () => {
+    const initialList = deferred<{ ok: true; value: ForkWorkspaceSessionStateView }>()
+    const current = { revision: 7, pinnedSessionIds: [] as SessionId[] }
+    const session = summary('pin-initial-load')
+    const b = await bench({
+      summaries: [session],
+      pins: { revision: 0, pinnedSessionIds: [] },
+      initialList: initialList.promise,
+    })
+    b.remote.list.mockResolvedValue({ ok: true as const, value: current })
+    b.remote.setPinned.mockImplementation(async input => input.expectedRevision === 0
+      ? {
+        ok: true as const,
+        value: { ok: false as const, error: { code: 'revision-conflict' as const, current } },
+      }
+      : {
+        ok: true as const,
+        value: {
+          ok: true as const,
+          value: { revision: current.revision + 1, pinnedSessionIds: [sid('pin-initial-load')] },
+        },
+      })
+    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
+    initialList.resolve({ ok: true, value: current })
+
+    await vi.waitFor(() => expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy())
+    expect(b.remote.setPinned.mock.calls.map(call => call[0])).toMatchObject([
+      { expectedRevision: 0, pinned: true },
+      { expectedRevision: 7, pinned: true },
+    ])
     await b.runtime.dispose()
   })
 
@@ -315,10 +427,10 @@ describe('fork workspace overlay assembled client fixture', () => {
     const session = summary('toggle-pin')
     const b = await bench({ summaries: [session] })
     const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('button', { name: 'Pin session' }))
-    await vi.waitFor(() => expect(view.view.getByRole('button', { name: 'Unpin session' })).toBeTruthy())
-    fireEvent.click(view.view.getByRole('button', { name: 'Unpin session' }))
-    await vi.waitFor(() => expect(view.view.getByRole('button', { name: 'Pin session' })).toBeTruthy())
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
+    await vi.waitFor(() => expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy())
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Unpin session' }))
+    await vi.waitFor(() => expect(view.view.getByRole('menuitem', { name: 'Pin session' })).toBeTruthy())
     expect(b.remote.setPinned.mock.calls.map(call => call[0])).toMatchObject([
       { expectedRevision: 1, pinned: true },
       { expectedRevision: 2, pinned: false },
@@ -360,12 +472,14 @@ describe('fork workspace overlay assembled client fixture', () => {
     const b = await bench({ summaries: [session] })
     expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toHaveLength(1)
     expect(b.runtime.slots.entries('workspace.session-row.badges')).toHaveLength(1)
-    expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(3)
+    expect(b.runtime.slots.entries('workspace.session-row.status')).toHaveLength(1)
+    expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(1)
     expect(b.runtime.ctx.locale.bind(NS)('background')).toBe('Background')
     await b.feature?.dispose()
     expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toEqual([])
     expect(b.runtime.ctx.workspaceContributions.policies.getSnapshot()).toEqual([])
     expect(b.runtime.slots.entries('workspace.session-row.badges')).toEqual([])
+    expect(b.runtime.slots.entries('workspace.session-row.status')).toEqual([])
     expect(b.runtime.slots.entries('workspace.session-row.actions')).toEqual([])
     expect(b.runtime.ctx.locale.bind(NS)('background')).toBe('background')
     await b.runtime.sessions.setCurrent(String(session.id))
@@ -404,7 +518,8 @@ describe('fork workspace overlay assembled client fixture', () => {
 
       expect(b.runtime.ctx.workspaceContributions.views.getSnapshot().map(view => view.id)).toEqual(['fork.background'])
       expect(b.runtime.slots.entries('workspace.session-row.badges')).toHaveLength(1)
-      expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(3)
+      expect(b.runtime.slots.entries('workspace.session-row.status')).toHaveLength(1)
+      expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(1)
       const entry = [...b.runtime.ctx.loader.entries()].find(
         candidate => candidate.options.name === '@deepseek-ai/dsh-fork-ui-workspace-overlay',
       )

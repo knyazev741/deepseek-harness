@@ -62,6 +62,18 @@ function orderSessionIds(ids: readonly SessionId[], list: SessionListState, work
   return ids.map(id => list.byId[id] === undefined ? id : ordered[candidateIndex++] as SessionId)
 }
 
+/** Resolve policy-promoted ids in the same stable order as the active session list. */
+function promotedSessionIds(ids: readonly SessionId[], list: SessionListState, workspaces: readonly WorkspaceView[],
+  policies: readonly WorkspaceListPolicy[]): SessionId[] {
+  const promoted = ids.filter((id) => {
+    const session = list.byId[id]
+    if (session === undefined) return false
+    const context = rowContext(session, workspaces, list.current === id)
+    return policies.some(policy => policy.promote?.(context) === true)
+  })
+  return orderSessionIds(promoted, list, workspaces, policies)
+}
+
 function filterSessionList(list: SessionListState, view: WorkspaceListView, workspaces: readonly WorkspaceView[]): SessionListState {
   if (view.id === DEFAULT_VIEW_ID) return list
   const ids = list.ids.filter(id => list.byId[id] !== undefined && view.include(rowContext(list.byId[id], workspaces, list.current === id)))
@@ -357,14 +369,19 @@ function SessionTree({
     ),
     [policies, visibleList, sessionOrderByAccount, ungroupedSessionIds, workspaces],
   )
+  const promotedIds = useMemo(
+    () => promotedSessionIds(visibleList.ids, visibleList, workspaces, policies),
+    [policies, visibleList, workspaces],
+  )
   const groups = useMemo(
     () => deriveGroups(visibleList, orderedWorkspaces, archivedSessionIds, {
       expandedGroups,
+      promotedSessionIds: promotedIds,
       ...(sessionOrderByAccount[UNGROUPED_KEY] === undefined
         ? {}
         : { ungroupedOrder: orderedUngroupedSessionIds }),
     }),
-    [visibleList, orderedWorkspaces, orderedUngroupedSessionIds, archivedSessionIds, expandedGroups, sessionOrderByAccount],
+    [visibleList, orderedWorkspaces, orderedUngroupedSessionIds, promotedIds, archivedSessionIds, expandedGroups, sessionOrderByAccount],
   )
   const now = Date.now()
   const commitSessionDrag = (activeDrag: DragState, over: NonNullable<DragState['over']>): void => {
@@ -524,7 +541,7 @@ function SessionTree({
               // Session drag never leaves its group. Ungrouped writes only the
               // browser-local account; real Workspaces may also write Host order.
                 const sameGroupDrag = drag !== null && drag.accountKey === group.key
-                const dragProps = {
+                const dragProps = group.promoted ? undefined : {
                   start: () => {
                     sessionDropCommitted.current = false
                     setDrag({ accountKey: group.key, sessionId: node.id, over: null })
@@ -1091,17 +1108,18 @@ export function WorkspaceBrowser({
   return (
     <div className={clsx(css.root, !wide && css.rail)}>
       <div className={css.sectionHeader}>
-        {wide && (
+        {wide && contributedViews.length === 0 && (
           <span className={clsx(css.sectionLabel, css.wide, searchExpanded && css.sectionLabelHidden)}>
             {activeView.label}
           </span>
         )}
         {wide && contributedViews.length > 0 && (
-          <div role="tablist" aria-label={t('section.workspaces')}>
+          <div className={css.viewTabs} role="tablist" aria-label={t('section.workspaces')}>
             {views.map(view => (
               <button
                 key={view.id}
                 type="button"
+                className={clsx(css.viewTab, activeView.id === view.id && css.viewTabActive)}
                 role="tab"
                 aria-selected={activeView.id === view.id}
                 onClick={() => { setActiveViewId(view.id) }}

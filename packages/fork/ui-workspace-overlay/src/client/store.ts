@@ -9,6 +9,8 @@ export const READ_WATERMARKS_STORAGE_KEY = 'dsh.fork.workspaceReadWatermarks.v1'
 export interface WorkspaceOverlaySnapshot {
   /** Browser-local last-read sequence per session id. */
   readonly readWatermarks: Readonly<Record<string, number>>
+  /** Explicit Mark unread actions, including rows that are currently selected or running. */
+  readonly manualUnread: Readonly<Record<string, true>>
   /** Last Host-accepted pin view, or undefined before the first remote read. */
   readonly pins: ForkWorkspaceSessionStateView | undefined
 }
@@ -19,6 +21,8 @@ export interface WorkspaceOverlayStore extends HostObservable<WorkspaceOverlaySn
   markUnread(session: SessionSummary): void
   /** Mark a session read through its current last sequence. */
   markRead(session: SessionSummary): void
+  /** Advance an already-open session through its visible sequence without clearing an explicit unread mark. */
+  observeRead(session: SessionSummary): void
   /** Read the browser-local watermark for one session. */
   readWatermark(sessionId: SessionId): number | undefined
   /** Install a Host-accepted pin snapshot. */
@@ -89,9 +93,10 @@ function persistWatermarks(watermarks: Readonly<Record<string, number>>): void {
 
 function immutableSnapshot(
   readWatermarks: Readonly<Record<string, number>>,
+  manualUnread: Readonly<Record<string, true>>,
   pins: ForkWorkspaceSessionStateView | undefined,
 ): WorkspaceOverlaySnapshot {
-  return Object.freeze({ readWatermarks, pins })
+  return Object.freeze({ readWatermarks, manualUnread, pins })
 }
 
 /**
@@ -100,24 +105,39 @@ function immutableSnapshot(
  */
 export function createWorkspaceOverlayStore(): WorkspaceOverlayStore {
   let readWatermarks = readInitialWatermarks()
+  let manualUnread: Readonly<Record<string, true>> = Object.freeze({})
   let pins: ForkWorkspaceSessionStateView | undefined
-  let snapshot = immutableSnapshot(readWatermarks, pins)
+  let snapshot = immutableSnapshot(readWatermarks, manualUnread, pins)
   const listeners = new Set<() => void>()
   let disposed = false
 
   const publish = (): void => {
-    snapshot = immutableSnapshot(readWatermarks, pins)
+    snapshot = immutableSnapshot(readWatermarks, manualUnread, pins)
     for (const listener of [...listeners]) listener()
   }
-  const writeWatermark = (session: SessionSummary, watermark: number, monotonic: boolean): void => {
-    if (disposed) return
+  const writeWatermark = (session: SessionSummary, watermark: number, monotonic: boolean): boolean => {
+    if (disposed) return false
     const id = String(session.id)
     const current = readWatermarks[id]
-    if (monotonic && current !== undefined && watermark < current) return
-    if (readWatermarks[id] === watermark) return
+    if (monotonic && current !== undefined && watermark < current) return false
+    if (readWatermarks[id] === watermark) return false
     readWatermarks = Object.freeze({ ...readWatermarks, [id]: watermark })
     persistWatermarks(readWatermarks)
-    publish()
+    return true
+  }
+  const writeManualUnread = (session: SessionSummary, unread: boolean): boolean => {
+    if (disposed) return false
+    const id = String(session.id)
+    if (unread) {
+      if (manualUnread[id] === true) return false
+      manualUnread = Object.freeze({ ...manualUnread, [id]: true })
+      return true
+    }
+    if (manualUnread[id] !== true) return false
+    manualUnread = Object.freeze(Object.fromEntries(
+      Object.entries(manualUnread).filter(([candidate]) => candidate !== id),
+    ))
+    return true
   }
 
   return {
@@ -130,12 +150,21 @@ export function createWorkspaceOverlayStore(): WorkspaceOverlayStore {
     markUnread: (session) => {
       const sequence = lastSequenceOf(session)
       if (sequence === undefined) return
-      writeWatermark(session, Math.max(0, sequence - 1), false)
+      const changedWatermark = writeWatermark(session, Math.max(0, sequence - 1), false)
+      const changedManualUnread = writeManualUnread(session, true)
+      if (changedWatermark || changedManualUnread) publish()
     },
     markRead: (session) => {
       const sequence = lastSequenceOf(session)
       if (sequence === undefined) return
-      writeWatermark(session, sequence, true)
+      const changedWatermark = writeWatermark(session, sequence, true)
+      const changedManualUnread = writeManualUnread(session, false)
+      if (changedWatermark || changedManualUnread) publish()
+    },
+    observeRead: (session) => {
+      const sequence = lastSequenceOf(session)
+      if (sequence === undefined) return
+      if (writeWatermark(session, sequence, true)) publish()
     },
     readWatermark: sessionId => readWatermarks[String(sessionId)],
     installPins: (view) => {

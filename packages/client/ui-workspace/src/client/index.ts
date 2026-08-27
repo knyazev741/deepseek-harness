@@ -25,7 +25,7 @@ export type {
   DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected,
   WorkspaceBrowserInjected, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps,
 } from './contract/slots.ts'
-export type { WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext } from './contract/contributions.ts'
+export type { WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext, WorkspaceSessionRowMenuContext } from './contract/contributions.ts'
 export type { WorkspaceKey } from './locales.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -132,6 +132,7 @@ export function apply(ctx: ClientContext): void {
       children: {
         'sidebar.workspaces.directoryFlow': { kind: 'single', scope: 'root' },
         'workspace.session-row.badges': { kind: 'list', scope: 'root' },
+        'workspace.session-row.status': { kind: 'list', scope: 'root' },
         'workspace.session-row.actions': { kind: 'list', scope: 'root' },
       },
       store: createWorkspaceViewStore(),

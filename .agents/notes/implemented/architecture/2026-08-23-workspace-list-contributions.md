@@ -14,7 +14,7 @@ The client Workspace browser needs generic package-owned extension points for fi
 
 `WorkspaceBrowser` always gives `SessionTree` and `FlatList` the full upstream session snapshot for persistence effects and drag commits. Their render derivations receive the active filtered snapshot. Policy comparison builds contexts only for valid candidates in that projection, while stale or excluded ids remain in their upstream order account and are ignored by rendering. The browser owns the fallback `workspace.default` tab, and contributed tab keys remain separate from it.
 
-The existing generic row slots remain the render contribution points: `workspace.session-row.badges` and `workspace.session-row.actions`. This extension does not add fork, pin, source, unread, or background behavior.
+The generic row slots are the render contribution points: `workspace.session-row.badges`, `workspace.session-row.status`, and `workspace.session-row.actions`. The browser renders action-slot output inside its existing session menu through the neutral `Menu.extra` and `MenuItemButton` primitives; the action owner receives a `closeMenu` callback, while the browser retains Rename, Fork, and Archive ownership. The status slot fills the left cell only when no built-in pending, activity, descendant-activity, or completion status is visible, so a contribution never adds a second indicator beside a browser-owned status. A policy may also implement optional `promote(context)`; promoted ids render once in a synthetic, expanded section above all Workspace groups, while the ordinary groups omit those ids. This generic seam does not define fork, pin, source, unread, or background policy.
 
 ## Alternatives considered
 
@@ -26,7 +26,7 @@ The existing generic row slots remain the render contribution points: `workspace
 
 ## Consequences
 
-Contributors can add a filter or ordering policy without importing browser state or duplicating session traversal. Registration lifetime follows the contributing Cordis fiber, and the published snapshots update when that fiber is disposed. The full state snapshot and filtered render projection are deliberately separate, so hidden sessions retain their account order while visible candidates can be reordered.
+Contributors can add a filter, ordering policy, left-cell status, or action without importing browser state or duplicating session traversal. A promotion policy supplies only membership; the browser owns the synthetic section, deduplication, and removal from the source Workspace rows. Registration lifetime follows the contributing Cordis fiber, and the published snapshots update when that fiber is disposed. The full state snapshot and filtered render projection are deliberately separate, so hidden sessions retain their account order while visible candidates can be reordered.
 
 ## Maintenance and retirement
 

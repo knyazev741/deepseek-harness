@@ -7,6 +7,8 @@
   --dsh-session-list-edge-inset: var(--dsh-sidebar-inline-padding);
   --dsh-session-list-scrollbar-width: 8px;
   --dsh-session-list-scrollbar-offset: 2px;
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
   flex: 1;
   min-height: 0;
   display: flex;
@@ -53,6 +55,41 @@
   border-radius: 12px;
   overflow: hidden;
   color: var(--dsw-alias-label-tertiary);
+}
+
+.viewTabs {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.viewTab {
+  flex: none;
+  min-width: 0;
+  max-width: 140px;
+  height: 28px;
+  overflow: hidden;
+  padding: 0 9px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewTab:hover,
+.viewTabActive {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
 }
 
 .root:not(.rail) .sectionHeader {

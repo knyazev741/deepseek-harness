@@ -14,7 +14,7 @@ Status: implemented
 
 `WorkspaceBrowser` 始终把完整的 upstream session snapshot 传给 `SessionTree` 和 `FlatList`，供持久化 effect 和拖拽提交使用。它们的渲染 derivation 接收当前筛选后的 snapshot。policy comparison 只为该 projection 中有效的 candidate 创建 context，而 stale 或被排除的 id 保留在 upstream order account 中，并由渲染忽略。浏览器拥有 `workspace.default` fallback tab，contributed tab key 与它保持分离。
 
-现有的通用 row slot 仍然是 render contribution point：`workspace.session-row.badges` 和 `workspace.session-row.actions`。该扩展不加入 fork、pin、source、unread 或 background 行为。
+通用 row slot 是 render contribution point：`workspace.session-row.badges`、`workspace.session-row.status` 和 `workspace.session-row.actions`。浏览器通过中立的 `Menu.extra` 与 `MenuItemButton` primitive，把 action slot 的输出渲染在现有会话菜单中；action owner 会收到 `closeMenu` callback，而 Rename、Fork 和 Archive 仍由浏览器拥有。只有在没有内置 pending、activity、descendant activity 或 completion 状态可见时，status slot 才填充左侧单元格，因此 contribution 不会在浏览器拥有的状态旁边添加第二个指示点。policy 还可以实现可选的 `promote(context)`；被 promote 的 id 会在所有 Workspace 分组上方的合成、默认展开分组中只渲染一次，普通分组会排除这些 id。这个通用 seam 不定义 fork、pin、source、unread 或 background policy。
 
 ## 曾考虑的替代方案
 
@@ -26,7 +26,7 @@ Status: implemented
 
 ## 后果
 
-Contributors 可以添加筛选或排序 policy，而不需要导入 browser state 或重复 session traversal。Registration 生命周期跟随贡献方 Cordis fiber，该 fiber dispose 时发布的 snapshot 也会更新。完整 state snapshot 与筛选后的 render projection 有意分离，因此隐藏会话保留 account 顺序，而可见 candidate 可以重新排序。
+Contributors 可以添加筛选、排序 policy、左侧状态或 action，而不需要导入 browser state 或重复 session traversal。promotion policy 只提供成员资格；合成分组、去重以及从来源 Workspace 行中移除都由 browser 拥有。Registration 生命周期跟随贡献方 Cordis fiber，该 fiber dispose 时发布的 snapshot 也会更新。完整 state snapshot 与筛选后的 render projection 有意分离，因此隐藏会话保留 account 顺序，而可见 candidate 可以重新排序。
 
 ## 维护与退出
 

@@ -1888,8 +1888,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     key: 'workspace.session-row.actions',
     kind: 'list',
     scope: 'root',
-    summary: 'Row actions contributed by registrants; each receives the session/workspace owner context.',
-    doc: 'Row actions contributed by registrants; each receives the session/workspace owner context. */\n/** An empty list leaves the row without actions.',
+    summary: 'Row actions contributed by registrants; each receives the session/workspace owner context and menu close callback.',
+    doc: 'Row actions contributed by registrants; each receives the session/workspace owner context and menu close callback. */\n/** An empty list leaves the row without actions.',
     registerOptions: [
       {
         name: 'id',
@@ -1911,11 +1911,10 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       },
     ],
     ownerProps: [
-      '/** Data shared by Workspace Session row contributions. */\nexport interface WorkspaceSessionRowContext { readonly session: SessionSummary; readonly workspace: WorkspaceView; readonly selected: boolean }',
+      '/** Menu-specific row context supplied to action contributions. */\nexport interface WorkspaceSessionRowMenuContext extends WorkspaceSessionRowContext { readonly closeMenu: () => void }',
     ],
     ownerPropsReferences: [
-      'Workspace',
-      'WorkspaceView',
+      'WorkspaceSessionRowContext',
     ],
     standardProps: [
       'useSessions: SnapshotSelectorHook<SessionListState>',
@@ -1926,13 +1925,11 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'an entry in \'sidebar.workspaces\' (client-ui-workspace), so it exists while that entry is mounted',
     occupants: [
-      'fork-ui-workspace-overlay WorkspaceRowActions id \'fork.copy-session-id\'',
-      'fork-ui-workspace-overlay WorkspaceRowActions id \'fork.mark-unread\'',
-      'fork-ui-workspace-overlay WorkspaceRowActions id \'fork.pin-session\'',
+      'fork-ui-workspace-overlay WorkspaceRowActions id \'fork.session-menu-actions\'',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'workspace.session-row.actions\', () => ctx.slots.register(\n      { name: \'workspace.session-row.actions\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:66',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:69',
   },
   {
     key: 'workspace.session-row.badges',
@@ -1981,6 +1978,54 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'workspace.session-row.badges\', () => ctx.slots.register(\n      { name: \'workspace.session-row.badges\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
     source: 'packages/client/ui-workspace/src/client/contract/slots.ts:63',
+  },
+  {
+    key: 'workspace.session-row.status',
+    kind: 'list',
+    scope: 'root',
+    summary: 'Left status-cell fallback contributions; each receives the session/workspace owner context.',
+    doc: 'Left status-cell fallback contributions; each receives the session/workspace owner context. */\n/** Built-in pending, activity, and completion statuses take precedence over this list.',
+    registerOptions: [
+      {
+        name: 'id',
+        requirement: 'required',
+        type: 'string',
+        doc: 'Your cell key. Use an id of your own: a fresh id is added beside the shipped entries, while reusing a shipped id puts you in THAT cell and replaces it. Owners that filter by id address you by it.',
+      },
+      {
+        name: 'order',
+        requirement: 'optional',
+        type: 'number',
+        doc: 'Position among the entries, ascending (default 0).',
+      },
+      {
+        name: 'label',
+        requirement: 'optional',
+        type: 'string | (() => string)',
+        doc: 'Display text where the owner projects one (nav rows, tabs). A thunk is re-read on every projection, so localized text follows the active locale without re-registering.',
+      },
+    ],
+    ownerProps: [
+      '/** Data shared by Workspace Session row contributions. */\nexport interface WorkspaceSessionRowContext { readonly session: SessionSummary; readonly workspace: WorkspaceView; readonly selected: boolean }',
+    ],
+    ownerPropsReferences: [
+      'Workspace',
+      'WorkspaceView',
+    ],
+    standardProps: [
+      'useSessions: SnapshotSelectorHook<SessionListState>',
+      'useWorkspaces: SnapshotSelectorHook<import(\'./workspaces/service.ts\').WorkspaceListState>',
+    ],
+    keyDomain: '',
+    hookContext: '',
+    slotInject: '',
+    declaredBy: 'an entry in \'sidebar.workspaces\' (client-ui-workspace), so it exists while that entry is mounted',
+    occupants: [
+      'fork-ui-workspace-overlay WorkspaceRowStatus id \'fork.session-unread-status\'',
+    ],
+    replaceRisk: 'none',
+    example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'workspace.session-row.status\', () => ctx.slots.register(\n      { name: \'workspace.session-row.status\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
+    source: 'packages/client/ui-workspace/src/client/contract/slots.ts:66',
   },
 ]
 /* jscpd:ignore-end */

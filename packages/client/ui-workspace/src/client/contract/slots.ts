@@ -32,7 +32,7 @@ import type {
   SessionId, SessionSearchResultItem, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { createWorkspaceViewStore } from '../stores.ts'
-import type { WorkspaceSessionRowContext, WorkspaceListPolicy, WorkspaceListView } from './contributions.ts'
+import type { WorkspaceSessionRowContext, WorkspaceSessionRowMenuContext, WorkspaceListPolicy, WorkspaceListView } from './contributions.ts'
 
 /**
  * Owner share of the directory-flow holes: the complete conversation between
@@ -61,9 +61,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Row badges contributed by registrants; each receives the session/workspace owner context. */
     /** An empty list leaves the row without badges. */
     'workspace.session-row.badges': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
-    /** Row actions contributed by registrants; each receives the session/workspace owner context. */
+    /** Left status-cell fallback contributions; each receives the session/workspace owner context. */
+    /** Built-in pending, activity, and completion statuses take precedence over this list. */
+    'workspace.session-row.status': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
+    /** Row actions contributed by registrants; each receives the session/workspace owner context and menu close callback. */
     /** An empty list leaves the row without actions. */
-    'workspace.session-row.actions': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
+    'workspace.session-row.actions': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowMenuContext }
   }
 }
 
@@ -158,7 +161,7 @@ type WorkspaceBrowserContributionHooks = {
 /** Full browser props: shell owner share + viewing store + injected actions + the locale seat. */
 export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
-  & PropsRenderSlots<'sidebar.workspaces.directoryFlow' | 'workspace.session-row.badges' | 'workspace.session-row.actions'>
+  & PropsRenderSlots<'sidebar.workspaces.directoryFlow' | 'workspace.session-row.badges' | 'workspace.session-row.status' | 'workspace.session-row.actions'>
   & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
   & Omit<WorkspaceBrowserInjected, 'hooks'>
   & PropsHooks<WorkspaceBrowserBaseHooks>

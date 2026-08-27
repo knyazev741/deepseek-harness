@@ -15,7 +15,7 @@ import {
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import { abbreviateHomePath } from '@deepseek-ai/dsh-client-runtime/client'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
-import type { WorkspaceSessionRowContext } from '../contract/contributions.ts'
+import type { WorkspaceSessionRowContext, WorkspaceSessionRowMenuContext } from '../contract/contributions.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import { relativeTime } from '../tree.ts'
 import css from './Rows.module.css'
@@ -125,7 +125,7 @@ export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home,
 }) {
   const row = group
   // The ungrouped bucket has no workspace title: its label is dictionary copy.
-  const label = row.workspaceId === undefined ? t('group.ungrouped') : row.label
+  const label = row.promoted ? t('group.pinned') : row.workspaceId === undefined ? t('group.ungrouped') : row.label
   const active = group.expanded && group.containsCurrent
   const [menuOpen, setMenuOpen] = useState(false)
   const workspaceMenuItems = [
@@ -186,14 +186,14 @@ export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home,
             )}
           />
         )}
-        <button
+        {!row.promoted && <button
           type="button"
           className={css.iconButton}
           aria-label={t('actions.newSession.aria', { name: label })}
           onClick={(e) => { e.stopPropagation(); onCreate() }}
         >
           <IconPlusOutline16 />
-        </button>
+        </button>}
       </span>
     </div>
   )
@@ -322,6 +322,10 @@ export function SearchResultItem({ result, currentId, onOpen, rowContext, render
   const selected = result.id === currentId
   const statuses = sessionStatuses(result, t)
   const primaryStatus = statuses[0]
+  const showStatus = primaryStatus.state !== 'done' || result.completed
+  const contributedStatus = !showStatus && rowContext !== undefined && renderSlot !== undefined
+    ? renderSlot('workspace.session-row.status', rowContext)
+    : null
   return (
     <button
       type="button"
@@ -332,9 +336,8 @@ export function SearchResultItem({ result, currentId, onOpen, rowContext, render
     >
       <span className={css.searchResultHeading}>
         <span className={css.slot}>
-          {(primaryStatus.state !== 'done' || result.completed) && (
-            <SessionStatusDots statuses={statuses} />
-          )}
+          {showStatus && <SessionStatusDots statuses={statuses} />}
+          {contributedStatus}
         </span>
         <span className={css.searchResultTitle}>{result.title}</span>
         {rowContext !== undefined && renderSlot?.('workspace.session-row.badges', rowContext)}
@@ -391,6 +394,9 @@ export function SessionNodeItem({
   const statuses = sessionStatuses(node, t)
   const primaryStatus = statuses[0]
   const showStatus = primaryStatus.state !== 'done' || row.completed
+  const contributedStatus = !showStatus && rowContext !== undefined && renderSlot !== undefined
+    ? renderSlot('workspace.session-row.status', rowContext)
+    : null
   const [menuOpen, setMenuOpen] = useState(false)
   // Archive hides the row through the registry-global archive set and never
   // touches the session log, so it is not styled as destructive and needs no
@@ -437,12 +443,12 @@ export function SessionNodeItem({
           drag.drop(rowHalf(e))
         }}
     >
-      {/* Pending interaction and own or descendant activity outrank the
-          finished-but-unviewed reminder, which returns after activity stops
-          and is cleared by opening the session. */}
-      {(!flat || showStatus) && (
+      {/* The browser-owned pending, activity, and completion status owns the
+          cell whenever present; contributions fill only its idle state. */}
+      {(!flat || showStatus || (contributedStatus !== null && contributedStatus !== undefined && contributedStatus !== false)) && (
         <span className={css.slot}>
           {showStatus && <SessionStatusDots statuses={statuses} />}
+          {contributedStatus}
         </span>
       )}
       <span className={css.title}>{title}</span>
@@ -454,10 +460,15 @@ export function SessionNodeItem({
       {!row.blank && <span className={css.time}>{timeLabel(row.updatedAt, now, t)}</span>}
       {!row.blank && (
         <span className={css.rowActions}>
-          {rowContext !== undefined && renderSlot?.('workspace.session-row.actions', rowContext)}
           <Menu
             open={menuOpen}
             onClose={() => { setMenuOpen(false) }}
+            extra={rowContext !== undefined && renderSlot !== undefined
+              ? renderSlot('workspace.session-row.actions', {
+                ...rowContext,
+                closeMenu: () => { setMenuOpen(false) },
+              } satisfies WorkspaceSessionRowMenuContext)
+              : undefined}
             items={sessionMenuItems}
             onSelect={(id) => {
               setMenuOpen(false)

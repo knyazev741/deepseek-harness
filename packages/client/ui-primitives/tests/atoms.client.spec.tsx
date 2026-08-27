@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Button, ConnectionBanner, Input, Menu, Modal, Pill } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, ConnectionBanner, Input, Menu, MenuItemButton, Modal, Pill } from '@deepseek-ai/dsh-client-ui-primitives'
 import { POINTER_GRACE_MS } from '../src/pointer-grace.ts'
 
 afterEach(cleanup)
@@ -136,6 +136,24 @@ describe('Menu', () => {
       />)
     expect(screen.getByTestId('ic')).toBeDefined()
     expect(screen.getByRole('separator')).toBeDefined()
+  })
+
+  it('renders plugin-contributed action rows inside the menu surface', () => {
+    const onClick = vi.fn()
+    render(
+      <Menu
+        open
+        anchor={<span>trigger</span>}
+        items={[]}
+        extra={<MenuItemButton label="Copy session ID" onClick={onClick} />}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    const action = screen.getByRole('menuitem', { name: 'Copy session ID' })
+    expect(action.className).toMatch(/item/)
+    fireEvent.click(action)
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 
   it('renders a non-interactive heading label and a danger row', () => {

@@ -108,6 +108,18 @@ describe('WorkspaceBrowser.module.css list', () => {
       .toBe('var(--dsw-alias-interactive-bg-hover)')
   })
 
+  it('gives contributed view tabs a compact segmented treatment', () => {
+    const tabs = declarations('.viewTabs')
+    const tab = declarations('.viewTab')
+    const active = declarations('.viewTabActive')
+    expect(tabs?.get('display')).toBe('inline-flex')
+    expect(tabs?.get('align-items')).toBe('center')
+    expect(tabs?.get('gap')).toBe('2px')
+    expect(tab?.get('border')).toBe('none')
+    expect(tab?.get('border-radius')).toBe('7px')
+    expect(active?.get('background')).toBe('var(--dsw-alias-interactive-bg-hover)')
+  })
+
   it('pins both rail controls to the shared left anchor during the column slide', () => {
     expect(declarations('.rail .sectionHeader')?.get('justify-content')).toBe('flex-start')
     expect(declarations('.rail .iconButton')?.get('width')).toBe('36px')

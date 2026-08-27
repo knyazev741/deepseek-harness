@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import type { ReactElement } from 'react'
 import type { PropsLocale, PropsRuntime, InjectFace, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
-import { Button, IconCopyOutline16, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCopyOutline16, IconPushpinOutline16, MenuItemButton, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { WorkspaceOverlaySnapshot } from './store.ts'
 import { NS } from './locales.ts'
 import css from './workspace-overlay.module.css'
@@ -10,20 +11,18 @@ import css from './workspace-overlay.module.css'
 export interface PinMutationResult {
   /** Host accepted the requested state. */
   readonly accepted: boolean
-  /** Host rejected an obsolete revision; no mutation retry was attempted. */
+  /** The refreshed retry also lost a revision race. */
   readonly stale?: boolean
 }
 
 /** Business face injected into each workspace row action entry. */
 export interface WorkspaceRowActionsInjected {
-  /** One of the three independently registered row verbs. */
-  action: 'copy-session-id' | 'mark-unread' | 'pin-session'
   hooks: {
     overlay: HostObservable<WorkspaceOverlaySnapshot>
   }
   /** Mark the browser-local watermark immediately before the current sequence. */
   markUnread: (session: SessionSummary) => void
-  /** Send one CAS pin/unpin request, with conflict refresh but no mutation retry. */
+  /** Send a CAS pin/unpin request, refreshing and retrying one stale revision. */
   setPinned: (session: SessionSummary, pinned: boolean) => Promise<PinMutationResult>
 }
 
@@ -38,7 +37,7 @@ export type WorkspaceRowActionsProps =
  * @param props - row context, injected actions, and locale seat.
  * @returns action buttons and accessible feedback.
  */
-export function WorkspaceRowActions({ session, action, useOverlay, markUnread, setPinned, t }: WorkspaceRowActionsProps): JSX.Element {
+export function WorkspaceRowActions({ session, closeMenu, useOverlay, markUnread, setPinned, t }: WorkspaceRowActionsProps): ReactElement {
   const pinned = useOverlay(snapshot => snapshot.pins?.pinnedSessionIds.includes(session.id) ?? false)
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'rejected'>('idle')
   const [feedback, setFeedback] = useState<string | undefined>()
@@ -48,18 +47,23 @@ export function WorkspaceRowActions({ session, action, useOverlay, markUnread, s
     void writeClipboard(String(session.id)).then((accepted) => {
       setCopyState(accepted ? 'copied' : 'rejected')
       setFeedback(accepted ? t('copiedSessionId') : t('clipboardRejected'))
+      if (accepted) closeMenu()
     })
   }
   const unread = (): void => {
     markUnread(session)
     setFeedback(t('markedUnread'))
+    closeMenu()
   }
   const togglePin = (): void => {
     if (pending) return
     setPending(true)
     void setPinned(session, !pinned).then((result) => {
       setPending(false)
-      if (result.accepted) setFeedback(!pinned ? t('pin') : t('unpin'))
+      if (result.accepted) {
+        setFeedback(!pinned ? t('pin') : t('unpin'))
+        closeMenu()
+      }
       else if (result.stale) setFeedback(t('pinConflict'))
     }, () => {
       setPending(false)
@@ -67,39 +71,24 @@ export function WorkspaceRowActions({ session, action, useOverlay, markUnread, s
   }
 
   return (
-    <span className={css.actions} data-overlay-session={String(session.id)}>
-      {action === 'copy-session-id' && <Button
-        size="sm"
-        variant="toolbar"
-        className={css.action}
+    <span className={css.menuActions} data-overlay-session={String(session.id)}>
+      <MenuItemButton
         icon={<IconCopyOutline16 size={14} />}
-        aria-label={t('copySessionIdAria')}
-        onClick={(event) => { event.stopPropagation(); copy() }}
-      >
-        <span className={css.visuallyHidden}>{t('copySessionId')}</span>
-      </Button>}
-      {action === 'mark-unread' && <Button
-        size="sm"
-        variant="toolbar"
-        className={css.action}
-        aria-label={t('markUnread')}
-        onClick={(event) => { event.stopPropagation(); unread() }}
-      >
-        <span className={css.actionText}>●</span>
-        <span className={css.visuallyHidden}>{t('markUnread')}</span>
-      </Button>}
-      {action === 'pin-session' && <Button
-        size="sm"
-        variant="toolbar"
-        className={css.action}
-        aria-label={t(pinned ? 'unpinSessionAria' : 'pinSessionAria')}
-        aria-pressed={pinned}
+        label={t('copySessionId')}
+        onClick={copy}
+      />
+      <MenuItemButton
+        icon={<span className={css.menuSymbol}>●</span>}
+        label={t('markUnread')}
+        onClick={unread}
+      />
+      <MenuItemButton
+        icon={<IconPushpinOutline16 size={14} />}
+        label={t(pinned ? 'unpinSessionAria' : 'pinSessionAria')}
         disabled={pending}
-        onClick={(event) => { event.stopPropagation(); togglePin() }}
-      >
-        <span className={css.actionText}>{pinned ? '★' : '☆'}</span>
-        <span className={css.visuallyHidden}>{t(pinned ? 'unpin' : 'pin')}</span>
-      </Button>}
+        pressed={pinned}
+        onClick={togglePin}
+      />
       {copyState === 'rejected' || feedback !== undefined
         ? <span className={css.feedback} role="status" aria-live="polite">{feedback}</span>
         : null}

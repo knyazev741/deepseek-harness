@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import type {
   SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceListState, WorkspaceView,
@@ -8,10 +8,12 @@ import type {
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { WorkspaceBrowserProps } from '../src/client/contract/slots.ts'
+import type { WorkspaceListPolicy } from '../src/client/contract/contributions.ts'
 import { createWorkspaceViewStore, FLAT_SESSION_ORDER_KEY } from '../src/client/stores.ts'
 import { UNGROUPED_KEY } from '../src/client/tree.ts'
 import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
 import { zh } from '../src/client/locales.ts'
+import { MenuItemButton, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 
 afterEach(cleanup)
 beforeEach(() => { localStorage.clear(); createWorkspaceViewStore().create().actions.setOrderBy('manual') })
@@ -96,6 +98,96 @@ function rerender(b: ReturnType<typeof mount>, overrides: Partial<WorkspaceBrows
 }
 
 describe('WorkspaceBrowser', () => {
+  it('renders contributed views as styled tabs without duplicating the section heading', () => {
+    mount({
+      useViews: hook([{
+        id: 'fork.background',
+        order: 100,
+        label: '后台',
+        include: () => true,
+      }]),
+    })
+    expect(screen.getByRole('tablist')).toBeTruthy()
+    expect(screen.getAllByText('工作区')).toHaveLength(1)
+    expect(screen.getByRole('tab', { name: '工作区' }).className).toMatch(/viewTab/)
+    expect(screen.getByRole('tab', { name: '后台' }).className).toMatch(/viewTab/)
+  })
+
+  it('renders plugin session actions inside the row ellipsis menu', () => {
+    const session = summary('session', 1)
+    const onCopy = vi.fn()
+    const b = mount({
+      useSessions: hook(sessionState([session])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['session'])])),
+      renderSlot: ((name: string, owner: { open?: boolean }) => {
+        if (name === 'workspace.session-row.actions') {
+          return <MenuItemButton label="Copy session ID" onClick={onCopy} />
+        }
+        return owner.open === true ? <div data-testid="directory-flow" /> : null
+      }) as never,
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    fireEvent.click(screen.getByRole('button', { name: '会话“session”的操作' }))
+    const menu = screen.getByRole('menu')
+    expect(within(menu).getByRole('menuitem', { name: 'Copy session ID' })).toBeTruthy()
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Copy session ID' }))
+    expect(onCopy).toHaveBeenCalledTimes(1)
+    b.view.unmount()
+  })
+
+  it('renders a contributed done dot in the left status slot for an idle session', () => {
+    const session = summary('unread-session', 1)
+    mount({
+      useSessions: hook(sessionState([session])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['unread-session'])])),
+      renderSlot: ((name: string, owner: { open?: boolean }) => {
+        if (name === 'workspace.session-row.status') return <StateDot state="done" />
+        return owner.open === true ? <div data-testid="directory-flow" /> : null
+      }) as never,
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    const row = screen.getByText('unread-session').closest('[role="treeitem"]')
+    expect(row?.querySelector('[data-state="done"]')).toBeTruthy()
+  })
+
+  it('keeps one green dot when completion and contributed unread overlap', () => {
+    const session = summary('completed-unread-session', 1, { completed: true })
+    mount({
+      useSessions: hook(sessionState([session])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['completed-unread-session'])])),
+      renderSlot: ((name: string, owner: { open?: boolean }) => {
+        if (name === 'workspace.session-row.status') return <StateDot state="done" />
+        return owner.open === true ? <div data-testid="directory-flow" /> : null
+      }) as never,
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    const row = screen.getByText('completed-unread-session').closest('[role="treeitem"]')
+    expect(row?.querySelectorAll('[data-state="done"]')).toHaveLength(1)
+  })
+
+  it('promotes contributed sessions into one Pinned section above every Workspace', () => {
+    const policy = {
+      id: 'test.promoted',
+      order: 100,
+      compare: () => 0,
+      promote: (context: { session: SessionSummary }) => context.session.id === sid('pinned'),
+    } as unknown as WorkspaceListPolicy
+    mount({
+      useSessions: hook(sessionState([summary('alpha-session', 2), summary('pinned', 1), summary('beta-session', 3)])),
+      useWorkspaces: hook(workspaceState([
+        workspace('alpha', ['alpha-session', 'pinned']),
+        workspace('beta', ['beta-session']),
+      ])),
+      usePolicies: hook([policy]),
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    fireEvent.click(screen.getByText('beta'))
+    const rows = screen.getAllByRole('treeitem')
+    expect(rows[0]?.textContent).toContain('已固定')
+    expect(rows[1]?.textContent).toContain('pinned')
+    expect(rows.filter(row => row.textContent?.includes('pinned'))).toHaveLength(1)
+  })
+
   it('workspace hover card shows a POSIX home descendant as ~', () => {
     vi.useFakeTimers()
     try {
