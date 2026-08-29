@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-23-fork-workspace-ui-overlay.md
-2026-08-23-fork-workspace-ui-overlay.md: 191c1d5306c2a47d0a1f5ae10b5b235ea6bb3be3
-2026-08-23-fork-workspace-ui-overlay.zh.md: 2ea739c39fd5d6a6f92ec9fc9c03b212bdd7af23
+2026-08-23-fork-workspace-ui-overlay.md: 8f854e5a8f800338bcdde27c8dfffbd8f6c127a4
+2026-08-23-fork-workspace-ui-overlay.zh.md: 21be2e339b67823814ef70cf0c223e9a41bb7c77

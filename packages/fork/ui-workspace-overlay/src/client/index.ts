@@ -97,7 +97,7 @@ export function apply(ctx: ClientContext): void {
       // explicit intent so a normal click is not converted into a no-op.
       const refreshed = await ctx.remote.forkWorkspaceSessionState.list()
       if (disposed || !refreshed.ok) return { accepted: false }
-      store.installPins(refreshed.value)
+      store.replacePins(refreshed.value)
       const retry = await ctx.remote.forkWorkspaceSessionState.setPinned({
         sessionId: session.id,
         pinned,

@@ -27,6 +27,8 @@ export interface WorkspaceOverlayStore extends HostObservable<WorkspaceOverlaySn
   readWatermark(sessionId: SessionId): number | undefined
   /** Install a Host-accepted pin snapshot. */
   installPins(view: ForkWorkspaceSessionStateView): void
+  /** Replace pin state from an authoritative Host refresh, including a post-restart revision reset. */
+  replacePins(view: ForkWorkspaceSessionStateView): void
   /** Return whether the current Host-accepted snapshot contains the id. */
   isPinned(sessionId: SessionId): boolean
   /** Return the observed revision used by the next mutation. */
@@ -115,6 +117,13 @@ export function createWorkspaceOverlayStore(): WorkspaceOverlayStore {
     snapshot = immutableSnapshot(readWatermarks, manualUnread, pins)
     for (const listener of [...listeners]) listener()
   }
+  const writePins = (view: ForkWorkspaceSessionStateView): void => {
+    pins = Object.freeze({
+      revision: view.revision,
+      pinnedSessionIds: Object.freeze([...view.pinnedSessionIds]),
+    })
+    publish()
+  }
   const writeWatermark = (session: SessionSummary, watermark: number, monotonic: boolean): boolean => {
     if (disposed) return false
     const id = String(session.id)
@@ -174,11 +183,11 @@ export function createWorkspaceOverlayStore(): WorkspaceOverlayStore {
         if (view.revision < current.revision) return
         if (view.revision === current.revision) return
       }
-      pins = Object.freeze({
-        revision: view.revision,
-        pinnedSessionIds: Object.freeze([...view.pinnedSessionIds]),
-      })
-      publish()
+      writePins(view)
+    },
+    replacePins: (view) => {
+      if (disposed) return
+      writePins(view)
     },
     isPinned: sessionId => pins?.pinnedSessionIds.includes(sessionId) ?? false,
     observedPinRevision: () => pins?.revision ?? 0,

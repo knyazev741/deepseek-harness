@@ -349,7 +349,7 @@ describe('fork workspace overlay assembled client fixture', () => {
     await b.runtime.dispose()
   })
 
-  it('refreshes and replays a stale pin mutation after a Host restart', async () => {
+  it('refreshes and replays a stale pin mutation', async () => {
     const session = summary('pin-me')
     const b = await bench({ summaries: [session] })
     b.remote.setView({ revision: 2, pinnedSessionIds: [] })
@@ -362,6 +362,33 @@ describe('fork workspace overlay assembled client fixture', () => {
     ])
     expect(b.remote.list).toHaveBeenCalledTimes(2)
     expect(b.remote.setPinned).toHaveBeenCalledTimes(2)
+    await b.runtime.dispose()
+  })
+
+  it('accepts the reset Settings revision after a Host restart', async () => {
+    const session = summary('pin-after-restart')
+    const b = await bench({
+      summaries: [session],
+      pins: { revision: 7, pinnedSessionIds: [] },
+    })
+    b.remote.setView({ revision: 0, pinnedSessionIds: [] })
+    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
+
+    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
+
+    await vi.waitFor(() => {
+      expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy()
+    })
+    expect(b.remote.setPinned).toHaveBeenNthCalledWith(1, {
+      sessionId: session.id,
+      expectedRevision: 7,
+      pinned: true,
+    })
+    expect(b.remote.setPinned).toHaveBeenNthCalledWith(2, {
+      sessionId: session.id,
+      expectedRevision: 0,
+      pinned: true,
+    })
     await b.runtime.dispose()
   })
 
