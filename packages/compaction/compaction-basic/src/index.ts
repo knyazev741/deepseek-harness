@@ -111,6 +111,7 @@ const summarizationProviderSchema = z.string()
 const summarizationModelSchema = z.string()
 const maxTokensSchema = z.number().step(1).min(1)
 const maxSummarizationInputTokensSchema = z.number().step(1).min(0)
+const summarizerCooldownMsSchema = z.number().step(1).min(1)
 const compactionRetriesSchema = z.number().step(1).min(0)
 const maxOverflowRetriesSchema = z.number().step(1).min(0)
 
@@ -124,6 +125,7 @@ const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   summarizationModel: summarizationModelSchema,
   maxTokens: maxTokensSchema,
   maxSummarizationInputTokens: maxSummarizationInputTokensSchema,
+  summarizerCooldownMs: summarizerCooldownMsSchema,
   compactionRetries: compactionRetriesSchema,
   maxOverflowRetries: maxOverflowRetriesSchema,
 })
@@ -147,6 +149,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     summarizationModel: summarizationModelSchema,
     maxTokens: maxTokensSchema,
     maxSummarizationInputTokens: maxSummarizationInputTokensSchema,
+    summarizerCooldownMs: summarizerCooldownMsSchema,
     compactionRetries: compactionRetriesSchema,
     maxOverflowRetries: maxOverflowRetriesSchema,
     modelPolicies: z.array(modelPolicy),

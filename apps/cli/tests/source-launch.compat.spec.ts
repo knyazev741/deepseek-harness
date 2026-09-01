@@ -28,6 +28,7 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
     const result = await execa(process.execPath, ['--import', 'tsx/esm', dshSourceBin], {
       cwd: repoRoot,
       input: '',
+      env: { DSH_TELEMETRY_DISABLED: 'caller-controlled' },
       timeout: 25_000,
       killSignal: 'SIGKILL',
       reject: false,

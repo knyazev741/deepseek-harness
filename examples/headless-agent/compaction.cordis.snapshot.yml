@@ -13,12 +13,22 @@
           thresholdRatio: 0.99
           retainTokens: 20
           maxTokens: 32
+          summarizerCooldownMs: 1
       - insert:
           - id: llm-replay
             name: '@deepseek-ai/dsh-llm-replay'
             config:
               providers:
                 - id: deepseek-official
+                  retryPolicy:
+                    mode: normal
+                    maxRetries: 1
+                    retryableCodes:
+                      - RATE_LIMIT
+                    backoff:
+                      initialDelayMs: 1
+                      maxDelayMs: 1
+                      jitterRatio: 0
                   models:
                     - id: deepseek-v4-flash
                       contextWindow: 128000

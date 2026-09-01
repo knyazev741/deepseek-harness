@@ -14,6 +14,7 @@
 
 import type { Context, Events } from '@deepseek-ai/cordis'
 import type { RequestErrorAction } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-compaction'
 import { createUserMessage } from '@deepseek-ai/dsh-llm/message'
 
@@ -45,6 +46,17 @@ function followUpFromCompaction(agent: Agent): void {
   }))
 }
 
+/** Resolve an agent-preset compaction service before falling back to the host. */
+function compactionFor(ctx: Context, agent: Agent): Context['compaction'] | undefined {
+  const scoped = ctx.get('agentPresets')?.serviceFor(agent, 'compaction')
+  return scoped ?? ctx.get('compaction')
+}
+
+/** Read an abort signal after an awaited recovery operation. */
+function isAborted(signal: AbortSignal): boolean {
+  return signal.aborted
+}
+
 /**
  * Build the recovery handle for one plugin instance.
  * @param ctx - plugin context exposing the optional compaction service.
@@ -74,7 +86,7 @@ export function createRecovery(ctx: Context, maxRetries: number): RecoveryHandle
     next: () => Promise<RequestErrorAction>,
   ): Promise<RequestErrorAction> => {
     if (signal.aborted || failure.code !== FIRST_CHUNK_TIMEOUT_CODE) return next()
-    const compaction = ctx.get('compaction')
+    const compaction = compactionFor(ctx, agent)
     // Without a compaction engine the plugin keeps its original standalone
     // behavior: delegate the timeout to the normal retry/error chain.
     if (compaction === undefined) return next()
@@ -91,7 +103,7 @@ export function createRecovery(ctx: Context, maxRetries: number): RecoveryHandle
       await compaction.compactIfNeeded(agent, 'context-overflow', signal)
     } catch (recoveryError: unknown) {
       const message = recoveryError instanceof Error ? recoveryError.message : String(recoveryError)
-      if (!signal.aborted && agent.session.surface.replaceGeneration > generation) {
+      if (!isAborted(signal) && agent.session.surface.replaceGeneration > generation) {
         ctx.logger.warn(
           `first-chunk compaction failed after durable surface progress: ${message}; `
           + 'continuing in a follow-up turn',
@@ -103,7 +115,7 @@ export function createRecovery(ctx: Context, maxRetries: number): RecoveryHandle
       ctx.logger.warn(`first-chunk compaction failed: ${message}; ending the turn`)
       return undefined
     }
-    if (signal.aborted) return next()
+    if (isAborted(signal)) return next()
     if (agent.session.surface.replaceGeneration <= generation) {
       ctx.logger.warn('first-chunk idle timeout: compaction made no durable progress; ending the turn')
       return undefined

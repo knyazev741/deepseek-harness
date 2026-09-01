@@ -509,6 +509,8 @@ export interface CompactionPolicyConfig {
    * gateway; `0` replays the whole shadowed region. Defaults to `131072`.
    */
   maxSummarizationInputTokens?: number
+  /** Cooldown before retrying a transient summarizer failure after its provider retry budget. Defaults to `600000`. */
+  summarizerCooldownMs?: number
   /** Extra attempts after the first compaction when pressure remains above threshold. Defaults to `1`. */
   compactionRetries?: number
   /** Maximum retries after canonical context overflow; `0` disables recovery. Defaults to `1`. */
@@ -524,7 +526,7 @@ export interface ModelCompactPolicyConfig extends CompactionPolicyConfig {
 }
 ```
 
-Source: [`packages/compaction/compaction-basic/src/types.ts:45`](../packages/compaction/compaction-basic/src/types.ts)
+Source: [`packages/compaction/compaction-basic/src/types.ts:47`](../packages/compaction/compaction-basic/src/types.ts)
 
 <a id="deepseek-aidsh-compaction-tool-result-pruner"></a>
 
@@ -669,14 +671,34 @@ Source: [`packages/context/file-reference-local/src/index.ts:35`](../packages/co
 Requires: `llm`
 
 ```ts config-catalog
-/** Configuration for the first result deadline. */
+/** Configuration for the first result deadline and its compaction recovery. */
 export interface Config {
   /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
   readonly firstChunkIdleTimeoutMs?: number
+  /** Maximum consecutive first-chunk compaction follow-ups before idle (default 3). */
+  readonly maxFirstChunkCompactionRetries?: number
 }
 ```
 
-Source: [`packages/fork/llm-first-chunk-timeout/src/index.ts:20`](../packages/fork/llm-first-chunk-timeout/src/index.ts)
+Source: [`packages/fork/llm-first-chunk-timeout/src/index.ts:24`](../packages/fork/llm-first-chunk-timeout/src/index.ts)
+
+<a id="deepseek-aidsh-fork-llm-rate-limit-cooldown"></a>
+
+## `@deepseek-ai/dsh-fork-llm-rate-limit-cooldown`
+
+Requires: `agents`
+
+```ts config-catalog
+/** Configuration for the long rate-limit cooldown escalation. */
+export interface Config {
+  /** Cooldown before one retry of an exhausted rate-limited request, in ms (default 600000). */
+  readonly cooldownMs?: number
+  /** Normalized failure codes that trigger escalation (default rate limit, 5xx, quota, timeout, transport, pi-ai catch-all). */
+  readonly retryableCodes?: string[]
+}
+```
+
+Source: [`packages/fork/llm-rate-limit-cooldown/src/index.ts:27`](../packages/fork/llm-rate-limit-cooldown/src/index.ts)
 
 <a id="deepseek-aidsh-fork-session-source"></a>
 

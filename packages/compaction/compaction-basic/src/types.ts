@@ -27,6 +27,8 @@ export interface CompactionPolicyConfig {
    * gateway; `0` replays the whole shadowed region. Defaults to `131072`.
    */
   maxSummarizationInputTokens?: number
+  /** Cooldown before retrying a transient summarizer failure after its provider retry budget. Defaults to `600000`. */
+  summarizerCooldownMs?: number
   /** Extra attempts after the first compaction when pressure remains above threshold. Defaults to `1`. */
   compactionRetries?: number
   /** Maximum retries after canonical context overflow; `0` disables recovery. Defaults to `1`. */
@@ -61,6 +63,7 @@ interface ResolvedPolicyFields {
   readonly summarizationModel: string
   readonly maxTokens: number
   readonly maxSummarizationInputTokens: number
+  readonly summarizerCooldownMs: number
   readonly compactionRetries: number
   readonly maxOverflowRetries: number
 }

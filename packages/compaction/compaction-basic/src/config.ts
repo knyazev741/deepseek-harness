@@ -6,6 +6,7 @@
 
 import { deepFreeze } from '@deepseek-ai/dsh-llm'
 import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
+import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import type {
   BasicCompactionConfig,
   CompactionPolicyConfig,
@@ -25,6 +26,9 @@ const DEFAULT_RETAIN_RATIO = 0.16
 /** Default maximum conversation tokens replayed into one summarization call. */
 const DEFAULT_MAX_SUMMARIZATION_INPUT_TOKENS = 131_072
 
+/** Default cooldown before retrying an exhausted transient summarizer request. */
+const DEFAULT_SUMMARIZER_COOLDOWN_MS = 600_000
+
 /** Fields shared by top-level defaults and exact-target overrides. */
 const POLICY_CONFIG_KEYS = [
   'thresholdRatio',
@@ -34,6 +38,7 @@ const POLICY_CONFIG_KEYS = [
   'summarizationModel',
   'maxTokens',
   'maxSummarizationInputTokens',
+  'summarizerCooldownMs',
   'compactionRetries',
   'maxOverflowRetries',
 ] as const
@@ -95,6 +100,7 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     maxTokens: config.maxTokens ?? 8192,
     maxSummarizationInputTokens: config.maxSummarizationInputTokens
       ?? DEFAULT_MAX_SUMMARIZATION_INPUT_TOKENS,
+    summarizerCooldownMs: config.summarizerCooldownMs ?? DEFAULT_SUMMARIZER_COOLDOWN_MS,
     compactionRetries: config.compactionRetries ?? 1,
     maxOverflowRetries: config.maxOverflowRetries ?? 1,
     modelPolicies,
@@ -127,6 +133,7 @@ export function resolveTargetPolicy(
     maxTokens: override?.maxTokens ?? config.maxTokens,
     maxSummarizationInputTokens: override?.maxSummarizationInputTokens
       ?? config.maxSummarizationInputTokens,
+    summarizerCooldownMs: override?.summarizerCooldownMs ?? config.summarizerCooldownMs,
     compactionRetries: override?.compactionRetries ?? config.compactionRetries,
     maxOverflowRetries: override?.maxOverflowRetries ?? config.maxOverflowRetries,
   })
@@ -170,6 +177,7 @@ export function resolveCompactSpec(
     summarizationModel: policy.summarizationModel,
     maxTokens: policy.maxTokens,
     maxSummarizationInputTokens: policy.maxSummarizationInputTokens,
+    summarizerCooldownMs: policy.summarizerCooldownMs,
     compactionRetries: policy.compactionRetries,
     maxOverflowRetries: policy.maxOverflowRetries,
   })
@@ -242,6 +250,7 @@ function validatePolicy(
   const retainTokens = config.retainTokens
   const maxTokens = config.maxTokens
   const maxSummarizationInputTokens = config.maxSummarizationInputTokens
+  const summarizerCooldownMs = config.summarizerCooldownMs
   const compactionRetries = config.compactionRetries
   const maxOverflowRetries = config.maxOverflowRetries
   if (thresholdRatio !== undefined) assertRatio(`${name}.thresholdRatio`, thresholdRatio)
@@ -253,6 +262,9 @@ function validatePolicy(
   if (maxTokens !== undefined) assertPositiveInteger(`${name}.maxTokens`, maxTokens)
   if (maxSummarizationInputTokens !== undefined) {
     assertNonNegativeSafeInteger(`${name}.maxSummarizationInputTokens`, maxSummarizationInputTokens)
+  }
+  if (summarizerCooldownMs !== undefined) {
+    assertPositiveTimerInteger(`${name}.summarizerCooldownMs`, summarizerCooldownMs)
   }
   if (compactionRetries !== undefined) {
     assertNonNegativeInteger(`${name}.compactionRetries`, compactionRetries)
@@ -319,6 +331,15 @@ function assertNonNegativeInteger(name: string, value: unknown): asserts value i
 function assertNonNegativeSafeInteger(name: string, value: unknown): asserts value is number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
     throw new Error(`${name} (${String(value)}) must be a non-negative safe integer`)
+  }
+}
+
+function assertPositiveTimerInteger(name: string, value: unknown): asserts value is number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)
+    || value <= 0 || value > MAX_TIMER_DELAY_MS) {
+    throw new Error(
+      `${name} (${String(value)}) must be a positive safe integer no greater than ${MAX_TIMER_DELAY_MS}`,
+    )
   }
 }
 

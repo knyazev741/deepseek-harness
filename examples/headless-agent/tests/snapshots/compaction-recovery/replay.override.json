@@ -1,0 +1,81 @@
+[
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "tool-call" },
+      {
+        "type": "tool-call-delta",
+        "index": 0,
+        "id": "call_compaction_marker",
+        "name": "bash",
+        "argumentsDelta": "{\"command\":\"printf 'alpha\\n'\",\"description\":\"Emit compaction premise marker\"}"
+      },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": {
+          "type": "tool-call",
+          "id": "call_compaction_marker",
+          "name": "bash",
+          "arguments": "{\"command\":\"printf 'alpha\\n'\",\"description\":\"Emit compaction premise marker\"}"
+        }
+      },
+      { "type": "usage", "usage": { "inputTokens": 24, "outputTokens": 6 } },
+      { "type": "finish", "reason": { "kind": "tool-calls" } }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "error",
+          "failure": {
+            "message": "snapshot request exceeded the model context window",
+            "code": "CONTEXT_WINDOW_EXCEEDED"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "kind": "throw",
+    "chunks": [],
+    "message": "snapshot summarizer transient failure",
+    "code": "RATE_LIMIT"
+  },
+  {
+    "kind": "throw",
+    "chunks": [],
+    "message": "snapshot summarizer transient failure",
+    "code": "RATE_LIMIT"
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "text" },
+          {
+            "type": "block-end",
+            "index": 0,
+            "block": { "type": "text", "text": "The request established a durable compaction premise." }
+          },
+          { "type": "usage", "usage": { "inputTokens": 20, "outputTokens": 4 } },
+          { "type": "finish", "reason": { "kind": "stop" } }
+    ]
+  },
+  {
+    "kind": "chunks",
+    "chunks": [
+      { "type": "block-start", "index": 0, "blockType": "text" },
+      { "type": "text-delta", "index": 0, "text": "COMPACTION RECOVERED" },
+      {
+        "type": "block-end",
+        "index": 0,
+        "block": { "type": "text", "text": "COMPACTION RECOVERED" }
+      },
+      { "type": "usage", "usage": { "inputTokens": 20, "outputTokens": 4 } },
+      { "type": "finish", "reason": { "kind": "stop" } }
+    ]
+  }
+]

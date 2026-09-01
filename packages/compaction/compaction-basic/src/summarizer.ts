@@ -7,7 +7,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { contentHasImage, createUserMessage, BlockAssembler, LlmError } from '@deepseek-ai/dsh-llm'
 import type {
-  ContentBlock, FinishReason, GenerateOptions, Message, TokenUsage, ToolSchema,
+  ContentBlock, FinishReason, GenerateOptions, LlmFailure, Message, ResolvedRetryPolicy, TokenUsage, ToolSchema,
 } from '@deepseek-ai/dsh-llm'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 
@@ -15,6 +15,7 @@ interface SummaryConfig {
   readonly summarizationProvider: string
   readonly summarizationModel: string
   readonly maxTokens: number
+  readonly summarizerCooldownMs: number
 }
 
 /** Tags wrapping the structured summary inside the landed checkpoint node. */
@@ -142,7 +143,6 @@ export async function summarizeWithLlm(
     )
   }
 
-  const assembler = new BlockAssembler()
   const messages: Message[] = [
     ...input.messages,
     createUserMessage({
@@ -161,6 +161,43 @@ export async function summarizeWithLlm(
     purpose: 'compaction',
     ...signal === undefined ? {} : { signal },
   }
+  const policy = ctx.llm.providerRetryPolicy(options.provider)
+  let fastRetries = 0
+  while (true) {
+    try {
+      return await summarizeAttempt(ctx, options, config)
+    } catch (error: unknown) {
+      signal?.throwIfAborted()
+      const failure = retryableFailure(error, policy)
+      if (failure === undefined) throw error
+
+      const fastBackoff = policy.mode === 'always' || fastRetries < policy.maxRetries
+      const nextRetry = fastBackoff ? fastRetries + 1 : fastRetries
+      const delayMs = fastBackoff
+        ? retryDelay(policy, nextRetry, failure)
+        : config.summarizerCooldownMs
+      if (delayMs === undefined) throw error
+      ctx.logger.info(
+        `compaction summarizer: ${failure.code} `
+        + `${fastBackoff ? `retry ${nextRetry}` : 'cooldown retry'} in ${delayMs}ms`
+        + (fastBackoff ? '' : ' after the provider retry budget'),
+      )
+      if (!await cancellableDelay(delayMs, signal)) {
+        signal?.throwIfAborted()
+        throw error
+      }
+      fastRetries = nextRetry
+    }
+  }
+}
+
+/** Run one complete auxiliary stream attempt with a fresh assembler. */
+async function summarizeAttempt(
+  ctx: Context,
+  options: GenerateOptions,
+  config: SummaryConfig,
+): Promise<SummaryResult> {
+  const assembler = new BlockAssembler()
   for await (const chunk of ctx.llm.stream(options)) assembler.push(chunk)
   const error = finishError(assembler.finish)
   if (error !== undefined) throw error
@@ -181,6 +218,57 @@ export async function summarizeWithLlm(
   }
 }
 
+/** Choose the route's local backoff or reject an over-cap provider delay. */
+function retryDelay(
+  policy: ResolvedRetryPolicy,
+  retry: number,
+  failure: LlmFailure,
+): number | undefined {
+  if (failure.providerRetryAfterMs !== undefined
+    && Number.isFinite(failure.providerRetryAfterMs)
+    && failure.providerRetryAfterMs > 0) {
+    if (failure.providerRetryAfterMs <= policy.maxDelayMs) return failure.providerRetryAfterMs
+    if (policy.mode === 'normal') return undefined
+  }
+  const exponent = Math.min(retry - 1, 1024)
+  const exponential = Math.min(policy.initialDelayMs * 2 ** exponent, policy.maxDelayMs)
+  const jitter = 1 - policy.jitterRatio + 2 * policy.jitterRatio * Math.random()
+  return Math.min(exponential * jitter, policy.maxDelayMs)
+}
+
+/** Keep only provider failures eligible under the route's retry policy. */
+function retryableFailure(error: unknown, policy: ResolvedRetryPolicy): LlmFailure | undefined {
+  const failure = error instanceof LlmError
+    ? error.failure
+    : error instanceof Error && typeof (error as Error & { code?: unknown }).code === 'string'
+      ? { message: error.message, code: (error as Error & { code: string }).code }
+      : undefined
+  if (failure === undefined) return undefined
+  if (policy.mode === 'always' || policy.retryableCodes.includes(failure.code)) return failure
+  return undefined
+}
+
+/** Wait for a retry while allowing the active compaction operation to cancel it. */
+function cancellableDelay(delayMs: number, signal?: AbortSignal): Promise<boolean> {
+  /* v8 ignore next -- a real abort can land between the caller's pre-check and timer setup. */
+  if (signal?.aborted) return Promise.resolve(false)
+  return new Promise((resolve) => {
+    const cleanup = (): void => {
+      if (signal !== undefined) signal.removeEventListener('abort', onAbort)
+      clearTimeout(timer)
+    }
+    function onAbort(): void {
+      cleanup()
+      resolve(false)
+    }
+    const timer = setTimeout(() => {
+      cleanup()
+      resolve(true)
+    }, delayMs)
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
 /**
  * Wrap raw summary blocks in the durable checkpoint framing.
  * @param summary - safe text-only model output.
@@ -199,14 +287,16 @@ function finishError(finish: FinishReason): Error | undefined {
   switch (finish.kind) {
     case 'error':
     case 'aborted': {
-      const error = new Error(finish.failure.message) as Error & { code?: string }
-      error.code = finish.failure.code
-      return error
+      return new LlmError(finish.failure.message, finish.failure.code, {
+        ...finish.failure.status === undefined ? {} : { status: finish.failure.status },
+        ...finish.failure.providerRetryAfterMs === undefined
+          ? {}
+          : { providerRetryAfterMs: finish.failure.providerRetryAfterMs },
+        ...finish.failure.requestId === undefined ? {} : { requestId: finish.failure.requestId },
+      })
     }
     case 'max-tokens': {
-      const error = new Error('summarization truncated at the token cap (incomplete checkpoint)') as Error & { code?: string }
-      error.code = 'MAX_TOKENS'
-      return error
+      return new LlmError('summarization truncated at the token cap (incomplete checkpoint)', 'MAX_TOKENS')
     }
     default:
       return undefined

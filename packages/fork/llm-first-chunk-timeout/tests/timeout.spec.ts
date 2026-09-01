@@ -843,6 +843,31 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     }))
   })
 
+  it('prefers the compaction service mounted inside the agent preset', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {}, followup: vi.fn(), ctx }
+    const host = new FakeCompaction(ctx)
+    const scoped = {
+      compactIfNeeded: vi.fn<CompactionEngine['compactIfNeeded']>().mockImplementation(async () => {
+        surface.replaceGeneration += 1
+        return null
+      }),
+    }
+    const serviceFor = vi.fn().mockReturnValue(scoped)
+    ctx.provide('agentPresets', { serviceFor } as never)
+
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
+
+    expect(result).toBeUndefined()
+    expect(serviceFor).toHaveBeenCalledWith(agent, 'compaction')
+    expect(scoped.compactIfNeeded).toHaveBeenCalledTimes(1)
+    expect(host.compactIfNeeded).not.toHaveBeenCalled()
+  })
+
   it('wakes a real agent driver with continue after the failed turn reaches idle', async () => {
     class RecoveryAdapter extends LlmAdapter {
       readonly requests: GenerateOptions[] = []

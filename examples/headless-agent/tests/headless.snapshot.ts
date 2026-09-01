@@ -37,6 +37,7 @@ const retryConfigPath = fileURLToPath(new URL('../retry.cordis.snapshot.yml', im
 const compactionScenarioDir = join(snapshotsDir, 'compaction-recovery')
 const compactionSessionFixture = join(compactionScenarioDir, 'session.jsonl')
 const compactionStreamExpected = join(compactionScenarioDir, 'stream-json.expected.jsonl')
+const compactionReplayOverride = join(compactionScenarioDir, 'replay.override.json')
 const compactionConfigPath = fileURLToPath(new URL('../compaction.cordis.snapshot.yml', import.meta.url))
 const credentialsScenarioDir = join(snapshotsDir, 'missing-credential')
 const credentialsConfigPath = fileURLToPath(new URL('../credentials.cordis.snapshot.yml', import.meta.url))
@@ -368,6 +369,7 @@ describe('headless stream-json snapshots', () => {
       env: {
         DSH_SNAPSHOT: 'replay',
         DSH_SNAPSHOT_FILE: compactionSessionFixture,
+        DSH_SNAPSHOT_OVERRIDE: compactionReplayOverride,
         NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
       },
       prepare: (cwd) => { runCwd = cwd },

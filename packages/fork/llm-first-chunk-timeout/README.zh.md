@@ -24,7 +24,7 @@
 
 ## 首个分片压缩恢复
 
-发生 `FIRST_CHUNK_TIMEOUT` 失败时，插件会在 `agent/request-error` 前插入一个监听器，先通过 `compaction` 服务强制压缩一次上下文（`context-overflow` 触发器）。压缩产生持久进展后，会暂存一条内容严格为 `continue`、来源属于插件的消息，同时监听器不返回重试动作。超时请求以原始错误结束；其 driver 到达 `idle` 时，`agent.followup()` 才插入暂存消息并唤醒从替换 surface 开始的新一轮。必须延迟到 `idle` 再插入，因为在失败 driver 内插入的 follow-up 会在该 driver 退出后留在队列中。会跳过 `dsh-llm-retry` 的快速退避，因为它无法修复卡住的首个分片。`maxFirstChunkCompactionRetries`（默认 `3`）限制本次恢复活动完成前连续触发的压缩 follow-up 次数；达到上限或没有持久进展时，该超时轮会结束且不再追加 continuation。在没有 `compaction` 引擎时，监听器会通过 `next()` 委托，保留插件的独立行为。
+发生 `FIRST_CHUNK_TIMEOUT` 失败时，插件会在 `agent/request-error` 前插入一个监听器：如果 `agentPresets.serviceFor(agent, 'compaction')` 提供了 agent 的隔离 `compaction` 服务，就通过该服务强制压缩一次上下文；否则使用宿主的 `compaction` 服务（触发器为 `context-overflow`）。当摘要器执行提供方策略的重试与 cooldown 等待时，压缩操作会保持活动。压缩产生持久进展后，会暂存一条内容严格为 `continue`、来源属于插件的消息，同时监听器不返回重试动作。超时请求以原始错误结束；其 driver 到达 `idle` 时，`agent.followup()` 才插入暂存消息并唤醒从替换 surface 开始的新一轮。必须延迟到 `idle` 再插入，因为在失败 driver 内插入的 follow-up 会在该 driver 退出后留在队列中。会跳过 `dsh-llm-retry` 的快速退避，因为它无法修复卡住的首个分片。`maxFirstChunkCompactionRetries`（默认 `3`）限制本次恢复活动完成前连续触发的压缩 follow-up 次数；达到上限或没有持久进展时，该超时轮会结束且不再追加 continuation。在既没有隔离的也没有宿主的 `compaction` 引擎时，监听器会通过 `next()` 委托，保留插件的独立行为。
 
 ## 模型体验
 
