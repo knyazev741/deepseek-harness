@@ -12,7 +12,7 @@ The shipped `fork-web` profile template layers `dsh-base`, `dsh-web-app`, `dsh-f
 
 ## Mounted capability
 
-- [`fork-ui-workspace-overlay/`](../../fork/ui-workspace-overlay/README.md) contributes fork-only Workspace background, pin, unread, source-badge, and session-id actions through the upstream UI extension points.
+- [`fork-ui-workspace-overlay/`](../../fork/ui-workspace-overlay/README.md) contributes fork-only pin, unread, source-badge, and session-id actions through the upstream UI extension points. The `Background` Workspace view is not contributed while that feature is not ready, so only the built-in Workspaces view is shown.
 
 The package has no runtime API of its own. Later profile patches can disable `ui-workspace-overlay` by id while retaining the upstream browser rows and Host fork rows.
 

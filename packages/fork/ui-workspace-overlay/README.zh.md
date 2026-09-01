@@ -2,7 +2,9 @@
 
 [English](README.md) | 中文
 
-这个 fork 所有的浏览器插件提供工作区“后台”视图、GitHub Actions 来源标记，以及三个会话行操作：复制精确的不透明会话 ID、把浏览器本地会话水印标为未读，以及通过 `ctx.remote.forkWorkspaceSessionState` 置顶或取消置顶。
+这个 fork 所有的浏览器插件提供 GitHub Actions 来源标记，以及三个会话行操作：复制精确的不透明会话 ID、把浏览器本地会话水印标为未读，以及通过 `ctx.remote.forkWorkspaceSessionState` 置顶或取消置顶。
+
+“后台”Workspace 视图在后台功能就绪前被刻意**不**贡献，因此工作区界面只显示内置的 Workspaces 视图。此前它以 `fork.background` 视图过滤器形式对运行中或 GitHub Actions 会话进行过滤；若该功能落地，可在 `apply` 中重新贡献此类视图以恢复。
 
 插件使用 `@deepseek-ai/dsh-client-ui-workspace` 的公共 `workspaceContributions` 服务和 `workspace.session-row.badges` / `workspace.session-row.status` / `workspace.session-row.actions` slot。内置的 pending、activity 和 completion 状态只要存在就拥有左侧单元格；未读 contribution 只填充空闲状态，因此同一行不会渲染重复状态点。它不会导入上游私有 UI 模块，也不会修改上游浏览器树。Host 部分有意保持为空；在 web profile 中组合 `./client`、生成的 fork Remote 和会话来源 projection。
 

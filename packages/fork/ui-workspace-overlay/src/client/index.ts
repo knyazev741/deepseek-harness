@@ -6,7 +6,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-fork-session-source/types'
 import type {} from '@deepseek-ai/dsh-fork-workspace-session-state/remote'
 import type { WorkspaceSessionRowContext } from '@deepseek-ai/dsh-client-ui-workspace/client'
-import { createBackgroundView } from './BackgroundView.tsx'
 import { WorkspaceRowActions, type PinMutationResult, type WorkspaceRowActionsInjected } from './WorkspaceRowActions.tsx'
 import { WorkspaceRowStatus } from './WorkspaceRowStatus.tsx'
 import { WorkspaceRowBadges } from './WorkspaceRowBadges.tsx'
@@ -35,10 +34,9 @@ function sessionFrom(
   return summaries.byId[sessionId]
 }
 
-/** Apply the fork-owned Workspace view, ordering policy, and row controls. */
+/** Apply the fork-owned Workspace ordering policy, and row controls. */
 export function apply(ctx: ClientContext): void {
   const store = createWorkspaceOverlayStore()
-  const t = ctx.locale.bind(NS)
   const contributions = ctx.workspaceContributions
   let disposed = false
 
@@ -120,22 +118,6 @@ export function apply(ctx: ClientContext): void {
     setPinned,
   })
 
-  ctx.effect(() => {
-    let dispose = contributions.registerView(createBackgroundView(t))
-    const unsubscribe = ctx.locale.subscribe(() => {
-      if (disposed) return
-      dispose()
-      if (!disposed) dispose = contributions.registerView(createBackgroundView(t))
-    })
-    return () => {
-      // Locale publishes take a snapshot of subscribers before invoking them.
-      // Mark this contribution disposed first so a callback already in that
-      // snapshot cannot register through an inactive Cordis context.
-      disposed = true
-      unsubscribe()
-      dispose()
-    }
-  }, 'fork-ui-workspace-overlay: Background view')
   const pinPolicy = {
     id: 'fork.pinned-first',
     order: 100,

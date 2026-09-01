@@ -12,7 +12,7 @@
 
 ## 挂载的能力
 
-- [`fork-ui-workspace-overlay/`](../../fork/ui-workspace-overlay/README.zh.md) 通过上游 UI 扩展点提供 fork 专属的 Workspace 背景、置顶、未读、来源徽章和会话 ID 操作。
+- [`fork-ui-workspace-overlay/`](../../fork/ui-workspace-overlay/README.zh.md) 通过上游 UI 扩展点提供 fork 专属的置顶、未读、来源徽章和会话 ID 操作。“后台”Workspace 视图在后台功能就绪前不被贡献，因此只显示内置的 Workspaces 视图。
 
 本包自身没有运行时 API。后续 profile patch 可以按 id 禁用 `ui-workspace-overlay`，同时保留上游 browser 行和 Host fork 行。
 

@@ -288,54 +288,15 @@ describe('fork workspace overlay assembled client fixture', () => {
     await b.runtime.dispose()
   })
 
-  it('filters Background to running or exact GitHub Actions source', async () => {
-    const live = summary('live', { running: true })
-    const github = summary('github', { projectionValues: { forkSessionSource: 'github-actions' } })
-    const idle = summary('idle', { projectionValues: { forkSessionSource: null } })
-    const b = await bench({ summaries: [live, github, idle] })
+  it('does not contribute the Background Workspace view (only Workspaces shows)', async () => {
+    const b = await bench({ summaries: [summary('hidden', { running: true })] })
     const views = b.runtime.ctx.workspaceContributions.views.getSnapshot()
-    const background = views.find(view => view.id === 'fork.background')!
-    const result = (item: SessionSummary) => background.include(owner(item, b.workspace))
-    expect(result(live)).toBe(true)
-    expect(result(github)).toBe(true)
-    expect(result(idle)).toBe(false)
+    expect(views.find(view => view.id === 'fork.background')).toBeUndefined()
+    // The remaining overlay contributions still mount with the Background hidden.
+    const github = summary('github', { projectionValues: { forkSessionSource: 'github-actions' } })
+    const badge = b.runtime.renderSlot('workspace.session-row.badges', owner(github, b.workspace))
+    expect(badge.view.getByText('GitHub Actions')).toBeTruthy()
     await b.runtime.dispose()
-  })
-
-  it('updates the Background label when the runtime locale changes', async () => {
-    const b = await bench({ summaries: [summary('locale-me', { running: true })] })
-    b.runtime.ctx.locale.setLocale('zh')
-    await vi.waitFor(() => expect(
-      b.runtime.ctx.workspaceContributions.views.getSnapshot().find(view => view.id === 'fork.background')?.label,
-    ).toBe('后台'))
-    await b.runtime.dispose()
-  })
-
-  it('does not re-register Background after teardown wins a locale snapshot', async () => {
-    let disposeRequested = false
-    const disposeOverlay: { current?: () => Promise<void> } = {}
-    const b = await bench({
-      beforeMount: (runtime) => {
-        // Register before the overlay so this callback can dispose it after
-        // LocaleRuntime snapshots listeners but before the overlay callback.
-        runtime.ctx.locale.subscribe(() => {
-          if (!disposeRequested) return
-          disposeRequested = false
-          void disposeOverlay.current?.()
-        })
-      },
-    })
-    disposeOverlay.current = async () => { await b.feature?.dispose() }
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      disposeRequested = true
-      b.runtime.ctx.locale.setLocale('zh')
-      await vi.waitFor(() => expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toEqual([]))
-      expect(error).not.toHaveBeenCalled()
-    } finally {
-      error.mockRestore()
-      await b.runtime.dispose()
-    }
   })
 
   it('renders the GitHub Actions badge only for the exact projection value', async () => {
@@ -497,7 +458,7 @@ describe('fork workspace overlay assembled client fixture', () => {
   it('disposes contributions, row entries, read subscription, and locale namespace', async () => {
     const session = summary('dispose-me', { projectionAsOfSeq: 4 })
     const b = await bench({ summaries: [session] })
-    expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toHaveLength(1)
+    expect(b.runtime.ctx.workspaceContributions.views.getSnapshot()).toHaveLength(0)
     expect(b.runtime.slots.entries('workspace.session-row.badges')).toHaveLength(1)
     expect(b.runtime.slots.entries('workspace.session-row.status')).toHaveLength(1)
     expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(1)
@@ -543,7 +504,7 @@ describe('fork workspace overlay assembled client fixture', () => {
       await b.runtime.ctx.loader.create({ name: 'cordis:include', config: { path: configUrl.href } })
       await b.runtime.ctx.loader.await()
 
-      expect(b.runtime.ctx.workspaceContributions.views.getSnapshot().map(view => view.id)).toEqual(['fork.background'])
+      expect(b.runtime.ctx.workspaceContributions.views.getSnapshot().map(view => view.id)).toEqual([])
       expect(b.runtime.slots.entries('workspace.session-row.badges')).toHaveLength(1)
       expect(b.runtime.slots.entries('workspace.session-row.status')).toHaveLength(1)
       expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(1)

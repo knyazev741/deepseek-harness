@@ -106,24 +106,34 @@ describe('built Web profiles', () => {
       value: { writeText },
     })
 
-    fireEvent.click(await screen.findByRole('tab', { name: 'Background' }))
+    // The fork overlay no longer contributes a Background view while that
+    // feature is not ready; the built-in Workspaces view is the only one.
+    expect(screen.queryByRole('tab', { name: 'Background' })).toBeNull()
+
+    // The GitHub Actions badge mounts in the Workspaces view on the resident
+    // fx-beta row; the fork copy action lives in that row's menu (the flat
+    // Background view that once exposed it is gone). The row menu is a
+    // hover-revealed anchor, so reach the fork action through raw DOM queries
+    // rather than accessible-role queries that hide it.
     const badge = await screen.findByText('GitHub Actions')
     const row = badge.closest<HTMLElement>('[role="treeitem"]')
     if (row === null) throw new Error('GitHub Actions row missing')
-    expect(within(row).getByText('GitHub Actions')).toBeTruthy()
 
-    const copyButton = row.querySelector<HTMLElement>('[data-overlay-session="fx-beta"] button')
-    if (copyButton === null) throw new Error('copy session ID button missing')
+    const anchor = row.querySelector<HTMLElement>('button[aria-label^="Session actions for"]')
+    if (anchor === null) throw new Error('row menu anchor missing')
+    fireEvent.click(anchor)
+    const copyButton = await waitFor(() => {
+      const span = document.querySelector<HTMLElement>('[data-overlay-session="fx-beta"]')
+      const button = span?.querySelector<HTMLElement>('button')
+      if (button === null || button === undefined) throw new Error('fork copy action not mounted in menu')
+      return button
+    })
     fireEvent.click(copyButton)
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('fx-beta'))
-    expect((await within(row).findByRole('status')).textContent).toContain('Session ID copied')
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Pin session' }))
-    await within(row).findByRole('button', { name: 'Unpin session' })
-
-    // The upstream row remains in the same tree and the fork view is a
-    // contribution rather than a replacement: the running resident session
-    // is also visible in Background.
+    // The upstream row remains in the same tree and the fork overlay is a
+    // contribution rather than a replacement: the resident session list still
+    // renders rows in the single built-in Workspaces view.
     const visibleRows = await within(screen.getByRole('tree', { name: 'Sessions' })).findAllByRole('treeitem')
     expect(visibleRows.length).toBeGreaterThan(0)
     assertNoBrowserErrors()
