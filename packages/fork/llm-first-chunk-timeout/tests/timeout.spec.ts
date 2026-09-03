@@ -691,8 +691,8 @@ describe('first-chunk idle timeout waterfall', () => {
 })
 
 describe('first-chunk idle timeout configuration', () => {
-  it('defaults to 120000ms', () => {
-    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 120_000, maxFirstChunkCompactionRetries: 3 })
+  it('defaults to 120000ms and 100 compaction follow-ups', () => {
+    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 120_000, maxFirstChunkCompactionRetries: 100 })
   })
 
   it('resolves the default through plugin application when config is omitted', async () => {
@@ -929,7 +929,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
       .toEqual(['error', 'completed'])
   })
 
-  it('vetoes the chain when compaction makes no durable progress', async () => {
+  it('delegates when compaction makes no durable progress', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
@@ -938,8 +938,10 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     const agent = { session: { surface }, options: {}, followup: vi.fn() }
     const fake = new FakeCompaction(ctx)
 
-    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
-    expect(result).toBeUndefined()
+    const next = vi.fn(delegated)
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, next)
+    expect(result).toBe('delegated')
+    expect(next).toHaveBeenCalledTimes(1)
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(1)
     expect(surface.replaceGeneration).toBe(0)
   })
@@ -1014,6 +1016,30 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(agent.followup).toHaveBeenCalledTimes(2)
   })
 
+  it('allows the default recovery ceiling to pass the fourth continuation', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration += 1; return null })
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await fireError(
+        ctx,
+        agent,
+        { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' },
+        delegated,
+      )
+      emitAgentStatus(ctx, agent, 'idle')
+    }
+
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(4)
+    expect(agent.followup).toHaveBeenCalledTimes(4)
+  })
+
   it('delegates through next() when the signal is already aborted', async () => {
     const ctx = new Context()
     contexts.push(ctx)
@@ -1063,7 +1089,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(agent.followup).toHaveBeenCalledTimes(1)
   })
 
-  it('vetoes the chain when compaction throws without durable progress', async () => {
+  it('delegates when compaction throws without durable progress', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
@@ -1072,8 +1098,10 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     const fake = new FakeCompaction(ctx)
     fake.compactIfNeeded.mockRejectedValue('summary failed')
 
-    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated)
-    expect(result).toBeUndefined()
+    const next = vi.fn(delegated)
+    const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, next)
+    expect(result).toBe('delegated')
+    expect(next).toHaveBeenCalledTimes(1)
   })
 
   it('drops per-agent bookkeeping after the recovery follow-up activity turns idle', async () => {

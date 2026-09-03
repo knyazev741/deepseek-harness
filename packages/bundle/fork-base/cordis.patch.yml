@@ -26,7 +26,7 @@
       name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
       config:
         firstChunkIdleTimeoutMs: 120000
-        maxFirstChunkCompactionRetries: 3
+        maxFirstChunkCompactionRetries: 100
 
     # Keep a persistently failing request alive after dsh-llm-retry's bounded
     # budget is exhausted: wait a long cooldown, then retry. The knyazev-ai

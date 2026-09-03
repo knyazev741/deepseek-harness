@@ -24,7 +24,7 @@ export const inject = ['llm']
 export interface Config {
   /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
   readonly firstChunkIdleTimeoutMs?: number
-  /** Maximum consecutive first-chunk compaction follow-ups before idle (default 3). */
+  /** Maximum consecutive first-chunk compaction follow-ups before idle (default 100). */
   readonly maxFirstChunkCompactionRetries?: number
 }
 
@@ -32,7 +32,7 @@ export interface Config {
 const DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS = 120_000
 
 /** The default ceiling on consecutive first-chunk compaction follow-ups. */
-const DEFAULT_MAX_FIRST_CHUNK_COMPACTION_RETRIES = 3
+const DEFAULT_MAX_FIRST_CHUNK_COMPACTION_RETRIES = 100
 
 /** Loader schema for {@link Config}. */
 export const Config: z<Config> = z.object({

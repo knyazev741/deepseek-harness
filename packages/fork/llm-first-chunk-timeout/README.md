@@ -11,7 +11,7 @@ Function plugin that bounds the idle wait for the first result of the `llm/strea
   name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
   config:
     firstChunkIdleTimeoutMs: 120000
-    maxFirstChunkCompactionRetries: 3
+    maxFirstChunkCompactionRetries: 100
 ```
 
 The plugin requires `llm` and calls the zero-argument continuation exactly once for each waterfall invocation. The frozen request is read without mutation; its caller-owned `signal` remains the provider's cancellation input.
@@ -24,7 +24,7 @@ When the timer wins, the wrapper yields one terminal `finish` chunk with a `FIRS
 
 ## First-chunk compaction recovery
 
-On a `FIRST_CHUNK_TIMEOUT` failure the plugin prepends an `agent/request-error` listener that forces one context compaction through the agent's isolated `compaction` service when `agentPresets.serviceFor(agent, 'compaction')` provides one, otherwise through the host `compaction` service (`context-overflow` trigger). The compaction operation remains active while its summarizer performs provider-policy retries and cooldown waits. Durable compaction progress stages a plugin-authored message containing exactly `continue`, while the listener returns no retry action. The timed-out request ends with its original error; when its driver reaches `idle`, `agent.followup()` inserts the staged message and wakes a new turn from the replacement surface. Delaying insertion until `idle` is required because a follow-up inserted inside the failing driver remains queued after that driver exits. Fast `dsh-llm-retry` backoff is skipped because it cannot fix a stalled first chunk. `maxFirstChunkCompactionRetries` (default `3`) bounds consecutive compaction follow-ups until the recovery activity completes; reaching the ceiling or making no durable progress ends the timeout turn without another continuation. Without either an isolated or host `compaction` engine the listener delegates through `next()`, preserving the plugin's standalone behavior.
+On a `FIRST_CHUNK_TIMEOUT` failure the plugin prepends an `agent/request-error` listener that forces one context compaction through the agent's isolated `compaction` service when `agentPresets.serviceFor(agent, 'compaction')` provides one, otherwise through the host `compaction` service (`context-overflow` trigger). The compaction operation remains active while its summarizer performs provider-policy retries and cooldown waits. Durable compaction progress stages a plugin-authored message containing exactly `continue`, while the listener returns no retry action. The timed-out request ends with its original error; when its driver reaches `idle`, `agent.followup()` inserts the staged message and wakes a new turn from the replacement surface. Delaying insertion until `idle` is required because a follow-up inserted inside the failing driver remains queued after that driver exits. Fast `dsh-llm-retry` backoff is skipped while compaction succeeds because it cannot fix a stalled first chunk. If compaction fails or makes no durable progress, the listener delegates to downstream retry/cooldown policy; when no downstream policy claims the failure, the original timeout ends the turn. `maxFirstChunkCompactionRetries` (default `100`) bounds consecutive compaction follow-ups until the recovery activity completes; reaching the ceiling still ends the timeout turn without another continuation. Without either an isolated or host `compaction` engine the listener delegates through `next()`, preserving the plugin's standalone behavior.
 
 ## Model Experience
 

@@ -675,7 +675,7 @@ Requires: `llm`
 export interface Config {
   /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
   readonly firstChunkIdleTimeoutMs?: number
-  /** Maximum consecutive first-chunk compaction follow-ups before idle (default 3). */
+  /** Maximum consecutive first-chunk compaction follow-ups before idle (default 100). */
   readonly maxFirstChunkCompactionRetries?: number
 }
 ```

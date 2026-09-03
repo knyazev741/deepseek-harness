@@ -4,10 +4,9 @@
  * turn from the replacement surface. Register the listener with `prepend`
  * so it claims the `agent/request-error` waterfall before `dsh-llm-retry`'s
  * fast backoff, which cannot fix a stalled first chunk. When compaction
- * cannot produce durable progress (no compactable range, or consecutive new
- * turns keep timing out across the ceiling), the listener vetoes the chain so the
- * original `FIRST_CHUNK_TIMEOUT` error ends the turn without queuing another
- * continuation.
+ * cannot produce durable progress, the listener delegates to downstream
+ * retry/cooldown policy; if no downstream policy claims the error, the
+ * original `FIRST_CHUNK_TIMEOUT` ends the turn without queuing a continuation.
  *
  * @module @deepseek-ai/dsh-fork-llm-first-chunk-timeout
  */
@@ -112,13 +111,14 @@ export function createRecovery(ctx: Context, maxRetries: number): RecoveryHandle
         pending.add(agent)
         return undefined
       }
-      ctx.logger.warn(`first-chunk compaction failed: ${message}; ending the turn`)
-      return undefined
+      if (isAborted(signal)) return undefined
+      ctx.logger.warn(`first-chunk compaction failed: ${message}; delegating downstream recovery`)
+      return next()
     }
     if (isAborted(signal)) return next()
     if (agent.session.surface.replaceGeneration <= generation) {
-      ctx.logger.warn('first-chunk idle timeout: compaction made no durable progress; ending the turn')
-      return undefined
+      ctx.logger.warn('first-chunk idle timeout: compaction made no durable progress; delegating downstream recovery')
+      return next()
     }
     counters.set(agent, count + 1)
     ctx.logger.info('first-chunk idle timeout: compacted context; continuing in a follow-up turn')
