@@ -14,7 +14,7 @@ DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. *
 
 ### Run from `npm`
 
-Install `Node.js`, then run:
+Install Node.js 22.19+ or 24+, then run:
 
 ```sh
 npx @deepseek-ai/dsh web

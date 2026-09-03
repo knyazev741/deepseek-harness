@@ -11,10 +11,14 @@
     "directory": "apps/cli"
   },
   "type": "module",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
   "bin": {
-    "dsh": "lib/bin.js"
+    "dsh": "bin.mjs"
   },
   "files": [
+    "bin.mjs",
     "lib/*.js",
     "config"
   ],

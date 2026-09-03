@@ -10,6 +10,7 @@
   },
   "workspaces": [
     "vendor/*",
+    "!vendor/CLAUDE.md",
     "packages/*/*",
     "native/landlock-run",
     "native/landlock-run/packages/*",
@@ -150,6 +151,7 @@
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "0.25.1",
+    "@deepseek-ai/dsh": "workspace:*",
     "@deepseek-ai/dsh-tool-session-query": "workspace:^",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@testing-library/dom": "^10.4.1",
