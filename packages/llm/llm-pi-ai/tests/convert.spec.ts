@@ -812,6 +812,10 @@ describe('mapStopReason / mapUsage', () => {
       stopReason: 'error',
       errorMessage: 'HTTP 400: invalid input: temperature exceeds maximum allowed value',
     }))).toMatchObject({ kind: 'error', failure: { code: 'INVALID_REQUEST' } })
+    expect(mapStopReason(assistant({
+      stopReason: 'error',
+      errorMessage: '502: {"message":"Upstream returned HTTP 400.","type":"api_error","code":"upstream_error"}',
+    }))).toMatchObject({ kind: 'error', failure: { code: 'SERVER' } })
     expect(mapStopReason(assistant({ stopReason: 'error', errorMessage: 'HTTP 413: Payload Too Large' })))
       .toMatchObject({ kind: 'error', failure: { code: 'INVALID_REQUEST' } })
     expect(mapStopReason(assistant({
