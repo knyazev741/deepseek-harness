@@ -31,16 +31,22 @@ npx @deepseek-ai/dsh web
 如需从仓库源码运行：
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/knyazev741/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
+pnpm dsh plugin --profile fork-web add -w @knyazevai/dsh@0.1.4
 pnpm dsh web
 ```
 
 `pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
 
-在本仓库 checkout 中，`pnpm dsh web` 会启动完整的 `fork-web` 组合。如需显式运行仅包含上游层的组合，请使用 `pnpm dsh --profile web`。
+在本仓库 checkout 中，`pnpm dsh web` 会启动完整的 `fork-web` 组合。
+`@knyazevai/dsh` 插件会使提供方、模型、子智能体和压缩策略与 Knyazev AI 部署保持一致。
+两者共同提供 DeepSeek V4 Flash 的 400k 上下文窗口、有界压缩、临时错误重试以及长冷却恢复。
+启动前，请将 `KNYAZEV_AI_API_KEY` 设置为
+[knyazevai.work](https://knyazevai.work) 中的密钥。如需显式运行仅包含上游层的组合，
+请使用 `pnpm dsh --profile web`。
 
 ## 社区与支持
 

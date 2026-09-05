@@ -27,14 +27,21 @@ The command starts the Web UI, served at `http://127.0.0.1:3080` by default. See
 To run from a repository checkout:
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/knyazev741/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
+pnpm dsh plugin --profile fork-web add -w @knyazevai/dsh@0.1.4
 pnpm dsh web
 ```
 
-In this repository checkout, `pnpm dsh web` starts the complete `fork-web` composition. Use `pnpm dsh --profile web` to run the upstream-only composition explicitly.
+In this repository checkout, `pnpm dsh web` starts the complete `fork-web`
+composition. The `@knyazevai/dsh` plugin aligns its provider, model, subagent,
+and compaction policy with the Knyazev AI deployment. Together they include a
+400k context window for DeepSeek V4 Flash, bounded compaction, transient-error
+retries, and long-cooldown recovery. Set `KNYAZEV_AI_API_KEY` to a key from
+[knyazevai.work](https://knyazevai.work) before starting. Use
+`pnpm dsh --profile web` to run the upstream-only composition explicitly.
 
 ## Community and support
 
