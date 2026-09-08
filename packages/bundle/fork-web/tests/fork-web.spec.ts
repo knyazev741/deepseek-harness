@@ -13,7 +13,7 @@ import { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-i
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 
 interface Manifest {
-  private?: boolean
+  publishConfig?: { access?: string }
   dependencies?: Record<string, string>
   dsh?: { bundle?: { patch?: string } }
 }
@@ -56,7 +56,7 @@ function compose(bundlePaths: readonly string[]): Row[] {
 describe('dsh-fork-web bundle', () => {
   it('declares the patch file and its upstream bundle plus UI dependencies', () => {
     const manifest = readManifest()
-    expect(manifest.private).toBe(true)
+    expect(manifest.publishConfig?.access).toBe('public')
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.dependencies).toMatchObject({
       '@knyazevai/dsh-base': 'workspace:^',

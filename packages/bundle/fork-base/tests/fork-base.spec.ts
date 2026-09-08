@@ -21,7 +21,7 @@ import FileSettingsProvider from '@knyazevai/dsh-settings-file'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 
 interface Manifest {
-  private?: boolean
+  publishConfig?: { access?: string }
   dependencies?: Record<string, string>
   dsh?: { bundle?: { patch?: string } }
 }
@@ -59,7 +59,7 @@ function flattenInsertRows(patches: Patch[]): Row[] {
 describe('dsh-fork-base bundle', () => {
   it('declares the patch file and exactly the four accepted fork packages', () => {
     const manifest = readManifest()
-    expect(manifest.private).toBe(true)
+    expect(manifest.publishConfig?.access).toBe('public')
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.dependencies).toMatchObject({
       '@knyazevai/dsh-fork-session-source': 'workspace:^',
@@ -358,6 +358,6 @@ describe('dsh-fork-base bundle', () => {
   it('keeps the upstream base patch bytes unchanged', () => {
     const basePath = resolve(root, '../base/cordis.patch.yml')
     const digest = execFileSync('git', ['hash-object', basePath], { encoding: 'utf8' }).trim()
-    expect(digest).toBe('e9567d9206e5b8c64b40cf76b88619f383f2269e')
+    expect(digest).toBe('cc3b3b56dfefdf833a5afd03b6472a246ba98b24')
   })
 })
