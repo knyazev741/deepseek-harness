@@ -18,9 +18,9 @@
 
 ## Migration mechanism
 
-仓库自带的 rescope 命令以确定性方式执行包 token 改写，并支持 check 模式。它处理被 Git 跟踪且符合条件的源文件，排除 `vendor/`、生成的构建输出、依赖树和冻结的 archived Agent Note，并且只改写 `@deepseek-ai/dsh` 包名前缀。再次执行不会产生 diff。
+仓库自带的 rescope 命令以确定性方式执行包 token 改写，并支持 check 模式。它处理被 Git 跟踪且符合条件的源文件，排除 `vendor/`、生成的构建输出、依赖树、`.agents/notes/` 下的历史决策记录、迁移设计与计划记录，以及命令自身的源前缀声明，并且只改写 `@deepseek-ai/dsh` 包名前缀。拥有 npm 身份与发布决策的 active Agent Note 由人工明确更新，不经过机械改写。再次执行不会产生 diff。
 
-Postcondition 让遗漏明确失败：DSH 发布成员使用 `@knyazevai/dsh*`，符合条件的当前源码不包含旧 DSH 前缀，vendored 包名保持不变，而且 CLI manifest 必须恰好是 `@knyazevai/dsh`。迁移完成后，workspace constraint 和 release-family 校验持续执行新身份规则。
+Postcondition 让遗漏明确失败：DSH 发布成员使用 `@knyazevai/dsh*`，符合条件的 runtime、build、test、configuration 或 current-reference 源码不包含旧 DSH 前缀，vendored 包名保持不变，而且 CLI manifest 必须恰好是 `@knyazevai/dsh`。只有迁移记录和命令的源前缀声明可以保留旧前缀。迁移完成后，workspace constraint 和 release-family 校验持续执行新身份规则。
 
 该命令保留在 fork 中，使之后的 upstream 同步能够把 fork 的 npm 身份重新应用到新引入的 DSH 包和引用，而不依赖一次性的全局替换。
 

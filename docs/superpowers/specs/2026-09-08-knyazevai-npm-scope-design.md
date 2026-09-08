@@ -18,9 +18,9 @@ Frozen archived Agent Notes retain their recorded historical text. Active Agent 
 
 ## Migration mechanism
 
-A repository-owned rescope command performs the package-token rewrite deterministically and supports check mode. It operates on tracked, eligible source files, excludes `vendor/`, generated build output, dependency trees, and frozen archived Agent Notes, and rewrites only the `@deepseek-ai/dsh` package-name prefix. A second application produces no diff.
+A repository-owned rescope command performs the package-token rewrite deterministically and supports check mode. It operates on tracked, eligible source files, excludes `vendor/`, generated build output, dependency trees, historical decision records under `.agents/notes/`, migration design and plan records, and its own source-prefix declaration, and rewrites only the `@deepseek-ai/dsh` package-name prefix. The active Agent Notes that own npm identity and publication are updated deliberately instead of by the mechanical pass. A second application produces no diff.
 
-Postconditions make omissions fail loudly: DSH release members use `@knyazevai/dsh*`, no eligible current source contains the old DSH prefix, vendored package names remain unchanged, and the CLI manifest is exactly `@knyazevai/dsh`. Workspace constraints and release-family validation enforce the new identity after migration.
+Postconditions make omissions fail loudly: DSH release members use `@knyazevai/dsh*`, no eligible runtime, build, test, configuration, or current-reference source contains the old DSH prefix, vendored package names remain unchanged, and the CLI manifest is exactly `@knyazevai/dsh`. Only the migration records and the command's source-prefix declaration may retain the old prefix. Workspace constraints and release-family validation enforce the new identity after migration.
 
 The command stays in the fork so a later upstream sync can reapply the fork's npm identity to newly introduced DSH packages and references instead of relying on a one-time global replacement.
 

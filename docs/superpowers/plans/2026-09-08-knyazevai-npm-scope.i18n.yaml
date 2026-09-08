@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/plans/2026-09-08-knyazevai-npm-scope.md
+2026-09-08-knyazevai-npm-scope.md: 2af2a7c87c03d1fa1fae3dcdd6bfef8c821eb654
+2026-09-08-knyazevai-npm-scope.zh.md: 52a28cb03bac4dfc40abbe022c8b8a91036d090f
