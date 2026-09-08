@@ -21,8 +21,6 @@ const TEXT_EXTENSIONS = new Set([
 const EXCLUDED_FILES = [
   'scripts/rescope-dsh.ts',
   'scripts/rescope-dsh.spec.ts',
-  'scripts/rescope-vendor.ts',
-  'scripts/rescope-vendor.spec.ts',
 ] as const
 
 /**
