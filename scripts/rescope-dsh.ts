@@ -16,7 +16,7 @@ const EXCLUDED_SEGMENTS = ['/lib/', '/dist/', '/node_modules/'] as const
 const TEXT_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.mjs', '.cjs', '.json', '.jsonl', '.yml', '.yaml', '.md', '.py', '.snap',
 ])
-const MIGRATION_SCRIPT = 'scripts/rescope-dsh.ts'
+const EXCLUDED_FILES = ['scripts/rescope-dsh.ts', 'scripts/rescope-dsh.spec.ts'] as const
 
 /**
  * Whether a repository-relative tracked path is eligible for the DSH rescope.
@@ -24,9 +24,9 @@ const MIGRATION_SCRIPT = 'scripts/rescope-dsh.ts'
  * @returns true when the path is a current UTF-8 text source file.
  */
 export function eligibleDshRescopePath(path: string): boolean {
-  if (path === MIGRATION_SCRIPT) return false
+  if (EXCLUDED_FILES.some(file => file === path)) return false
   if (EXCLUDED_PREFIXES.some(prefix => path.startsWith(prefix))) return false
-  if (EXCLUDED_SEGMENTS.some(segment => path.includes(segment))) return false
+  if (EXCLUDED_SEGMENTS.some(segment => `/${path}`.includes(segment))) return false
   return TEXT_EXTENSIONS.has(extname(path))
 }
 
@@ -41,15 +41,15 @@ export function rescopeDshText(text: string): string {
 
 type Mode = 'dry-run' | 'apply' | 'check'
 
-interface Change {
-  readonly file: string
-  readonly before: string
-  readonly after: string
-}
-
-function parseMode(args: readonly string[]): Mode {
+/**
+ * Parse the command mode, accepting one separator inserted by a package runner.
+ * @param args - command-line arguments after the script path.
+ * @returns the requested mode, or dry-run when no mode was supplied.
+ */
+export function parseDshRescopeMode(args: readonly string[]): Mode {
+  const modeArgs = args[0] === '--' ? args.slice(1) : args
   let mode: Mode = 'dry-run'
-  for (const arg of args) {
+  for (const arg of modeArgs) {
     if (arg !== '--apply' && arg !== '--check') {
       throw new Error(`unknown option ${JSON.stringify(arg)}; expected --apply or --check`)
     }
@@ -57,6 +57,12 @@ function parseMode(args: readonly string[]): Mode {
     mode = arg === '--apply' ? 'apply' : 'check'
   }
   return mode
+}
+
+interface Change {
+  readonly file: string
+  readonly before: string
+  readonly after: string
 }
 
 function trackedFiles(): string[] {
@@ -82,7 +88,7 @@ function reportFiles(changes: readonly Change[]): void {
 }
 
 function main(args: readonly string[]): void {
-  const mode = parseMode(args)
+  const mode = parseDshRescopeMode(args)
   const changes = pendingChanges()
   reportFiles(changes)
 

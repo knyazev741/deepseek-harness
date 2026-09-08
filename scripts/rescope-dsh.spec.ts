@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eligibleDshRescopePath, rescopeDshText } from './rescope-dsh.ts'
+import { eligibleDshRescopePath, parseDshRescopeMode, rescopeDshText } from './rescope-dsh.ts'
 
 describe('DSH package rescope', () => {
   it('rewrites the DSH prefix without changing vendored package names or repository URLs', () => {
@@ -20,7 +20,19 @@ describe('DSH package rescope', () => {
     expect(eligibleDshRescopePath('.agents/notes/implemented/process/example.md')).toBe(false)
     expect(eligibleDshRescopePath('docs/superpowers/specs/example.md')).toBe(false)
     expect(eligibleDshRescopePath('scripts/rescope-dsh.ts')).toBe(false)
+    expect(eligibleDshRescopePath('scripts/rescope-dsh.spec.ts')).toBe(false)
+    expect(eligibleDshRescopePath('lib/index.js')).toBe(false)
+    expect(eligibleDshRescopePath('dist/index.js')).toBe(false)
+    expect(eligibleDshRescopePath('node_modules/pkg/index.js')).toBe(false)
     expect(eligibleDshRescopePath('packages/core/session/lib/index.js')).toBe(false)
+    expect(eligibleDshRescopePath('packages/core/session/dist/index.js')).toBe(false)
+    expect(eligibleDshRescopePath('packages/core/session/node_modules/pkg/index.js')).toBe(false)
+  })
+
+  it('accepts one package-runner separator before a mode', () => {
+    expect(parseDshRescopeMode(['--', '--apply'])).toBe('apply')
+    expect(parseDshRescopeMode(['--', '--check'])).toBe('check')
+    expect(() => parseDshRescopeMode(['--', '--', '--check'])).toThrow(/unknown option/u)
   })
 
   it('is idempotent', () => {
