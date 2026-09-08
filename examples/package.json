@@ -28,6 +28,7 @@
     "@deepseek-ai/dsh-compaction-tool-result-pruner": "workspace:*",
     "@deepseek-ai/dsh-credentials-local": "workspace:*",
     "@deepseek-ai/dsh-e2b": "workspace:*",
+    "@deepseek-ai/dsh-fork-llm-first-chunk-timeout": "workspace:*",
     "@deepseek-ai/dsh-fs-e2b": "workspace:*",
     "@deepseek-ai/dsh-fs-local": "workspace:*",
     "@deepseek-ai/dsh-fs-observation-policy": "workspace:*",

@@ -499,6 +499,9 @@ importers:
       '@deepseek-ai/dsh-experimental-tool-agent-team':
         specifier: workspace:*
         version: link:../packages/experimental/tool-agent-team
+      '@deepseek-ai/dsh-fork-llm-first-chunk-timeout':
+        specifier: workspace:*
+        version: link:../packages/fork/llm-first-chunk-timeout
       '@deepseek-ai/dsh-fs-e2b':
         specifier: workspace:*
         version: link:../packages/e2b/fs-e2b

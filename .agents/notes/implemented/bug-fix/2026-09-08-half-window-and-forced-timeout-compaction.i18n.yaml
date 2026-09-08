@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-08-half-window-and-forced-timeout-compaction.md
+2026-09-08-half-window-and-forced-timeout-compaction.md: 640df2fa7a98ae9a6c16c96aaee4c2055449c38a
+2026-09-08-half-window-and-forced-timeout-compaction.zh.md: 9e2a8798fc5c1df485790a7f5a6cf169a2121f8c

@@ -819,7 +819,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     return Promise.resolve('delegated' as unknown as RequestErrorAction)
   }
 
-  it('ends the timed-out request and follows up with continue after a successful compaction', async () => {
+  it('ends the timed-out request and follows up with continue after successful forced compaction', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)

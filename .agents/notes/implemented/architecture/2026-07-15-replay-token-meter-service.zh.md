@@ -34,7 +34,7 @@ Usage 会对互不重叠的输入、缓存读取、缓存写入与输出 bucket 
 
 自动压缩的每次阈值与保留联合决策只使用一次统一计量。区域事务会在追加持久 `compaction/start` 锁后执行计量，在异步摘要完成后再次计量，随后比较分离的表层节点向量。期间发生的表层变更会阻止替换；`logRevision` 可以因无关的纯日志事实而推进，而不会使未变的选定范围失效。
 
-压缩策略采用服务级默认值：阈值比例 `0.8`、保留尾部比例 `0.16`、`summarizationProvider: ''`、`summarizationModel: ''`、`maxTokens: 8192`、`compactionRetries: 1`、`maxOverflowRetries: 1` 与 `auto: true`。顶层字段适用于每个路由目标；`modelPolicies` 中的精确提供方/模型项可以部分覆盖这些字段。压力检查以所属适配器解析的容量为基准换算这些比例，`retainTokens` 可以替代 `retainRatio`；保留值必须小于最终阈值。摘要提供方与模型必须同时设置或同时为空；空组合先解析最近记录的请求目标，再使用 `AgentOptions` 中的组合。
+压缩策略采用服务级默认值：阈值比例 `0.5`、保留尾部比例 `0.16`、`summarizationProvider: ''`、`summarizationModel: ''`、`maxTokens: 8192`、`compactionRetries: 1`、`maxOverflowRetries: 1` 与 `auto: true`。顶层字段适用于每个路由目标；`modelPolicies` 中的精确提供方/模型项可以部分覆盖这些字段。压力检查以所属适配器解析的容量为基准换算这些比例，`retainTokens` 可以替代 `retainRatio`；保留值必须小于最终阈值。摘要提供方与模型必须同时设置或同时为空；空组合先解析最近记录的请求目标，再使用 `AgentOptions` 中的组合。
 
 自动压力检查在请求派生前运行于 `agent/pre-step`，并计量前一个 `agent/request` 实际所选提供方/模型产生的规范持久信封。没有请求头的会话尚无已完成的路由请求可供判断，因此不执行工作；任意路由目标都可使用这个单例估算器。规范的溢出恢复流程使用同一计量结果强制选择范围，并且只有在表层替换得到证明后才重试。
 

@@ -1,0 +1,17 @@
+# Keyless forced first-chunk compaction composition for the headless snapshot.
+- id: base
+  name: '@deepseek-ai/cordis-plugin-include'
+  config:
+    path: ./cordis.yml
+    patches:
+      - id: llm-deepseek
+        name: '@deepseek-ai/dsh-llm-deepseek'
+        disabled: true
+      - insert:
+          - id: first-chunk-pressure-snapshot-backend
+            name: './tests/fixtures/first-chunk-pressure-snapshot-backend.mjs'
+          - id: first-chunk-timeout-plugin
+            name: './tests/fixtures/first-chunk-timeout-plugin.ts'
+            config:
+              firstChunkIdleTimeoutMs: 20
+              maxFirstChunkCompactionRetries: 100

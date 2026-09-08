@@ -1,6 +1,7 @@
 # Agent Note: 首个分片空闲超时与基于压力的自动压缩
 
 Status: implemented
+Archived: 2026-09-06
 
 [English](2026-08-18-first-chunk-idle-timeout-pressure-compaction.md) | 中文
 

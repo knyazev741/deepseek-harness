@@ -18,7 +18,7 @@ import type {
 } from './types.ts'
 
 /** Default request-pressure fraction for every routed model. */
-const DEFAULT_THRESHOLD_RATIO = 0.8
+const DEFAULT_THRESHOLD_RATIO = 0.5
 
 /** Default verbatim-tail fraction for every routed model. */
 const DEFAULT_RETAIN_RATIO = 0.16

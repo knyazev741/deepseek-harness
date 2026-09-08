@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-压缩会将已遮蔽区域回放到摘要调用中，以保持提供方热前缀 cache 对齐（[前缀 cache 复用决策](2026-07-21-compaction-summary-prefix-cache-reuse.zh.md)）。在超长上下文模型上，该区域非常庞大：在 400k 窗口的默认 `0.8` 压力阈值下，回放可达约 300k token 的单次请求。慢网关对如此大的 prefill 可能超过 pi-ai 适配器流空闲看门狗的时限（默认 300s），于是摘要流以 `pi-ai stream idle timeout after 300000ms` 失败，压缩随之报「could not produce a useful summary」。在路由到 `knyazev-ai/deepseek-v4-flash` 的 350k token 会话上复现：`/compact` 写入 `compaction/start` 后，摘要调用立即以与对话自身超大请求相同的方式超时。提高输出上限无济于事——失败来自输入端 prefill，而非 `max-tokens` 截断。
+压缩会将已遮蔽区域回放到摘要调用中，以保持提供方热前缀 cache 对齐（[前缀 cache 复用决策](2026-07-21-compaction-summary-prefix-cache-reuse.zh.md)）。在超长上下文模型上，该区域非常庞大：在 400k 窗口的默认 `0.5` 压力阈值下，回放可接近 200k token 的单次请求。慢网关对如此大的 prefill 可能超过 pi-ai 适配器流空闲看门狗的时限（默认 300s），于是摘要流以 `pi-ai stream idle timeout after 300000ms` 失败，压缩随之报「could not produce a useful summary」。在路由到 `knyazev-ai/deepseek-v4-flash` 的 350k token 会话上复现：`/compact` 写入 `compaction/start` 后，摘要调用立即以与对话自身超大请求相同的方式超时。提高输出上限无济于事——失败来自输入端 prefill，而非 `max-tokens` 截断。
 
 ## Decision
 

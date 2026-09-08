@@ -34,6 +34,8 @@ const goalScenarioDir = join(snapshotsDir, 'goal-tools')
 const goalConfigPath = fileURLToPath(new URL('../goal.cordis.snapshot.yml', import.meta.url))
 const retryScenarioDir = join(snapshotsDir, 'provider-retry')
 const retryConfigPath = fileURLToPath(new URL('../retry.cordis.snapshot.yml', import.meta.url))
+const firstChunkScenarioDir = join(snapshotsDir, 'first-chunk-low-pressure')
+const firstChunkConfigPath = fileURLToPath(new URL('../first-chunk-pressure.cordis.snapshot.yml', import.meta.url))
 const compactionScenarioDir = join(snapshotsDir, 'compaction-recovery')
 const compactionSessionFixture = join(compactionScenarioDir, 'session.jsonl')
 const compactionStreamExpected = join(compactionScenarioDir, 'stream-json.expected.jsonl')
@@ -345,6 +347,48 @@ describe('headless stream-json snapshots', () => {
           delayMs: 1,
           failure: { message: 'snapshot transient failure', code: 'RATE_LIMIT', status: 429 },
         })
+      },
+    })
+
+    expect(result.stderr).toBe('')
+    const normalized = normalizeHeadlessStream(result.stdout, runCwd)
+    if (refreshing) await writeFile(streamExpected, normalized)
+    expect(normalized).toBe(await readFile(streamExpected, 'utf8'))
+  }, LOADER_SMOKE_TEST_TIMEOUT_MS)
+
+  it('forces low-pressure first-chunk compaction and continues in a new turn', async () => {
+    const prompt = await scenarioPrompt(firstChunkScenarioDir, 'first-chunk-low-pressure')
+    const streamExpected = join(firstChunkScenarioDir, 'stream-json.expected.jsonl')
+    let runCwd = ''
+    const result = await runLoaderSmoke({
+      label: 'forced first-chunk compaction headless stream-json snapshot',
+      tempDirPrefix: 'headless-snapshot-first-chunk-low-pressure-',
+      binScript,
+      libBinScript: binScript,
+      configPath: firstChunkConfigPath,
+      binArgs: [firstChunkConfigPath, prompt],
+      tsconfigPath,
+      env: {
+        DSH_SNAPSHOT: 'replay',
+        NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
+      },
+      prepare: (cwd) => { runCwd = cwd },
+      inspect: async (cwd) => {
+        const logs = await persistedLogs(cwd)
+        expect(logs).toHaveLength(1)
+        const records = parseJsonl(logs[0]?.content ?? '')
+        expect(records.filter(record => record.type === 'compaction/start')).toHaveLength(1)
+        expect(records.filter(record => record.type === 'compaction/summary')).toHaveLength(1)
+        expect(records.filter(record => record.type === 'compaction/end')).toHaveLength(1)
+        expect(records.filter(record => record.type === 'turn/start')).toHaveLength(2)
+        expect(JSON.stringify(records.filter(record => record.type === 'user/message')))
+          .toContain('"plugin":"fork-llm-first-chunk-timeout"')
+        expect(JSON.stringify(records.filter(record => record.type === 'user/message')))
+          .toContain('"text":"continue"')
+        const retries = records.filter(record => record.type === 'llm/retry')
+        expect(retries).toHaveLength(0)
+        expect(JSON.stringify(records.filter(record => record.type === 'assistant/message')))
+          .toContain('FIRST_CHUNK_CONTINUE_OK')
       },
     })
 

@@ -1,0 +1,8 @@
+{
+  "steps": [
+    {
+      "op": "prompt",
+      "text": "Establish enough durable history to prove forced first-chunk recovery below normal pressure. Emit one shell marker, preserve the fact that this assembled headless run is keyless and uses the real compaction service, then survive the next request timing out before its first stream chunk. Recovery must compact the older history, close the failed turn, and start a new turn from a plugin-authored continue message. Finish with the exact words FIRST_CHUNK_CONTINUE_OK."
+    }
+  ]
+}

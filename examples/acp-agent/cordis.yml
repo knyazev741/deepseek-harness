@@ -75,7 +75,7 @@
 - id: compaction-basic
   name: '@deepseek-ai/dsh-compaction-basic'
   config:
-    thresholdRatio: 0.8
+    thresholdRatio: 0.5
     retainRatio: 0.08
     maxTokens: 8192
     compactionRetries: 1

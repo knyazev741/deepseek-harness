@@ -24,7 +24,7 @@ The hand-rolled DeepSeek adapter accepts optional `contextWindow` on each config
 
 ### Compact-basic resolves a target spec
 
-Compact-basic owns consumer policy. Top-level fields define defaults; `modelPolicies` contains partial overrides keyed by the exact `{ provider, model }` pair. Duplicate targets and unknown or invalid fields fail plugin load. `thresholdRatio` defaults to `0.8`, and retention defaults to `retainRatio: 0.16`; callers may use an absolute `retainTokens` instead, but the two retention forms are mutually exclusive. After inheritance, a ratio retention that is not below its threshold ratio also fails plugin load because no model capacity can make that policy valid.
+Compact-basic owns consumer policy. Top-level fields define defaults; `modelPolicies` contains partial overrides keyed by the exact `{ provider, model }` pair. Duplicate targets and unknown or invalid fields fail plugin load. `thresholdRatio` defaults to `0.5`, and retention defaults to `retainRatio: 0.16`; callers may use an absolute `retainTokens` instead, but the two retention forms are mutually exclusive. After inheritance, a ratio retention that is not below its threshold ratio also fails plugin load because no model capacity can make that policy valid.
 
 For proactive pressure, compaction-basic reads the latest durable request route, resolves its adapter capacity and exact-target policy, and scales ratios into a `ResolvedCompactSpec`. It performs this resolution on every check, so a provider or model switch in one session changes capacity and policy immediately. An absolute retained budget that is not below the scaled threshold fails when the target capacity first makes that comparison possible.
 
