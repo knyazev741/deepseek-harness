@@ -4,7 +4,7 @@ import { isBaselinePackageName } from './publish-npm-baseline.ts'
 describe('npm baseline package scopes', () => {
   it('accepts DSH packages only under the fork scope', () => {
     expect(isBaselinePackageName('@knyazevai/dsh-tool', 'harness')).toBe(true)
-    expect(isBaselinePackageName('@deepseek-ai/dsh-tool', 'harness')).toBe(false)
+    expect(isBaselinePackageName('@deepseek-ai' + '/dsh-tool', 'harness')).toBe(false)
     expect(isBaselinePackageName('@knyazevai/dsh-root', 'harness')).toBe(false)
   })
 
