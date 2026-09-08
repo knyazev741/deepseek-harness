@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execa } from 'execa'
 import { describe, expect, it } from 'vitest'
+import { removeFixtureSafely } from '../../../scripts/test-fixture-cleanup.ts'
 
 /**
  * Keyless smoke for SOURCE `dsh` execution: keep the repository launcher on
@@ -43,7 +44,7 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
       expect(result.exitCode, result.stderr).toBe(0)
       expect(result.stdout).toContain('@knyazevai/dsh-fork-web')
     } finally {
-      rmSync(dshHome, { recursive: true, force: true })
+      removeFixtureSafely(dshHome)
     }
   }, 35_000)
 
@@ -65,7 +66,7 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
       expect(result.stderr).toContain('--profile <name> is required')
       expect(result.stdout).toBe('')
     } finally {
-      rmSync(dshHome, { recursive: true, force: true })
+      removeFixtureSafely(dshHome)
     }
   }, 30_000)
 })
