@@ -2,7 +2,9 @@
   "name": "@deepseek-ai/dsh-fork-workspace-session-state",
   "description": "Settings-backed global pin state for workspace sessions",
   "version": "0.1.3",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",

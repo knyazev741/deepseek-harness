@@ -2,7 +2,9 @@
   "name": "@deepseek-ai/dsh-fork-base",
   "description": "The opt-in Host fork overlay bundle: fork capabilities plus portable Knyazev AI and default-model configuration over dsh-base",
   "version": "0.1.3",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
