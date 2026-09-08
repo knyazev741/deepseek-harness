@@ -1,6 +1,6 @@
 /**
  * Error vocabulary of the domain data form.
- * @module @deepseek-ai/dsh-storage-domain/src/error
+ * @module @knyazevai/dsh-storage-domain/src/error
  */
 
 /** Discriminant codes carried by every {@link DomainError}. */

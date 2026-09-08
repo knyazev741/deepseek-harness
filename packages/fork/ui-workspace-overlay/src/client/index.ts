@@ -1,11 +1,11 @@
-import type { ClientContext, SessionId, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, SessionId, SessionSummary } from '@knyazevai/dsh-client-runtime/client'
 // Type-only assembly imports merge the public services and SlotMap contracts.
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
-import type {} from '@deepseek-ai/dsh-fork-session-source/types'
-import type {} from '@deepseek-ai/dsh-fork-workspace-session-state/remote'
-import type { WorkspaceSessionRowContext } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@knyazevai/dsh-api-remotes/client'
+import type {} from '@knyazevai/dsh-client-locale/client'
+import type {} from '@knyazevai/dsh-client-ui-workspace/client'
+import type {} from '@knyazevai/dsh-fork-session-source/types'
+import type {} from '@knyazevai/dsh-fork-workspace-session-state/remote'
+import type { WorkspaceSessionRowContext } from '@knyazevai/dsh-client-ui-workspace/client'
 import { WorkspaceRowActions, type PinMutationResult, type WorkspaceRowActionsInjected } from './WorkspaceRowActions.tsx'
 import { WorkspaceRowStatus } from './WorkspaceRowStatus.tsx'
 import { WorkspaceRowBadges } from './WorkspaceRowBadges.tsx'
@@ -15,7 +15,7 @@ import { createWorkspaceOverlayStore } from './store.ts'
 export { NS }
 export type { WorkspaceOverlayLocaleKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Fork-owned Workspace overlay copy. */
     [NS]: WorkspaceOverlayLocaleKey

@@ -7,7 +7,7 @@
  * `cordis.snapshot.yml` so a stray key cannot trigger a model call. EOF disposes
  * and flushes snapshot runs; the calling automation owns process lifetime. Stdout is
  * reserved for JSON-RPC, so diagnostics go only to stderr.
- * @module @deepseek-ai/dsh-acp-demo/bin
+ * @module @knyazevai/dsh-acp-demo/bin
  */
 
 import { parseArgs } from 'node:util'
@@ -16,8 +16,8 @@ import {
   installFailLoud,
   loadLayeredEnv,
   resolveConfigPath,
-} from '@deepseek-ai/dsh-app-boot'
-import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
+} from '@knyazevai/dsh-app-boot'
+import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@knyazevai/dsh-launch-environment'
 
 const NAME = 'dsh-acp-demo'
 

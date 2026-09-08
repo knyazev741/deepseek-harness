@@ -3,19 +3,19 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import LlmRuntime from '@knyazevai/dsh-llm'
+import SessionStore, { SessionId, type SessionEvent } from '@knyazevai/dsh-session'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { beforeEach, describe, expect, it } from 'vitest'
 import AgentPresets, {
   AGENT_PRESET_PATCH_CONTRIBUTOR,
   type AgentPresetPatchContribution,
   type AgentPresetPatchContributor,
-} from '@deepseek-ai/dsh-agent-presets'
-import type { Config } from '@deepseek-ai/dsh-agent-presets'
+} from '@knyazevai/dsh-agent-presets'
+import type { Config } from '@knyazevai/dsh-agent-presets'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures')
 const ROOTS = [

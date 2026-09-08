@@ -14,10 +14,10 @@ import * as yaml from 'js-yaml'
 import { Context } from '@deepseek-ai/cordis'
 import Include, { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
-import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
-import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
+import AgentDefaultModelConfig from '@knyazevai/dsh-agent-default-model'
+import LlmRuntime from '@knyazevai/dsh-llm'
+import * as LlmPiAi from '@knyazevai/dsh-llm-pi-ai'
+import FileSettingsProvider from '@knyazevai/dsh-settings-file'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 
 interface Manifest {
@@ -62,16 +62,16 @@ describe('dsh-fork-base bundle', () => {
     expect(manifest.private).toBe(true)
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.dependencies).toMatchObject({
-      '@deepseek-ai/dsh-fork-session-source': 'workspace:^',
-      '@deepseek-ai/dsh-fork-workspace-session-state': 'workspace:^',
-      '@deepseek-ai/dsh-fork-llm-first-chunk-timeout': 'workspace:^',
-      '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown': 'workspace:^',
+      '@knyazevai/dsh-fork-session-source': 'workspace:^',
+      '@knyazevai/dsh-fork-workspace-session-state': 'workspace:^',
+      '@knyazevai/dsh-fork-llm-first-chunk-timeout': 'workspace:^',
+      '@knyazevai/dsh-fork-llm-rate-limit-cooldown': 'workspace:^',
     })
     expect(Object.keys(manifest.dependencies ?? {}).sort()).toEqual([
-      '@deepseek-ai/dsh-fork-llm-first-chunk-timeout',
-      '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown',
-      '@deepseek-ai/dsh-fork-session-source',
-      '@deepseek-ai/dsh-fork-workspace-session-state',
+      '@knyazevai/dsh-fork-llm-first-chunk-timeout',
+      '@knyazevai/dsh-fork-llm-rate-limit-cooldown',
+      '@knyazevai/dsh-fork-session-source',
+      '@knyazevai/dsh-fork-workspace-session-state',
     ])
   })
 
@@ -93,10 +93,10 @@ describe('dsh-fork-base bundle', () => {
     ])
     expect(new Set(rows.map(row => row.id)).size).toBe(rows.length)
     expect(rows.map(row => row.name)).toEqual([
-      '@deepseek-ai/dsh-fork-session-source',
-      '@deepseek-ai/dsh-fork-workspace-session-state',
-      '@deepseek-ai/dsh-fork-llm-first-chunk-timeout',
-      '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown',
+      '@knyazevai/dsh-fork-session-source',
+      '@knyazevai/dsh-fork-workspace-session-state',
+      '@knyazevai/dsh-fork-llm-first-chunk-timeout',
+      '@knyazevai/dsh-fork-llm-rate-limit-cooldown',
     ])
     expect(rows.find(row => row.id === 'fork-llm-first-chunk-timeout')?.config)
       .toEqual({ firstChunkIdleTimeoutMs: 120000, maxFirstChunkCompactionRetries: 100 })
@@ -114,7 +114,7 @@ describe('dsh-fork-base bundle', () => {
         ],
       })
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
-    expect(rows.some(row => row.name === '@deepseek-ai/dsh-fork-external-session')).toBe(false)
+    expect(rows.some(row => row.name === '@knyazevai/dsh-fork-external-session')).toBe(false)
     const serialized = JSON.stringify(patches)
     expect(serialized).not.toMatch(/"apiKey"\s*:/)
     expect(serialized).not.toMatch(/(?:sk-|AIza|gh[pousr]_|xox[baprs]-)\w{8,}/i)
@@ -128,7 +128,7 @@ describe('dsh-fork-base bundle', () => {
     const ids = rows.map(row => row.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
-    expect(rows.some(row => row.name === '@deepseek-ai/dsh-fork-external-session')).toBe(false)
+    expect(rows.some(row => row.name === '@knyazevai/dsh-fork-external-session')).toBe(false)
     const llm = rows.find(row => row.id === 'llm-pi-ai')
     const defaultModel = rows.find(row => row.id === 'agent-default-model')
     expect(llm?.config).toEqual({
@@ -243,7 +243,7 @@ describe('dsh-fork-base bundle', () => {
     expect(later.find(row => row.id === 'fork-workspace-session-state')?.disabled).toBe(true)
     expect(later.find(row => row.id === 'fork-llm-first-chunk-timeout')?.config)
       .toEqual({ firstChunkIdleTimeoutMs: 60000 })
-    expect(later.find(row => row.id === 'agent')?.name).toBe('@deepseek-ai/dsh-agent')
+    expect(later.find(row => row.id === 'agent')?.name).toBe('@knyazevai/dsh-agent')
   })
 
   it('loads portable defaults through Loader and layers a settings file over them', async () => {
@@ -272,13 +272,13 @@ describe('dsh-fork-base bundle', () => {
         { id: 'llm', name: 'test-llm-service' },
         {
           id: 'settings',
-          name: '@deepseek-ai/dsh-settings-file',
+          name: '@knyazevai/dsh-settings-file',
           config: { path: settingsPath, watch: false },
         },
-        { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', config: llmConfig },
+        { id: 'llm-pi-ai', name: '@knyazevai/dsh-llm-pi-ai', config: llmConfig },
         {
           id: 'agent-default-model',
-          name: '@deepseek-ai/dsh-agent-default-model',
+          name: '@knyazevai/dsh-agent-default-model',
           config: defaultModelConfig,
         },
       ]))
@@ -289,9 +289,9 @@ describe('dsh-fork-base bundle', () => {
       ctx.loader.builtins.include = Include
       const modules = new Map<string, unknown>([
         ['test-llm-service', LlmRuntime],
-        ['@deepseek-ai/dsh-settings-file', FileSettingsProvider],
-        ['@deepseek-ai/dsh-llm-pi-ai', LlmPiAi],
-        ['@deepseek-ai/dsh-agent-default-model', AgentDefaultModelConfig],
+        ['@knyazevai/dsh-settings-file', FileSettingsProvider],
+        ['@knyazevai/dsh-llm-pi-ai', LlmPiAi],
+        ['@knyazevai/dsh-agent-default-model', AgentDefaultModelConfig],
       ])
       ctx.loader.internal = {
         version: 'v2',

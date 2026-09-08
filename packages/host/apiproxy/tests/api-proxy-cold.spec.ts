@@ -9,23 +9,23 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore from '@deepseek-ai/dsh-session'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import { TypertLookupFailure } from '@deepseek-ai/dsh-typert-protocol'
-import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
-import { createUserMessage, MessageId } from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import type { SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore from '@knyazevai/dsh-session'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import { TypertLookupFailure } from '@knyazevai/dsh-typert-protocol'
+import TypertRegistry from '@knyazevai/dsh-typert-registry'
+import { createUserMessage, MessageId } from '@knyazevai/dsh-llm'
+import type { Agent } from '@knyazevai/dsh-agent'
+import UserQuestionService from '@knyazevai/dsh-user-questions'
+import type { SessionEvent, SessionHeader, SessionId } from '@knyazevai/dsh-session'
 import {
   PersistenceCoordinator,
   SessionPersistenceRevision,
   type PersistenceBackend,
   type StoredPrefix,
-} from '@deepseek-ai/dsh-session-persistence'
-import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
+} from '@knyazevai/dsh-session-persistence'
+import type { RpcRequest } from '@knyazevai/dsh-host-apiproxy/api/rpc'
+import { RpcId } from '@knyazevai/dsh-host-apiproxy/api/rpc'
+import { createApiProxy } from '@knyazevai/dsh-host-apiproxy'
 
 const sid = (id: string): SessionId => id as SessionId
 
@@ -339,7 +339,7 @@ describe('Remote Agent and Session lookup policy', () => {
       inspect,
       locate: () => undefined,
     } as never)
-    const resumedSession = { id: sessionId, header: meta, events: [] } as unknown as import('@deepseek-ai/dsh-session').Session
+    const resumedSession = { id: sessionId, header: meta, events: [] } as unknown as import('@knyazevai/dsh-session').Session
     const resumedAgent = { id: sessionId, session: resumedSession, status: 'idle', ctx } as Agent
     const release = Promise.withResolvers<undefined>()
     const resume = vi.spyOn(ctx.agents, 'resume').mockImplementation(async () => {

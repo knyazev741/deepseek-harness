@@ -12,7 +12,7 @@
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import { installSettingsSection, settingsNamespace } from '@knyazevai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 
 declare function assertReachable(endpoint: string | undefined): void
@@ -48,10 +48,10 @@ export function apply(ctx: Context, config: Config) {
 卡片以自己的命名空间为键注册进 `settings.plugin.item`，并拥有其中的一切——外观、控件与文案。它通过 `ctx.settingsScope` 读写，后者用读取时的 revision 为每次写入设栅：
 
 ```ts ignore-check
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@knyazevai/dsh-client-runtime/client'
 // Type-only: the keyed slot's declaration. Cross-plugin collaboration goes
 // through cordis services; a value import fails the client bundle-purity gate.
-import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
+import type {} from '@knyazevai/dsh-client-ui-settings-plugins/client'
 
 export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']
 
@@ -85,7 +85,7 @@ scope 快照携带表单所需的一切：解析后的 `value`、组装层 `base
     ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
     "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client.js" }
   },
-  "dsh": { "client": { "platform": "web", "inject": ["@deepseek-ai/dsh-client-ui-settings-plugins"] } }
+  "dsh": { "client": { "platform": "web", "inject": ["@knyazevai/dsh-client-ui-settings-plugins"] } }
 }
 ```
 
@@ -94,7 +94,7 @@ bundle 必须是 loader 的 lazy-CJS factory 产物。在本仓库内，`tsdown.
 ```ts ignore-check
 import { clientBundle } from '../tsdown.client.ts'
 
-export default clientBundle('@deepseek-ai/dsh-client-my-plugin', ['lib/types/index.js', 'lib/types/invariant.js'])
+export default clientBundle('@knyazevai/dsh-client-my-plugin', ['lib/types/index.js', 'lib/types/invariant.js'])
 ```
 
 该预设目前未发布，因此本仓库之外的包得自行复刻同样的输出格式。bundle 纯净度门禁同时拒绝跨插件的值导入，所以卡片无法导入本分区的卡片外观或其暂存表单模型——它渲染自己的那一份，并自行拥有暂存与 revision 设栅。这两条限制都记在[本分区的已知限制](../../packages/client/ui-settings-plugins/README.zh.md#known-limitations-and-deferred-work)里。

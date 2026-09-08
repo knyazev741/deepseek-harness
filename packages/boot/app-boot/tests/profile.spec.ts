@@ -59,9 +59,9 @@ describe('initProfile', () => {
   it('creates manifest, user patch layer, and the maintained pnpm workspace', () => {
     const home = tmp()
     const dir = resolveProfileDir('tui', home)
-    initProfile(dir, ['@deepseek-ai/dsh-base'])
+    initProfile(dir, ['@knyazevai/dsh-base'])
     const manifest = readProfileManifest('t', dir)
-    expect(manifest.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base'])
+    expect(manifest.dsh?.profile?.bundles).toEqual(['@knyazevai/dsh-base'])
     expect(readFileSync(join(dir, PROFILE_PATCH_FILENAME), 'utf8')).toContain('[]')
     const workspacePath = join(dir, 'pnpm-workspace.yaml')
     const workspace = readFileSync(workspacePath, 'utf8')
@@ -70,14 +70,14 @@ describe('initProfile', () => {
     // Re-init keeps user edits.
     writeFileSync(join(dir, PROFILE_PATCH_FILENAME), '- id: x\n  config: {}\n')
     initProfile(dir, ['other'])
-    expect(readProfileManifest('t', dir).dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base'])
+    expect(readProfileManifest('t', dir).dsh?.profile?.bundles).toEqual(['@knyazevai/dsh-base'])
     expect(readFileSync(join(dir, PROFILE_PATCH_FILENAME), 'utf8')).toContain('- id: x')
   })
 
   it('upgrades only the legacy generated pnpm workspace', () => {
     const home = tmp()
     const dir = resolveProfileDir('tui', home)
-    initProfile(dir, ['@deepseek-ai/dsh-base'])
+    initProfile(dir, ['@knyazevai/dsh-base'])
     const workspacePath = join(dir, 'pnpm-workspace.yaml')
     writeFileSync(workspacePath, 'packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n')
 
@@ -170,8 +170,8 @@ describe('loadProfile', () => {
     // cannot be asserted to fail here: the source-plane test runner resolves
     // @deepseek-ai/* through tsconfig paths regardless of the staged anchor.
     expect(PROFILE_TEMPLATES.web).toEqual([
-      '@deepseek-ai/dsh-base',
-      '@deepseek-ai/dsh-web-app',
+      '@knyazevai/dsh-base',
+      '@knyazevai/dsh-web-app',
     ])
     expect(PROFILE_TEMPLATES.web?.some(bundle => bundle.includes('fork-'))).toBe(false)
     try {
@@ -183,41 +183,41 @@ describe('loadProfile', () => {
       .toEqual([...PROFILE_TEMPLATES.web ?? []])
 
     expect(PROFILE_TEMPLATES['fork-web']).toEqual([
-      '@deepseek-ai/dsh-base',
-      '@deepseek-ai/dsh-web-app',
-      '@deepseek-ai/dsh-fork-base',
-      '@deepseek-ai/dsh-fork-web',
+      '@knyazevai/dsh-base',
+      '@knyazevai/dsh-web-app',
+      '@knyazevai/dsh-fork-base',
+      '@knyazevai/dsh-fork-web',
     ])
     expect(PROFILE_TEMPLATES.headless).toEqual([
-      '@deepseek-ai/dsh-base',
-      '@deepseek-ai/dsh-headless',
+      '@knyazevai/dsh-base',
+      '@knyazevai/dsh-headless',
     ])
   })
 
   it('normalizes only the exact installation-owned headless bundle tuple', () => {
     const anchor = stageInstallation({
-      '@deepseek-ai/dsh-base': { patch: '[]\n' },
-      '@deepseek-ai/dsh-web-app': { patch: '[]\n' },
-      '@deepseek-ai/dsh-headless': { patch: '[]\n' },
+      '@knyazevai/dsh-base': { patch: '[]\n' },
+      '@knyazevai/dsh-web-app': { patch: '[]\n' },
+      '@knyazevai/dsh-headless': { patch: '[]\n' },
       'custom-bundle': { patch: '[]\n' },
     })
     const home = tmp()
     const stock = resolveProfileDir('headless', home)
     initProfile(stock, [
-      '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless',
+      '@knyazevai/dsh-base', '@knyazevai/dsh-web-app', '@knyazevai/dsh-headless',
     ])
     loadProfile('t', 'headless', anchor, home)
     expect(readProfileManifest('t', stock).dsh?.profile?.bundles)
-      .toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'])
+      .toEqual(['@knyazevai/dsh-base', '@knyazevai/dsh-headless'])
 
     const customHome = tmp()
     const custom = resolveProfileDir('headless', customHome)
     initProfile(custom, [
-      '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless', 'custom-bundle',
+      '@knyazevai/dsh-base', '@knyazevai/dsh-web-app', '@knyazevai/dsh-headless', 'custom-bundle',
     ])
     loadProfile('t', 'headless', anchor, customHome)
     expect(readProfileManifest('t', custom).dsh?.profile?.bundles).toEqual([
-      '@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless', 'custom-bundle',
+      '@knyazevai/dsh-base', '@knyazevai/dsh-web-app', '@knyazevai/dsh-headless', 'custom-bundle',
     ])
   })
 

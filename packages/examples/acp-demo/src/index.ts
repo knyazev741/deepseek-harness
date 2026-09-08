@@ -1,29 +1,29 @@
 /**
  * The ACP automation server app: the default agent spine
- * ({@link @deepseek-ai/dsh-agent-spine-demo}), JSONL session persistence, and
- * the {@link @deepseek-ai/dsh-acp} bridge. The app owns those plugins through one
+ * ({@link @knyazevai/dsh-agent-spine-demo}), JSONL session persistence, and
+ * the {@link @knyazevai/dsh-acp} bridge. The app owns those plugins through one
  * ordered lifecycle so ACP sessions quiesce before persistence detaches. It
  * writes nothing to stdout.
  * It pre-creates no agents and leaves adapters, executors, and optional tools to
  * the leaf, which must likewise avoid stdout loggers. Named exports are
  * required so Loader retains this plugin's `Config` schema (see
  * docs/postmortem/0001).
- * @module @deepseek-ai/dsh-acp-demo
+ * @module @knyazevai/dsh-acp-demo
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import { join } from 'node:path'
 import z from '@deepseek-ai/schemastery'
-import * as acp from '@deepseek-ai/dsh-acp'
-import * as agentCore from '@deepseek-ai/dsh-agent-spine-demo'
-import * as workspaceContext from '@deepseek-ai/dsh-agent-instructions'
-import ToolRuntime, { type Config as ToolsConfig } from '@deepseek-ai/dsh-tools'
+import * as acp from '@knyazevai/dsh-acp'
+import * as agentCore from '@knyazevai/dsh-agent-spine-demo'
+import * as workspaceContext from '@knyazevai/dsh-agent-instructions'
+import ToolRuntime, { type Config as ToolsConfig } from '@knyazevai/dsh-tools'
 import JsonlSessionPersistence, {
   JsonlCompressionSchema,
   type JsonlCompression,
-} from '@deepseek-ai/dsh-session-persistence-jsonl'
-import * as sessionCheckpointPolicy from '@deepseek-ai/dsh-session-checkpoint-policy'
-import SqliteSessionQueryEngine from '@deepseek-ai/dsh-session-query-sqlite'
+} from '@knyazevai/dsh-session-persistence-jsonl'
+import * as sessionCheckpointPolicy from '@knyazevai/dsh-session-checkpoint-policy'
+import SqliteSessionQueryEngine from '@knyazevai/dsh-session-query-sqlite'
 
 export const name = 'acp-demo'
 const DEFAULT_PERSISTENCE_ROOT = './.sessions'

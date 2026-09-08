@@ -34,7 +34,10 @@ const DEPENDENCY_SECTIONS = [
   'peerDependencies',
 ] as const
 const RELEASE_MANIFEST_NAME = 'manifest.json'
-const RELEASE_ENTRY_PACKAGE = '@deepseek-ai/dsh'
+const DSH_PACKAGE_NAME_PREFIX = '@knyazevai/dsh'
+const VENDORED_PACKAGE_NAME_PREFIX = '@deepseek-ai/'
+const DSH_ROOT_PACKAGE_NAME = '@knyazevai/dsh-root'
+const RELEASE_ENTRY_PACKAGE = '@knyazevai/dsh'
 const LATEST_DIST_TAG = 'latest'
 const POSIX_WEB_PROBE = String.raw`
 import errno, os, pty, select, signal, sys, time
@@ -97,7 +100,18 @@ interface PackageTarget {
   origin: PackageOrigin
 }
 
-type PackageOrigin = 'harness' | 'vendor'
+export type PackageOrigin = 'harness' | 'vendor'
+
+/**
+ * Whether a baseline package name belongs to the scope for its source family.
+ * @param name - package name from a workspace or release manifest.
+ * @param origin - source family that owns the package.
+ * @returns true when the name is in the explicit DSH/vendor scope union.
+ */
+export function isBaselinePackageName(name: string, origin: PackageOrigin): boolean {
+  const prefix = origin === 'harness' ? DSH_PACKAGE_NAME_PREFIX : VENDORED_PACKAGE_NAME_PREFIX
+  return name.startsWith(prefix) && !(origin === 'harness' && name === DSH_ROOT_PACKAGE_NAME)
+}
 
 interface PackedPackage {
   name: string
@@ -258,13 +272,13 @@ class WorkspacePackageSet {
       const name = expectString(manifest, 'name', manifestPath)
       const version = expectString(manifest, 'version', manifestPath)
       const isVendored = manifestPath.startsWith('vendor/')
-      // Vendored packages are rescoped too (vendor/README.md), so publication
-      // never carries an upstream name that would squat it on the registry.
-      if (!name.startsWith('@deepseek-ai/')) {
-        throw new Error(`${manifestPath} must name an @deepseek-ai package`)
-      }
-      if (name === '@deepseek-ai/dsh-root') {
+      if (name === DSH_ROOT_PACKAGE_NAME) {
         throw new Error(`${manifestPath} unexpectedly selected the workspace root`)
+      }
+      const origin: PackageOrigin = isVendored ? 'vendor' : 'harness'
+      if (!isBaselinePackageName(name, origin)) {
+        const prefix = origin === 'vendor' ? VENDORED_PACKAGE_NAME_PREFIX : DSH_PACKAGE_NAME_PREFIX
+        throw new Error(`${manifestPath} must name an ${prefix.replace(/\/$/u, '')} package`)
       }
       if (names.has(name)) throw new Error(`duplicate package name: ${name}`)
       if (!isVendored && version !== baseVersion) {
@@ -274,7 +288,7 @@ class WorkspacePackageSet {
       packages.push({
         name,
         directory: dirname(manifestPath),
-        origin: isVendored ? 'vendor' : 'harness',
+        origin,
       })
     }
     packages.sort((left, right) => left.name.localeCompare(right.name))
@@ -454,7 +468,7 @@ class InstalledBundleSmoke {
         `--registry=${this.bundle.manifest.registry}`,
       ], consumerRoot, npmClientEnvironment())
 
-      const bin = resolve(consumerRoot, 'node_modules/@deepseek-ai/dsh/lib/bin.js')
+      const bin = resolve(consumerRoot, 'node_modules/@knyazevai/dsh/lib/bin.js')
       assertPathWithin(consumerRoot, bin, 'installed dsh bin')
       const environment = installedArtifactEnvironment(consumerRoot)
       const version = this.runner.capture(
@@ -805,7 +819,7 @@ function parsePackedPackage(value: unknown, index: number): PackedPackage {
   if (origin !== 'harness' && origin !== 'vendor') {
     throw new Error(`invalid package origin in release manifest: ${JSON.stringify(origin)}`)
   }
-  if (origin === 'harness' && (!name.startsWith('@deepseek-ai/') || name === '@deepseek-ai/dsh-root')) {
+  if (!isBaselinePackageName(name, origin)) {
     throw new Error(`invalid package name in release manifest: ${name}`)
   }
   return {

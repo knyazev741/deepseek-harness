@@ -1,15 +1,15 @@
 /**
  * Default one-shot summarization and durable checkpoint framing.
  *
- * @module @deepseek-ai/dsh-compaction-basic/summarizer
+ * @module @knyazevai/dsh-compaction-basic/summarizer
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { contentHasImage, createUserMessage, BlockAssembler, LlmError } from '@deepseek-ai/dsh-llm'
+import { contentHasImage, createUserMessage, BlockAssembler, LlmError } from '@knyazevai/dsh-llm'
 import type {
   ContentBlock, FinishReason, GenerateOptions, LlmFailure, Message, ResolvedRetryPolicy, TokenUsage, ToolSchema,
-} from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+} from '@knyazevai/dsh-llm'
+import type { Agent } from '@knyazevai/dsh-agent'
 
 interface SummaryConfig {
   readonly summarizationProvider: string

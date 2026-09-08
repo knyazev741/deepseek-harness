@@ -5,7 +5,7 @@
  * owns after the client plugin tree activates.
  */
 
-import type { IndexInjection } from '@deepseek-ai/dsh-host-webserver'
+import type { IndexInjection } from '@knyazevai/dsh-host-webserver'
 import { DEFAULT_PREFERENCE, type ThemePreference } from './theme-settings.ts'
 
 /** Build the inline script body for one schema-validated built-in preference. */

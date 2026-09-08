@@ -7,21 +7,21 @@
     path: ./cordis.yml
     patches:
       - id: llm-deepseek
-        name: '@deepseek-ai/dsh-llm-deepseek'
+        name: '@knyazevai/dsh-llm-deepseek'
         disabled: true
       - insert:
           - id: web
-            name: '@deepseek-ai/dsh-web'
+            name: '@knyazevai/dsh-web'
           - id: web-fetch-http
-            name: '@deepseek-ai/dsh-web-fetch-http'
+            name: '@knyazevai/dsh-web-fetch-http'
           - id: web-fetch-fixture
             name: './web-fetch-fixture-server.mjs'
           - id: tool-web
-            name: '@deepseek-ai/dsh-tool-web'
+            name: '@knyazevai/dsh-tool-web'
             config:
               search: false
           - id: llm-replay
-            name: '@deepseek-ai/dsh-llm-replay'
+            name: '@knyazevai/dsh-llm-replay'
             config:
               providers:
                 - id: deepseek-official

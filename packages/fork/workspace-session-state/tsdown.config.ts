@@ -5,7 +5,7 @@ import { defineConfig } from 'tsdown'
 import { WorkspaceTypertGenerator } from '../../typert/generator/lib/types/workspace.js'
 import { typertPlugin } from '../../typert/generator/lib/types/tsdown-plugin.js'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-fork-workspace-session-state'
+const PACKAGE_NAME = '@knyazevai/dsh-fork-workspace-session-state'
 const PACKAGE_ROOT = fileURLToPath(new URL('.', import.meta.url))
 const REPOSITORY_ROOT = resolve(PACKAGE_ROOT, '../../..')
 

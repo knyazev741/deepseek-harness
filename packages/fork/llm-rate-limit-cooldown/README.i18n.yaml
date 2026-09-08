@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fork/llm-rate-limit-cooldown/README.md
-README.md: 5d057e50170bcab6c93ac11010bade397f18ba43
-README.zh.md: b24bbf5e47002c60df1b5859afb49f9a9c0cf496
+README.md: fdcabc8af8ed6b066427f39895f538cc67d151f1
+README.zh.md: 4a097f11027b27ed283a92e78f78f91bc307a694

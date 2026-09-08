@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-llm-rate-limit-cooldown
+# @knyazevai/dsh-fork-llm-rate-limit-cooldown
 
 English | [中文](README.zh.md)
 
@@ -8,7 +8,7 @@ Fork-owned LLM plugin that keeps a provider-limited request alive after `dsh-llm
 
 ```yaml
 - id: fork-llm-rate-limit-cooldown
-  name: '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown'
+  name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
   config:
     cooldownMs: 600000
 ```

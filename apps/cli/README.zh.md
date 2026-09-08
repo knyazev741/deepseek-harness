@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh`
+# `@knyazevai/dsh`
 
 [English](README.md) | 中文
 
@@ -38,7 +38,7 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 - profile 自身的 `cordis.patch.yml`，然后是 home 级的 `$DSH_HOME/cordis.patch.yml`
 - `--patch` 指定的覆盖层
 
-`dsh.profile.bundles` 中列出的组合包先从 dsh 安装目录解析（`@deepseek-ai/dsh-base`、`@deepseek-ai/dsh-web-app`、`@deepseek-ai/dsh-fork-base`、`@deepseek-ai/dsh-fork-web` 和 `@deepseek-ai/dsh-headless`），再从 profile 自身的 `node_modules` 解析；pnpm 会将树外插件安装到该目录。随附的 `fork-web` 模板由安装目录拥有，并按顺序挂载两个上游组合包和两个 fork 组合包；默认的 `web` 模板仍仅包含上游层。
+`dsh.profile.bundles` 中列出的组合包先从 dsh 安装目录解析（`@knyazevai/dsh-base`、`@knyazevai/dsh-web-app`、`@knyazevai/dsh-fork-base`、`@knyazevai/dsh-fork-web` 和 `@knyazevai/dsh-headless`），再从 profile 自身的 `node_modules` 解析；pnpm 会将树外插件安装到该目录。随附的 `fork-web` 模板由安装目录拥有，并按顺序挂载两个上游组合包和两个 fork 组合包；默认的 `web` 模板仍仅包含上游层。
 
 使用 `--dump-default-config` 和 `--dump-config` 可在不启动的情况下检查组合后的配置树。
 

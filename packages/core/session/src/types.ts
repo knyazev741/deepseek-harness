@@ -1,4 +1,4 @@
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@knyazevai/dsh-brand'
 import type {
   AssistantMessage,
   CallId,
@@ -10,7 +10,7 @@ import type {
   ToolResultMessage,
   ToolSchema,
   UserMessage,
-} from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-llm'
 import type { JsonValue } from './json.ts'
 
 // The lossless-JSON payload type belongs to this client-safe face too: a wire

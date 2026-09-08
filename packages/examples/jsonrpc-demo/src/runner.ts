@@ -1,12 +1,12 @@
 /**
  * Shared process lifecycle for the generic and closed-runtime JSON-RPC bins.
  *
- * @module @deepseek-ai/dsh-sdk-jsonrpc-demo/runner
+ * @module @knyazevai/dsh-sdk-jsonrpc-demo/runner
  */
 
 import { existsSync } from 'node:fs'
-import { boot, installFailLoud, loadLayeredEnv, resolveConfigPath } from '@deepseek-ai/dsh-app-boot'
-import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
+import { boot, installFailLoud, loadLayeredEnv, resolveConfigPath } from '@knyazevai/dsh-app-boot'
+import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@knyazevai/dsh-launch-environment'
 
 /* v8 ignore start -- composition over tested app-boot/jsonrpc and executable acceptance paths */
 const NAME = 'dsh-jsonrpc-agent'

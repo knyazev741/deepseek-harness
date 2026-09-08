@@ -1,6 +1,6 @@
 /* eslint-disable @stylistic/max-len */
-import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionSummary, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
+import type { SessionSummary, WorkspaceView } from '@knyazevai/dsh-client-runtime/client'
 /** Data shared by Workspace Session row contributions. */
 export interface WorkspaceSessionRowContext { readonly session: SessionSummary; readonly workspace: WorkspaceView; readonly selected: boolean }
 /** Menu-specific row context supplied to action contributions. */

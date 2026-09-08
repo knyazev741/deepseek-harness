@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import InvariantRegistry from '@knyazevai/dsh-invariants'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
 import * as ForkSessionSourceInvariant from '../src/invariant.ts'
 
 const activeContexts: Context[] = []
@@ -106,7 +106,7 @@ describe('fork session source invariant', () => {
 
     await expect(ctx.plugin(ForkSessionSourceInvariant).then(() => undefined)).rejects.toMatchObject({
       code: 'INVARIANT',
-      packageName: '@deepseek-ai/dsh-fork-session-source',
+      packageName: '@knyazevai/dsh-fork-session-source',
     })
   })
 
@@ -136,7 +136,7 @@ describe('fork session source invariant', () => {
 
     await expect(ctx.plugin(ForkSessionSourceInvariant).then(() => undefined)).rejects.toMatchObject({
       code: 'INVARIANT',
-      packageName: '@deepseek-ai/dsh-fork-session-source',
+      packageName: '@knyazevai/dsh-fork-session-source',
     })
   })
 })

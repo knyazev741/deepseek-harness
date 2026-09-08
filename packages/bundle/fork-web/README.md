@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-fork-web`
+# `@knyazevai/dsh-fork-web`
 
 English | [中文](README.zh.md)
 

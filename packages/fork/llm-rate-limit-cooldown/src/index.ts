@@ -9,12 +9,12 @@
  * `maxRetries`. Everything else delegates through `next()`, leaving fast
  * backoff and unbounded `always` policy ownership to `dsh-llm-retry`.
  *
- * @module @deepseek-ai/dsh-fork-llm-rate-limit-cooldown
+ * @module @knyazevai/dsh-fork-llm-rate-limit-cooldown
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import { createEscalator } from './escalator.ts'
 
 /** Cordis plugin name used by loader diagnostics. */

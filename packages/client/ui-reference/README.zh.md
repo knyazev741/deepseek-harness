@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-client-ui-reference`
+# `@knyazevai/dsh-client-ui-reference`
 
 [English](README.md) | 中文
 
@@ -12,7 +12,7 @@
 
 ## 模型体验
 
-间接影响模型体验：路径指引由 `@deepseek-ai/dsh-file-reference-local` 提供，准备后的会话快照由 `@deepseek-ai/dsh-session-reference` 提供。
+间接影响模型体验：路径指引由 `@knyazevai/dsh-file-reference-local` 提供，准备后的会话快照由 `@knyazevai/dsh-session-reference` 提供。
 
 #### KV 缓存影响
 

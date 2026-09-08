@@ -2,7 +2,7 @@
  * Public records for exact reads and relationship traces over the
  * live-preferred logical session corpus.
  *
- * @module @deepseek-ai/dsh-session-query/types
+ * @module @knyazevai/dsh-session-query/types
  */
 
 import type {
@@ -11,8 +11,8 @@ import type {
   SessionHeader,
   SessionId,
   SurfaceEvent,
-} from '@deepseek-ai/dsh-session'
-import type { SessionTitleSnapshot } from '@deepseek-ai/dsh-session-title'
+} from '@knyazevai/dsh-session'
+import type { SessionTitleSnapshot } from '@knyazevai/dsh-session-title'
 import type { SessionSearchCursor } from './cursor.ts'
 
 export type { SessionSearchCursor } from './cursor.ts'

@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-user-questions
+# @knyazevai/dsh-user-questions
 
 [English](README.md) | 中文
 
@@ -30,7 +30,7 @@
 
 ## 职责
 
-这是 Service Definition 包。`@deepseek-ai/dsh-tool-ask-user` 等 Consumer 依赖此服务；Web 宿主运行时提供随产品交付的 Service Provider。循环保持不变：工具调用等待 Promise，工具结果随后恢复正常的 agent loop（智能体循环）。
+这是 Service Definition 包。`@knyazevai/dsh-tool-ask-user` 等 Consumer 依赖此服务；Web 宿主运行时提供随产品交付的 Service Provider。循环保持不变：工具调用等待 Promise，工具结果随后恢复正常的 agent loop（智能体循环）。
 
 ## 模型体验
 

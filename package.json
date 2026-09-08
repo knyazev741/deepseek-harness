@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-root",
+  "name": "@knyazevai/dsh-root",
   "version": "0.1.4",
   "license": "MIT",
   "private": true,
@@ -23,7 +23,7 @@
     "build:lib": "npm run build:lib:host && npm run build:lib:client",
     "build:lib:host": "tsc -b tsconfig.host.json && tsdown --env.DSH_BUILD_FACE host",
     "build:lib:client": "tsc -b tsconfig.client.json && tsdown --env.DSH_BUILD_FACE client",
-    "build:web": "pnpm --filter @deepseek-ai/dsh-web-frontend run build",
+    "build:web": "pnpm --filter @knyazevai/dsh-web-frontend run build",
     "clean": "tsx scripts/clean.ts",
     "change-scope": "tsx scripts/change-scope.ts",
     "typecheck": "npm run build:lib:host && npm run typecheck:contracts-ready",
@@ -153,8 +153,8 @@
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "0.25.1",
-    "@deepseek-ai/dsh": "workspace:*",
-    "@deepseek-ai/dsh-tool-session-query": "workspace:^",
+    "@knyazevai/dsh": "workspace:*",
+    "@knyazevai/dsh-tool-session-query": "workspace:^",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",

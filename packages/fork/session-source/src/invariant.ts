@@ -1,10 +1,10 @@
 /** Runtime invariant companion for the GitHub Actions session-source marker. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { InvariantFailure, InvariantInstaller } from '@knyazevai/dsh-invariants'
+import type { Session, SessionEvent } from '@knyazevai/dsh-session'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-fork-session-source'
+const PACKAGE_NAME = '@knyazevai/dsh-fork-session-source'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'fork-session-source-invariant'

@@ -5,7 +5,7 @@
  * `./types` for host consumers, `./client` for client aggregates — with zero
  * content duplication.
  *
- * @module @deepseek-ai/dsh-plan-mode/types
+ * @module @knyazevai/dsh-plan-mode/types
  */
 
 /**
@@ -21,7 +21,7 @@ export interface PlanProjection {
   pending: boolean
 }
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
+declare module '@knyazevai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     /** Plan collaboration state folded from the plan command lifecycle and `plan/mode` events. */
     plan: PlanProjection

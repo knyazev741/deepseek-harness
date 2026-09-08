@@ -2,12 +2,12 @@ import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { apply, inject } from '@deepseek-ai/dsh-client-ui-workspace/client'
-import * as workspaceClient from '@deepseek-ai/dsh-client-ui-workspace/client'
-import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@deepseek-ai/dsh-client-ui-workspace/client'
-import type { WorkspaceListView } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import { SlotRegistry } from '@knyazevai/dsh-client-runtime/client'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
+import { apply, inject } from '@knyazevai/dsh-client-ui-workspace/client'
+import * as workspaceClient from '@knyazevai/dsh-client-ui-workspace/client'
+import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@knyazevai/dsh-client-ui-workspace/client'
+import type { WorkspaceListView } from '@knyazevai/dsh-client-ui-workspace/client'
 import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
 import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
 
@@ -154,7 +154,7 @@ describe('ui-workspace apply', () => {
       await b.ctx.plugin(Loader)
       b.ctx.loader.builtins.include = Include
       const modules = new Map<string, unknown>([
-        ['@deepseek-ai/dsh-client-ui-workspace', workspaceClient],
+        ['@knyazevai/dsh-client-ui-workspace', workspaceClient],
         ['@fixture/workspace-contributor', contributor],
       ])
       b.ctx.loader.internal = {

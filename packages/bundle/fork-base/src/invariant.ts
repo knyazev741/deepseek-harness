@@ -1,12 +1,12 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-fork-base`.
- * @module @deepseek-ai/dsh-fork-base/invariant
+ * Package-owned invariant companion for `@knyazevai/dsh-fork-base`.
+ * @module @knyazevai/dsh-fork-base/invariant
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-fork-base'
+const PACKAGE_NAME = '@knyazevai/dsh-fork-base'
 
 /** Cordis companion plugin name. */
 export const name = 'fork-base-bundle-invariant'

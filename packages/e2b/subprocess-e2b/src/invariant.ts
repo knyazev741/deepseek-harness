@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-subprocess-e2b`.
- * @module @deepseek-ai/dsh-subprocess-e2b/invariant
+ * Package-owned invariant companion for `@knyazevai/dsh-subprocess-e2b`.
+ * @module @knyazevai/dsh-subprocess-e2b/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-subprocess-e2b'
+const PACKAGE_NAME = '@knyazevai/dsh-subprocess-e2b'
 
 /** Cordis companion plugin name. */
 export const name = 'subprocess-e2b-invariant'

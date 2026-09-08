@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-code-runtime-python
+# @knyazevai/dsh-code-runtime-python
 
 English | [中文](README.zh.md)
 
-CPython-subprocess implementation of the [`@deepseek-ai/dsh-code-runtime`](../code-runtime/README.md) seam. Companion to [`@deepseek-ai/dsh-code-runtime-worker-thread`](../code-runtime-worker-thread/README.md); trades the Node worker thread for a fresh `python3` subprocess so model code is Python instead of TypeScript.
+CPython-subprocess implementation of the [`@knyazevai/dsh-code-runtime`](../code-runtime/README.md) seam. Companion to [`@knyazevai/dsh-code-runtime-worker-thread`](../code-runtime-worker-thread/README.md); trades the Node worker thread for a fresh `python3` subprocess so model code is Python instead of TypeScript.
 
 The package owns the wire protocol for that seam: the host-side frame codec and the Python-side mirror of the same message vocabulary.
 

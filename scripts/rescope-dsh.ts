@@ -9,6 +9,8 @@ const TARGET_PREFIX = '@knyazevai/dsh'
 const EXCLUDED_PREFIXES = [
   'vendor/',
   '.agents/notes/',
+  '.fork/migration/',
+  '.superpowers/sdd/',
   'docs/superpowers/specs/',
   'docs/superpowers/plans/',
 ] as const
@@ -16,7 +18,12 @@ const EXCLUDED_SEGMENTS = ['/lib/', '/dist/', '/node_modules/'] as const
 const TEXT_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.mjs', '.cjs', '.json', '.jsonl', '.yml', '.yaml', '.md', '.py', '.snap',
 ])
-const EXCLUDED_FILES = ['scripts/rescope-dsh.ts', 'scripts/rescope-dsh.spec.ts'] as const
+const EXCLUDED_FILES = [
+  'scripts/rescope-dsh.ts',
+  'scripts/rescope-dsh.spec.ts',
+  'scripts/rescope-vendor.ts',
+  'scripts/rescope-vendor.spec.ts',
+] as const
 
 /**
  * Whether a repository-relative tracked path is eligible for the DSH rescope.

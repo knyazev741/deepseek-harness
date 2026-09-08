@@ -11,9 +11,9 @@ import {
   HoverCard, IconArchiveOutline20, IconBranchOutline16, IconEditOutline16,
   IconEllipsisOutline16, IconFolderClose16, IconFolderOpen16, IconPlusOutline16,
   IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
-import { abbreviateHomePath } from '@deepseek-ai/dsh-client-runtime/client'
+} from '@knyazevai/dsh-client-ui-primitives'
+import type { StateDotState } from '@knyazevai/dsh-client-ui-primitives'
+import { abbreviateHomePath } from '@knyazevai/dsh-client-runtime/client'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { WorkspaceSessionRowContext, WorkspaceSessionRowMenuContext } from '../contract/contributions.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'

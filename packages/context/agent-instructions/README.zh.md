@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-agent-instructions
+# @knyazevai/dsh-agent-instructions
 
 [English](README.md) | 中文
 

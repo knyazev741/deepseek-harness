@@ -1,12 +1,12 @@
 /**
  * Load-time validation and routed-model policy resolution for compaction-basic.
  *
- * @module @deepseek-ai/dsh-compaction-basic/config
+ * @module @knyazevai/dsh-compaction-basic/config
  */
 
-import { deepFreeze } from '@deepseek-ai/dsh-llm'
-import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { deepFreeze } from '@knyazevai/dsh-llm'
+import type { LlmCallConfig } from '@knyazevai/dsh-llm'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import type {
   BasicCompactionConfig,
   CompactionPolicyConfig,

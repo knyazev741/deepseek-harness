@@ -59,10 +59,10 @@ describe('dsh-fork-web bundle', () => {
     expect(manifest.private).toBe(true)
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.dependencies).toMatchObject({
-      '@deepseek-ai/dsh-base': 'workspace:^',
-      '@deepseek-ai/dsh-web-app': 'workspace:^',
-      '@deepseek-ai/dsh-fork-base': 'workspace:^',
-      '@deepseek-ai/dsh-fork-ui-workspace-overlay': 'workspace:^',
+      '@knyazevai/dsh-base': 'workspace:^',
+      '@knyazevai/dsh-web-app': 'workspace:^',
+      '@knyazevai/dsh-fork-base': 'workspace:^',
+      '@knyazevai/dsh-fork-ui-workspace-overlay': 'workspace:^',
     })
   })
 
@@ -72,7 +72,7 @@ describe('dsh-fork-web bundle', () => {
     expect(Object.keys(patches[0] ?? {})).toEqual(['insert'])
     const rows = flattenInsertRows(patches)
     expect(rows.map(row => row.id)).toEqual(['ui-workspace-overlay'])
-    expect(rows.map(row => row.name)).toEqual(['@deepseek-ai/dsh-fork-ui-workspace-overlay'])
+    expect(rows.map(row => row.name)).toEqual(['@knyazevai/dsh-fork-ui-workspace-overlay'])
   })
 
   it('leaves the default Web profile free of fork rows', () => {
@@ -104,10 +104,10 @@ describe('dsh-fork-web bundle', () => {
     expect(Object.fromEntries(rows
       .filter(row => ['ui-theme', 'client-runtime', 'ui-conversation', 'ui-workspace'].includes(row.id))
       .map(row => [row.id, row.name]))).toEqual({
-      'client-runtime': '@deepseek-ai/dsh-client-runtime',
-      'ui-conversation': '@deepseek-ai/dsh-client-ui-conversation',
-      'ui-theme': '@deepseek-ai/dsh-client-ui-theme',
-      'ui-workspace': '@deepseek-ai/dsh-client-ui-workspace',
+      'client-runtime': '@knyazevai/dsh-client-runtime',
+      'ui-conversation': '@knyazevai/dsh-client-ui-conversation',
+      'ui-theme': '@knyazevai/dsh-client-ui-theme',
+      'ui-workspace': '@knyazevai/dsh-client-ui-workspace',
     })
   })
 })

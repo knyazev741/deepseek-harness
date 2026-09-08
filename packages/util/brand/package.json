@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-brand",
+  "name": "@knyazevai/dsh-brand",
   "description": "Type-only Branded<B> nominal-typing primitive for the DeepSeek Harness",
   "version": "0.1.4",
   "publishConfig": {
@@ -32,11 +32,11 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   }
 }

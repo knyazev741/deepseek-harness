@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-sdk-jsonrpc-server
+# @knyazevai/dsh-sdk-jsonrpc-server
 
 English | [中文](README.zh.md)
 

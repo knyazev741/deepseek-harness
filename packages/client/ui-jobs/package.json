@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-jobs",
+  "name": "@knyazevai/dsh-client-ui-jobs",
   "description": "Session-header background-job list: live registry state mirrored from session/jobs frames",
   "version": "0.1.4",
   "type": "module",
@@ -24,10 +24,10 @@
   "dsh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-ui-primitives"
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-runtime",
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-primitives"
       ],
       "platform": "web"
     }
@@ -46,20 +46,20 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-locale": "workspace:^",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-conversation": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-client-locale": "workspace:^",
+    "@knyazevai/dsh-client-runtime": "workspace:^",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-client-locale": "workspace:^",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-test-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-conversation": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-client-locale": "workspace:^",
+    "@knyazevai/dsh-client-runtime": "workspace:^",
+    "@knyazevai/dsh-client-test-runtime": "workspace:^",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
+    "@knyazevai/dsh-client-ui-slots": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@types/react": "~18.3.1",
     "@deepseek-ai/cordis": "workspace:^",
     "react": "^18.2.0"

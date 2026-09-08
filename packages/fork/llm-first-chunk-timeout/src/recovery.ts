@@ -8,14 +8,14 @@
  * retry/cooldown policy; if no downstream policy claims the error, the
  * original `FIRST_CHUNK_TIMEOUT` ends the turn without queuing a continuation.
  *
- * @module @deepseek-ai/dsh-fork-llm-first-chunk-timeout
+ * @module @knyazevai/dsh-fork-llm-first-chunk-timeout
  */
 
 import type { Context, Events } from '@deepseek-ai/cordis'
-import type { RequestErrorAction } from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-agent-presets'
-import type {} from '@deepseek-ai/dsh-compaction'
-import { createUserMessage } from '@deepseek-ai/dsh-llm/message'
+import type { RequestErrorAction } from '@knyazevai/dsh-agent'
+import type {} from '@knyazevai/dsh-agent-presets'
+import type {} from '@knyazevai/dsh-compaction'
+import { createUserMessage } from '@knyazevai/dsh-llm/message'
 
 /** Provider-neutral code emitted when this plugin's first-read timer wins. */
 export const FIRST_CHUNK_TIMEOUT_CODE = 'FIRST_CHUNK_TIMEOUT'

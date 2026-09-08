@@ -3,7 +3,7 @@
  * timestamps and hook duration while preserving event payloads.
  * Request-header scrubbers stay composable so one scenario per header class can pin prompt and
  * tool-schema sidecars.
- * @module @deepseek-ai/dsh-acp-snapshot/normalize
+ * @module @knyazevai/dsh-acp-snapshot/normalize
  */
 
 const SESSION_ID = '{{sessionId}}'

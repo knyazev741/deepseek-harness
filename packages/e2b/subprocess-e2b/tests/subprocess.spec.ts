@@ -7,14 +7,14 @@ import {
   type CommandHandle,
   type CommandResult,
   type Sandbox,
-} from '@deepseek-ai/dsh-e2b'
-import type E2BRuntime from '@deepseek-ai/dsh-e2b'
-import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
-import E2BSubprocessRuntime from '@deepseek-ai/dsh-subprocess-e2b'
+} from '@knyazevai/dsh-e2b'
+import type E2BRuntime from '@knyazevai/dsh-e2b'
+import type { SubprocessSpawnSpec } from '@knyazevai/dsh-subprocess'
+import E2BSubprocessRuntime from '@knyazevai/dsh-subprocess-e2b'
 import * as E2BSubprocessInvariant from '../src/invariant.ts'
 import { E2BBase64Decoder, E2B_OUTPUT_COMPLETE_FRAME, E2BOutputReader } from '../src/output.ts'
 import { E2BSubprocessHandle } from '../src/process.ts'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import InvariantRegistry from '@knyazevai/dsh-invariants'
 import { describe, expect, it, vi } from 'vitest'
 
 function commandError(exitCode: number): CommandExitError {

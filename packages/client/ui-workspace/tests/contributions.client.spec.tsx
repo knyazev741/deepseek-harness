@@ -2,12 +2,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Context } from '@deepseek-ai/cordis'
-import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
+import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
 import type {
   SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceListState, WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+} from '@knyazevai/dsh-client-runtime/client'
+import { bindSnapshotSelector, makeTranslate } from '@knyazevai/dsh-client-test-runtime'
+import { zh as commonZh } from '@knyazevai/dsh-client-locale/src/locales/zh.ts'
 import type { WorkspaceBrowserProps } from '../src/client/contract/slots.ts'
 import type { WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext } from '../src/client/contract/contributions.ts'
 import { WorkspaceContributionsRuntime } from '../src/client/contributions.ts'

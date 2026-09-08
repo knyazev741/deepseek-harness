@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-attachment",
+  "name": "@knyazevai/dsh-client-ui-attachment",
   "description": "Dynamic attachment presentation plugin for conversation input and message-image slots",
   "version": "0.1.4",
   "publishConfig": {
@@ -32,7 +32,7 @@
   "dsh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-ui-conversation"
+        "@knyazevai/dsh-client-ui-conversation"
       ],
       "platform": "web"
     }
@@ -47,16 +47,16 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.0",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-conversation": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
+    "@knyazevai/dsh-client-runtime": "workspace:^",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
+    "@knyazevai/dsh-client-ui-slots": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@deepseek-ai/dsh-attachment": "workspace:^"
+    "@knyazevai/dsh-attachment": "workspace:^"
   },
   "files": [
     "lib/index.js",
@@ -66,9 +66,9 @@
   ],
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-conversation": "workspace:^",
-    "@deepseek-ai/dsh-attachment": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-client-runtime": "workspace:^",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
+    "@knyazevai/dsh-attachment": "workspace:^"
   }
 }

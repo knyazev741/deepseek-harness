@@ -5,7 +5,7 @@
  * (like `dsh-bash-local`'s `run.ts`) so the filesystem behavior is unit-testable
  * without a `ctx` and without the OS temp dir.
  *
- * @module @deepseek-ai/dsh-spill-local/store
+ * @module @knyazevai/dsh-spill-local/store
  */
 
 import { createHash, randomBytes } from 'node:crypto'

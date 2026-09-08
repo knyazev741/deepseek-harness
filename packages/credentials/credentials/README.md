@@ -22,7 +22,7 @@ The key is `<scope>/<id>`, where `scope` is the **owning plugin's registered nam
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import { credentialKey, credentialRef } from '@deepseek-ai/dsh-credentials'
+import { credentialKey, credentialRef } from '@knyazevai/dsh-credentials'
 
 declare const ctx: Context
 

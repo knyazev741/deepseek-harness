@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-fork-base`
+# `@knyazevai/dsh-fork-base`
 
 [English](README.md) | 中文
 
-可选的 Host fork 组合包：[`cordis.patch.yml`](cordis.patch.yml) 在 [`dsh-base`](../base/README.zh.md) 之后插入四个由独立包拥有的 fork 包，并以可移植的 Knyazev AI 默认值覆盖上游模型行。当部署需要 fork Host 能力和 Knyazev AI 路由时，将此组合包添加到 `@deepseek-ai/dsh-base` 之后。
+可选的 Host fork 组合包：[`cordis.patch.yml`](cordis.patch.yml) 在 [`dsh-base`](../base/README.zh.md) 之后插入四个由独立包拥有的 fork 包，并以可移植的 Knyazev AI 默认值覆盖上游模型行。当部署需要 fork Host 能力和 Knyazev AI 路由时，将此组合包添加到 `@knyazevai/dsh-base` 之后。
 
 ## 组合方式
 

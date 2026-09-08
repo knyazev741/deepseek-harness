@@ -10,8 +10,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   RpcResult, SessionId, SubagentAddress,
-} from '@deepseek-ai/dsh-api-remotes/client'
-import type { HostObservable, SessionMaybeProvideInfo } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@knyazevai/dsh-api-remotes/client'
+import type { HostObservable, SessionMaybeProvideInfo } from '@knyazevai/dsh-client-ui-slots'
 import type { AgentContext } from '../agents/scope.ts'
 import type { SessionSearchResultItem } from '../sessions/manager.ts'
 import type {

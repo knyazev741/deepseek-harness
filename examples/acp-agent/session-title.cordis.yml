@@ -8,7 +8,7 @@
     patches:
       - insert:
           - id: session-title-provider
-            name: '@deepseek-ai/dsh-session-title-first-prompt-llm'
+            name: '@knyazevai/dsh-session-title-first-prompt-llm'
             config:
               targetWords: 5
               targetCjkCharacters: 10

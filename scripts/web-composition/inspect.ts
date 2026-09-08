@@ -5,22 +5,22 @@ import { resolve, sep } from 'node:path'
 import type { WebCompositionEvidence, WebCompositionProfile } from './types.ts'
 
 /** Browser module id required before the Vite shell can create its module system. */
-export const BOOTSTRAP_MODULE_ID = '@deepseek-ai/dsh-client-modules'
+export const BOOTSTRAP_MODULE_ID = '@knyazevai/dsh-client-modules'
 
 /** Theme package id expected in every assembled Web boot graph. */
-export const THEME_PLUGIN_ID = '@deepseek-ai/dsh-client-ui-theme'
+export const THEME_PLUGIN_ID = '@knyazevai/dsh-client-ui-theme'
 
 /** Upstream client ids whose absence would leave the assembled shell incomplete. */
 export const REQUIRED_UPSTREAM_PLUGIN_IDS: readonly string[] = [
   BOOTSTRAP_MODULE_ID,
-  '@deepseek-ai/dsh-client-runtime',
-  '@deepseek-ai/dsh-client-ui-conversation',
+  '@knyazevai/dsh-client-runtime',
+  '@knyazevai/dsh-client-ui-conversation',
   THEME_PLUGIN_ID,
-  '@deepseek-ai/dsh-client-ui-workspace',
+  '@knyazevai/dsh-client-ui-workspace',
 ]
 
 /** Fork browser package mounted by the opt-in fork Web composition. */
-export const FORK_WORKSPACE_OVERLAY_ID = '@deepseek-ai/dsh-fork-ui-workspace-overlay'
+export const FORK_WORKSPACE_OVERLAY_ID = '@knyazevai/dsh-fork-ui-workspace-overlay'
 
 interface BootEntry {
   readonly id: string

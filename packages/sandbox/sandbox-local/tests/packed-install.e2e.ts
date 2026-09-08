@@ -125,7 +125,7 @@ describe.skipIf(!packable)('sandbox-local: packed-tarball distribution (publish-
       import { existsSync } from 'node:fs'
       import { Context } from '@deepseek-ai/cordis'
       import { launcherPath } from '@deepseek-ai/node-addon-landlock-run'
-      import { LocalSandboxProvider } from '@deepseek-ai/dsh-sandbox-local'
+      import { LocalSandboxProvider } from '@knyazevai/dsh-sandbox-local'
       const ctx = new Context()
       await ctx.plugin(LocalSandboxProvider, {})
       const sandbox = ctx.sandbox

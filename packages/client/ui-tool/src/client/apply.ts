@@ -1,7 +1,7 @@
 /** Register the Tool call tree, details renderer, and built-in atomic views. */
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ConnectionHandle } from '@knyazevai/dsh-client-connection/client'
+import type { ClientContext } from '@knyazevai/dsh-client-runtime/client'
+import type {} from '@knyazevai/dsh-client-ui-conversation/client'
 import { ToolCallTree } from './tool/ToolCallTree.tsx'
 import { ToolDetails } from './tool/ToolDetails.tsx'
 import { CONVERSATION_NS as NS } from './locale.ts'

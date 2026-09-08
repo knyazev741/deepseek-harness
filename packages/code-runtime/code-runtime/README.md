@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-code-runtime
+# @knyazevai/dsh-code-runtime
 
 English | [中文](README.zh.md)
 

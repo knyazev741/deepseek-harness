@@ -2,9 +2,9 @@
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
+const PACKAGE_NAME = '@knyazevai/dsh-fork-llm-first-chunk-timeout'
 
 /** Cordis plugin name used by invariant diagnostics. */
 export const name = 'fork-llm-first-chunk-timeout-invariant'

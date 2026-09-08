@@ -10,12 +10,12 @@
     patches:
       - insert:
           - id: web
-            name: '@deepseek-ai/dsh-web'
+            name: '@knyazevai/dsh-web'
           - id: web-fetch-http
-            name: '@deepseek-ai/dsh-web-fetch-http'
+            name: '@knyazevai/dsh-web-fetch-http'
           - id: web-fetch-fixture
             name: './web-fetch-fixture-server.mjs'
           - id: tool-web
-            name: '@deepseek-ai/dsh-tool-web'
+            name: '@knyazevai/dsh-tool-web'
             config:
               search: false

@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-jobs
+# @knyazevai/dsh-jobs
 
 English | [中文](README.zh.md)
 

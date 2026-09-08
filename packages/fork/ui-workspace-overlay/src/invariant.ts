@@ -2,9 +2,9 @@
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-fork-ui-workspace-overlay'
+const PACKAGE_NAME = '@knyazevai/dsh-fork-ui-workspace-overlay'
 
 /** Cordis companion plugin name. */
 export const name = 'fork-ui-workspace-overlay-invariant'

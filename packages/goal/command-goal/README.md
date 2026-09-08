@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-command-goal
+# @knyazevai/dsh-command-goal
 
 English | [中文](README.zh.md)
 
@@ -27,11 +27,11 @@ The producer injects `commands` and `goals`. A custom app mounts their owners pl
 
 ```yaml
 - id: commands
-  name: '@deepseek-ai/dsh-commands'
+  name: '@knyazevai/dsh-commands'
 - id: goal
-  name: '@deepseek-ai/dsh-goal'
+  name: '@knyazevai/dsh-goal'
 - id: command-goal
-  name: '@deepseek-ai/dsh-command-goal'
+  name: '@knyazevai/dsh-command-goal'
 ```
 
 The shipped `dsh` base enables the persisted-goal stack and this command; the Web client provides its interactive adapter. The ACP automation app enables the domain and model tools without a command adapter; `goals: false` removes that stack. The UI-less `agent-spine-demo` requires an explicit `goals: {}` so headless one-shot callers do not silently change from one physical turn to a multi-round operation.

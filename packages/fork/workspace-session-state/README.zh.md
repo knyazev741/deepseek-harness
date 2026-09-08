@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-workspace-session-state
+# @knyazevai/dsh-fork-workspace-session-state
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@
 
 ```yaml
 - id: fork-workspace-session-state
-  name: '@deepseek-ai/dsh-fork-workspace-session-state'
+  name: '@knyazevai/dsh-fork-workspace-session-state'
 ```
 
 服务等待 `settings` 和 `workspaceRegistry`。它使用的 Settings 命名空间严格为 `fork-workspace-session-state`，持久化值为 `{ pins: { sessionIds: string[] } }`。Settings 描述符 revision 是服务暴露的唯一 revision。

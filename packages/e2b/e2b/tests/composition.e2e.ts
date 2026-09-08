@@ -3,19 +3,19 @@ import { join, posix } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
-import { Inbox } from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
+import { Inbox } from '@knyazevai/dsh-agent'
+import type { Agent } from '@knyazevai/dsh-agent'
+import { runLoaderSmoke } from '@knyazevai/dsh-loader-smoke'
 import {
   FileNotFoundError,
   Sandbox,
   SandboxNotFoundError,
-} from '@deepseek-ai/dsh-e2b'
-import TerminalSessionService, { TerminalSessionId } from '@deepseek-ai/dsh-terminal'
-import { BashTerminalBackend } from '@deepseek-ai/dsh-terminal-bash'
-import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import E2BSubprocessRuntime from '@deepseek-ai/dsh-subprocess-e2b'
+} from '@knyazevai/dsh-e2b'
+import TerminalSessionService, { TerminalSessionId } from '@knyazevai/dsh-terminal'
+import { BashTerminalBackend } from '@knyazevai/dsh-terminal-bash'
+import SandboxPolicyService from '@knyazevai/dsh-sandbox-policy'
+import { Session, SessionId } from '@knyazevai/dsh-session'
+import E2BSubprocessRuntime from '@knyazevai/dsh-subprocess-e2b'
 
 const fixtureRoot = fileURLToPath(new URL('../../../../examples/headless-agent/tests/fixtures/e2b/e2b/', import.meta.url))
 const binScript = join(fixtureRoot, 'bin.ts')

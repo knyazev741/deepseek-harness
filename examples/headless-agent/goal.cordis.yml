@@ -6,6 +6,6 @@
     patches:
       - insert:
           - id: goal
-            name: '@deepseek-ai/dsh-goal'
+            name: '@knyazevai/dsh-goal'
           - id: tool-goal
-            name: '@deepseek-ai/dsh-tool-goal'
+            name: '@knyazevai/dsh-tool-goal'

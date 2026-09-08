@@ -4,7 +4,7 @@
  * {@link ExternalSessionModeMap}; this package owns no provider protocol,
  * transcript vocabulary, process lifecycle, or default registration.
  *
- * @module @deepseek-ai/dsh-fork-external-session
+ * @module @knyazevai/dsh-fork-external-session
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'

@@ -1,6 +1,6 @@
 /**
  * SQLite schema ownership and durable-row validation.
- * @module @deepseek-ai/dsh-session-persistence-sqlite/schema
+ * @module @knyazevai/dsh-session-persistence-sqlite/schema
  */
 
 import { randomUUID } from 'node:crypto'
@@ -11,7 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import {
   SessionId,
   type SessionHeader,
-} from '@deepseek-ai/dsh-session'
+} from '@knyazevai/dsh-session'
 import { sql } from './sql.ts'
 
 /** Current physical-record schema with packed and compressed event rows. */

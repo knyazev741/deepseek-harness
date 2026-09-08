@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-llm-first-chunk-timeout
+# @knyazevai/dsh-fork-llm-first-chunk-timeout
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@
 
 ```yaml
 - id: fork-llm-first-chunk-timeout
-  name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
+  name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'
   config:
     firstChunkIdleTimeoutMs: 120000
     maxFirstChunkCompactionRetries: 100

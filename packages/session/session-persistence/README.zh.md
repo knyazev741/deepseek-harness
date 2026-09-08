@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-session-persistence
+# @knyazevai/dsh-session-persistence
 
 [English](README.md) | 中文
 

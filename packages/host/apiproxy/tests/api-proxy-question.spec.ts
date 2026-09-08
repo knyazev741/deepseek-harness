@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import SessionStore from '@deepseek-ai/dsh-session'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import type { ApiProxy, MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
+import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
+import SessionStore from '@knyazevai/dsh-session'
+import UserQuestionService from '@knyazevai/dsh-user-questions'
+import type { ApiProxy, MuxFrame, RpcRequest } from '@knyazevai/dsh-host-apiproxy/api'
+import { RpcId } from '@knyazevai/dsh-host-apiproxy/api/rpc'
 import { createApiProxy } from '../src/api-proxy.ts'
 
 async function harness(): Promise<{ ctx: Context; api: ApiProxy }> {

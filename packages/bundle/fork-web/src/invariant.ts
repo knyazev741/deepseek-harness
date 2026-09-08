@@ -1,12 +1,12 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-fork-web`.
- * @module @deepseek-ai/dsh-fork-web/invariant
+ * Package-owned invariant companion for `@knyazevai/dsh-fork-web`.
+ * @module @knyazevai/dsh-fork-web/invariant
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-fork-web'
+const PACKAGE_NAME = '@knyazevai/dsh-fork-web'
 
 /** Cordis companion plugin name. */
 export const name = 'fork-web-bundle-invariant'

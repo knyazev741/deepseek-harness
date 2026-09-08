@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-tool-call-timeout-policy`.
- * @module @deepseek-ai/dsh-tool-call-timeout-policy/invariant
+ * Package-owned invariant companion for `@knyazevai/dsh-tool-call-timeout-policy`.
+ * @module @knyazevai/dsh-tool-call-timeout-policy/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-tool-call-timeout-policy'
+const PACKAGE_NAME = '@knyazevai/dsh-tool-call-timeout-policy'
 
 /** Cordis companion plugin name. */
 export const name = 'timeout-policy-invariant'

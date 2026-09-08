@@ -1,6 +1,6 @@
-import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ForkWorkspaceSessionStateView } from '@deepseek-ai/dsh-fork-workspace-session-state/types'
+import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
+import type { SessionId, SessionSummary } from '@knyazevai/dsh-client-runtime/client'
+import type { ForkWorkspaceSessionStateView } from '@knyazevai/dsh-fork-workspace-session-state/types'
 
 /** Versioned browser key for read watermarks. Server pin state never uses this key. */
 export const READ_WATERMARKS_STORAGE_KEY = 'dsh.fork.workspaceReadWatermarks.v1'

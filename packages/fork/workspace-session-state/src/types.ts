@@ -1,8 +1,8 @@
 /** Client-safe request and result vocabulary for workspace session pins.
- * @module @deepseek-ai/dsh-fork-workspace-session-state/types
+ * @module @knyazevai/dsh-fork-workspace-session-state/types
  */
 
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 
 /** Ordered global pin list and its Settings descriptor revision. */
 export interface ForkWorkspaceSessionStateView {

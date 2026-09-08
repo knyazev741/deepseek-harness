@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-fs-e2b
+# @knyazevai/dsh-fs-e2b
 
 [English](README.md) | 中文
 
-[`@deepseek-ai/dsh-fs`](../../fs/fs/README.zh.md) 提供方约定的 E2B 实现。它没有配置：先加载 [`@deepseek-ai/dsh-e2b`](../e2b/README.zh.md)，再用本服务取代 `dsh-fs-local`。该提供方使用所有者的远程 cwd 和 SDK 句柄，因此文件工具观察到的环境与 E2B 后端 Bash 进程相同。
+[`@knyazevai/dsh-fs`](../../fs/fs/README.zh.md) 提供方约定的 E2B 实现。它没有配置：先加载 [`@knyazevai/dsh-e2b`](../e2b/README.zh.md)，再用本服务取代 `dsh-fs-local`。该提供方使用所有者的远程 cwd 和 SDK 句柄，因此文件工具观察到的环境与 E2B 后端 Bash 进程相同。
 
 ## 行为
 

@@ -1,19 +1,19 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { AttachmentId } from '@deepseek-ai/dsh-attachment'
-import BasicCompactionEngine from '@deepseek-ai/dsh-compaction-basic'
-import type { BasicCompactionConfig } from '@deepseek-ai/dsh-compaction-basic'
-import { selectCompactableRange } from '@deepseek-ai/dsh-compaction-basic/src/region.ts'
-import { summarizeWithLlm } from '@deepseek-ai/dsh-compaction-basic/src/summarizer.ts'
-import type { SummarizationInput, SummaryResult } from '@deepseek-ai/dsh-compaction-basic/src/summarizer.ts'
-import { CompactionId, toolPairingBalancedAfter, toolPairingBalancedBefore } from '@deepseek-ai/dsh-compaction'
+import { AttachmentId } from '@knyazevai/dsh-attachment'
+import BasicCompactionEngine from '@knyazevai/dsh-compaction-basic'
+import type { BasicCompactionConfig } from '@knyazevai/dsh-compaction-basic'
+import { selectCompactableRange } from '@knyazevai/dsh-compaction-basic/src/region.ts'
+import { summarizeWithLlm } from '@knyazevai/dsh-compaction-basic/src/summarizer.ts'
+import type { SummarizationInput, SummaryResult } from '@knyazevai/dsh-compaction-basic/src/summarizer.ts'
+import { CompactionId, toolPairingBalancedAfter, toolPairingBalancedBefore } from '@knyazevai/dsh-compaction'
 import {
   resolveCompactSpec,
   resolveConfig,
   resolveTargetPolicy,
-} from '@deepseek-ai/dsh-compaction-basic/src/config.ts'
-import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
-import LlmRuntime, { createUserMessage, CallId, CONTEXT_WINDOW_EXCEEDED_CODE, createToolResultMessage, LlmAdapter, createMessage, ProviderRequestId, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-compaction-basic/src/config.ts'
+import type { CompactionResult } from '@knyazevai/dsh-compaction'
+import LlmRuntime, { createUserMessage, CallId, CONTEXT_WINDOW_EXCEEDED_CODE, createToolResultMessage, LlmAdapter, createMessage, ProviderRequestId, resolveRetryPolicy } from '@knyazevai/dsh-llm'
 import type {
   ContentBlock,
   GenerateOptions,
@@ -23,12 +23,12 @@ import type {
   ResolvedRetryPolicy,
   StreamChunk,
   TokenUsage,
-} from '@deepseek-ai/dsh-llm'
-import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import TokenMeter from '@deepseek-ai/dsh-token-meter'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { agentEvents, type Agent, type RequestErrorAction } from '@deepseek-ai/dsh-agent'
-import ToolResultPruner from '@deepseek-ai/dsh-compaction-tool-result-pruner'
+} from '@knyazevai/dsh-llm'
+import SessionStore, { Session, SessionId } from '@knyazevai/dsh-session'
+import TokenMeter from '@knyazevai/dsh-token-meter'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
+import { agentEvents, type Agent, type RequestErrorAction } from '@knyazevai/dsh-agent'
+import ToolResultPruner from '@knyazevai/dsh-compaction-tool-result-pruner'
 
 const SIGNAL = new AbortController().signal
 const MODEL = 'test-model'

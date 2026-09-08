@@ -1,6 +1,6 @@
 /**
  * Carrier-independent Typert Gateway request, service, and error contracts.
- * @module @deepseek-ai/dsh-api-gateway/types
+ * @module @knyazevai/dsh-api-gateway/types
  */
 
 /** One Remote method request after a carrier has decoded its envelope. */

@@ -25,7 +25,7 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
   })
 
   it('resolves the checkout CLI through npx after workspace installation', async () => {
-    const result = await execa('npx', ['--no-install', '@deepseek-ai/dsh', 'web', '--dump-default-config'], {
+    const result = await execa('npx', ['--no-install', '@knyazevai/dsh', 'web', '--dump-default-config'], {
       cwd: repoRoot,
       env: { ...process.env, DSH_TELEMETRY_DISABLED: 'caller-controlled' },
       timeout: 30_000,
@@ -36,7 +36,7 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
       throw new Error(`npx dsh launch did not exit within 30s. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
     }
     expect(result.exitCode, result.stderr).toBe(0)
-    expect(result.stdout).toContain('@deepseek-ai/dsh-fork-web')
+    expect(result.stdout).toContain('@knyazevai/dsh-fork-web')
   }, 35_000)
 
   it('boots the source entry and requires a profile', async () => {

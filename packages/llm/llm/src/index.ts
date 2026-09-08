@@ -3,7 +3,7 @@
  * API. Exports the `LlmRuntime` default, the abstract `LlmAdapter` for
  * provider backends, and `BlockAssembler` for chunk assembly.
  *
- * @module @deepseek-ai/dsh-llm
+ * @module @knyazevai/dsh-llm
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'

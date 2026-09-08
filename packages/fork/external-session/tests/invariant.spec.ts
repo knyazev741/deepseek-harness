@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import InvariantRegistry from '@knyazevai/dsh-invariants'
 import * as ExternalSessionInvariant from '../src/invariant.ts'
 
 const contexts: Context[] = []
@@ -17,7 +17,7 @@ describe('fork external-session invariant companion', () => {
     const fiber = await ctx.plugin(ExternalSessionInvariant)
 
     expect(() => {
-      ctx.invariants.register('@deepseek-ai/dsh-fork-external-session', () => {})
+      ctx.invariants.register('@knyazevai/dsh-fork-external-session', () => {})
     }).toThrow(/already registered/u)
 
     await fiber.dispose()

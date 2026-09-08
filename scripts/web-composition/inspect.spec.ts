@@ -16,16 +16,16 @@ function fixture(profile: WebCompositionProfile = 'web'): string {
   mkdirSync(join(root, 'assets'), { recursive: true })
   writeFileSync(join(root, 'index.html'), `<!doctype html><html><head>
     <link rel="stylesheet" href="/assets/index.css">
-    <script src="/plugins/@deepseek-ai/dsh-client-modules/client.js?rev=abc"></script>
+    <script src="/plugins/@knyazevai/dsh-client-modules/client.js?rev=abc"></script>
     <script>globalThis["__DSH_BOOT__"] = ${JSON.stringify({
       rev: 'graph',
       entries: [
-        { id: '@deepseek-ai/dsh-client-modules', url: '/plugins/@deepseek-ai/dsh-client-modules/client.js', rev: 'm' },
-        { id: '@deepseek-ai/dsh-client-runtime', url: '/plugins/@deepseek-ai/dsh-client-runtime/client.js', rev: 'r' },
-        { id: '@deepseek-ai/dsh-client-ui-theme', url: '/plugins/@deepseek-ai/dsh-client-ui-theme/client.js', rev: 't' },
-        { id: '@deepseek-ai/dsh-client-ui-conversation', url: '/plugins/@deepseek-ai/dsh-client-ui-conversation/client.js', rev: 'c' },
-        { id: '@deepseek-ai/dsh-client-ui-workspace', url: '/plugins/@deepseek-ai/dsh-client-ui-workspace/client.js', rev: 'w' },
-        ...(profile === 'fork-web' ? [{ id: '@deepseek-ai/dsh-fork-ui-workspace-overlay', url: '/plugins/@deepseek-ai/dsh-fork-ui-workspace-overlay/client.js', rev: 'f' }] : []),
+        { id: '@knyazevai/dsh-client-modules', url: '/plugins/@knyazevai/dsh-client-modules/client.js', rev: 'm' },
+        { id: '@knyazevai/dsh-client-runtime', url: '/plugins/@knyazevai/dsh-client-runtime/client.js', rev: 'r' },
+        { id: '@knyazevai/dsh-client-ui-theme', url: '/plugins/@knyazevai/dsh-client-ui-theme/client.js', rev: 't' },
+        { id: '@knyazevai/dsh-client-ui-conversation', url: '/plugins/@knyazevai/dsh-client-ui-conversation/client.js', rev: 'c' },
+        { id: '@knyazevai/dsh-client-ui-workspace', url: '/plugins/@knyazevai/dsh-client-ui-workspace/client.js', rev: 'w' },
+        ...(profile === 'fork-web' ? [{ id: '@knyazevai/dsh-fork-ui-workspace-overlay', url: '/plugins/@knyazevai/dsh-fork-ui-workspace-overlay/client.js', rev: 'f' }] : []),
       ],
     })}</script>
   </head><body></body></html>`)
@@ -38,15 +38,15 @@ describe('inspectWebComposition', () => {
     const evidence = inspectWebComposition(fixture('fork-web'), 'fork-web')
 
     expect(evidence.cssFiles).toEqual(['assets/index.css'])
-    expect(evidence.bootstrapModule).toBe('@deepseek-ai/dsh-client-modules')
-    expect(evidence.themePluginId).toBe('@deepseek-ai/dsh-client-ui-theme')
+    expect(evidence.bootstrapModule).toBe('@knyazevai/dsh-client-modules')
+    expect(evidence.themePluginId).toBe('@knyazevai/dsh-client-ui-theme')
     expect(evidence.pluginIds).toEqual([
-      '@deepseek-ai/dsh-client-modules',
-      '@deepseek-ai/dsh-client-runtime',
-      '@deepseek-ai/dsh-client-ui-conversation',
-      '@deepseek-ai/dsh-client-ui-theme',
-      '@deepseek-ai/dsh-client-ui-workspace',
-      '@deepseek-ai/dsh-fork-ui-workspace-overlay',
+      '@knyazevai/dsh-client-modules',
+      '@knyazevai/dsh-client-runtime',
+      '@knyazevai/dsh-client-ui-conversation',
+      '@knyazevai/dsh-client-ui-theme',
+      '@knyazevai/dsh-client-ui-workspace',
+      '@knyazevai/dsh-fork-ui-workspace-overlay',
     ])
   })
 
@@ -55,7 +55,7 @@ describe('inspectWebComposition', () => {
     ['missing bootstrap', (root: string) => { writeFileSync(join(root, 'index.html'), '<html><head></head></html>') }, 'bootstrap module'],
     ['missing theme', (root: string) => {
       const path = join(root, 'index.html')
-      writeFileSync(path, readFileSync(path, 'utf8').replace('"@deepseek-ai/dsh-client-ui-theme"', '"@deepseek-ai/dsh-client-ui-missing"'))
+      writeFileSync(path, readFileSync(path, 'utf8').replace('"@knyazevai/dsh-client-ui-theme"', '"@knyazevai/dsh-client-ui-missing"'))
     }, 'upstream plugin id'],
   ])('rejects %s', (_name, mutate, message) => {
     const root = fixture()
@@ -67,13 +67,13 @@ describe('inspectWebComposition', () => {
     const root = fixture('fork-web')
     const htmlPath = join(root, 'index.html')
     const html = readFileSync(htmlPath, 'utf8')
-    writeFileSync(htmlPath, html.replace('"@deepseek-ai/dsh-fork-ui-workspace-overlay"', '"@deepseek-ai/dsh-client-ui-theme"'))
+    writeFileSync(htmlPath, html.replace('"@knyazevai/dsh-fork-ui-workspace-overlay"', '"@knyazevai/dsh-client-ui-theme"'))
     expect(() => inspectWebComposition(root, 'fork-web')).toThrow('duplicate plugin id')
 
-    writeFileSync(htmlPath, html.replace('"@deepseek-ai/dsh-client-ui-workspace"', '"@deepseek-ai/dsh-missing"'))
+    writeFileSync(htmlPath, html.replace('"@knyazevai/dsh-client-ui-workspace"', '"@knyazevai/dsh-missing"'))
     expect(() => inspectWebComposition(root, 'fork-web')).toThrow('upstream plugin id')
 
-    writeFileSync(htmlPath, html.replaceAll('@deepseek-ai/dsh-fork-ui-workspace-overlay', '@deepseek-ai/dsh-client-no-overlay'))
+    writeFileSync(htmlPath, html.replaceAll('@knyazevai/dsh-fork-ui-workspace-overlay', '@knyazevai/dsh-client-no-overlay'))
     expect(() => inspectWebComposition(root, 'fork-web')).toThrow('fork workspace overlay')
   })
 

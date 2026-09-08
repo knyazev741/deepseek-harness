@@ -10,10 +10,10 @@
  * deployment default again, matching the workspace picker beside it.
  */
 
-import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
+import type { IApiClient } from '@knyazevai/dsh-api-remotes/client'
 import {
   createSnapshotStore, type SessionId, type SnapshotStore,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@knyazevai/dsh-client-runtime/client'
 import { messageOf, presetOptions } from './settings-store.ts'
 import type { AgentPresetOption } from './settings-store.ts'
 

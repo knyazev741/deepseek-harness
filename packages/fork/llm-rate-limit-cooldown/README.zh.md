@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-llm-rate-limit-cooldown
+# @knyazevai/dsh-fork-llm-rate-limit-cooldown
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@ Fork 拥有的 LLM 插件，在 `dsh-llm-retry` 的有界预算法尽后让受 p
 
 ```yaml
 - id: fork-llm-rate-limit-cooldown
-  name: '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown'
+  name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
   config:
     cooldownMs: 600000
 ```

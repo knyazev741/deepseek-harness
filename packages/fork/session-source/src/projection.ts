@@ -1,8 +1,8 @@
 /** Projection definition for the durable GitHub Actions session-source marker. */
 
 import { z } from 'zod'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { SessionEvent } from '@knyazevai/dsh-session'
+import type { ProjectionDefinition } from '@knyazevai/dsh-session-projection'
 import type { ForkSessionSource } from './types.ts'
 
 const sourceSchema = z.union([z.literal('github-actions'), z.null()])

@@ -4,8 +4,8 @@
  * component stubs cannot prove per-session identity or disposal.
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
+import type { SessionId } from '@knyazevai/dsh-client-runtime/client'
+import { SlotTestRuntime } from '@knyazevai/dsh-client-test-runtime'
 import { createChatStore } from '../src/client/stores.ts'
 
 const sid = (s: string): SessionId => s as SessionId

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import SessionStore, { Session, SessionId } from '@knyazevai/dsh-session'
+import type { SandboxMode } from '@knyazevai/dsh-sandbox'
+import type { ApprovalPolicy } from '@knyazevai/dsh-user-approval'
 import PermissionPresetService, {
   CUSTOM_PRESET, effectivePermissionPreset, PERMISSION_SETTINGS_NAMESPACE,
-} from '@deepseek-ai/dsh-permission-presets'
-import type { Config } from '@deepseek-ai/dsh-permission-presets'
-import { SettingsProvider } from '@deepseek-ai/dsh-settings'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
+} from '@knyazevai/dsh-permission-presets'
+import type { Config } from '@knyazevai/dsh-permission-presets'
+import { SettingsProvider } from '@knyazevai/dsh-settings'
+import type { SettingsNamespace } from '@knyazevai/dsh-settings'
 
 /** Writable memory provider for the permission/settings lifecycle specs. */
 class MemorySettings extends SettingsProvider {

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
-import type { PropsRuntime, InjectFace, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
-import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsRuntime, InjectFace, HostObservable } from '@knyazevai/dsh-client-ui-slots'
+import { StateDot } from '@knyazevai/dsh-client-ui-primitives'
 import type { WorkspaceOverlaySnapshot } from './store.ts'
 import { lastSequenceOf } from './store.ts'
 

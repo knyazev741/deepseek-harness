@@ -6,14 +6,14 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context, Service } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import { SettingsProvider } from '@deepseek-ai/dsh-settings'
-import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
+import { SessionId } from '@knyazevai/dsh-session'
+import { SettingsProvider } from '@knyazevai/dsh-settings'
+import { remoteMethods } from '@knyazevai/dsh-typert-protocol'
 import ForkWorkspaceSessionState from '../src/index.ts'
 
 const SETTINGS = '@fixture/settings'
 const WORKSPACE = '@fixture/workspace'
-const STATE = '@deepseek-ai/dsh-fork-workspace-session-state'
+const STATE = '@knyazevai/dsh-fork-workspace-session-state'
 const contexts: Context[] = []
 const roots: string[] = []
 

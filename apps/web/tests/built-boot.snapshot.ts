@@ -125,7 +125,7 @@ it('boots the built plugin graph and renders a fixture session end to end', asyn
   // Every bundle injected its plugin-owned style tag (the loader's CSS path).
   const styleOwners = [...document.head.querySelectorAll('style[data-plugin]')]
     .map(style => style.getAttribute('data-plugin'))
-  for (const plugin of ['@deepseek-ai/dsh-client-ui-layout', '@deepseek-ai/dsh-client-ui-sidebar', '@deepseek-ai/dsh-client-ui-conversation', '@deepseek-ai/dsh-client-ui-tool']) {
+  for (const plugin of ['@knyazevai/dsh-client-ui-layout', '@knyazevai/dsh-client-ui-sidebar', '@knyazevai/dsh-client-ui-conversation', '@knyazevai/dsh-client-ui-tool']) {
     expect(styleOwners).toContain(plugin)
   }
 })

@@ -78,7 +78,7 @@ features:
     evidence:
       - packages/subagent/tool-subagent/tests/tool-subagent.spec.ts
     disposition: adapted
-    replacement: Fork-owned @deepseek-ai/dsh-tool-subagent provider/model schema and route-validation patch with focused tool tests and an assembled keyless snapshot; reasoning_effort remains deferred.
+    replacement: Fork-owned @knyazevai/dsh-tool-subagent provider/model schema and route-validation patch with focused tool tests and an assembled keyless snapshot; reasoning_effort remains deferred.
   - id: external-session-generic
     sourceCommits:
       - 3a1558b55e..72ff0d079c

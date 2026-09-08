@@ -3,7 +3,7 @@
  * per-namespace sections; plugins register a namespace schema and read the
  * resolved value, which layers schema defaults, the registrant's composition
  * `base`, and the user document section, in that order.
- * @module @deepseek-ai/dsh-settings
+ * @module @knyazevai/dsh-settings
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'

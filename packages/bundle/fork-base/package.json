@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-fork-base",
+  "name": "@knyazevai/dsh-fork-base",
   "description": "The opt-in Host fork overlay bundle: fork capabilities plus portable Knyazev AI and default-model configuration over dsh-base",
   "version": "0.1.4",
   "publishConfig": {
@@ -39,17 +39,17 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-fork-llm-first-chunk-timeout": "workspace:^",
-    "@deepseek-ai/dsh-fork-llm-rate-limit-cooldown": "workspace:^",
-    "@deepseek-ai/dsh-fork-session-source": "workspace:^",
-    "@deepseek-ai/dsh-fork-workspace-session-state": "workspace:^"
+    "@knyazevai/dsh-fork-llm-first-chunk-timeout": "workspace:^",
+    "@knyazevai/dsh-fork-llm-rate-limit-cooldown": "workspace:^",
+    "@knyazevai/dsh-fork-session-source": "workspace:^",
+    "@knyazevai/dsh-fork-workspace-session-state": "workspace:^"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   }
 }

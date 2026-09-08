@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-workspace-session-state
+# @knyazevai/dsh-fork-workspace-session-state
 
 English | [中文](README.zh.md)
 
@@ -8,7 +8,7 @@ Host service for one ordered pin list shared by the sessions attached to the cur
 
 ```yaml
 - id: fork-workspace-session-state
-  name: '@deepseek-ai/dsh-fork-workspace-session-state'
+  name: '@knyazevai/dsh-fork-workspace-session-state'
 ```
 
 The service waits for `settings` and `workspaceRegistry`. Its Settings namespace is exactly `fork-workspace-session-state`, and the persisted value is `{ pins: { sessionIds: string[] } }`. The Settings descriptor revision is the only revision exposed by the service.

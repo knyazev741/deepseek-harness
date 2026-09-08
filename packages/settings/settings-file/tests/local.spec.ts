@@ -4,8 +4,8 @@ import z from '@deepseek-ai/schemastery'
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import { writeFileAtomic } from '@knyazevai/dsh-atomic-write'
+import { settingsNamespace } from '@knyazevai/dsh-settings'
 import { FileSettingsProvider, resolveSpec } from '../src/index.ts'
 
 interface ThemeConfig {

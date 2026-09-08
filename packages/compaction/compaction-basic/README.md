@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-compaction-basic
+# @knyazevai/dsh-compaction-basic
 
 English | [中文](README.zh.md)
 
-The **basic compaction backend**: a `BasicCompactionEngine` implementing the `@deepseek-ai/dsh-compaction` Service Definition with reusable `ctx.tokenMeter` pressure, token-budget retention, and summarization through direct `ctx.llm.stream()` attempts that replay the conversation prefix to reuse the provider's KV cache (interceptable at `llm/stream`).
+The **basic compaction backend**: a `BasicCompactionEngine` implementing the `@knyazevai/dsh-compaction` Service Definition with reusable `ctx.tokenMeter` pressure, token-budget retention, and summarization through direct `ctx.llm.stream()` attempts that replay the conversation prefix to reuse the provider's KV cache (interceptable at `llm/stream`).
 
 This package owns the Service Provider role of the compaction capability — see the [Service Definition package](../compaction/README.md) for its contract and the [capability-seam Agent Note](../../../.agents/notes/implemented/feature/2026-06-18-compaction-capability-seam.md) for the design.
 
@@ -52,9 +52,9 @@ An adapter may return no capacity for a valid dynamic route, and resolved capaci
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import { BasicCompactionEngine } from '@deepseek-ai/dsh-compaction-basic'
-import SessionStore from '@deepseek-ai/dsh-session'
-import TokenMeter from '@deepseek-ai/dsh-token-meter'
+import { BasicCompactionEngine } from '@knyazevai/dsh-compaction-basic'
+import SessionStore from '@knyazevai/dsh-session'
+import TokenMeter from '@knyazevai/dsh-token-meter'
 
 export const name = 'compaction-basic'
 export const inject = ['llm']
@@ -71,7 +71,7 @@ Loading the plugin registers `ctx.compaction`. Add [`dsh-compaction-tool-result-
 For example, the same compact plugin can safely serve models with different capacities and one target-specific policy:
 
 ```yaml
-- name: '@deepseek-ai/dsh-compaction-basic'
+- name: '@knyazevai/dsh-compaction-basic'
   config:
     thresholdRatio: 0.5
     retainRatio: 0.16

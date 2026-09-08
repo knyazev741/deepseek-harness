@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-session-source
+# @knyazevai/dsh-fork-session-source
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@
 
 ```yaml
 - id: fork-session-source
-  name: '@deepseek-ai/dsh-fork-session-source'
+  name: '@knyazevai/dsh-fork-session-source'
   config:
     enabledWhenEnv: GITHUB_ACTIONS
 ```

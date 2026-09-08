@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-lsp
+# @knyazevai/dsh-lsp
 
 English | [中文](README.zh.md)
 
@@ -8,9 +8,9 @@ This package owns the Service Definition role of the LSP capability:
 
 | Package | Role |
 |---|---|
-| `@deepseek-ai/dsh-lsp` (this) | Service Definition: the service, provider registry keyed by branded id + extension mapping, per-query selection, request/result vocabulary, the `LspError` taxonomy |
-| `@deepseek-ai/dsh-lsp-stdio` | Service Provider: a generic local backend that registers configured stdio language-server providers |
-| `@deepseek-ai/dsh-tool-lsp` | Consumer: the model-facing `lsp` tool over `ctx.lsp` |
+| `@knyazevai/dsh-lsp` (this) | Service Definition: the service, provider registry keyed by branded id + extension mapping, per-query selection, request/result vocabulary, the `LspError` taxonomy |
+| `@knyazevai/dsh-lsp-stdio` | Service Provider: a generic local backend that registers configured stdio language-server providers |
+| `@knyazevai/dsh-tool-lsp` | Consumer: the model-facing `lsp` tool over `ctx.lsp` |
 
 The seam exposes exactly four semantic operations — `goToDefinition`, `findReferences`, `goToImplementation`, `hover` — and no generic JSON-RPC escape hatch, so no protocol payload or unreviewed command/mutation reaches a provider through `ctx.lsp`.
 

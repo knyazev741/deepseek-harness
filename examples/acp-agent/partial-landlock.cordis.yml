@@ -6,7 +6,7 @@
     path: ./cordis.yml
     patches:
       - id: sandbox
-        name: '@deepseek-ai/dsh-sandbox-local'
+        name: '@knyazevai/dsh-sandbox-local'
         disabled: true
       - insert:
           - id: partial-landlock-sandbox

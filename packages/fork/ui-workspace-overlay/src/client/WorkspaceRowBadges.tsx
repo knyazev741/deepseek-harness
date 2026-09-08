@@ -1,6 +1,6 @@
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import { NS } from './locales.ts'
-import type { WorkspaceSessionRowContext } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type { WorkspaceSessionRowContext } from '@knyazevai/dsh-client-ui-workspace/client'
 import css from './workspace-overlay.module.css'
 
 /** Component props supplied by the workspace row badge slot. */

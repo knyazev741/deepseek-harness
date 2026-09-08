@@ -3,7 +3,7 @@
 import {
   LlmAdapter,
   resolveRetryPolicy,
-} from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-llm'
 
 class FirstChunkPressureSnapshotAdapter extends LlmAdapter {
   conversationRequests = 0

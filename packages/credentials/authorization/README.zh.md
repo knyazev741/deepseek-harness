@@ -14,8 +14,8 @@
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import { AuthorizationDeclinedError, type AuthorizationSession } from '@deepseek-ai/dsh-authorization'
-import { credentialKey } from '@deepseek-ai/dsh-credentials'
+import { AuthorizationDeclinedError, type AuthorizationSession } from '@knyazevai/dsh-authorization'
+import { credentialKey } from '@knyazevai/dsh-credentials'
 
 declare const ctx: Context
 declare const exchange: (signal: AbortSignal) => Promise<void>

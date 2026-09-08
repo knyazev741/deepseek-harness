@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-web
+# @knyazevai/dsh-client-web
 
 English | [中文](README.zh.md)
 

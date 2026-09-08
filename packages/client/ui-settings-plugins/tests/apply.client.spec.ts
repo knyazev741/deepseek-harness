@@ -2,15 +2,15 @@
 
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
-import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { apply, inject } from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
+import { resolveSlotLabel } from '@knyazevai/dsh-client-ui-slots'
+import { SlotRegistry } from '@knyazevai/dsh-client-runtime/client'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
+import { TestRemote } from '@knyazevai/dsh-client-test-runtime'
+import { apply as settingsApply, inject as settingsInject } from '@knyazevai/dsh-client-ui-settings/client'
+import { apply, inject } from '@knyazevai/dsh-client-ui-settings-plugins/client'
 import type {
   ConfigurablePluginsTabFace, PluginsSettingsSectionInjected,
-} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
+} from '@knyazevai/dsh-client-ui-settings-plugins/client'
 
 // These specs assert the shipped Chinese copy. The lane has no jsdom `window`,
 // so browser-language detection never runs and a fresh LocaleRuntime opens on

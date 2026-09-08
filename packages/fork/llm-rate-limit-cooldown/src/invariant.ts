@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-fork-llm-rate-limit-cooldown`.
- * @module @deepseek-ai/dsh-fork-llm-rate-limit-cooldown/invariant
+ * Package-owned invariant companion for `@knyazevai/dsh-fork-llm-rate-limit-cooldown`.
+ * @module @knyazevai/dsh-fork-llm-rate-limit-cooldown/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown'
+const PACKAGE_NAME = '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
 
 /** Cordis companion plugin name. */
 export const name = 'llm-rate-limit-cooldown-invariant'

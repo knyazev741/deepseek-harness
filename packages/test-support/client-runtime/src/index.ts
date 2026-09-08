@@ -8,7 +8,7 @@
  * Not part of the product plugin graph (no `dsh.client`); feature packages
  * depend on it in devDependencies only. It copies no SlotCore/renderer/store
  * machinery — everything mounts the production implementations.
- * @module @deepseek-ai/dsh-client-test-runtime
+ * @module @knyazevai/dsh-client-test-runtime
  */
 /* oxlint-disable typescript/no-redundant-type-constituents --
  * `keyof SlotMap & string` is the declare-merge key pattern (see ui-slots):
@@ -24,19 +24,19 @@ import type { queries } from '@testing-library/dom'
 import type { BoundFunctions } from '@testing-library/dom'
 import {
   ConversationEventRegistry, ConversationViewRegistry, SlotRegistry,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { bindSnapshotSelector as bindRendererSnapshotSelector } from '@deepseek-ai/dsh-client-ui-renderer/src/client/bind.ts'
-import { createSlotRenderer as createRenderer } from '@deepseek-ai/dsh-client-ui-renderer/src/client/scoped-slots.tsx'
+} from '@knyazevai/dsh-client-runtime/client'
+import { bindSnapshotSelector as bindRendererSnapshotSelector } from '@knyazevai/dsh-client-ui-renderer/src/client/bind.ts'
+import { createSlotRenderer as createRenderer } from '@knyazevai/dsh-client-ui-renderer/src/client/scoped-slots.tsx'
 import type {
   ChildrenDecl, ComposedProps, HostObservable, OwnerOf, SlotComponent, SlotMap, SlotRenderer,
   SlotRendererHost, SnapshotSelectorHook, StoreInstanceLike,
-} from '@deepseek-ai/dsh-client-ui-slots'
+} from '@knyazevai/dsh-client-ui-slots'
 import { registerDomSnapshotSerializer } from './snapshot.ts'
 import { TestSessions } from './sessions.ts'
 import { TestWorkspaces } from './workspaces.ts'
 import type { Stabilizer } from './fixtures.ts'
 
-export type { UseSession } from '@deepseek-ai/dsh-client-ui-renderer/client'
+export type { UseSession } from '@knyazevai/dsh-client-ui-renderer/client'
 export { domSnapshotSerializer, registerDomSnapshotSerializer } from './snapshot.ts'
 export { FixtureSession, TestSessions } from './sessions.ts'
 export { stubSettingsScope } from './settings-scope.ts'

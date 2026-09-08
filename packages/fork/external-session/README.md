@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-external-session
+# @knyazevai/dsh-fork-external-session
 
 English | [中文](README.zh.md)
 
@@ -9,7 +9,7 @@ Provider-neutral Host registry for opt-in external-session implementations. The 
 The registry is valid with no providers. A later provider package declares its mode and provider type by merging `ExternalSessionModeMap`, then mounts its own plugin and registers the implementation:
 
 ```ts
-declare module '@deepseek-ai/dsh-fork-external-session' {
+declare module '@knyazevai/dsh-fork-external-session' {
   interface ExternalSessionModeMap {
     example: ExampleProvider
   }

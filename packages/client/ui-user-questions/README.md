@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-user-questions
+# @knyazevai/dsh-client-ui-user-questions
 
 English | [中文](README.zh.md)
 

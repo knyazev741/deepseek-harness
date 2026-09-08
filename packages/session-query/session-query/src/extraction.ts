@@ -1,6 +1,6 @@
 /** First-party semantic text extraction for session-query consumers. */
 
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@knyazevai/dsh-session'
 
 /**
  * Extract searchable semantic text from one first-party session event.

@@ -8,22 +8,22 @@
     patches:
       - insert:
           - id: subagent-codex-primary
-            name: '@deepseek-ai/dsh-subagent-codex'
+            name: '@knyazevai/dsh-subagent-codex'
             config:
               providerName: codex-primary
           - id: subagent-codex-secondary
-            name: '@deepseek-ai/dsh-subagent-codex'
+            name: '@knyazevai/dsh-subagent-codex'
             config:
               providerName: codex-secondary
           - id: tool-subagent-codex-primary
-            name: '@deepseek-ai/dsh-tool-subagent'
+            name: '@knyazevai/dsh-tool-subagent'
             config:
               provider: codex-primary
               toolName: subagent_codex_primary
               backgroundMode: one-shot
               maxDepth: provider-managed
           - id: tool-subagent-codex-secondary
-            name: '@deepseek-ai/dsh-tool-subagent'
+            name: '@knyazevai/dsh-tool-subagent'
             config:
               provider: codex-secondary
               toolName: subagent_codex_secondary

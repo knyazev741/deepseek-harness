@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import { SettingsProvider, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
+import { SessionId } from '@knyazevai/dsh-session'
+import { SettingsProvider, settingsNamespace } from '@knyazevai/dsh-settings'
+import { remoteMethods } from '@knyazevai/dsh-typert-protocol'
 import ForkWorkspaceSessionState from '../src/index.ts'
 import type {
   ForkWorkspaceSessionStateSetResult,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import InvariantRegistry from '@knyazevai/dsh-invariants'
 import * as WorkspaceSessionStateInvariant from '../src/invariant.ts'
 
 const contexts: Context[] = []
@@ -17,7 +17,7 @@ describe('fork workspace session state invariant companion', () => {
     const fiber = await ctx.plugin(WorkspaceSessionStateInvariant)
 
     expect(() => {
-      ctx.invariants.register('@deepseek-ai/dsh-fork-workspace-session-state', () => {})
+      ctx.invariants.register('@knyazevai/dsh-fork-workspace-session-state', () => {})
     }).toThrow(/already registered/u)
 
     await fiber.dispose()

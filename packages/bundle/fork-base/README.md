@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-fork-base`
+# `@knyazevai/dsh-fork-base`
 
 English | [中文](README.zh.md)
 
-The opt-in Host fork overlay: [`cordis.patch.yml`](cordis.patch.yml) inserts four independently owned fork packages after [`dsh-base`](../base/README.md) and overrides upstream model rows with portable Knyazev AI defaults. Add this bundle after `@deepseek-ai/dsh-base` when a deployment wants the fork Host capabilities and the Knyazev AI route.
+The opt-in Host fork overlay: [`cordis.patch.yml`](cordis.patch.yml) inserts four independently owned fork packages after [`dsh-base`](../base/README.md) and overrides upstream model rows with portable Knyazev AI defaults. Add this bundle after `@knyazevai/dsh-base` when a deployment wants the fork Host capabilities and the Knyazev AI route.
 
 ## Composition
 

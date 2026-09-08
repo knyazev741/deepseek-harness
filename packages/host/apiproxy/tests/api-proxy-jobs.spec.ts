@@ -9,16 +9,16 @@
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import type { Session } from '@deepseek-ai/dsh-session'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
-import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
-import type { MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
+import AgentRegistry, { Inbox } from '@knyazevai/dsh-agent'
+import type { Agent } from '@knyazevai/dsh-agent'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import type { Session } from '@knyazevai/dsh-session'
+import UserQuestionService from '@knyazevai/dsh-user-questions'
+import LocalJobRegistry from '@knyazevai/dsh-jobs-local'
+import type { JobOutcome } from '@knyazevai/dsh-jobs'
+import type { MuxFrame, RpcRequest } from '@knyazevai/dsh-host-apiproxy/api'
+import { RpcId } from '@knyazevai/dsh-host-apiproxy/api/rpc'
+import { createApiProxy } from '@knyazevai/dsh-host-apiproxy'
 
 type JobFrame = Extract<MuxFrame, { type: 'session/jobs' }>
 

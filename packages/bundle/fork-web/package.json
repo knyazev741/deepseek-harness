@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-fork-web",
+  "name": "@knyazevai/dsh-fork-web",
   "description": "The opt-in fork Web bundle: the upstream browser surface plus fork Host rows and the Workspace UI overlay",
   "version": "0.1.4",
   "publishConfig": {
@@ -39,17 +39,17 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-base": "workspace:^",
-    "@deepseek-ai/dsh-web-app": "workspace:^",
-    "@deepseek-ai/dsh-fork-base": "workspace:^",
-    "@deepseek-ai/dsh-fork-ui-workspace-overlay": "workspace:^"
+    "@knyazevai/dsh-base": "workspace:^",
+    "@knyazevai/dsh-web-app": "workspace:^",
+    "@knyazevai/dsh-fork-base": "workspace:^",
+    "@knyazevai/dsh-fork-ui-workspace-overlay": "workspace:^"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   }
 }

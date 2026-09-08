@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-goal-round-driver
+# @knyazevai/dsh-goal-round-driver
 
 English | [中文](README.zh.md)
 
@@ -8,13 +8,13 @@ Same-session continuation driver for [`ctx.goals`](../goal/README.md). It turns 
 
 ```yaml
 - id: goal
-  name: '@deepseek-ai/dsh-goal'
+  name: '@knyazevai/dsh-goal'
 
 - id: tool-goal
-  name: '@deepseek-ai/dsh-tool-goal'
+  name: '@knyazevai/dsh-tool-goal'
 
 - id: goal-round-driver
-  name: '@deepseek-ai/dsh-goal-round-driver'
+  name: '@knyazevai/dsh-goal-round-driver'
 ```
 
 The plugin has no tunable configuration. `maxGoalRounds` belongs to the goal definition, while the model-facing blocked threshold belongs to [`dsh-tool-goal`](../tool-goal/README.md); duplicating either value in the driver could produce divergent policy.

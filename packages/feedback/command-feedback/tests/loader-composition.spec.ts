@@ -6,12 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
-import CommandRuntime from '@deepseek-ai/dsh-commands'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import * as CommandFeedback from '@deepseek-ai/dsh-command-feedback'
-import { getOrCreateAnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+import AgentRegistry, { Inbox } from '@knyazevai/dsh-agent'
+import type { Agent, AgentStatus } from '@knyazevai/dsh-agent'
+import CommandRuntime from '@knyazevai/dsh-commands'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import * as CommandFeedback from '@knyazevai/dsh-command-feedback'
+import { getOrCreateAnonymousUserId } from '@knyazevai/dsh-anonymous-user-id'
 
 let root: string | undefined
 let context: Context | undefined
@@ -56,10 +56,10 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     vi.stubEnv('DSH_HOME', root)
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
-      "- name: '@deepseek-ai/dsh-agent'",
-      "- name: '@deepseek-ai/dsh-session'",
-      "- name: '@deepseek-ai/dsh-commands'",
-      "- name: '@deepseek-ai/dsh-command-feedback'",
+      "- name: '@knyazevai/dsh-agent'",
+      "- name: '@knyazevai/dsh-session'",
+      "- name: '@knyazevai/dsh-commands'",
+      "- name: '@knyazevai/dsh-command-feedback'",
       '',
     ].join('\n'))
 
@@ -68,10 +68,10 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     await context.plugin(Loader)
     context.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
-      ['@deepseek-ai/dsh-agent', AgentRegistry],
-      ['@deepseek-ai/dsh-session', SessionStore],
-      ['@deepseek-ai/dsh-commands', CommandRuntime],
-      ['@deepseek-ai/dsh-command-feedback', CommandFeedback],
+      ['@knyazevai/dsh-agent', AgentRegistry],
+      ['@knyazevai/dsh-session', SessionStore],
+      ['@knyazevai/dsh-commands', CommandRuntime],
+      ['@knyazevai/dsh-command-feedback', CommandFeedback],
     ])
     context.loader.internal = {
       version: 'v2',

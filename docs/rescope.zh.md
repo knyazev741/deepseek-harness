@@ -4,6 +4,12 @@
 
 Cordis 框架及其基础库以源码形式 vendored 在 [`vendor/`](../vendor/README.md) 下，并以 `@deepseek-ai` scope 发布：每个 harness 包都把框架声明为 peer dependency，发布 harness 就会连带发布这一层，用上游名发布等于在 registry 上占用别人的名字。本页是名字映射表；决策与影响见 [改名 Agent Note](../.agents/notes/implemented/process/2026-08-10-vendor-package-rescope.zh.md)，上游 commit 见 [`vendor/README.md`](../vendor/README.md)。
 
+## Harness 包作用域
+
+仓库所有的 harness 包使用 `@knyazevai/dsh` 作用域，包括私有 workspace 根包名 `@knyazevai/dsh-root`。vendored 框架继续使用 `@deepseek-ai`，因此以 `@knyazevai/dsh` 开头的包 token 属于 harness，而 `@deepseek-ai/cordis` 与 `@deepseek-ai/cordis-plugin-*` 仍是 vendored 身份。Native Landlock 家族继续使用独立的 `@deepseek-ai/node-addon-*` 名称。
+
+[`scripts/rescope-dsh.ts`](../scripts/rescope-dsh.ts) 负责永久的 harness 迁移及其 `--check` 模式。它改写被 Git 跟踪的当前状态包 token，是上游或仓库同步后的第一步；它排除 vendored 源码、生成的构建输出、迁移记录和历史 Agent Note。[DSH npm 作用域 Agent Note](../.agents/notes/implemented/process/2026-09-08-knyazevai-dsh-npm-scope.zh.md) 记录 fork 为何拥有 `@knyazevai` 作用域，以及为何不采用仅在产物阶段改写。
+
 ## 名字映射
 
 | 目录 | 上游名 | 发布名 | 版本 | 角色 |
@@ -26,7 +32,7 @@ Cordis 框架及其基础库以源码形式 vendored 在 [`vendor/`](../vendor/R
 - **依赖 range。** 依赖条目只换键、不换范围：`"cordis": "^4.0.0-rc.7"` 变成 `"@deepseek-ai/cordis": "^4.0.0-rc.7"`；`linkWorkspacePackages` 靠这些保留下来的范围把它们解析到固定的 workspace。
 - **Loader 的 `cordis:` 内建前缀。** `cordis:include`、`cordis:group` 是协议前缀，不是包名。
 - **`cordis.yml` 配置文件家族**，包括 `*.cordis.yml`、`*.cordis.snapshot.yml`、`cordis.patch.yml`。
-- **名字里带这个词的 harness 包**，例如 `@deepseek-ai/dsh-tool-cordis`。
+- **名字里带这个词的 harness 包**，例如 `@knyazevai/dsh-tool-cordis`。
 - **上游运行时标识符**，例如 Schemastery 的 `Symbol.for('schemastery')` 及其 `vendor:` 元数据字段。
 - **`docs/` 之外的散文。** `vendor/*/README.md`、各包 README 与 Agent Note 保留写作当时的名字；那里的裸 `cordis` 也可能是 Python SDK 的选项名或某个 agent-preset 的 id。`docs/` 之内，散文与所有 Markdown 围栏都跟着改。
 

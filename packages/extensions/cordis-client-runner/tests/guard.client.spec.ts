@@ -15,8 +15,8 @@ import type {
   CordisDynamicPluginId,
   CordisDynamicPluginRunId,
   DynamicCordisPackage,
-} from '@deepseek-ai/dsh-api-remotes/client'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+} from '@knyazevai/dsh-api-remotes/client'
+import { SlotRegistry } from '@knyazevai/dsh-client-runtime/client'
 import { dynamicCordisContext } from '../src/client/guard.ts'
 import type { DynamicCordisSlotLedgerRow } from '../src/client/guard.ts'
 

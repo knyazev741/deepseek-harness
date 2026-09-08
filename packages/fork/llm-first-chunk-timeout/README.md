@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-llm-first-chunk-timeout
+# @knyazevai/dsh-fork-llm-first-chunk-timeout
 
 English | [中文](README.zh.md)
 
@@ -8,7 +8,7 @@ Function plugin that bounds the idle wait for the first result of the `llm/strea
 
 ```yaml
 - id: fork-llm-first-chunk-timeout
-  name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
+  name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'
   config:
     firstChunkIdleTimeoutMs: 120000
     maxFirstChunkCompactionRetries: 100

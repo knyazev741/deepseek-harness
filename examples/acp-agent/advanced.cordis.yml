@@ -6,7 +6,7 @@
     path: ./cordis.yml
     patches:
       - id: acp-agent
-        name: '@deepseek-ai/dsh-acp-demo'
+        name: '@knyazevai/dsh-acp-demo'
         config:
           provider: deepseek-official
           model: deepseek-v4-pro
@@ -22,8 +22,8 @@
             Verify your work by running the code or tests. Keep answers brief and factual.
       - insert:
           - id: code-runtime
-            name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+            name: '@knyazevai/dsh-code-runtime-worker-thread'
           - id: cordis-host-runner
-            name: '@deepseek-ai/dsh-cordis-host-runner'
+            name: '@knyazevai/dsh-cordis-host-runner'
           - id: tool-cordis
-            name: '@deepseek-ai/dsh-tool-cordis'
+            name: '@knyazevai/dsh-tool-cordis'

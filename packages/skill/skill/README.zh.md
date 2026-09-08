@@ -1,12 +1,12 @@
-# @deepseek-ai/dsh-skill
+# @knyazevai/dsh-skill
 
 [English](README.md) | 中文
 
 纯 agent skill（智能体技能）提供方注册表。
 
-该包负责 `ctx.skills` 接口。它不知道 skill 来自本地文件、嵌入式插件数据、HTTP 还是其他后端；提供方通过 `ctx.skills.registerProvider(...)` 注册这些来源。已发布的本地实现是 [`@deepseek-ai/dsh-skill-filesystem`](../skill-filesystem)。
+该包负责 `ctx.skills` 接口。它不知道 skill 来自本地文件、嵌入式插件数据、HTTP 还是其他后端；提供方通过 `ctx.skills.registerProvider(...)` 注册这些来源。已发布的本地实现是 [`@knyazevai/dsh-skill-filesystem`](../skill-filesystem)。
 
-注册表基于 [`@deepseek-ai/dsh-scope`](../../core/scope) 采用宿主 + 按 scope 的分层结构，即工具注册表确立的形态：注册落入调用方上下文 scope 对应的层——宿主行与 repository 插件落入全局层，由 agent preset 常驻组合挂载的插件落入该 preset 的层——读取时将全局层与观察 scope 的链合并，最近层直接赢得重名，rank 只在单层内裁决重名。
+注册表基于 [`@knyazevai/dsh-scope`](../../core/scope) 采用宿主 + 按 scope 的分层结构，即工具注册表确立的形态：注册落入调用方上下文 scope 对应的层——宿主行与 repository 插件落入全局层，由 agent preset 常驻组合挂载的插件落入该 preset 的层——读取时将全局层与观察 scope 的链合并，最近层直接赢得重名，rank 只在单层内裁决重名。
 
 ## 服务：`SkillRegistry`（ctx 键：`skills`）
 
@@ -61,7 +61,7 @@
 
 ## 消费方边界
 
-注册表不渲染模型指引，也不注册面向模型的工具。[`@deepseek-ai/dsh-tool-skill`](../tool-skill) 消费 `ctx.skills` 以提供持久会话目录和 `skill` 工具，因此提供方仍与模型接口独立。
+注册表不渲染模型指引，也不注册面向模型的工具。[`@knyazevai/dsh-tool-skill`](../tool-skill) 消费 `ctx.skills` 以提供持久会话目录和 `skill` 工具，因此提供方仍与模型接口独立。
 
 ## 模型体验
 

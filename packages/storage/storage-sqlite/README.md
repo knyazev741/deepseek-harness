@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-storage-sqlite
+# @knyazevai/dsh-storage-sqlite
 
 English | [中文](README.zh.md)
 

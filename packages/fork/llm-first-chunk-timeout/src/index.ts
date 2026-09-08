@@ -5,13 +5,13 @@
  * companion `agent/request-error` recovery forces one context compaction
  * before queuing a `continue` follow-up from the replacement surface.
  *
- * @module @deepseek-ai/dsh-fork-llm-first-chunk-timeout
+ * @module @knyazevai/dsh-fork-llm-first-chunk-timeout
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { LlmError, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { LlmError, type GenerateOptions, type StreamChunk } from '@knyazevai/dsh-llm'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import { createRecovery, FIRST_CHUNK_TIMEOUT_CODE } from './recovery.ts'
 
 /** Cordis plugin name used by loader diagnostics. */

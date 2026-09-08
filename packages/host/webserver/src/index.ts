@@ -1,5 +1,5 @@
 /**
- * @deepseek-ai/dsh-host-webserver — Web route-registration plugin: a node:http
+ * @knyazevai/dsh-host-webserver — Web route-registration plugin: a node:http
  * server plus the `webServer` service (HTTP and upgrade route registries, the
  * structured index injection table with raw transform taps behind it, and the
  * single fallback seat for everything no route claims). Knows no harness concepts and serves no files; the composing

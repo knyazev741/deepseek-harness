@@ -5,8 +5,8 @@
  */
 
 import { useEffect, useState } from 'react'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SnapshotStore } from '@knyazevai/dsh-client-runtime/client'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import type { AgentPresetSettingsState } from './settings-store.ts'
 import { presetDisplayText, type AgentPresetSettingsKey } from './locales.ts'
 import { PresetMenu } from './PresetMenu.tsx'
@@ -81,7 +81,7 @@ export function AgentPresetRow({ load, select, useAgentPreset, t }: AgentPresetR
   )
 }
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Agent-preset row copy. */
     'settings.agentPreset': AgentPresetSettingsKey

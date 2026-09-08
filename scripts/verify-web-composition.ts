@@ -146,7 +146,7 @@ async function verify(profile: WebCompositionProfile): Promise<WebCompositionEvi
     // stale or partially written apps/web/dist tree. The Host-rendered index
     // below is then copied into the same clean artifact root.
     runPnpm([
-      '--filter', '@deepseek-ai/dsh-web-frontend', 'run', 'build',
+      '--filter', '@knyazevai/dsh-web-frontend', 'run', 'build',
       '--outDir', outputRoot,
     ])
     const sourceIndex = resolve(repositoryRoot, 'apps/web/dist/index.html')

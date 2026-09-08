@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import { bindSnapshotSelector } from './bind.ts'
 import { DocumentTitle } from './DocumentTitle.tsx'
-import type {} from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@knyazevai/dsh-client-runtime/client'
 
 /** Inputs available after the UI renderer's inject set activates. */
 export interface AssemblyDeps {

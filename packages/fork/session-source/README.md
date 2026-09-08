@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-session-source
+# @knyazevai/dsh-fork-session-source
 
 English | [中文](README.zh.md)
 
@@ -8,7 +8,7 @@ Function plugin that records whether a session was created while a configured en
 
 ```yaml
 - id: fork-session-source
-  name: '@deepseek-ai/dsh-fork-session-source'
+  name: '@knyazevai/dsh-fork-session-source'
   config:
     enabledWhenEnv: GITHUB_ACTIONS
 ```

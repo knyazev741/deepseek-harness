@@ -13,9 +13,9 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
-import { bootInjections, orderByModuleGraph } from '@deepseek-ai/dsh-client-modules'
-import type { ClientModuleLoaderTarget, WebBootEntry } from '@deepseek-ai/dsh-client-modules/client'
-import { AppWebEntry } from '@deepseek-ai/dsh-client-web'
+import { bootInjections, orderByModuleGraph } from '@knyazevai/dsh-client-modules'
+import type { ClientModuleLoaderTarget, WebBootEntry } from '@knyazevai/dsh-client-modules/client'
+import { AppWebEntry } from '@knyazevai/dsh-client-web'
 
 export type AssembledWebProfile = 'web' | 'fork-web'
 
@@ -84,7 +84,7 @@ const PROFILE_LAYERS: Record<AssembledWebProfile, readonly {
 
 const webBundleResolver = createRequire(PROFILE_LAYERS.web[1]!.manifest)
 if (webBundleResolver === undefined) throw new Error('assembled boot: web bundle resolver missing')
-const appBoot = await import(pathToFileURL(webBundleResolver.resolve('@deepseek-ai/dsh-app-boot')).href) as unknown as BootComposition
+const appBoot = await import(pathToFileURL(webBundleResolver.resolve('@knyazevai/dsh-app-boot')).href) as unknown as BootComposition
 
 /*
  * The keyless FixtureApiClient predates the fork Host Remote. This browser-only
@@ -92,7 +92,7 @@ const appBoot = await import(pathToFileURL(webBundleResolver.resolve('@deepseek-
  * one resident fixture row as GitHub Actions. The application still boots the
  * real built fork bundle; the seam only replaces the unavailable Host calls.
  */
-const FORK_FIXTURE_PLUGIN_ID = '@deepseek-ai/dsh-fork-web-smoke-fixture'
+const FORK_FIXTURE_PLUGIN_ID = '@knyazevai/dsh-fork-web-smoke-fixture'
 const FORK_FIXTURE_PLUGIN_URL = `/plugins/${FORK_FIXTURE_PLUGIN_ID}/client.js?rev=fx`
 const FORK_FIXTURE_PLUGIN_CODE = `window.__ModuleLoader__.load({
   id: ${JSON.stringify(FORK_FIXTURE_PLUGIN_ID)},
@@ -341,7 +341,7 @@ export function mountAssembledApp(
   if (facadeRow?.kind !== 'script') throw new Error('missing injected ModuleLoader facade row')
   ;(0, eval)(facadeRow.text)
   // Mirror the blocking Host-injected scripts before the Vite entry calls create().
-  for (const id of ['@deepseek-ai/dsh-client-modules', '@deepseek-ai/dsh-client-runtime']) {
+  for (const id of ['@knyazevai/dsh-client-modules', '@knyazevai/dsh-client-runtime']) {
     const plugin = plugins.find(candidate => candidate.id === id)
     if (plugin === undefined) throw new Error(`missing parser-preloaded fixture row ${id}`)
     const code = bundles.get(plugin.url)

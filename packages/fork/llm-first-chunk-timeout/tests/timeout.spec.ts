@@ -6,16 +6,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import LlmRuntime, { createUserMessage, LlmAdapter, resolveRetryPolicy, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import LlmRuntime, { createUserMessage, LlmAdapter, resolveRetryPolicy, type GenerateOptions, type StreamChunk } from '@knyazevai/dsh-llm'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import * as FirstChunkTimeout from '../src/index.ts'
-import { CompactionEngine } from '@deepseek-ai/dsh-compaction'
-import type { RequestErrorAction } from '@deepseek-ai/dsh-agent'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
+import { CompactionEngine } from '@knyazevai/dsh-compaction'
+import type { RequestErrorAction } from '@knyazevai/dsh-agent'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
 
 
 interface Deferred<T> {
@@ -734,11 +734,11 @@ describe('first-chunk idle timeout invariant companion', () => {
   it('registers and withdraws its empty runtime invariant', async () => {
     const ctx = new Context()
     contexts.push(ctx)
-    const InvariantRegistry = (await import('@deepseek-ai/dsh-invariants')).default
+    const InvariantRegistry = (await import('@knyazevai/dsh-invariants')).default
     await ctx.plugin(InvariantRegistry)
     const fiber = await ctx.plugin((await import('../src/invariant.ts')))
 
-    expect(() => ctx.invariants.register('@deepseek-ai/dsh-fork-llm-first-chunk-timeout', () => {}))
+    expect(() => ctx.invariants.register('@knyazevai/dsh-fork-llm-first-chunk-timeout', () => {}))
       .toThrow(/already registered/u)
     await fiber.dispose()
     await expect(ctx.plugin((await import('../src/invariant.ts'))).await()).resolves.toBeDefined()
@@ -751,8 +751,8 @@ describe('first-chunk idle timeout Loader composition', () => {
     loaderRoots.push(root)
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
-      "- name: '@deepseek-ai/dsh-llm'",
-      "- name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'",
+      "- name: '@knyazevai/dsh-llm'",
+      "- name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'",
       '  config:',
       '    firstChunkIdleTimeoutMs: 12',
       '',
@@ -764,8 +764,8 @@ describe('first-chunk idle timeout Loader composition', () => {
     await ctx.plugin(Loader)
     ctx.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
-      ['@deepseek-ai/dsh-llm', LlmRuntime],
-      ['@deepseek-ai/dsh-fork-llm-first-chunk-timeout', FirstChunkTimeout],
+      ['@knyazevai/dsh-llm', LlmRuntime],
+      ['@knyazevai/dsh-fork-llm-first-chunk-timeout', FirstChunkTimeout],
     ])
     ctx.loader.internal = {
       version: 'v2',
@@ -781,11 +781,11 @@ describe('first-chunk idle timeout Loader composition', () => {
     })
     await ctx.loader.await()
 
-    const entry = [...ctx.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-fork-llm-first-chunk-timeout')
+    const entry = [...ctx.loader.entries()].find(item => item.options.name === '@knyazevai/dsh-fork-llm-first-chunk-timeout')
     if (entry === undefined) throw new Error('Loader did not mount first-chunk timeout')
-    expect([...ctx.loader.entries()].some(item => item.options.name === '@deepseek-ai/dsh-llm')).toBe(true)
+    expect([...ctx.loader.entries()].some(item => item.options.name === '@knyazevai/dsh-llm')).toBe(true)
     await entry.parent.remove(entry.options.id)
-    expect([...ctx.loader.entries()].some(item => item.options.name === '@deepseek-ai/dsh-fork-llm-first-chunk-timeout')).toBe(false)
+    expect([...ctx.loader.entries()].some(item => item.options.name === '@knyazevai/dsh-fork-llm-first-chunk-timeout')).toBe(false)
   })
 })
 

@@ -3,14 +3,14 @@
 /** The source value recorded when a session is created in GitHub Actions. */
 export type ForkSessionSource = 'github-actions' | null
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
     /** Log-only marker identifying a session created in GitHub Actions. */
     'fork/session-source': { source: 'github-actions' }
   }
 }
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
+declare module '@knyazevai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
     /** Folded source marker, or null before a marker is present. */
     forkSessionSource: ForkSessionSource

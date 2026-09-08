@@ -17,7 +17,7 @@ import {
 describe('verify-cordis-config metadata expressions', () => {
   it('accepts a disabled !!js expression', () => {
     const problems = metadataExpressionErrors(
-      { id: 'tool-bash', name: '@deepseek-ai/dsh-tool-bash', disabled: { __jsExpr: "process.platform === 'win32'" } },
+      { id: 'tool-bash', name: '@knyazevai/dsh-tool-bash', disabled: { __jsExpr: "process.platform === 'win32'" } },
       '[0]',
     )
     expect(problems).toEqual([])
@@ -54,11 +54,11 @@ describe('workspace Bundle discovery and product dependency closures', () => {
       mkdirSync(bundleDir, { recursive: true })
       mkdirSync(plainDir, { recursive: true })
       writeFileSync(join(bundleDir, 'package.json'), JSON.stringify({
-        name: '@deepseek-ai/dsh-subagent-example',
+        name: '@knyazevai/dsh-subagent-example',
         dsh: { bundle: { patch: './cordis.patch.yml' } },
       }))
       writeFileSync(join(plainDir, 'package.json'), JSON.stringify({
-        name: '@deepseek-ai/dsh-plain',
+        name: '@knyazevai/dsh-plain',
       }))
 
       expect(bundleManifestPaths(fixture)).toEqual([
@@ -73,16 +73,16 @@ describe('workspace Bundle discovery and product dependency closures', () => {
     const manifestPath = 'packages/subagent/example/package.json'
     const file = 'packages/subagent/example/cordis.patch.yml'
     const manifest = {
-      name: '@deepseek-ai/dsh-subagent-example',
+      name: '@knyazevai/dsh-subagent-example',
       dependencies: {},
     }
-    const self = { file, name: '@deepseek-ai/dsh-subagent-example' }
+    const self = { file, name: '@knyazevai/dsh-subagent-example' }
     expect(bundlePluginDependencyErrors(manifestPath, manifest, [self])).toEqual([])
     expect(bundlePluginDependencyErrors(manifestPath, manifest, [
       self,
-      { file, name: '@deepseek-ai/dsh-missing-plugin' },
+      { file, name: '@knyazevai/dsh-missing-plugin' },
     ])).toEqual([
-      `${file}: @deepseek-ai/dsh-missing-plugin must be declared in ${manifestPath} dependencies`,
+      `${file}: @knyazevai/dsh-missing-plugin must be declared in ${manifestPath} dependencies`,
     ])
   })
 })

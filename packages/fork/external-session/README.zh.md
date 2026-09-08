@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-fork-external-session
+# @knyazevai/dsh-fork-external-session
 
 [English](README.md) | 中文
 
@@ -9,7 +9,7 @@
 没有任何 provider 时，注册表仍然是有效的。后续 provider 程序包通过合并 `ExternalSessionModeMap` 声明自己的 mode 与 provider 类型，然后挂载自己的插件并注册实现：
 
 ```ts
-declare module '@deepseek-ai/dsh-fork-external-session' {
+declare module '@knyazevai/dsh-fork-external-session' {
   interface ExternalSessionModeMap {
     example: ExampleProvider
   }

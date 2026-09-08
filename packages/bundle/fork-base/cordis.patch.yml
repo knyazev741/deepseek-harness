@@ -8,7 +8,7 @@
     # session-header field. The package records the marker only when this
     # variable has the exact value `true`.
     - id: fork-session-source
-      name: '@deepseek-ai/dsh-fork-session-source'
+      name: '@knyazevai/dsh-fork-session-source'
       config:
         enabledWhenEnv: GITHUB_ACTIONS
 
@@ -16,14 +16,14 @@
     # row in the fork bundle lets that layer consume one stable Host overlay;
     # Loader activation waits for the required workspaceRegistry service.
     - id: fork-workspace-session-state
-      name: '@deepseek-ai/dsh-fork-workspace-session-state'
+      name: '@knyazevai/dsh-fork-workspace-session-state'
 
     # Bound the idle time before the first LLM stream result and, when that
     # deadline wins (FIRST_CHUNK_TIMEOUT), force one context compaction before
     # retrying the request. The explicit values keep the deployment policy visible
     # and patchable at this layer.
     - id: fork-llm-first-chunk-timeout
-      name: '@deepseek-ai/dsh-fork-llm-first-chunk-timeout'
+      name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'
       config:
         firstChunkIdleTimeoutMs: 120000
         maxFirstChunkCompactionRetries: 100
@@ -34,7 +34,7 @@
     # re-claiming every later exhausted budget on an unstable upstream without
     # ending the turn.
     - id: fork-llm-rate-limit-cooldown
-      name: '@deepseek-ai/dsh-fork-llm-rate-limit-cooldown'
+      name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
       config:
         cooldownMs: 600000
         retryableCodes:

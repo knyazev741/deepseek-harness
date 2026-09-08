@@ -5,20 +5,20 @@
  * Background policy is selected by this plugin's configuration: one-shot
  * calls own a plain Task, while continuable calls use
  * `ctx.subagents.startContinuable()`.
- * @module @deepseek-ai/dsh-tool-subagent
+ * @module @knyazevai/dsh-tool-subagent
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { Agent, AgentOptions } from '@deepseek-ai/dsh-agent'
-import { errorChain } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
-import { assertSubagentMaxDepth, settleRun } from '@deepseek-ai/dsh-subagent'
-import type { SubagentProvider, SubagentResult, SubagentRun } from '@deepseek-ai/dsh-subagent'
-import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
-import type {} from '@deepseek-ai/dsh-system-prompt'
+import { defineTool } from '@knyazevai/dsh-tools'
+import type { Agent, AgentOptions } from '@knyazevai/dsh-agent'
+import { errorChain } from '@knyazevai/dsh-llm'
+import type { ContentBlock } from '@knyazevai/dsh-llm'
+import type { JsonValue } from '@knyazevai/dsh-session'
+import { assertSubagentMaxDepth, settleRun } from '@knyazevai/dsh-subagent'
+import type { SubagentProvider, SubagentResult, SubagentRun } from '@knyazevai/dsh-subagent'
+import type { JobOutcome } from '@knyazevai/dsh-jobs'
+import type {} from '@knyazevai/dsh-system-prompt'
 
 export const name = 'tool-subagent'
 export const inject = ['tools', 'subagents', 'systemPrompt', 'llm']
@@ -463,7 +463,7 @@ export function apply(ctx: Context, config: Config): void {
           }
           const jobs = ctx.get('jobs')
           if (jobs === undefined) {
-            throw new Error('background jobs unavailable: load @deepseek-ai/dsh-jobs and @deepseek-ai/dsh-tool-jobs')
+            throw new Error('background jobs unavailable: load @knyazevai/dsh-jobs and @knyazevai/dsh-tool-jobs')
           }
           // One-shot background child: job preflight finishes before the
           // starter can spawn, and the task-owned signal covers startup.

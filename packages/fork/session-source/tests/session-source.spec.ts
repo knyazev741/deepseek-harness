@@ -6,8 +6,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SessionId, SessionStore } from '@deepseek-ai/dsh-session'
-import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
+import { SessionId, SessionStore } from '@knyazevai/dsh-session'
+import { SessionProjectionRegistry } from '@knyazevai/dsh-session-projection'
 import * as ForkSessionSource from '../src/index.ts'
 import { forkSessionSourceProjectionDefinition } from '../src/projection.ts'
 import type { ForkSessionSource as ForkSessionSourceValue } from '../src/types.ts'
@@ -122,9 +122,9 @@ describe('fork session source loader composition', () => {
     loaderRoot = root
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
-      "- name: '@deepseek-ai/dsh-session'",
-      "- name: '@deepseek-ai/dsh-session-projection'",
-      "- name: '@deepseek-ai/dsh-fork-session-source'",
+      "- name: '@knyazevai/dsh-session'",
+      "- name: '@knyazevai/dsh-session-projection'",
+      "- name: '@knyazevai/dsh-fork-session-source'",
       '',
     ].join('\n'))
     const ctx = new Context()
@@ -136,9 +136,9 @@ describe('fork session source loader composition', () => {
       version: 'v2',
       async import(specifier: string) {
         const modules = new Map<string, unknown>([
-          ['@deepseek-ai/dsh-session', SessionStore],
-          ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
-          ['@deepseek-ai/dsh-fork-session-source', ForkSessionSource],
+          ['@knyazevai/dsh-session', SessionStore],
+          ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+          ['@knyazevai/dsh-fork-session-source', ForkSessionSource],
         ])
         const module = modules.get(specifier)
         if (module === undefined) throw new Error(`unexpected Loader import: ${specifier}`)

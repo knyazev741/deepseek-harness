@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-tool-pwsh-persistent`.
- * @module @deepseek-ai/dsh-tool-pwsh-persistent/invariant
+ * Package-owned invariant companion for `@knyazevai/dsh-tool-pwsh-persistent`.
+ * @module @knyazevai/dsh-tool-pwsh-persistent/invariant
  */
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { InvariantInstaller } from '@knyazevai/dsh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-tool-pwsh-persistent'
+const PACKAGE_NAME = '@knyazevai/dsh-tool-pwsh-persistent'
 
 /** Cordis companion plugin name. */
 export const name = 'tool-pwsh-persistent-invariant'

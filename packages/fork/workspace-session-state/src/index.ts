@@ -1,18 +1,18 @@
 /** Settings-backed global pin list for workspace sessions.
- * @module @deepseek-ai/dsh-fork-workspace-session-state
+ * @module @knyazevai/dsh-fork-workspace-session-state
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionId as SessionIdType } from '@deepseek-ai/dsh-session/types'
+import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId as SessionIdType } from '@knyazevai/dsh-session/types'
 import {
   SettingsConflictError,
   settingsNamespace,
   type SettingsNamespace,
-} from '@deepseek-ai/dsh-settings'
-import type {} from '@deepseek-ai/dsh-workspace'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+} from '@knyazevai/dsh-settings'
+import type {} from '@knyazevai/dsh-workspace'
+import { Remote, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
 import type {
   ForkWorkspaceSessionStateConflict,
   ForkWorkspaceSessionStateSetPinnedInput,

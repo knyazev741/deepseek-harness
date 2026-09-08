@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-attachment
+# @knyazevai/dsh-client-ui-attachment
 
 [English](README.md) | 中文
 

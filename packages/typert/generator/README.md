@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-typert-generator
+# @knyazevai/dsh-typert-generator
 
 English | [中文](README.zh.md)
 

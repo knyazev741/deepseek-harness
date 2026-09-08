@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-time-context
+# @knyazevai/dsh-time-context
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@
 
 ```yaml
 - id: time-context
-  name: '@deepseek-ai/dsh-time-context'
+  name: '@knyazevai/dsh-time-context'
   config:
     timeZone: Asia/Shanghai  # optional fallback when the request has no unique browser zone
     refreshIntervalMs: 60000 # optional; omit or set to 0 for every eligible attempt

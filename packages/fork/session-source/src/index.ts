@@ -2,17 +2,17 @@
  * Cordis plugin that records and projects the GitHub Actions origin of a
  * session without changing the core session header.
  *
- * @module @deepseek-ai/dsh-fork-session-source
+ * @module @knyazevai/dsh-fork-session-source
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { Session } from '@deepseek-ai/dsh-session'
+import type { Session } from '@knyazevai/dsh-session'
 import { forkSessionSourceProjectionDefinition } from './projection.ts'
 
 // Type-only imports make the optional projection and session event augmentations
 // available to aggregate programs that consume this package's root entrypoint.
-import type {} from '@deepseek-ai/dsh-session-projection'
+import type {} from '@knyazevai/dsh-session-projection'
 
 export type * from './types.ts'
 import type {} from './types.ts'

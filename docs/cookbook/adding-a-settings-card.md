@@ -12,7 +12,7 @@ The namespace is the join key, so pick it once and spell it in both halves. A co
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import { installSettingsSection, settingsNamespace } from '@knyazevai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 
 declare function assertReachable(endpoint: string | undefined): void
@@ -48,10 +48,10 @@ export function apply(ctx: Context, config: Config) {
 The card registers into `settings.plugin.item` under its namespace and owns everything inside it — chrome, controls, and copy. It reads and writes through `ctx.settingsScope`, which fences each write with the revision it read:
 
 ```ts ignore-check
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@knyazevai/dsh-client-runtime/client'
 // Type-only: the keyed slot's declaration. Cross-plugin collaboration goes
 // through cordis services; a value import fails the client bundle-purity gate.
-import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
+import type {} from '@knyazevai/dsh-client-ui-settings-plugins/client'
 
 export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']
 
@@ -85,7 +85,7 @@ The browser half is served to the page by the [client module system](../../packa
     ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
     "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client.js" }
   },
-  "dsh": { "client": { "platform": "web", "inject": ["@deepseek-ai/dsh-client-ui-settings-plugins"] } }
+  "dsh": { "client": { "platform": "web", "inject": ["@knyazevai/dsh-client-ui-settings-plugins"] } }
 }
 ```
 
@@ -94,7 +94,7 @@ The bundle must be the loader's lazy-CJS factory artifact. Inside this repositor
 ```ts ignore-check
 import { clientBundle } from '../tsdown.client.ts'
 
-export default clientBundle('@deepseek-ai/dsh-client-my-plugin', ['lib/types/index.js', 'lib/types/invariant.js'])
+export default clientBundle('@knyazevai/dsh-client-my-plugin', ['lib/types/index.js', 'lib/types/invariant.js'])
 ```
 
 That preset is not published today, so a package outside this repository has to reproduce the same output format itself. The bundle-purity gate also rejects value imports across plugins, so a card cannot import this section's card chrome or its staged-form model — it renders its own, and owns its own staging and revision fencing. Both limits are recorded under [the section's known limitations](../../packages/client/ui-settings-plugins/README.md#known-limitations-and-deferred-work).

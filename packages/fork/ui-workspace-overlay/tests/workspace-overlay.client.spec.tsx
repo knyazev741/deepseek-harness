@@ -5,18 +5,18 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
 import type {
   SessionId, SessionSummary, WorkspaceId, WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
-import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@knyazevai/dsh-client-runtime/client'
+import { SlotTestRuntime } from '@knyazevai/dsh-client-test-runtime'
+import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
 import type {
   WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowMenuContext,
-} from '@deepseek-ai/dsh-client-ui-workspace/client'
-import type { ForkWorkspaceSessionStateView } from '@deepseek-ai/dsh-fork-workspace-session-state/types'
-import type {} from '@deepseek-ai/dsh-fork-session-source/types'
-import * as overlayClient from '@deepseek-ai/dsh-fork-ui-workspace-overlay/client'
+} from '@knyazevai/dsh-client-ui-workspace/client'
+import type { ForkWorkspaceSessionStateView } from '@knyazevai/dsh-fork-workspace-session-state/types'
+import type {} from '@knyazevai/dsh-fork-session-source/types'
+import * as overlayClient from '@knyazevai/dsh-fork-ui-workspace-overlay/client'
 import { apply, inject, NS } from '../src/client/index.ts'
 import { parseReadWatermarks, READ_WATERMARKS_STORAGE_KEY } from '../src/client/store.ts'
 
@@ -492,7 +492,7 @@ describe('fork workspace overlay assembled client fixture', () => {
       await b.runtime.ctx.plugin(Loader)
       b.runtime.ctx.loader.builtins.include = Include
       const modules = new Map<string, unknown>([
-        ['@deepseek-ai/dsh-fork-ui-workspace-overlay', overlayClient],
+        ['@knyazevai/dsh-fork-ui-workspace-overlay', overlayClient],
       ])
       b.runtime.ctx.loader.internal = {
         version: 'v2',
@@ -509,7 +509,7 @@ describe('fork workspace overlay assembled client fixture', () => {
       expect(b.runtime.slots.entries('workspace.session-row.status')).toHaveLength(1)
       expect(b.runtime.slots.entries('workspace.session-row.actions')).toHaveLength(1)
       const entry = [...b.runtime.ctx.loader.entries()].find(
-        candidate => candidate.options.name === '@deepseek-ai/dsh-fork-ui-workspace-overlay',
+        candidate => candidate.options.name === '@knyazevai/dsh-fork-ui-workspace-overlay',
       )
       expect(entry).toBeDefined()
 

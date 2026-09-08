@@ -5,8 +5,8 @@
  * echoing that rpcId, with no resource id in the payload (rpcId suffices).
  */
 
-import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions/types'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { AskUserQuestionAnswer } from '@knyazevai/dsh-user-questions/types'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 
 /**
  * Question answer payload (the result.value slot of a client-response):

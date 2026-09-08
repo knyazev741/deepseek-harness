@@ -10,6 +10,6 @@ describe('repository dsh launcher', () => {
     })
 
     expect(result.status, result.stderr).toBe(0)
-    expect(result.stdout).toContain('@deepseek-ai/dsh-fork-web')
+    expect(result.stdout).toContain('@knyazevai/dsh-fork-web')
   })
 })

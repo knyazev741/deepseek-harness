@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-file-reference-local`
+# `@knyazevai/dsh-file-reference-local`
 
 [English](README.md) | 中文
 

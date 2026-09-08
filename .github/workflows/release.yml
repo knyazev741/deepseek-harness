@@ -62,6 +62,10 @@ jobs:
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
 
+      # Keep the permanent harness namespace separate from vendored @deepseek-ai packages.
+      - name: Verify DSH package scope
+        run: pnpm run rescope-dsh:check
+
       - name: Verify release version
         run: pnpm run release:verify --family dsh
 

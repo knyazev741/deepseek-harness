@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-session-stats
+# @knyazevai/dsh-session-stats
 
 [English](README.md) | 中文
 
@@ -18,7 +18,7 @@
 
 ```yaml
 - id: session-stats
-  name: '@deepseek-ai/dsh-session-stats'
+  name: '@knyazevai/dsh-session-stats'
 ```
 
 注入 `sessionProjections`——这是插件的全部用途；在没有 registry 的装配中 fiber 保持挂起，不注册任何内容。

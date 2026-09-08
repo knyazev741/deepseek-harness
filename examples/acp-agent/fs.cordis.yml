@@ -8,10 +8,10 @@
     patches:
       - insert:
           - id: spill-local
-            name: '@deepseek-ai/dsh-spill-local'
+            name: '@knyazevai/dsh-spill-local'
             config:
               root: !!js process.env.DSH_SNAPSHOT_SPILL_ROOT ?? './.spill'
           - id: spill-policy
-            name: '@deepseek-ai/dsh-spill-policy'
+            name: '@knyazevai/dsh-spill-policy'
             config:
               maxInlineBytes: !!js process.env.DSH_SNAPSHOT && 800 || 50000

@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-runtime
+# @knyazevai/dsh-client-runtime
 
 [English](README.md) | 中文
 

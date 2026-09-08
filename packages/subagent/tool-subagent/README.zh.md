@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-subagent
+# @knyazevai/dsh-tool-subagent
 
 [English](README.md) | 中文
 
@@ -37,7 +37,7 @@
 
 #### 模型看到的内容
 
-当提供方存在时，以当前实例配置的名称公开已生成的默认 [`subagent` schema](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-subagent)。提供方是否继承上下文会改变工具描述和提示词描述。schema 还公开可选的 `provider` 和 `model` 字段，用于单次子 agent 调用。每个传入字段都是对对应配置 `agentOptions` 值的单次覆盖；省略的字段先回退到该配置值，再回退到父 agent 的选项，最后由提供方解析自身默认值。当两个有效值都已知时，请求路由会在子 agent 启动前解析，因此无效路由会返回错误且不会启动工作。启用后台模式会添加 `run_in_background`：可继续模式会记录其默认值为 `true`、运行时结算通知与显式前台覆盖；一次性模式会记录其默认值为 `false`，以及用 `job_output` 收集或用 `job_kill` 停止的 job id。当工具在本次组装的作用域中可见时，一个 `tool:<toolName>` 系统提示词 section 会指示模型同时启动相互独立的可继续委派、在它们运行时继续工作，并且仅当下一步动作依赖结果时选择前台；工具限制会同时移除其 schema 和这段指引。
+当提供方存在时，以当前实例配置的名称公开已生成的默认 [`subagent` schema](../../../docs/tool-catalog.zh.md#knyazevaidsh-tool-subagent)。提供方是否继承上下文会改变工具描述和提示词描述。schema 还公开可选的 `provider` 和 `model` 字段，用于单次子 agent 调用。每个传入字段都是对对应配置 `agentOptions` 值的单次覆盖；省略的字段先回退到该配置值，再回退到父 agent 的选项，最后由提供方解析自身默认值。当两个有效值都已知时，请求路由会在子 agent 启动前解析，因此无效路由会返回错误且不会启动工作。启用后台模式会添加 `run_in_background`：可继续模式会记录其默认值为 `true`、运行时结算通知与显式前台覆盖；一次性模式会记录其默认值为 `false`，以及用 `job_output` 收集或用 `job_kill` 停止的 job id。当工具在本次组装的作用域中可见时，一个 `tool:<toolName>` 系统提示词 section 会指示模型同时启动相互独立的可继续委派、在它们运行时继续工作，并且仅当下一步动作依赖结果时选择前台；工具限制会同时移除其 schema 和这段指引。
 
 #### Token 影响
 

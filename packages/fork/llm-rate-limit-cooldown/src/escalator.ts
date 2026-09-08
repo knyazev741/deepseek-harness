@@ -1,7 +1,7 @@
 import type { Context, Events } from '@deepseek-ai/cordis'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import type { RequestErrorAction } from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-llm-retry/types'
+import type { SessionEvent } from '@knyazevai/dsh-session'
+import type { RequestErrorAction } from '@knyazevai/dsh-agent'
+import type {} from '@knyazevai/dsh-llm-retry/types'
 
 /**
  * Wait a cancellable delay.

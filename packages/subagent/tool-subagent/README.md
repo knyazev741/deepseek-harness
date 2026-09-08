@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-subagent
+# @knyazevai/dsh-tool-subagent
 
 English | [中文](README.zh.md)
 
@@ -37,7 +37,7 @@ Foreground and background calls are concurrency-safe: sibling delegations in one
 
 #### What the model sees
 
-The generated default [`subagent` schema](../../../docs/tool-catalog.md#deepseek-aidsh-tool-subagent) under this instance's configured name while its provider exists. Provider context inheritance changes the tool and prompt descriptions. The schema also exposes optional `provider` and `model` fields for one child call. Each supplied field is a per-call override of the corresponding configured `agentOptions` value; each omitted field falls back to that configured value, then the parent agent's option, and finally the provider's own default resolution. When both effective values are known, the requested route is resolved before the child starts, so an invalid route returns an error without starting work. Enabled background mode adds `run_in_background`: continuable mode documents its `true` default, runtime settlement notice, and explicit foreground override, while one-shot mode documents its `false` default and the job id collected with `job_output` or stopped with `job_kill`. While the tool is visible in an assembly's scope, a `tool:<toolName>` system-prompt section tells the model to start independent continuable delegations together, keep working while they run, and choose foreground only when its next action depends on the result; a tool restriction removes both its schema and this guidance.
+The generated default [`subagent` schema](../../../docs/tool-catalog.md#knyazevaidsh-tool-subagent) under this instance's configured name while its provider exists. Provider context inheritance changes the tool and prompt descriptions. The schema also exposes optional `provider` and `model` fields for one child call. Each supplied field is a per-call override of the corresponding configured `agentOptions` value; each omitted field falls back to that configured value, then the parent agent's option, and finally the provider's own default resolution. When both effective values are known, the requested route is resolved before the child starts, so an invalid route returns an error without starting work. Enabled background mode adds `run_in_background`: continuable mode documents its `true` default, runtime settlement notice, and explicit foreground override, while one-shot mode documents its `false` default and the job id collected with `job_output` or stopped with `job_kill`. While the tool is visible in an assembly's scope, a `tool:<toolName>` system-prompt section tells the model to start independent continuable delegations together, keep working while they run, and choose foreground only when its next action depends on the result; a tool restriction removes both its schema and this guidance.
 
 #### Token effect
 

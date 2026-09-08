@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-cordis-client-runner
+# @knyazevai/dsh-cordis-client-runner
 
 English | [中文](README.zh.md)
 

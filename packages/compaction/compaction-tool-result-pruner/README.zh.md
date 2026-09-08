@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-compaction-tool-result-pruner
+# @knyazevai/dsh-compaction-tool-result-pruner
 
 [English](README.md) | 中文
 
@@ -32,7 +32,7 @@
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import ToolResultPruner from '@deepseek-ai/dsh-compaction-tool-result-pruner'
+import ToolResultPruner from '@knyazevai/dsh-compaction-tool-result-pruner'
 
 export function apply(ctx: Context): void {
   ctx.plugin(ToolResultPruner)

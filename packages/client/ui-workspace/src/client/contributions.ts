@@ -1,7 +1,7 @@
 /* eslint-disable @stylistic/max-len */
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
+import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
 import type { WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView } from './contract/contributions.ts'
 
 type Contribution = WorkspaceListView | WorkspaceListPolicy

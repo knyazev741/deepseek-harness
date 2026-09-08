@@ -17,7 +17,7 @@ DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. *
 Install Node.js 22.19+ or 24+, then run:
 
 ```sh
-npx @deepseek-ai/dsh web
+npx @knyazevai/dsh web
 ```
 
 The command starts the Web UI, served at `http://127.0.0.1:3080` by default. See [Web UI guide](docs/user/guide/index.md).

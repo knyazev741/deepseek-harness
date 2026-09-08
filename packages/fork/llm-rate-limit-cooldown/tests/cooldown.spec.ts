@@ -6,22 +6,22 @@ import LlmRuntime, {
   LlmAdapter,
   LlmError,
   resolveRetryPolicy,
-} from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-llm'
 import type {
   GenerateOptions,
   NormalRetryPolicyConfig,
   ResolvedRetryPolicy,
   RetryPolicyConfig,
   StreamChunk,
-} from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import type { Agent, RequestErrorAction } from '@deepseek-ai/dsh-agent'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import * as retry from '@deepseek-ai/dsh-llm-retry'
+} from '@knyazevai/dsh-llm'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import type { Agent, RequestErrorAction } from '@knyazevai/dsh-agent'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import type { SessionEvent } from '@knyazevai/dsh-session'
+import * as retry from '@knyazevai/dsh-llm-retry'
 import * as cooldown from '../src/index.ts'
 import { cancellableDelay, createEscalator, priorRetries } from '../src/escalator.ts'
 
@@ -487,10 +487,10 @@ describe('fork-llm-rate-limit-cooldown internals', () => {
 
   it('registers and withdraws its empty runtime invariant', async () => {
     const ctx = new Context()
-    const InvariantRegistry = (await import('@deepseek-ai/dsh-invariants')).default
+    const InvariantRegistry = (await import('@knyazevai/dsh-invariants')).default
     await ctx.plugin(InvariantRegistry)
     const fiber = await ctx.plugin((await import('../src/invariant.ts')))
-    expect(() => ctx.invariants.register('@deepseek-ai/dsh-fork-llm-rate-limit-cooldown', () => {}))
+    expect(() => ctx.invariants.register('@knyazevai/dsh-fork-llm-rate-limit-cooldown', () => {}))
       .toThrow(/already registered/u)
     await fiber.dispose()
     await expect(ctx.plugin((await import('../src/invariant.ts'))).await()).resolves.toBeDefined()

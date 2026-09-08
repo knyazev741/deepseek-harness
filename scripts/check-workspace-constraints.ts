@@ -51,16 +51,18 @@ const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harn
 /** Private packages that participate in workspace checks but not releases. */
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 /** npm namespace reserved for private experimental packages. */
-const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
+const dshPackageNamePrefix = '@knyazevai/dsh'
+const vendoredPackageNamePrefix = '@deepseek-ai/'
+const experimentalPackageNamePrefix = `${dshPackageNamePrefix}-experimental-`
 /** Directories whose packages this repository publishes: one release member each. */
 const releaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+)$/
 
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
-  '@deepseek-ai/dsh': ['lib/*.js', 'config'],
+  '@knyazevai/dsh': ['bin.mjs', 'lib/*.js', 'config'],
   // The Web build emits sourcemaps for browser debugging; publishing them is
   // what the payload policy forbids, so the bundle ships without them.
-  '@deepseek-ai/dsh-web-frontend': ['dist', '!dist/**/*.map'],
+  '@knyazevai/dsh-web-frontend': ['dist', '!dist/**/*.map'],
 }
 
 /** The subset of package.json fields this constraint check cares about. */
@@ -100,6 +102,22 @@ export interface PackageManifest {
 export interface WorkspaceManifest {
   dir: string
   manifest: PackageManifest
+}
+
+/**
+ * Require the package-name scope owned by a release member's directory.
+ * Harness members use `@knyazevai/dsh*`; vendored members keep
+ * `@deepseek-ai/<vendored-name>`.
+ * @param dir - repository-relative package directory.
+ * @param manifest - package manifest at that directory.
+ * @returns One error when the member uses neither accepted scope.
+ */
+export function checkReleaseMemberPackageName({ dir, manifest }: WorkspaceManifest): string[] {
+  if (!releaseMemberDirectory.test(dir)) return []
+  const prefix = dir.startsWith('vendor/') ? vendoredPackageNamePrefix : dshPackageNamePrefix
+  if (manifest.name?.startsWith(prefix) === true) return []
+  const displayPrefix = prefix.replace(/\/$/u, '')
+  return [`${manifest.name ?? dir}: release member must name an ${displayPrefix} package`]
 }
 
 function readJson(path: string): PackageManifest {
@@ -146,22 +164,22 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // them through its own CSS pipeline, so the sheets are published artifacts.
   // The glob covers whichever sheets a package emits; sourcemaps stay
   // unpublished, as everywhere else in the repository.
-  '@deepseek-ai/dsh-client-ui-primitives': ['lib/**/*.css'],
-  '@deepseek-ai/dsh-client-web': ['lib/**/*.css'],
-  '@deepseek-ai/dsh-client-ui-theme': ['lib/styles'],
+  '@knyazevai/dsh-client-ui-primitives': ['lib/**/*.css'],
+  '@knyazevai/dsh-client-web': ['lib/**/*.css'],
+  '@knyazevai/dsh-client-ui-theme': ['lib/styles'],
   // The CPython side ships as source .py files, published as-is rather than built.
-  '@deepseek-ai/dsh-code-runtime-python': ['py/**/*.py'],
+  '@knyazevai/dsh-code-runtime-python': ['py/**/*.py'],
   // The Python runtime uses a distinct closed-resolution bin; the public CLI
   // keeps config-owned bare-package resolution through lib/bin.js.
-  '@deepseek-ai/dsh-sdk-jsonrpc-demo': ['lib/packaged-bin.js'],
+  '@knyazevai/dsh-sdk-jsonrpc-demo': ['lib/packaged-bin.js'],
   // The argv-prefix runner entry ships beside the lib as its own bundle;
   // sandbox-local resolves it through the package's ./runner export. tsdown
   // also shares its generated FFI code through a hashed runtime chunk.
-  '@deepseek-ai/dsh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js'],
+  '@knyazevai/dsh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js'],
   // SQLite loads every statement from immutable package resources at runtime.
-  '@deepseek-ai/dsh-session-persistence-sqlite': ['resources/sql/**/*.sql'],
-  '@deepseek-ai/dsh-skill-badge': ['assets'],
-  '@deepseek-ai/dsh-subprocess-local': ['scripts/ensure-spawn-helper.mjs'],
+  '@knyazevai/dsh-session-persistence-sqlite': ['resources/sql/**/*.sql'],
+  '@knyazevai/dsh-skill-badge': ['assets'],
+  '@knyazevai/dsh-subprocess-local': ['scripts/ensure-spawn-helper.mjs'],
 }
 
 function sameStringList(actual: readonly string[] | undefined, expected: readonly string[]): boolean {
@@ -255,7 +273,10 @@ export function checkExperimentalManifest({ dir, manifest }: WorkspaceManifest):
 }
 
 function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
-  const errors = checkExperimentalManifest({ dir, manifest })
+  const errors = [
+    ...checkExperimentalManifest({ dir, manifest }),
+    ...checkReleaseMemberPackageName({ dir, manifest }),
+  ]
   const label = manifest.name ?? dir
   const isLandlockPackageDir = dir.startsWith('native/landlock-run/packages/')
   const isPublicLandlockPackage = isLandlockPackageDir
@@ -314,7 +335,7 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
     }
   }
 
-  if (dir.startsWith('apps/') && manifest.name?.startsWith('@deepseek-ai/')) {
+  if (dir.startsWith('apps/') && manifest.name?.startsWith(dshPackageNamePrefix)) {
     const expectedFiles = appPackageFiles[manifest.name]
     if (expectedFiles === undefined) {
       errors.push(`${label}: app package has no publication files policy`)
@@ -332,7 +353,7 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
     }
   }
 
-  if (dir.startsWith('packages/') && manifest.name?.startsWith('@deepseek-ai/dsh-')) {
+  if (dir.startsWith('packages/') && manifest.name?.startsWith(`${dshPackageNamePrefix}-`)) {
     const peer = manifest.peerDependencies?.['@deepseek-ai/cordis']
     const dev = manifest.devDependencies?.['@deepseek-ai/cordis']
 

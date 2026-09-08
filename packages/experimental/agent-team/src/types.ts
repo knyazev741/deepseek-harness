@@ -1,8 +1,8 @@
 /** Public Agent Teams identities, durable records, and service request values. */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { Branded } from '@knyazevai/dsh-brand'
+import type { ContentBlock } from '@knyazevai/dsh-llm'
+import type { SessionId } from '@knyazevai/dsh-session'
 
 /** Identifies the implicit team rooted at one top-level Session. */
 export type TeamId = Branded<'TeamId'>
@@ -115,7 +115,7 @@ export interface TeamMessageSource {
   readonly senderName: string
 }
 
-declare module '@deepseek-ai/dsh-llm' {
+declare module '@knyazevai/dsh-llm' {
   interface MessageSourceMap {
     'team-message': TeamMessageSource
   }
@@ -200,7 +200,7 @@ export interface TeamWaitResult {
   readonly timedOut: boolean
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
     /** Whole teammate lifecycle value, stored only in the Team Lead Session. */
     'team/member': { version: 1; teamId: TeamId; member: TeamMemberSnapshot }

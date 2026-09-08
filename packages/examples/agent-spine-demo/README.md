@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-agent-spine-demo
+# @knyazevai/dsh-agent-spine-demo
 
 English | [中文](README.zh.md)
 
@@ -12,30 +12,30 @@ Read this package for the whole plugin tree and its composition order.
 
 ```
 @deepseek-ai/cordis-plugin-timer  timer service (writes nothing to stdout)
-@deepseek-ai/dsh-llm              abstract LLM service + content-block vocabulary
-@deepseek-ai/dsh-session          event-sourced session log + store
-@deepseek-ai/dsh-session-title    log-backed title service + deterministic fallback
-@deepseek-ai/dsh-system-prompt    prompt-section + tool-schema assembly
-@deepseek-ai/dsh-tools            registry + guarded pre/around/post/final-result pipeline
-@deepseek-ai/dsh-skill            skill provider registry
-@deepseek-ai/dsh-skill-filesystem      local filesystem skill provider
-@deepseek-ai/dsh-agent            agent registry + initiator scope + agent/* events
-@deepseek-ai/dsh-goal             optional persisted same-session goal domain
-@deepseek-ai/dsh-tool-goal        optional model-facing goal controls
-@deepseek-ai/dsh-goal-round-driver     optional same-session goal-round driver
-@deepseek-ai/dsh-llm-retry        provider-routed request retry policy
-@deepseek-ai/dsh-jobs-local      generic background-job registry
-@deepseek-ai/dsh-invariants       configurable invariant registry service
-@deepseek-ai/dsh-session/invariant
-@deepseek-ai/dsh-agent/invariant
-@deepseek-ai/dsh-scope/invariant
-@deepseek-ai/dsh-agent-loop/invariant
+@knyazevai/dsh-llm              abstract LLM service + content-block vocabulary
+@knyazevai/dsh-session          event-sourced session log + store
+@knyazevai/dsh-session-title    log-backed title service + deterministic fallback
+@knyazevai/dsh-system-prompt    prompt-section + tool-schema assembly
+@knyazevai/dsh-tools            registry + guarded pre/around/post/final-result pipeline
+@knyazevai/dsh-skill            skill provider registry
+@knyazevai/dsh-skill-filesystem      local filesystem skill provider
+@knyazevai/dsh-agent            agent registry + initiator scope + agent/* events
+@knyazevai/dsh-goal             optional persisted same-session goal domain
+@knyazevai/dsh-tool-goal        optional model-facing goal controls
+@knyazevai/dsh-goal-round-driver     optional same-session goal-round driver
+@knyazevai/dsh-llm-retry        provider-routed request retry policy
+@knyazevai/dsh-jobs-local      generic background-job registry
+@knyazevai/dsh-invariants       configurable invariant registry service
+@knyazevai/dsh-session/invariant
+@knyazevai/dsh-agent/invariant
+@knyazevai/dsh-scope/invariant
+@knyazevai/dsh-agent-loop/invariant
                                   package-owned relational checks
-@deepseek-ai/dsh-tool-bash        the model-facing bash schema (unless toolBash=false)
-@deepseek-ai/dsh-agent-instructions  AGENTS.md/CLAUDE.md workspace context loader
-@deepseek-ai/dsh-tool-skill       session-prefix skill catalog + model-facing loader schema
-@deepseek-ai/dsh-tool-jobs       job_output/job_list/job_kill schemas + completion notices
-@deepseek-ai/dsh-agent-loop       THE concrete loop (gets the forwarded `agents`)
+@knyazevai/dsh-tool-bash        the model-facing bash schema (unless toolBash=false)
+@knyazevai/dsh-agent-instructions  AGENTS.md/CLAUDE.md workspace context loader
+@knyazevai/dsh-tool-skill       session-prefix skill catalog + model-facing loader schema
+@knyazevai/dsh-tool-jobs       job_output/job_list/job_kill schemas + completion notices
+@knyazevai/dsh-agent-loop       THE concrete loop (gets the forwarded `agents`)
                                   (dsh-system-prompt gets the forwarded `persona`)
 ```
 
@@ -54,14 +54,14 @@ This applies the [Service Definition / Service Provider / Consumer separation](.
 ## Config
 
 ```ts
-import type { Config } from '@deepseek-ai/dsh-agent-spine-demo'
+import type { Config } from '@knyazevai/dsh-agent-spine-demo'
 // { agents?, maxParallelToolCalls?, includeHarnessIdentity?, includeRuntimeContext?, persona?, toolOrder?, tools?, dshHome?, sessionTitle?, skills?, workspaceContext, toolBash?, jobs?, toolJobs?, goals?, invariants? }
 // workspaceContext requires { maxBytes } or false; the other owner schemas supply defaults.
 ```
 
 The bundle forwards each field to the child that owns it. App packages supply any pre-created agents: headless and JSON-RPC compositions create `main`, while the ACP app creates agents on demand at `session/new`. `includeRuntimeContext: false` is forwarded to `dsh-system-prompt` and suppresses all dynamic context snapshots for fresh sessions without disabling their policy services. Prompt, tool, title, skill, agent-instructions, invariant, goal, and task settings retain the schemas and defaults documented by their owning packages; `jobs.maxConcurrentJobsPerOwner` configures the local provider independently of the model-facing `toolJobs` controls. `pickSpineConfig()` copies only fields owned by this bundle, and conflicting `dshHome` values fail during composition.
 
-For example, `{ invariants: { enabled: true, package_allowlist: ['^@deepseek-ai/dsh-'], package_blocklist: ['agent-loop$'] } }` keeps the package-owned companions mounted but suppresses the blocked owner. Blocklist matches override allowlist matches; see [`dsh-invariants`](../../runtime-diagnostics/invariants/README.md) for regex and lifecycle rules.
+For example, `{ invariants: { enabled: true, package_allowlist: ['^@knyazevai/dsh-'], package_blocklist: ['agent-loop$'] } }` keeps the package-owned companions mounted but suppresses the blocked owner. Blocklist matches override allowlist matches; see [`dsh-invariants`](../../runtime-diagnostics/invariants/README.md) for regex and lifecycle rules.
 
 ## Why a code bundle, not a shared YAML include
 
