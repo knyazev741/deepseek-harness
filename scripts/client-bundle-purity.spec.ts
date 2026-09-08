@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import { clientBundle } from '../packages/client/tsdown.client.ts'
 
-type ResolveId = (source: string) => null | { id: string; external: boolean }
+type ResolveId = (source: string) => null | string | { id: string; external: boolean }
 
 interface CssModulePlugin {
   name: string
@@ -82,7 +82,10 @@ describe('client bundle purity gate', () => {
   })
 
   it('lets exact generated Remote contributions inline without admitting their package implementation', () => {
-    expect(resolveId('@deepseek-ai/dsh-goal/remote')).toBeNull()
+    expect(resolveId('@deepseek-ai/dsh-fork-workspace-session-state/remote')).toBe(fileURLToPath(new URL(
+      '../packages/fork/workspace-session-state/lib/typert.remote-client.js',
+      import.meta.url,
+    )))
     expect(() => resolveId('@deepseek-ai/dsh-goal')).toThrow(/purity/)
     expect(() => resolveId('@deepseek-ai/dsh-goal/client')).toThrow(/purity/)
     expect(() => resolveId('@deepseek-ai/dsh-goal/remote/nested')).toThrow(/purity/)

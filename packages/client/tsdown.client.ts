@@ -344,6 +344,24 @@ interface WorkspaceManifest {
 const manifestCache = new Map<string, WorkspaceManifest>()
 const productionExternalCache = new Map<string, readonly RegExp[]>()
 const clientExternalCache = new Map<string, ReadonlySet<string>>()
+const generatedRemoteCache = new Map<string, string>()
+
+/** Resolve a generated Remote contribution to executable JavaScript instead of its type-only path alias. */
+function generatedRemoteRuntime(specifier: string): string {
+  const cached = generatedRemoteCache.get(specifier)
+  if (cached !== undefined) return cached
+  const packageName = specifier.slice(0, -'/remote'.length)
+  for (const manifestPath of globSync('packages/*/*/package.json', { cwd: REPOSITORY_ROOT })) {
+    const manifest = JSON.parse(
+      readFileSync(resolvePath(REPOSITORY_ROOT, manifestPath), 'utf8'),
+    ) as WorkspaceManifest
+    if (manifest.name !== packageName) continue
+    const runtime = resolvePath(REPOSITORY_ROOT, dirname(manifestPath), 'lib/typert.remote-client.js')
+    generatedRemoteCache.set(specifier, runtime)
+    return runtime
+  }
+  throw new Error(`client bundle: no workspace package publishes ${specifier}`)
+}
 
 /**
  * Read one workspace package's manifest. Located by package name rather than by
@@ -488,7 +506,8 @@ function clientConfig(id: string, entry: string): UserConfig {
         if (!source.startsWith('@deepseek-ai/')) return null
         if (isRequested(source)) return null // requested module-table row: external wins
         if (VENDORED_LIBRARY.test(source)) return null // vendored library: inline, no shared identity
-        if (INLINE_SAFE.test(source) || GENERATED_REMOTE.test(source)) return null // wire contribution: inline is the point
+        if (INLINE_SAFE.test(source)) return null // wire layer: inline is the point
+        if (GENERATED_REMOTE.test(source)) return generatedRemoteRuntime(source)
         throw new Error(
           `client bundle purity: "${source}" is not in the default client externals or ${id}'s dsh.client.external, an inline-safe wire layer, or a generated /remote contribution — `
           + 'cross-plugin value imports are forbidden; declare a non-default module request or collaborate through cordis services '

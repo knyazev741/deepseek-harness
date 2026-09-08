@@ -51,7 +51,7 @@ This exception follows from the real generated-contract ordering and is not a te
 
 ## Typert and tsdown
 
-Host tsdown enables `typertPlugin({ mode: 'workspace', faces: ['host'] })` in the normal root config. The generator uses only `tsconfig.host.json` as its program seed and produces both `typert.host.*` and the `typert.remote-client.*` projection of Host contracts; Client tsdown neither starts Typert nor analyzes the Client aggregate.
+Host tsdown enables `typertPlugin({ mode: 'workspace', faces: ['host'] })` in the normal root config. The generator uses only `tsconfig.host.json` as its program seed and produces both `typert.host.*` and the `typert.remote-client.*` projection of Host contracts; Client tsdown neither starts Typert nor analyzes the Client aggregate. Client bundles resolve generated `/remote` value imports directly to `lib/typert.remote-client.js`, while TypeScript continues to resolve the same public subpath to its declaration through `paths` and package exports.
 
 The Typert analyzer distinguishes compiler faces from runtime faces. Direct Project References in the aggregate determine which compiler face analyzes a project; only a split project explicitly referenced through `tsconfig.host.json` or `tsconfig.client.json` is restricted to that corresponding face. Runtime models follow package subpath contributions instead, so an ordinary single-project `dshClient` package may contribute both Host and Client runtime models. Consequently, Host analysis of `api-remotes` does not also register its Client entry, while an ordinary dual-entry package does not lose its Host model.
 
