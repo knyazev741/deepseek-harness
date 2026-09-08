@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-web-search-perplexity",
   "description": "Perplexity-backed search provider for the DeepSeek Harness web capability seam (ctx.web)",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

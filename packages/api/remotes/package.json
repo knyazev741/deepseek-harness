@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-api-remotes",
   "description": "Remote BFF assembly and Host Agent/Session lookup policy",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

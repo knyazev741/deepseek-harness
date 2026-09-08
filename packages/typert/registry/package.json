@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-typert-registry",
   "description": "Runtime registry for generated package reflection and Zod schemas",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

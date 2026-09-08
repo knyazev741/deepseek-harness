@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-host-directory-picker",
   "description": "Abstract workspace-directory picking seam (ctx.directoryPicker) for the DeepSeek Harness web GUI host",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

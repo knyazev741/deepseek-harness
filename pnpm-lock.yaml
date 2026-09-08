@@ -1297,15 +1297,15 @@ importers:
 
   packages/bundle/headless:
     dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
       '@knyazevai/dsh-cmdline':
         specifier: workspace:^
         version: link:../../boot/cmdline
       '@knyazevai/dsh-code-runtime-worker-thread':
         specifier: workspace:^
         version: link:../../code-runtime/code-runtime-worker-thread
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -1334,6 +1334,9 @@ importers:
 
   packages/bundle/web-app:
     dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
       '@knyazevai/dsh-agent-presets':
         specifier: workspace:^
         version: link:../../preset/agent-presets
@@ -1532,9 +1535,6 @@ importers:
       '@knyazevai/dsh-workspace':
         specifier: workspace:^
         version: link:../../workspace/workspace
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -4051,6 +4051,9 @@ importers:
       '@deepseek-ai/cordis-plugin-timer':
         specifier: workspace:^
         version: link:../../../vendor/timer
+      '@deepseek-ai/node-addon-landlock-run':
+        specifier: workspace:^
+        version: link:../../../native/landlock-run/packages/entry
       '@knyazevai/dsh-agent':
         specifier: workspace:^
         version: link:../../core/agent
@@ -4147,9 +4150,6 @@ importers:
       '@knyazevai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
-      '@deepseek-ai/node-addon-landlock-run':
-        specifier: workspace:^
-        version: link:../../../native/landlock-run/packages/entry
 
   packages/examples/jsonrpc-demo:
     dependencies:
@@ -5236,6 +5236,9 @@ importers:
 
   packages/host/apiproxy:
     dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
       '@knyazevai/dsh-agent':
         specifier: workspace:^
         version: link:../../core/agent
@@ -5311,9 +5314,6 @@ importers:
       '@knyazevai/dsh-workspace':
         specifier: workspace:^
         version: link:../../workspace/workspace
-      '@deepseek-ai/schemastery':
-        specifier: link:../../../vendor/schemastery
-        version: link:../../../vendor/schemastery
       fflate:
         specifier: ^0.8.2
         version: 0.8.3
@@ -5390,12 +5390,12 @@ importers:
 
   packages/host/directory-picker-browse:
     dependencies:
-      '@knyazevai/dsh-host-directory-picker':
-        specifier: workspace:^
-        version: link:../directory-picker
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
+      '@knyazevai/dsh-host-directory-picker':
+        specifier: workspace:^
+        version: link:../directory-picker
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -6216,15 +6216,15 @@ importers:
 
   packages/sandbox/sandbox-local:
     dependencies:
-      '@knyazevai/dsh-sandbox-windows-acl':
-        specifier: workspace:^
-        version: link:../sandbox-windows-acl
       '@deepseek-ai/node-addon-landlock-run':
         specifier: workspace:^
         version: link:../../../native/landlock-run/packages/entry
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
+      '@knyazevai/dsh-sandbox-windows-acl':
+        specifier: workspace:^
+        version: link:../sandbox-windows-acl
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -7000,6 +7000,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/node-addon-landlock-run':
+        specifier: workspace:^
+        version: link:../../../native/landlock-run/packages/entry
       '@knyazevai/dsh-bash-local':
         specifier: workspace:^
         version: link:../bash-local
@@ -7021,9 +7024,6 @@ importers:
       '@knyazevai/dsh-subprocess-local':
         specifier: workspace:^
         version: link:../../subprocess/subprocess-local
-      '@deepseek-ai/node-addon-landlock-run':
-        specifier: workspace:^
-        version: link:../../../native/landlock-run/packages/entry
 
   packages/shell/pwsh-local:
     dependencies:
@@ -7746,12 +7746,12 @@ importers:
 
   packages/subagent/subagent-codex:
     dependencies:
-      '@knyazevai/dsh-sdk-protocol':
-        specifier: workspace:^
-        version: link:../../sdk/protocol
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
+      '@knyazevai/dsh-sdk-protocol':
+        specifier: workspace:^
+        version: link:../../sdk/protocol
       '@openai/codex':
         specifier: 0.147.0
         version: 0.147.0
@@ -8173,12 +8173,12 @@ importers:
 
   packages/terminal/terminal-bash:
     dependencies:
-      '@knyazevai/dsh-pwsh-local':
-        specifier: workspace:^
-        version: link:../../shell/pwsh-local
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
+      '@knyazevai/dsh-pwsh-local':
+        specifier: workspace:^
+        version: link:../../shell/pwsh-local
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -8969,6 +8969,9 @@ importers:
       '@deepseek-ai/cosmokit':
         specifier: link:../../vendor/cosmokit
         version: link:../../vendor/cosmokit
+      '@deepseek-ai/schemastery':
+        specifier: link:../../vendor/schemastery
+        version: link:../../vendor/schemastery
       '@knyazevai/dsh-acp':
         specifier: workspace:^
         version: link:../../packages/acp/acp
@@ -9302,9 +9305,6 @@ importers:
       '@knyazevai/dsh-workflow-worker-thread':
         specifier: workspace:^
         version: link:../../packages/workflow/workflow-worker-thread
-      '@deepseek-ai/schemastery':
-        specifier: link:../../vendor/schemastery
-        version: link:../../vendor/schemastery
 
   vendor/cordis:
     dependencies:

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-web-frontend",
   "description": "Web application entry: vite build over the @knyazevai/dsh-client-web shell library; dist/ served by apps/cli's dsh web",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

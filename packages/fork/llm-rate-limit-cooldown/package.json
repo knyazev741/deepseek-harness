@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-fork-llm-rate-limit-cooldown",
   "description": "Fork-owned LLM plugin that waits a long cooldown and retries a rate-limited request whose bounded retry budget is exhausted",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-attachment-local",
   "description": "Private content-addressed DSH_HOME attachment storage",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

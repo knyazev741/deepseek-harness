@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-llm-deepseek",
   "description": "DeepSeek chat-completions adapter for the DeepSeek Harness LLM seam",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

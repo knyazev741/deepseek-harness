@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-typert-protocol",
   "description": "Compiler-independent Remote metadata and Typert provider protocols",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

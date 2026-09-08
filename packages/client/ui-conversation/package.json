@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-conversation",
   "description": "Conversation domain: skeleton, ordered chat flow, composer with the Host-backed busy-Enter preference, and details host",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

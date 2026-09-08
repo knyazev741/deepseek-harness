@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-brand-official",
   "description": "Official DeepSeek Harness brand occupants for the Web client's sidebar and conversation Hero slots",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-reference",
   "description": "Unified Web @file and @session reference source",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-fork-session-source",
   "description": "Plugin-owned GitHub Actions session-source event and projection",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

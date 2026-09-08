@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-system-prompt",
   "description": "System prompt assembly registry for the DeepSeek Harness",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

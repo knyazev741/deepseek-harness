@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-native-command",
   "description": "Zero-dependency no-shell execFile runner for host-native OS integrations: utf8 stdio capture, abort propagation, Windows hide",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },

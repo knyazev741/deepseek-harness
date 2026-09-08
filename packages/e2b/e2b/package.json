@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-e2b",
   "description": "Shared E2B sandbox lifecycle for DeepSeek Harness provider adapters",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publishConfig": {
     "access": "public"
   },
