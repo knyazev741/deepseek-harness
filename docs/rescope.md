@@ -8,7 +8,7 @@ The Cordis framework and its foundation libraries are vendored under [`vendor/`]
 
 The repository-owned harness packages use the `@knyazevai/dsh` scope, including the root workspace's private `@knyazevai/dsh-root` name. The vendored framework remains under `@deepseek-ai`, so a package token beginning with `@knyazevai/dsh` is a harness package while `@deepseek-ai/cordis` and `@deepseek-ai/cordis-plugin-*` remain vendored identities. The native Landlock family keeps its separate `@deepseek-ai/node-addon-*` names.
 
-[`scripts/rescope-dsh.ts`](../scripts/rescope-dsh.ts) owns the permanent harness migration and its `--check` mode. It rewrites tracked current-state package tokens and is the first step after an upstream or repository sync; it excludes vendored source, generated build output, migration records, and historical Agent Notes. The [DSH npm-scope Agent Note](../.agents/notes/implemented/process/2026-09-08-knyazevai-dsh-npm-scope.md) records why the fork owns the `@knyazevai` scope and why artifact-only rewriting is not used.
+[`scripts/rescope-dsh.ts`](../scripts/rescope-dsh.ts) owns the permanent harness migration and its `--check` mode. It rewrites tracked current-state package tokens and is the first step after an upstream or repository sync; it excludes vendored source, generated build output, migration records, and all Agent Notes. Active implemented Agent Notes remain outside the mechanical codemod but are maintained deliberately when their current package identities or other shipped facts change; archived notes stay frozen. The [DSH npm-scope Agent Note](../.agents/notes/implemented/process/2026-09-08-knyazevai-dsh-npm-scope.md) records why the fork owns the `@knyazevai` scope and why artifact-only rewriting is not used.
 
 ## Name mapping
 
@@ -34,7 +34,7 @@ Subpath exports keep their path: `@cordisjs/plugin-loader/repository` becomes `@
 - **The `cordis.yml` configuration family**, including `*.cordis.yml`, `*.cordis.snapshot.yml`, and `cordis.patch.yml`.
 - **Harness packages whose own names contain the word**, such as `@knyazevai/dsh-tool-cordis`.
 - **Upstream runtime identifiers**, such as Schemastery's `Symbol.for('schemastery')` and its `vendor:` metadata field.
-- **Prose outside `docs/`.** `vendor/*/README.md`, package READMEs, and Agent Notes keep the names they were written with; a bare `cordis` there can also be the Python SDK's option name or an agent-preset id. Inside `docs/`, prose and every Markdown fence follow the rename.
+- **Prose outside `docs/`.** `vendor/*/README.md` and package READMEs keep the names they were written with; all Agent Notes are excluded from the mechanical codemod, while active implemented notes maintain current package identities deliberately and archived notes remain frozen historical records. A bare `cordis` there can also be the Python SDK's option name or an agent-preset id. Inside `docs/`, prose and every Markdown fence follow the rename.
 
 ## What your code has to change
 

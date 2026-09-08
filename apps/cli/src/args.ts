@@ -10,8 +10,9 @@
  * `dsh --profile tui --resume abc` boots the tui profile with `--resume abc`,
  * and `dsh --profile web -h` prints the web app's help, not this one's.
  *
- * `web` is a hardcoded alias for `--profile web`; `plugin` manages a profile's
- * plugin dependencies by forwarding to pnpm.
+ * `web` is the packaged alias for `--profile fork-web`; an explicit
+ * `--profile web` selects the upstream-only template. `plugin` manages a
+ * profile's plugin dependencies by forwarding to pnpm.
  * @module @knyazevai/dsh/args
  */
 
@@ -63,7 +64,8 @@ const collect = (value: string, previous: string[] = []): string[] => [...previo
 /** The launcher's own help text; each app prints its own. */
 const HELP_EXAMPLES = `
 Examples:
-  dsh --profile web                          boot the web profile (same as: dsh web)
+  dsh web                                     boot the packaged fork-web profile
+  dsh --profile web                           boot the upstream-only Web profile
   dsh --profile headless "run the tests"     answer one task, print the result, and exit
   dsh --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
   dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
@@ -153,9 +155,9 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     }
   }
 
-  const webProfile = process.env.DSH_REPOSITORY_WEB_PROFILE ?? 'web'
+  const webProfile = process.env.DSH_REPOSITORY_WEB_PROFILE ?? 'fork-web'
   if (webProfile === '') program.error('error: DSH_REPOSITORY_WEB_PROFILE needs a profile name')
-  const web = program.command('web').description('boot the web profile (alias of --profile web); the web app\'s own flags follow')
+  const web = program.command('web').description('boot the packaged fork-web profile (alias of --profile fork-web); the web app\'s own flags follow')
   web
     .helpOption(false)
     .allowUnknownOption()

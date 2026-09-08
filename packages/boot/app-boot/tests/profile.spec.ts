@@ -272,6 +272,33 @@ describe('healProfilesModuleFallback', () => {
     expect(before).toContain('dep-of-a')
   })
 
+  it('preserves scoped package segments in the installation fallback', () => {
+    const anchor = stageInstallation({
+      '@knyazevai/dsh-scoped-bundle': {
+        patch: '[]\n',
+        deps: { '@knyazevai/dsh-scoped-dependency': '0.0.0' },
+      },
+    })
+    const modules = join(anchor, '..', 'node_modules')
+    const dependency = join(modules, '@knyazevai', 'dsh-scoped-dependency')
+    mkdirSync(dependency, { recursive: true })
+    writeFileSync(join(dependency, 'package.json'), JSON.stringify({
+      name: '@knyazevai/dsh-scoped-dependency',
+      version: '0.0.0',
+    }))
+
+    const home = tmp()
+    healProfilesModuleFallback(anchor, home)
+    const fallback = join(home, 'profiles', 'node_modules')
+    for (const name of [
+      'dsh-app',
+      '@knyazevai/dsh-scoped-bundle',
+      '@knyazevai/dsh-scoped-dependency',
+    ]) {
+      expect(lstatSync(join(fallback, name)).isSymbolicLink(), name).toBe(true)
+    }
+  })
+
   it('throws when a fallback entry is a real directory', () => {
     const anchor = stageInstallation({})
     const home = tmp()

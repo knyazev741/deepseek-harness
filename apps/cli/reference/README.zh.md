@@ -10,7 +10,7 @@
 
 组合包名称先从 dsh 安装目录解析，再从 profile 目录解析。因此，内置组合包（`@knyazevai/dsh-base`、`@knyazevai/dsh-web-app`、`@knyazevai/dsh-fork-base`、`@knyazevai/dsh-fork-web` 和 `@knyazevai/dsh-headless`）始终来自当前运行的 `dsh` 所属的安装；树外组合包则来自 profile 中由 pnpm 管理的 `node_modules`。patch 行中的裸插件 `name` 会从 profile 目录开始，按照 Node 的模块解析规则逐级向父目录查找，直至由 dsh 维护的安装后备目录 `$DSH_HOME/profiles/node_modules`。该目录为 dsh 安装中的应用和组合包所依赖的每个包各维护一个符号链接，并在每次启动时修复这些链接。
 
-`web`、`fork-web` 和 `headless` profile 首次使用时会从随附模板自动初始化（`web`：base + web-app；`fork-web`：base + web-app + fork-base + fork-web；`headless`：base + headless）。`fork-web` 元组由安装目录拥有，其两个 fork 组合包从当前运行的 dsh 安装解析；默认的 `web` 元组仍仅包含上游层。其他缺失的 profile 会显式报错，并提示运行 `dsh plugin --profile <name> add <package>`。
+`web`、`fork-web` 和 `headless` profile 首次使用时会从随附模板自动初始化（`web`：base + web-app；`fork-web`：base + web-app + fork-base + fork-web；`headless`：base + headless）。`fork-web` 元组由安装目录拥有，其两个 fork 组合包从当前运行的 dsh 安装解析；显式的 `web` 元组仍仅包含上游层，而已发布 CLI 的 `dsh web` 别名选择 `fork-web`。其他缺失的 profile 会显式报错，并提示运行 `dsh plugin --profile <name> add <package>`。
 
 ### 应用参数
 
@@ -64,7 +64,7 @@ dsh --profile tui
 
 ## Web 别名
 
-`dsh web` 是 `--profile web` 的硬编码别名；写在它之后的 flag 属于 web 应用，由组合包中的普通提供方解析。`--host` 和 `--port` 覆盖承载它们的那些行的组合取值，可重复的 `--trusted-host` 通过 `ctx.webRuntime.trustedHosts` 提供本次调用的 authority（部署表达式会拼接自己的 authority），`--no-open` 则只对本次调用关闭默认浏览器交接。客户端插件 HMR（热模块替换）接收器始终挂载，在单独运行的 `pnpm run dev:web` watcher 重建客户端 bundle 之前保持空闲。
+已发布 CLI 的 `dsh web` 默认选择 `fork-web` profile；显式的 `dsh --profile web` 选择仅上游模板。写在别名之后的 flag 属于 web 应用，由组合包中的普通提供方解析。`--host` 和 `--port` 覆盖承载它们的那些行的组合取值，可重复的 `--trusted-host` 通过 `ctx.webRuntime.trustedHosts` 提供本次调用的 authority（部署表达式会拼接自己的 authority），`--no-open` 则只对本次调用关闭默认浏览器交接。客户端插件 HMR（热模块替换）接收器始终挂载，在单独运行的 `pnpm run dev:web` watcher 重建客户端 bundle 之前保持空闲。
 
 ```sh
 dsh web

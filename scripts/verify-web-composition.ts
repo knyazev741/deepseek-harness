@@ -53,7 +53,7 @@ function runPnpm(args: readonly string[]): void {
 function stageProfileHome(profile: WebCompositionProfile): string {
   const home = mkdtempSync(join(tmpdir(), `dsh-web-composition-home-${profile}-`))
   if (profile !== 'fork-web') return home
-  const profileModules = join(home, 'profiles', profile, 'node_modules', '@deepseek-ai')
+  const profileModules = join(home, 'profiles', profile, 'node_modules', '@knyazevai')
   mkdirSync(profileModules, { recursive: true })
   for (const bundle of ['fork-base', 'fork-web'] as const) {
     symlinkSync(resolve(repositoryRoot, `packages/bundle/${bundle}`), join(profileModules, `dsh-${bundle}`), 'dir')

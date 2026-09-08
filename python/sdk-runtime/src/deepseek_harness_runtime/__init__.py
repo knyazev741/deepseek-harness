@@ -140,7 +140,7 @@ def _node_launch_args() -> tuple[str, str]:
     bin_js = (
         node_root
         / "node_modules"
-        / "@deepseek-ai"
+        / "@knyazevai"
         / "dsh-sdk-jsonrpc-demo"
         / "lib"
         / "packaged-bin.js"

@@ -28,4 +28,4 @@ dsh release family 校验 `@knyazevai/dsh` 名称，并以 `@knyazevai/dsh` 作�
 
 包图现在有一个 fork 拥有的 DSH 作用域和一个保留的 vendored 作用域。干净 checkout、打包安装和 npm 发布使用相同的包身份；旧的 `@deepseek-ai/dsh*` consumer 不会被静默重定向。
 
-上游同步必须在复制符合条件的当前状态改动后重新运行 `pnpm run rescope-dsh -- --apply`，随后运行 `pnpm run rescope-dsh:check`、重新生成过时的目录、刷新锁文件，并确认受影响的双语 pair。历史 Agent Note 和迁移记录继续作为早期决策证据，不会被改写。
+上游同步必须在复制符合条件的当前状态改动后重新运行 `pnpm run rescope-dsh -- --apply`，随后运行 `pnpm run rescope-dsh:check`、重新生成过时的目录、刷新锁文件，并确认受影响的双语 pair。Archived Agent Note 继续作为早期决策的冻结证据。活跃的 implemented Agent Note 排除在 codemod 之外；当其中的当前包身份或其他已交付事实变化时，会有意维护它们。迁移记录仍是历史证据，不会被改写。

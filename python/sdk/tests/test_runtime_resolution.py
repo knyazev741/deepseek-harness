@@ -35,6 +35,28 @@ def test_unknown_env_mode_fails_loud(monkeypatch: pytest.MonkeyPatch) -> None:
         resolve_bundled_launch_args()
 
 
+def test_explicit_node_mode_uses_the_scoped_packaged_runtime_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bin_js = (
+        tmp_path
+        / "runtime"
+        / "node"
+        / "node_modules"
+        / "@knyazevai"
+        / "dsh-sdk-jsonrpc-demo"
+        / "lib"
+        / "packaged-bin.js"
+    )
+    bin_js.parent.mkdir(parents=True)
+    bin_js.touch()
+    monkeypatch.setattr(runtime, "bundled_package_dir", lambda: tmp_path)
+    monkeypatch.setattr(runtime.shutil, "which", lambda executable: "/usr/bin/node" if executable == "node" else None)
+    monkeypatch.setenv(RUNTIME_MODE_ENV_VAR, "node")
+
+    assert resolve_bundled_launch_args() == ("/usr/bin/node", str(bin_js))
+
+
 def test_explicit_mode_wins_over_env_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(RUNTIME_MODE_ENV_VAR, "bogus")
     try:

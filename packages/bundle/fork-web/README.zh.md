@@ -8,7 +8,7 @@
 
 该 bundle patch 只包含 insert，并为 [`dsh-fork-ui-workspace-overlay`](../../fork/ui-workspace-overlay/README.zh.md) 挂载一行 `ui-workspace-overlay`。三个 Host fork 行仍由 `dsh-fork-base` 所有；本组合包不会复制或重新配置它们。
 
-内置的 `fork-web` profile 模板按顺序挂载 `dsh-base`、`dsh-web-app`、`dsh-fork-base` 和 `dsh-fork-web`。默认的 `web` profile 仍是上游的两层组合，不包含 fork 行。
+内置的 `fork-web` profile 模板按顺序挂载 `dsh-base`、`dsh-web-app`、`dsh-fork-base` 和 `dsh-fork-web`。显式的 `web` profile 仍是上游的两层组合，不包含 fork 行；已发布 CLI 的 `dsh web` 别名选择 `fork-web`。
 
 ## 挂载的能力
 
@@ -35,4 +35,4 @@
 ## 已知限制与延期工作
 
 - 该组合包要求声明的四个层以及 `fork-ui-workspace-overlay` 包位于同一 profile 解析环境中并已安装。
-- 默认 `web` 模板有意不包含该组合包；部署需要选择 `fork-web` profile，或显式组合等价的层。
+- 显式的 `web` 模板有意不包含该组合包；部署需要选择 `fork-web` profile（或已发布 CLI 的 `dsh web` 别名），或显式组合等价的层。

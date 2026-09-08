@@ -113,6 +113,17 @@ function main(): void {
       throw new Error(`installed ${entry.packageName} --version reported ${JSON.stringify(version)}, expected ${expected.version}`)
     }
     console.log(`release verify-packed-install: installed ${entry.packageName} reports ${version}`)
+
+    const webComposition = capture(process.execPath, [bin, 'web', '--dump-default-config'], {
+      cwd: consumerRoot,
+      env: environment,
+    })
+    for (const layer of ['@knyazevai/dsh-fork-base', '@knyazevai/dsh-fork-web']) {
+      if (!webComposition.includes(`# == ${layer}`)) {
+        throw new Error(`installed ${entry.packageName} web alias did not select the ${layer} composition layer`)
+      }
+    }
+    console.log('release verify-packed-install: web alias selected fork-web composition')
   } finally {
     rmSync(consumerRoot, { recursive: true, force: true })
   }

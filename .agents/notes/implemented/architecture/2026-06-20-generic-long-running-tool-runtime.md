@@ -14,12 +14,12 @@ The job registry, control tools, and completion notices form one harness capabil
 
 The `jobs/` package group owns background-job semantics:
 
-- `@deepseek-ai/dsh-jobs` registers running work as `ctx.jobs` and owns job ids, authorization, snapshots, reads, cancellation, waiting, completion listeners, and cleanup.
-- `@deepseek-ai/dsh-tool-jobs` exposes `job_output`, `job_list`, and `job_kill`, injects completion notices, and supplies the background-job system-prompt guidance.
+- `@knyazevai/dsh-jobs` registers running work as `ctx.jobs` and owns job ids, authorization, snapshots, reads, cancellation, waiting, completion listeners, and cleanup.
+- `@knyazevai/dsh-tool-jobs` exposes `job_output`, `job_list`, and `job_kill`, injects completion notices, and supplies the background-job system-prompt guidance.
 
 Long-running tools are producers. `dsh-tool-bash` adapts a `ShellProcess` into incremental output and process cancellation; `dsh-tool-subagent` adapts a child run into final output and child disposal. The bash and subagent capability seams remain independent of sessions and the job registry.
 
-`JobRegistry` is the Service Definition in `@deepseek-ai/dsh-jobs`; the process-local provider is `LocalJobRegistry` in `@deepseek-ai/dsh-jobs-local` (the [task-registry contract Agent Note](2026-07-26-job-registry-seam.md) records that split).
+`JobRegistry` is the Service Definition in `@knyazevai/dsh-jobs`; the process-local provider is `LocalJobRegistry` in `@knyazevai/dsh-jobs-local` (the [task-registry contract Agent Note](2026-07-26-job-registry-seam.md) records that split).
 
 ## Runtime contract
 

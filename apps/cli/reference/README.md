@@ -10,7 +10,7 @@ This reference defines the profile, web-alias, plugin-management, and config-dum
 
 Bundle names resolve from the dsh installation first, then from the profile directory. In-box bundles (`@knyazevai/dsh-base`, `@knyazevai/dsh-web-app`, `@knyazevai/dsh-fork-base`, `@knyazevai/dsh-fork-web`, and `@knyazevai/dsh-headless`) therefore always come from the same installation as the running `dsh`; out-of-tree bundles come from the profile's pnpm-managed `node_modules`. A bare plugin `name` in any patch row resolves through the profile directory's Node parent-walk, which reaches the maintained installation fallback `$DSH_HOME/profiles/node_modules` (one symlink per package the installation's app and bundles depend on, healed on every launch).
 
-The `web`, `fork-web`, and `headless` profiles auto-initialize from shipped templates on first use (`web`: base + web-app; `fork-web`: base + web-app + fork-base + fork-web; `headless`: base + headless). The `fork-web` tuple is installation-owned and its two fork bundles are resolved from the running dsh installation; the default `web` tuple remains upstream-only. Any other missing profile fails loud with a hint to run `dsh plugin --profile <name> add <package>`.
+The `web`, `fork-web`, and `headless` profiles auto-initialize from shipped templates on first use (`web`: base + web-app; `fork-web`: base + web-app + fork-base + fork-web; `headless`: base + headless). The `fork-web` tuple is installation-owned and its two fork bundles are resolved from the running dsh installation; the explicit `web` tuple remains upstream-only, while the packaged `dsh web` alias selects `fork-web`. Any other missing profile fails loud with a hint to run `dsh plugin --profile <name> add <package>`.
 
 ### App arguments
 
@@ -64,7 +64,7 @@ Git-hosted plugins that ship sources build during install through their `prepare
 
 ## Web alias
 
-`dsh web` is a hardcoded alias for `--profile web`; the flags after it belong to the web app, whose ordinary bundle provider parses them. `--host` and `--port` override the composed values of the rows that carry them, repeatable `--trusted-host` contributes invocation authorities through `ctx.webRuntime.trustedHosts` (a deployment expression concatenates its own authorities), and `--no-open` disables the default-browser handoff for this invocation. The client-plugin HMR receiver is always mounted and stays idle until a separate `pnpm run dev:web` watcher rebuilds client bundles.
+`dsh web` selects the packaged `fork-web` profile by default; explicit `dsh --profile web` selects the upstream-only template. The flags after the alias belong to the web app, whose ordinary bundle provider parses them. `--host` and `--port` override the composed values of the rows that carry them, repeatable `--trusted-host` contributes invocation authorities through `ctx.webRuntime.trustedHosts` (a deployment expression concatenates its own authorities), and `--no-open` disables the default-browser handoff for this invocation. The client-plugin HMR receiver is always mounted and stays idle until a separate `pnpm run dev:web` watcher rebuilds client bundles.
 
 ```sh
 dsh web

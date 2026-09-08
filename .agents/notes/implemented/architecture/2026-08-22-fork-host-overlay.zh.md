@@ -10,13 +10,13 @@ Fork 增加了仅 Host 的来源信息、工作区导航状态和首个结果 ti
 
 ## 决策
 
-Fork Host overlay 由三个可选包拥有。`@deepseek-ai/dsh-fork-session-source` 观察权威的 session 创建流程，追加一个带有 `{ source: 'github-actions' }` 的 `fork/session-source` 事件，并注册可空的 `forkSessionSource` projection。事件使用 core 的 `LogIntent` 接缝传入 `{ ignorable: true }`，因此没有加载该可选词汇的 reader 可以跳过部署元数据并保留 session；surface event 不能请求这个标记。
+Fork Host overlay 由三个可选包拥有。`@knyazevai/dsh-fork-session-source` 观察权威的 session 创建流程，追加一个带有 `{ source: 'github-actions' }` 的 `fork/session-source` 事件，并注册可空的 `forkSessionSource` projection。事件使用 core 的 `LogIntent` 接缝传入 `{ ignorable: true }`，因此没有加载该可选词汇的 reader 可以跳过部署元数据并保留 session；surface event 不能请求这个标记。
 
-`@deepseek-ai/dsh-fork-workspace-session-state` 在 `fork-workspace-session-state` Settings namespace 中拥有有序的全局 pin 列表，只暴露生成的 `forkWorkspaceSessionState` Remote 及其 `list`、`setPinned` 方法。持久化值只包含 `pins.sessionIds`；Settings descriptor revision 是唯一的 CAS 权威值。串行 operation queue 在 stale 检查前读取当前 descriptor，仅在新增 pin 时要求当前 workspace membership；归档或删除 Workspace 后仍允许移除已有持久 pin，并在其嵌套的 Settings registration withdraw 之前完成 drain。
+`@knyazevai/dsh-fork-workspace-session-state` 在 `fork-workspace-session-state` Settings namespace 中拥有有序的全局 pin 列表，只暴露生成的 `forkWorkspaceSessionState` Remote 及其 `list`、`setPinned` 方法。持久化值只包含 `pins.sessionIds`；Settings descriptor revision 是唯一的 CAS 权威值。串行 operation queue 在 stale 检查前读取当前 descriptor，仅在新增 pin 时要求当前 workspace membership；归档或删除 Workspace 后仍允许移除已有持久 pin，并在其嵌套的 Settings registration withdraw 之前完成 drain。
 
 Core session 接缝保持有界：`LogIntent` 只为 log-only event type 标记 ignorable envelope；`SurfaceIntent` 仍负责 surface placement，且不能请求 `ignorable`。两个状态 fork 包都不贡献 model context、prompt content 或 API Proxy 方法，普通 profile 也不会挂载它们。
 
-`@deepseek-ai/dsh-fork-llm-first-chunk-timeout` 注册 `llm/stream` waterfall，只限制首个 downstream iterator result，默认值为 120000 ms。计时器先到时产生一个可重试的 `TIMEOUT` terminal chunk，并 best-effort 发起 iterator close；caller abort 仍由下游决定，首个结果之后 wrapper 变为透明转发。其临时 timer 和 iterator state 在不等待可能持续阻塞的 provider read 的情况下完成 dispose。它不施加 inter-chunk 或 transport timeout，普通 profile 也不会挂载它。
+`@knyazevai/dsh-fork-llm-first-chunk-timeout` 注册 `llm/stream` waterfall，只限制首个 downstream iterator result，默认值为 120000 ms。计时器先到时产生一个可重试的 `TIMEOUT` terminal chunk，并 best-effort 发起 iterator close；caller abort 仍由下游决定，首个结果之后 wrapper 变为透明转发。其临时 timer 和 iterator state 在不等待可能持续阻塞的 provider read 的情况下完成 dispose。它不施加 inter-chunk 或 transport timeout，普通 profile 也不会挂载它。
 
 ## 验证
 

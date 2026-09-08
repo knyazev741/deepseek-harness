@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-06-subagent-list-identity-projection.md
-2026-08-06-subagent-list-identity-projection.md: 2e88639eade2b5a83ef491bcb93693d432bd676b
-2026-08-06-subagent-list-identity-projection.zh.md: 56fa5bad853a5c089bb19e58cbc180c3e830c1b7
+2026-08-06-subagent-list-identity-projection.md: 30cdf3da59152ec85d1e8e6b7e9c5dd896946386
+2026-08-06-subagent-list-identity-projection.zh.md: 53796464c683fbc25e9d175e6f74a3dff773d1aa

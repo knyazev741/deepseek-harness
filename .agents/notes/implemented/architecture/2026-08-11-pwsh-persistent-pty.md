@@ -6,7 +6,7 @@ English | [中文](2026-08-11-pwsh-persistent-pty.zh.md)
 
 ## Problem
 
-The harness had no persistent shell on Windows. The persistent `bash` stack was POSIX-only by construction: `@deepseek-ai/dsh-subprocess-local` threw at terminal allocation (`createProcessInspector()` rejected win32), `@deepseek-ai/dsh-terminal-bash` was bash-shaped (`/bin/bash` defaults, `PS1`/`PROMPT_COMMAND` environment markers), `@deepseek-ai/dsh-tool-bash-persistent` wrapped commands in bash syntax, and every pty test skipped on win32. The one-shot `pwsh` tool (`@deepseek-ai/dsh-tool-pwsh` over `@deepseek-ai/dsh-pwsh-local`) already ran on Windows, but each call started a fresh `pwsh -Command` process: cwd, `$env:` variables, functions, and interactive children ended with the call, and its README recorded "No persistent shell or PTY" as deferred work.
+The harness had no persistent shell on Windows. The persistent `bash` stack was POSIX-only by construction: `@knyazevai/dsh-subprocess-local` threw at terminal allocation (`createProcessInspector()` rejected win32), `@knyazevai/dsh-terminal-bash` was bash-shaped (`/bin/bash` defaults, `PS1`/`PROMPT_COMMAND` environment markers), `@knyazevai/dsh-tool-bash-persistent` wrapped commands in bash syntax, and every pty test skipped on win32. The one-shot `pwsh` tool (`@knyazevai/dsh-tool-pwsh` over `@knyazevai/dsh-pwsh-local`) already ran on Windows, but each call started a fresh `pwsh -Command` process: cwd, `$env:` variables, functions, and interactive children ended with the call, and its README recorded "No persistent shell or PTY" as deferred work.
 
 The gap excluded Windows workflows whose state lives in a terminal: stepping a debugger, exploring in a Python or Node REPL, or returning to a shell after interrupting its foreground command — the same class of work the persistent bash pty serves on POSIX.
 
@@ -16,17 +16,17 @@ Two foundations already existed. the terminal service itself (`ctx.terminals` re
 
 A model-facing persistent `pwsh` tool ships on Windows with the same contract as `tool-bash-persistent`: one owner-scoped persistent shell per Agent, marker-detected command completion, exact native exit codes, bounded output, and timeout/cancel/`exit` semantics that reset the shell and tell the model. Three pieces deliver it: a Windows substrate in `subprocess-local`, a shell-dialect option in `terminal-bash`, and the new `tool-pwsh-persistent` package with the minimal-preset composition rows.
 
-### Windows substrate in `@deepseek-ai/dsh-subprocess-local`
+### Windows substrate in `@knyazevai/dsh-subprocess-local`
 
 `createProcessInspector()` returns a `WindowsProcessInspector` on win32 instead of throwing. The koffi-backed inspector enumerates the process table through Toolhelp32, combines GetProcessTimes creation identities with zero-time process-handle waits (pid-reuse fencing plus terminated-object detection), reports the **shell pid as a pseudo foreground group** (Windows has no POSIX groups; the stable value lets the prompt-marker readiness fast path settle in one poll interval), reports no stdin-wait evidence (readiness degrades exactly like macOS), and signals through `taskkill /T` escalation (`/F` only for SIGKILL). koffi (`^3.1.0`, the version `sandbox-windows-acl` already pins) loads lazily on win32 only.
 
 `LocalTerminalHandle` branches for win32 because node-pty's `kill(signal)` throws ("Signals not supported on windows") and its bare kill delegates to a console-list agent that fails without a parent console. Teardown escalates through taskkill fenced on the shell's start identity, and — because an externally taskkilled shell may never fire node-pty's exit notification — the handle settles `done` from the inspector-verified absence (`settleExitIfGone`). `signalForeground` maps SIGINT to a `\x03` Ctrl-C input write (the console-wide delivery conhost turns into a CTRL_C event; verified to interrupt a running command), routes SIGTERM/SIGKILL to taskkill, and rejects SIGTSTP/SIGHUP as unavailable on Windows. The public `PtySignal` set and seam types are unchanged; the mapping lives in the backend.
 
-### Shell dialect in `@deepseek-ai/dsh-terminal-bash`
+### Shell dialect in `@knyazevai/dsh-terminal-bash`
 
 One backend, two dialects: `shellDialect: 'bash' | 'pwsh'` (default `'bash'`, existing deployments byte-identical). The effective `shellPath`/`shellArgs` resolve per dialect (bash `/bin/bash --noprofile --norc -i`; pwsh through the shared `dsh-pwsh-local` resolver with `-NoLogo -NoProfile`, keeping the interactive host for child REPLs). The child environment drops the bash-only `PS1`/`PROMPT_COMMAND` markers and adds `NO_COLOR` for pwsh. pwsh cannot install its prompt from the environment, so the backend writes the prompt function through the session at startup and waits until the controlled prompt is actually visible, looping over follow-up sends because the pwsh banner-to-prompt gap can outlast the silence bound; a `session_exit` or `timeout` wait rejects the spawn. Both dialects emit the same BEL-terminated OSC `133;D;` marker, so the sanitizer, `PROMPT_MARKER_PREFIX`, `CONTROLLED_PROMPT`, and the exact-tail readiness logic are reused untouched — the marker stays a readiness signal with an unconsumed payload, exactly as in the bash path, and no model-notification channel was added (aligned with the current implementation; the deferred BEL event channel stays deferred).
 
-### `@deepseek-ai/dsh-tool-pwsh-persistent`
+### `@knyazevai/dsh-tool-pwsh-persistent`
 
 A new package mirroring `tool-bash-persistent`: same `Config` (`backendType` default `shell`, `timeoutMs`, `maxOutputChars`, `description`), same owner-scoped shell registry and serialized per-owner queue, same timeout/abort/exit/reset paths. The tool name is `pwsh`; it never co-mounts with the one-shot `tool-pwsh` because the preset rows are mutually exclusive per platform.
 

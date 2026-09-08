@@ -8,7 +8,7 @@ The opt-in fork Web profile bundle. Apply it after the upstream [`dsh-base`](../
 
 The bundle patch is insert-only and mounts one row, `ui-workspace-overlay`, for [`dsh-fork-ui-workspace-overlay`](../../fork/ui-workspace-overlay/README.md). The three Host fork rows remain owned by `dsh-fork-base`; this bundle does not duplicate or reconfigure them.
 
-The shipped `fork-web` profile template layers `dsh-base`, `dsh-web-app`, `dsh-fork-base`, and `dsh-fork-web` in that order. The default `web` profile remains the upstream two-layer composition and contains no fork rows.
+The shipped `fork-web` profile template layers `dsh-base`, `dsh-web-app`, `dsh-fork-base`, and `dsh-fork-web` in that order. The explicit `web` profile remains the upstream two-layer composition and contains no fork rows; the packaged `dsh web` alias selects `fork-web`.
 
 ## Mounted capability
 
@@ -35,4 +35,4 @@ The overlay does not rewrite model requests or their prefixes, so it has no dire
 ## Known Limitations and Deferred Work
 
 - The bundle requires all four declared layers and the `fork-ui-workspace-overlay` package to be installed in the same profile resolution environment.
-- The default `web` template intentionally excludes this bundle; deployments opt in by selecting the `fork-web` profile or composing equivalent layers explicitly.
+- The explicit `web` template intentionally excludes this bundle; deployments opt in by selecting the `fork-web` profile (or the packaged `dsh web` alias) or composing equivalent layers explicitly.

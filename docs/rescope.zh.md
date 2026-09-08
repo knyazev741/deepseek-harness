@@ -8,7 +8,7 @@ Cordis 框架及其基础库以源码形式 vendored 在 [`vendor/`](../vendor/R
 
 仓库所有的 harness 包使用 `@knyazevai/dsh` 作用域，包括私有 workspace 根包名 `@knyazevai/dsh-root`。vendored 框架继续使用 `@deepseek-ai`，因此以 `@knyazevai/dsh` 开头的包 token 属于 harness，而 `@deepseek-ai/cordis` 与 `@deepseek-ai/cordis-plugin-*` 仍是 vendored 身份。Native Landlock 家族继续使用独立的 `@deepseek-ai/node-addon-*` 名称。
 
-[`scripts/rescope-dsh.ts`](../scripts/rescope-dsh.ts) 负责永久的 harness 迁移及其 `--check` 模式。它改写被 Git 跟踪的当前状态包 token，是上游或仓库同步后的第一步；它排除 vendored 源码、生成的构建输出、迁移记录和历史 Agent Note。[DSH npm 作用域 Agent Note](../.agents/notes/implemented/process/2026-09-08-knyazevai-dsh-npm-scope.zh.md) 记录 fork 为何拥有 `@knyazevai` 作用域，以及为何不采用仅在产物阶段改写。
+[`scripts/rescope-dsh.ts`](../scripts/rescope-dsh.ts) 负责永久的 harness 迁移及其 `--check` 模式。它改写被 Git 跟踪的当前状态包 token，是上游或仓库同步后的第一步；它排除 vendored 源码、生成的构建输出、迁移记录和所有 Agent Note。活跃的 implemented Agent Note 仍排除在机械 codemod 之外，但当其中的当前包身份或其他已交付事实变化时会有意维护；archived note 保持冻结。[DSH npm 作用域 Agent Note](../.agents/notes/implemented/process/2026-09-08-knyazevai-dsh-npm-scope.zh.md) 记录 fork 为何拥有 `@knyazevai` 作用域，以及为何不采用仅在产物阶段改写。
 
 ## 名字映射
 
@@ -34,7 +34,7 @@ Cordis 框架及其基础库以源码形式 vendored 在 [`vendor/`](../vendor/R
 - **`cordis.yml` 配置文件家族**，包括 `*.cordis.yml`、`*.cordis.snapshot.yml`、`cordis.patch.yml`。
 - **名字里带这个词的 harness 包**，例如 `@knyazevai/dsh-tool-cordis`。
 - **上游运行时标识符**，例如 Schemastery 的 `Symbol.for('schemastery')` 及其 `vendor:` 元数据字段。
-- **`docs/` 之外的散文。** `vendor/*/README.md`、各包 README 与 Agent Note 保留写作当时的名字；那里的裸 `cordis` 也可能是 Python SDK 的选项名或某个 agent-preset 的 id。`docs/` 之内，散文与所有 Markdown 围栏都跟着改。
+- **`docs/` 之外的散文。** `vendor/*/README.md` 与各包 README 保留写作当时的名字；所有 Agent Note 都排除在机械 codemod 之外，其中活跃的 implemented Agent Note 会有意维护当前包身份，而 archived note 仍是冻结的历史记录。那里的裸 `cordis` 也可能是 Python SDK 的选项名或某个 agent-preset 的 id。`docs/` 之内，散文与所有 Markdown 围栏都跟着改。
 
 ## 你的代码要改什么
 

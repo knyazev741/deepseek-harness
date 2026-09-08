@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-22-fork-web-profile-composition.md
-2026-08-22-fork-web-profile-composition.md: 1a14e697a4073e559ba88b68696645f89882fdc4
-2026-08-22-fork-web-profile-composition.zh.md: 74dd76799377ed0b08f2d9509d97c50c0c7f077b
+2026-08-22-fork-web-profile-composition.md: d2bfec5388ac073298ab448d34de7d2befaee101
+2026-08-22-fork-web-profile-composition.zh.md: e8da80f500891d14b3215878af760dba55d4eaa2

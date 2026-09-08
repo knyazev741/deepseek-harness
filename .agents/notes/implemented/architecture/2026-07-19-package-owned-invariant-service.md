@@ -16,7 +16,7 @@ Package ownership must also be exhaustive. Without a mechanical repository rule,
 
 ### One registry service, package-owned contributions
 
-`@deepseek-ai/dsh-invariants` is a product-independent Cordis service plugin that registers `ctx.invariants`. It owns configuration, registration uniqueness, child-fiber lifecycle, and package-attributed failures. It imports no session, agent, scope, or agent-loop package and contains none of their checks.
+`@knyazevai/dsh-invariants` is a product-independent Cordis service plugin that registers `ctx.invariants`. It owns configuration, registration uniqueness, child-fiber lifecycle, and package-attributed failures. It imports no session, agent, scope, or agent-loop package and contains none of their checks.
 
 Every workspace package publishes a `./invariant` companion plugin that registers its exact full npm name. A companion checks a meaningful event or mutable-data relationship when its owner has one; otherwise it carries an owner-specific explanation for its empty installer. Generated ownership placeholders and synthetic API-shape assertions are forbidden by the follow-up [runtime-contract Agent Note](2026-07-19-package-invariant-runtime-contracts.md). Package root entrypoints do not import or register diagnostics implicitly, so loading a root package does not change runtime checking or require the invariant service.
 
@@ -59,10 +59,10 @@ The former functional-plugin entry point and one-argument `InvariantError` const
 
 | Companion entry | Registration name | Owned checks |
 |---|---|---|
-| `@deepseek-ai/dsh-session/invariant` | `@deepseek-ai/dsh-session` | session sequence, turn/step enclosure, and same-step call/result trace |
-| `@deepseek-ai/dsh-agent/invariant` | `@deepseek-ai/dsh-agent` | agent-status transitions |
-| `@deepseek-ai/dsh-scope/invariant` | `@deepseek-ai/dsh-scope` | scoped-event carrier presence and subject consistency |
-| `@deepseek-ai/dsh-agent-loop/invariant` | `@deepseek-ai/dsh-agent-loop` | model-request reconstruction |
+| `@knyazevai/dsh-session/invariant` | `@knyazevai/dsh-session` | session sequence, turn/step enclosure, and same-step call/result trace |
+| `@knyazevai/dsh-agent/invariant` | `@knyazevai/dsh-agent` | agent-status transitions |
+| `@knyazevai/dsh-scope/invariant` | `@knyazevai/dsh-scope` | scoped-event carrier presence and subject consistency |
+| `@knyazevai/dsh-agent-loop/invariant` | `@knyazevai/dsh-agent-loop` | model-request reconstruction |
 
 These four owners supplied the initial stateful checks. The follow-up runtime-contract decision adds checks for seventeen more owners with real event or mutable-data relationships and records justified empty companions for the rest. Every companion is a separately bundled `./invariant` export with its own declarations and Loader-safe namespace plugin shape; the service package's own companion imports its local service type to avoid a self-dependency.
 
