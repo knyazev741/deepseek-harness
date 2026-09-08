@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-fork-web",
   "description": "The opt-in fork Web bundle: the upstream browser surface plus fork Host rows and the Workspace UI overlay",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publishConfig": {
     "access": "public"
   },

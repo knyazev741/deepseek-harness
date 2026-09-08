@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-fork-ui-workspace-overlay",
   "description": "Fork-owned Background, pin, unread, source badge, and session-id actions for Workspace rows",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publishConfig": {
     "access": "public"
   },
