@@ -5,11 +5,11 @@
  */
 
 import { describe, expect, onTestFinished, vi } from 'vitest'
-import { RemoteStreamCarrierError, type ClientRemote } from '@deepseek-ai/dsh-api-gateway/client'
-import { SessionId } from '@deepseek-ai/dsh-session/types'
-import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
-import { frames, openStream, type RemoteMock, type StreamScript } from '@deepseek-ai/dsh-remote-mock'
-import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
+import { RemoteStreamCarrierError, type ClientRemote } from '@knyazevai/dsh-api-gateway/client'
+import { SessionId } from '@knyazevai/dsh-session/types'
+import { RemoteError } from '@knyazevai/dsh-typert-protocol'
+import { frames, openStream, type RemoteMock, type StreamScript } from '@knyazevai/dsh-remote-mock'
+import { createClientTest, type TestClient, webApp } from '@knyazevai/dsh-client-test-runtime/src/assembly/index.ts'
 import {
   ClientWorkspaceModel,
   createWorkspaceStateStream,
@@ -20,11 +20,11 @@ import {
 import type { WorkspaceFollowFrame, WorkspaceId } from '../src/types.ts'
 import { FOLLOW, baseline, err, followGenerations, workspace, workspaceWorld } from './remote/workspace.client.ts'
 
-const SELF = '@deepseek-ai/dsh-api-workspace-controller'
+const SELF = '@knyazevai/dsh-api-workspace-controller'
 /** The plugin as the web bundle composes it: itself plus the Gateway client, the Connection, and the Typert registry. */
 const PLUGIN_ROSTER = webApp.closure([SELF])
 /** A stream or model built by hand talks through the Gateway client alone. */
-const API_ROSTER = webApp.closure(['@deepseek-ai/dsh-api-gateway'])
+const API_ROSTER = webApp.closure(['@knyazevai/dsh-api-gateway'])
 const pluginTest = createClientTest({ roster: PLUGIN_ROSTER })
 const it = createClientTest({ roster: API_ROSTER })
 /** The first client boot pays the cold module transform of the plugin cone. */

@@ -4,14 +4,14 @@
  * The Modal and the Toast both portal to `document.body`; the overlay slot
  * only supplies the per-session controller and the composer card the toast
  * centers over.
- * @module @deepseek-ai/dsh-client-ui-message-feedback/client/FeedbackDialog
+ * @module @knyazevai/dsh-client-ui-message-feedback/client/FeedbackDialog
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   Button, IconCheckOutline16, IconWarningOutline16, Modal, Toast,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { FeedbackCategory } from '@deepseek-ai/dsh-command-feedback/types'
+} from '@knyazevai/dsh-client-ui-primitives'
+import type { FeedbackCategory } from '@knyazevai/dsh-command-feedback/types'
 import type { FeedbackDialogProps } from './slots.ts'
 import css from './FeedbackDialog.module.css'
 

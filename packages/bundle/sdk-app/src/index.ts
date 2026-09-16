@@ -2,13 +2,13 @@
  * The SDK profile's command-line and stdin-lifetime provider. A successful
  * parse publishes {@link SDK_APP_STARTUP_SERVICE}; the JSON-RPC server waits
  * for that service, so help starts no transport.
- * @module @deepseek-ai/dsh-sdk-app
+ * @module @knyazevai/dsh-sdk-app
  */
 
 import { Command } from 'commander'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { exitOnStdinEnd, parseCmdline } from '@deepseek-ai/dsh-cmdline'
+import { exitOnStdinEnd, parseCmdline } from '@knyazevai/dsh-cmdline'
 
 /** Stable Cordis plugin name. */
 export const name = 'sdk-app-startup'

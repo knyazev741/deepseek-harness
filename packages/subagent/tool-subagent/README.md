@@ -3,7 +3,7 @@ description: "Model-facing subagent delegation tool for users and maintainers co
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-tool-subagent
+# @knyazevai/dsh-tool-subagent
 
 English | [中文](README.zh.md)
 
@@ -32,9 +32,9 @@ Mount one instance per delegation target, each with a distinct `toolName`. The t
 Load the subagent service, an in-process or remote backend, and this tool; then name the provider. This composition exposes a `subagent` tool that delegates to the `spawn` backend:
 
 ```yaml
-- name: '@deepseek-ai/dsh-subagent'
-- name: '@deepseek-ai/dsh-subagent-spawn-in-process'
-- name: '@deepseek-ai/dsh-tool-subagent'
+- name: '@knyazevai/dsh-subagent'
+- name: '@knyazevai/dsh-subagent-spawn-in-process'
+- name: '@knyazevai/dsh-tool-subagent'
   config:
     provider: spawn
     toolName: subagent
@@ -52,7 +52,7 @@ Load the subagent service, an in-process or remote backend, and this tool; then 
 | `toolFilter` | — | Per-child global-tool restriction; requires the `toolFilter` capability |
 | `maxDepth` | `3` | Absolute delegation-depth cap (`0` forbids delegation); `'provider-managed'` sends no cap to an out-of-process provider |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-tool-subagent) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-tool-subagent) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Foreground and background modes
 
@@ -115,8 +115,8 @@ Read these pages when the package-level contract is not enough; they move from t
 
 - [Subagent subsystem](../../../docs/subsystems/subagent.md) — providers, one-shot start requests, continuable children and activations.
 - [dsh-tool-subagent-control](../tool-subagent-control/README.md) — messaging, interrupt, and listing tools for continuable children.
-- [Generated tool catalog](../../../docs/tool-catalog.md#deepseek-aidsh-tool-subagent) — the default schema and per-mode wording.
-- [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-tool-subagent) — every accepted config field.
+- [Generated tool catalog](../../../docs/tool-catalog.md#knyazevaidsh-tool-subagent) — the default schema and per-mode wording.
+- [Generated configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-tool-subagent) — every accepted config field.
 - [Background-first continuable delegation](../../../.agents/notes/archived/feature/2026-08-11-background-first-continuable-delegation.md) — why continuable work defaults to background.
 - [Model-selected subagent routes](../../../.agents/notes/implemented/feature/2026-08-18-model-selected-subagent-routes.md) — selection policy, inheritance, discovery, and the fork restriction.
 
@@ -129,7 +129,7 @@ Read these pages when the package-level contract is not enough; they move from t
 
 #### What the model sees
 
-The generated default [`subagent` schema](../../../docs/tool-catalog.md#deepseek-aidsh-tool-subagent) under this instance's configured name while its provider exists. An enabled Session policy adds `provider`, `model`, and `reasoning_effort` plus inheritance and selection guidance; the provider must support `agentOptions`. Provider context inheritance changes the tool and prompt descriptions. Enabled background mode adds `run_in_background`: continuable mode documents its `true` default, runtime settlement notice, and explicit foreground override, while one-shot mode documents its `false` default and the job id collected with `job_output` or stopped with `job_kill`. While the tool is visible in an assembly's scope, a `tool:<toolName>` system-prompt section tells the model to start independent continuable delegations together, keep working while they run, and choose foreground only when its next action depends on the result; a tool restriction removes both its schema and this guidance.
+The generated default [`subagent` schema](../../../docs/tool-catalog.md#knyazevaidsh-tool-subagent) under this instance's configured name while its provider exists. An enabled Session policy adds `provider`, `model`, and `reasoning_effort` plus inheritance and selection guidance; the provider must support `agentOptions`. Provider context inheritance changes the tool and prompt descriptions. Enabled background mode adds `run_in_background`: continuable mode documents its `true` default, runtime settlement notice, and explicit foreground override, while one-shot mode documents its `false` default and the job id collected with `job_output` or stopped with `job_kill`. While the tool is visible in an assembly's scope, a `tool:<toolName>` system-prompt section tells the model to start independent continuable delegations together, keep working while they run, and choose foreground only when its next action depends on the result; a tool restriction removes both its schema and this guidance.
 
 #### Token effect
 

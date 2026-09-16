@@ -3,7 +3,7 @@ description: "面向需要在各项负责强制执行的能力之间组合、配
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-sandbox-policy
+# @knyazevai/dsh-sandbox-policy
 
 [English](README.md) | 中文
 
@@ -36,7 +36,7 @@ kind: "package-reference"
 用默认模式加载本包；故障安全默认值是 `read-only`，需要 agent（智能体）可写入工作区的部署必须显式选择 `workspace-write`。
 
 ```yaml
-- name: '@deepseek-ai/dsh-sandbox-policy'
+- name: '@knyazevai/dsh-sandbox-policy'
   config:
     mode: workspace-write
     workspaceRoot: /absolute/path/to/workspace
@@ -47,7 +47,7 @@ kind: "package-reference"
 | `mode` | `read-only` | 会话起始的部署默认模式，加载时验证 |
 | `workspaceRoot` | `process.cwd()` | 无 agent 调用或没有 cwd 的会话所用的绝对回退根目录；相对值在加载时拒绝。普通 agent 调用使用会话的不可变 cwd |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-sandbox-policy)是每个受支持字段及其 JSDoc 的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-sandbox-policy)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 ### 切换会话模式
 

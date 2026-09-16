@@ -3,7 +3,7 @@ description: "Discover and read MCP resources on demand with shared tools, expli
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-mcp-resources
+# @knyazevai/dsh-mcp-resources
 
 English | [中文](README.zh.md)
 
@@ -51,7 +51,7 @@ The [base](../../bundle/base/README.md) and standalone [sdk-minimal](../../bundl
 
 ```yaml
 - id: mcp-resources
-  name: '@deepseek-ai/dsh-mcp-resources'
+  name: '@knyazevai/dsh-mcp-resources'
 ```
 
 The first provider in a scope registers its shared tools; removing the last removes those local registrations, while inherited providers and tools remain visible. The resource service owns the shared tool effects independently of the first provider's plugin, so unloading that provider cannot remove tools needed by another server. Provider selection and the server-name prompt use the same scoped registry. Each call resolves its server before dispatch.
@@ -89,7 +89,7 @@ These pages cover server configuration, execution, and the decisions behind reso
 
 #### What the model sees
 
-The [generated tool schemas](../../../docs/tool-catalog.md#deepseek-aidsh-mcp-resources) define three tools shared by all caller-visible configured servers. With none, native schemas, PTC declarations and bindings, and the server-name prompt are absent. Connecting, disconnecting, or retrying an active client leaves these shared tool definitions unchanged. When system-prompt assembly is mounted and providers are visible, the `MCP resource servers` section says `Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: <JSON array>.` The names come from the same scoped registry, including servers with neither tools nor instructions. An empty registry contributes no section.
+The [generated tool schemas](../../../docs/tool-catalog.md#knyazevaidsh-mcp-resources) define three tools shared by all caller-visible configured servers. With none, native schemas, PTC declarations and bindings, and the server-name prompt are absent. Connecting, disconnecting, or retrying an active client leaves these shared tool definitions unchanged. When system-prompt assembly is mounted and providers are visible, the `MCP resource servers` section says `Use list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: <JSON array>.` The names come from the same scoped registry, including servers with neither tools nor instructions. An empty registry contributes no section.
 
 #### Token effect
 

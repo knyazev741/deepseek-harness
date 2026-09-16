@@ -11,22 +11,22 @@ import {
   loadProfile,
   PluginPackages,
   type Profile,
-} from '@deepseek-ai/dsh-app-boot'
-import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
-import { SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+} from '@knyazevai/dsh-app-boot'
+import { provideCmdline } from '@knyazevai/dsh-cmdline'
+import { SessionId, SessionLogOffset } from '@knyazevai/dsh-session'
+import type { Agent } from '@knyazevai/dsh-agent'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { SUBAGENT_MODEL_SELECTION_SETTINGS_NAMESPACE } from '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
-import { SETTINGS_NAMESPACE, SHIPPED_PRESET_ROOT } from '@deepseek-ai/dsh-agent-presets'
-import { applyChildComposition, childSessionMeta } from '@deepseek-ai/dsh-subagent'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-compaction-basic'
-import type {} from '@deepseek-ai/dsh-skill'
-import type {} from '@deepseek-ai/dsh-tools'
+import { SUBAGENT_MODEL_SELECTION_SETTINGS_NAMESPACE } from '@knyazevai/dsh-tool-subagent/model-selection-settings'
+import { SETTINGS_NAMESPACE, SHIPPED_PRESET_ROOT } from '@knyazevai/dsh-agent-presets'
+import { applyChildComposition, childSessionMeta } from '@knyazevai/dsh-subagent'
+import { ToolCallId } from '@knyazevai/dsh-llm'
+import type {} from '@knyazevai/dsh-compaction-basic'
+import type {} from '@knyazevai/dsh-skill'
+import type {} from '@knyazevai/dsh-tools'
 // Type-only: resolves `ctx.get('sessionProjections')` and `ctx.get('tokenMeter')`.
-import type {} from '@deepseek-ai/dsh-session-projection'
-import type {} from '@deepseek-ai/dsh-token-meter'
+import type {} from '@knyazevai/dsh-session-projection'
+import type {} from '@knyazevai/dsh-token-meter'
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 /** The shipped Web surface: the dsh-base and dsh-web-app bundle patches over an empty preset root. */
@@ -108,8 +108,8 @@ async function bootWeb(
     // supplies `directoryPicker` without one.
     { id: 'directory-picker', disabled: true },
     { insert: [
-      { id: 'directory-picker-browse', name: '@deepseek-ai/dsh-host-directory-picker-browse' },
-      { id: 'ui-directory-picker-browse', name: '@deepseek-ai/dsh-client-ui-directory-picker-browse' },
+      { id: 'directory-picker-browse', name: '@knyazevai/dsh-host-directory-picker-browse' },
+      { id: 'ui-directory-picker-browse', name: '@knyazevai/dsh-client-ui-directory-picker-browse' },
     ] },
     // Pin the roster away from the developer's machine: `includeUserRoot`
     // false keeps `~/.dsh/.agent-presets` from changing a test's outcome.
@@ -541,8 +541,8 @@ describe('product Bundle and user-preset intersection', () => {
     )
     const packageName = (product: Product): string => (
       product === 'codex'
-        ? '@deepseek-ai/dsh-subagent-codex'
-        : '@deepseek-ai/dsh-subagent-claude-code'
+        ? '@knyazevai/dsh-subagent-codex'
+        : '@knyazevai/dsh-subagent-claude-code'
     )
     return await bootWeb(settingsFile, [
       {
@@ -555,8 +555,8 @@ describe('product Bundle and user-preset intersection', () => {
         },
       },
     ], installed.map(packageDir), [
-      '@deepseek-ai/dsh-base',
-      '@deepseek-ai/dsh-web-app',
+      '@knyazevai/dsh-base',
+      '@knyazevai/dsh-web-app',
       ...installed.map(packageName),
     ])
   }
@@ -770,7 +770,7 @@ describe('a launcher that configures no writable root', () => {
     await mkdir(join(home, '.agent-presets', 'derived-mine'), { recursive: true })
     await writeFile(
       join(home, '.agent-presets', 'derived-mine', 'agent.cordis.yml'),
-      '- id: tool-todo\n  name: \'@deepseek-ai/dsh-tool-todo\'\n  config:\n    allowParallelInProgress: true\n',
+      '- id: tool-todo\n  name: \'@knyazevai/dsh-tool-todo\'\n  config:\n    allowParallelInProgress: true\n',
     )
     const settingsFile = join(await mkdtemp(join(tmpdir(), 'dsh-preset-derived-settings-')), 'settings.yaml')
     await writeFile(settingsFile, '{}\n')

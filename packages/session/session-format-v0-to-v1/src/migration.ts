@@ -3,7 +3,7 @@ import {
   SessionFormatUnsupportedMigrationError,
   defineSessionFormatMigration,
   sessionFormatCount,
-} from '@deepseek-ai/dsh-session-format'
+} from '@knyazevai/dsh-session-format'
 import type {
   SessionFormatEvent,
   SessionFormatEventRun,
@@ -13,7 +13,7 @@ import type {
   SessionFormatMigrationContext,
   SessionFormatMigrationStage,
   SessionFormatMigrationStageInput,
-} from '@deepseek-ai/dsh-session-format'
+} from '@knyazevai/dsh-session-format'
 import { isReleasedAssistantChunkRun } from './codec.ts'
 import {
   assertReleasedEventPayload,
@@ -25,7 +25,7 @@ const LEGACY_ASSISTANT_SOURCE_KEY = ['pro', 'venance'].join('')
 
 /** Identity format edge that promotes released v0 into released v1. */
 export const sessionFormatV0ToV1 = defineSessionFormatMigration({
-  name: '@deepseek-ai/dsh-session-format-v0-to-v1',
+  name: '@knyazevai/dsh-session-format-v0-to-v1',
   fromVersion: 0,
   toVersion: 1,
   migrateHeader(header) {

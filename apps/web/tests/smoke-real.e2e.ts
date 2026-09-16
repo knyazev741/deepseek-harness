@@ -361,7 +361,7 @@ describe('dsh web keyless CLI smoke', () => {
         /^\/plugins\/\?\?.+\/client\.js,.+\/client\.js&rev=[a-f\d]{12}$/,
       ))
       expect(batchPaths).toContainEqual(expect.stringMatching(
-        /^\/plugins\/\?\?@deepseek-ai\/dsh-client-modules\/client\.js&rev=[a-f\d]{12}$/,
+        /^\/plugins\/\?\?@knyazevai\/dsh-client-modules\/client\.js&rev=[a-f\d]{12}$/,
       ))
       const readyOrigin = new URL(readyUrl).origin
       expect([...cacheHeaders.values()]).toEqual([

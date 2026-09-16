@@ -7,12 +7,12 @@
  * `sidebar.settings` registrant's (ui-settings), followed by optional footer
  * actions in `sidebar.footer.action`.
  */
-import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
-import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
+import type { ObservableSnapshot } from '@knyazevai/dsh-client-store'
+import type { WorkspaceId } from '@knyazevai/dsh-api-workspace-controller/client'
+import type { MainPanelId } from '@knyazevai/dsh-client-ui-layout/client'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface SlotMap {
     /**
      * Brand mark rendered in the expanded brand row and collapsed rail.

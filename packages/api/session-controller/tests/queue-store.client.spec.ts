@@ -4,18 +4,18 @@
  * projection, and snapshot reference stability.
  */
 import { describe, expect, vi } from 'vitest'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm/types'
-import { SessionSeq, type SessionEvent } from '@deepseek-ai/dsh-session/types'
-import type { MessageId, RpcId, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import type { SessionControlFrame } from '@deepseek-ai/dsh-api-session-controller/types'
-import { createClientTest, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
+import { createUserMessage } from '@knyazevai/dsh-llm'
+import type { ContentBlock, UserMessage } from '@knyazevai/dsh-llm/types'
+import { SessionSeq, type SessionEvent } from '@knyazevai/dsh-session/types'
+import type { MessageId, RpcId, SessionId } from '@knyazevai/dsh-api-remotes/client'
+import type { SessionControlFrame } from '@knyazevai/dsh-api-session-controller/types'
+import { createClientTest, webApp } from '@knyazevai/dsh-client-test-runtime/src/assembly/index.ts'
 import { SessionManager } from '../src/client/sessions/manager.ts'
 import { sessionBench } from './remote/bench.client.ts'
 import { pushEvent, sessionWorld } from './remote/session.client.ts'
 
 /** A Session talks through the Gateway client; its dependency cone is the Typert registry and the Connection. */
-const API_ROSTER = webApp.closure(['@deepseek-ai/dsh-api-gateway'])
+const API_ROSTER = webApp.closure(['@knyazevai/dsh-api-gateway'])
 const it = createClientTest({ roster: API_ROSTER })
 const SID = 'fk-q1' as SessionId
 /** The first client boot pays the cold module transform of the api cone. */
@@ -179,6 +179,17 @@ describe('Session queue snapshot intake', () => {
     await vi.waitFor(() => {
       expect(session.getSnapshot().queue.map(item => item.id)).toEqual(['s-later'])
     })
+  })
+
+  it('retires a queued message when it becomes durable without another queue frame', async ({ mock, start }) => {
+    const session = await sessionBench(mock, start, SID)
+    await session.open()
+    const message = createUserMessage({ content: text('queued during maintenance'), source: { kind: 'user' } })
+    session.handleControlFrame(queueFrame([{ id: 'q-maintenance', body: '', placement: 'queued', message }]))
+    await pushEvent(mock, {
+      seq: SessionSeq(0), time: 1_700_000_000_000, type: 'user/message', surfaceOp: 'append', data: message,
+    })
+    await vi.waitFor(() => { expect(session.getSnapshot().queue).toEqual([]) })
   })
 
   it('hands off live steering when the agent claims it as a user message', async ({ mock, start }) => {

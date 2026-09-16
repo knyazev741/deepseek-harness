@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { SessionFormatEvent } from '@deepseek-ai/dsh-session-format'
+import type { SessionFormatEvent } from '@knyazevai/dsh-session-format'
 import { sessionFormatCatalog } from '../src/index.ts'
 import { currentSessionMessageProjections } from '../src/message-projections.ts'
-import { MESSAGE_PROJECTION_EVENT_TYPES } from '@deepseek-ai/dsh-session/src/known-event-types.ts'
+import { MESSAGE_PROJECTION_EVENT_TYPES } from '@knyazevai/dsh-session/src/known-event-types.ts'
 import { validateInstalledCurrentSessionArtifact } from '../src/current.ts'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { Session, SessionId } from '@knyazevai/dsh-session'
+import { createUserMessage } from '@knyazevai/dsh-llm'
 
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === 'object') {
@@ -134,7 +134,7 @@ describe('first-party Session format catalog', () => {
             turn: 1, step: 1,
             message: {
               id: 'v2-to-v3-system-9673c4ed630de6c21ea6bd6b573094ea8e5e216843a1b572a68657499ad9667b',
-              role: 'system', source: { kind: 'plugin', plugin: '@deepseek-ai/dsh-system-prompt' }, content: [],
+              role: 'system', source: { kind: 'plugin', plugin: '@knyazevai/dsh-system-prompt' }, content: [],
             },
           },
         },

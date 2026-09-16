@@ -3,7 +3,7 @@ description: "Share per-Session browser ownership and MCP activation across expe
 kind: "package-library"
 ---
 
-# @deepseek-ai/dsh-experimental-browser-use-runtime
+# @knyazevai/dsh-experimental-browser-use-runtime
 
 English | [中文](README.zh.md)
 
@@ -29,7 +29,7 @@ This public experimental library is a dependency of the browser providers. It ha
 
 Native providers construct `SessionResources` from the package root, supplying resource acquisition and cleanup callbacks. Calls pass the exact live Agent to `run()`; stale owners and a second owner of an exclusive attachment fail before acquisition. Canceling an acquisition wait leaves initialization available to other callers in the same Session; Session disposal aborts and awaits that initialization. Providers keep their registration until `dispose()` finishes.
 
-MCP providers use `mountSessionMcp` from `@deepseek-ai/dsh-experimental-browser-use-runtime/mcp`, supplying their fixed server name, executable, arguments, and ownership policy. The helper awaits one scoped client startup and discovery attempt within each future Agent's `agent/created` event. Agent creation or resume completes after discovery, before queued input runs; a successful client remains owned by that Session across turns.
+MCP providers use `mountSessionMcp` from `@knyazevai/dsh-experimental-browser-use-runtime/mcp`, supplying their fixed server name, executable, arguments, and ownership policy. The helper awaits one scoped client startup and discovery attempt within each future Agent's `agent/created` event. Agent creation or resume completes after discovery, before queued input runs; a successful client remains owned by that Session across turns.
 
 A busy attachment skips startup permanently for that live activation while its other work continues. Releasing the attachment does not retry skipped activations; a newly created or resumed Agent can acquire it. Startup failure or cancellation rejects Agent creation or resume and triggers creation rollback, including client cleanup. Reconnection is disabled. Loading or reloading a provider applies only to future Agent activations.
 

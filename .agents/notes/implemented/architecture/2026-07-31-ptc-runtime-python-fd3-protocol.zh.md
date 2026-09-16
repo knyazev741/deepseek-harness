@@ -2,15 +2,15 @@
 
 Status: implemented
 
-CPython PTC 运行时位于 `packages/experimental/ptc-runtime-python`，以 `@deepseek-ai/dsh-experimental-ptc-runtime-python` 名称发布；[发布决策](../process/2026-09-12-publish-all-experimental-packages.zh.md)保留其实验性状态。
+CPython PTC 运行时位于 `packages/experimental/ptc-runtime-python`，以 `@knyazevai/dsh-experimental-ptc-runtime-python` 名称发布；[发布决策](../process/2026-09-12-publish-all-experimental-packages.zh.md)保留其实验性状态。
 
 [English](2026-07-31-ptc-runtime-python-fd3-protocol.md) | 中文
 
 ## Problem
 
-`@deepseek-ai/dsh-experimental-ptc-runtime-python` 负责供 CPython ptc-runtime 提供方使用的 wire protocol。这样的提供方会在全新的 `python3 -I` 子进程中运行每个模型程序，并通过子进程 fd 3 桥接 binding 调用与完成值。Host 不能信任这条通道：模型代码可以完全访问 fd 3 并伪造任意帧，因此 host 必须把每个入站帧视为敌意输入，先校验并重建后才能读取。协议还必须承载无深度限制的 lossless JSON，因为 seam 的 `PtcJsonValue` 深度无界，而 `JSON.stringify` 和 `json.dumps` 都有递归深度限制。
+`@knyazevai/dsh-experimental-ptc-runtime-python` 负责供 CPython ptc-runtime 提供方使用的 wire protocol。这样的提供方会在全新的 `python3 -I` 子进程中运行每个模型程序，并通过子进程 fd 3 桥接 binding 调用与完成值。Host 不能信任这条通道：模型代码可以完全访问 fd 3 并伪造任意帧，因此 host 必须把每个入站帧视为敌意输入，先校验并重建后才能读取。协议还必须承载无深度限制的 lossless JSON，因为 seam 的 `PtcJsonValue` 深度无界，而 `JSON.stringify` 和 `json.dumps` 都有递归深度限制。
 
-这个实验包同时包含协议与 runtime 实现：`PythonPtcRuntime`（插件的默认导出）、`python3 -I` 子进程路径与 Python 侧 JSON codec 都在 `@deepseek-ai/dsh-experimental-ptc-runtime-python` 中。协议建立在[可移植标识符 seam](../../archived/architecture/2026-07-31-code-runtime-portable-identifier-seam.md)之上。
+这个实验包同时包含协议与 runtime 实现：`PythonPtcRuntime`（插件的默认导出）、`python3 -I` 子进程路径与 Python 侧 JSON codec 都在 `@knyazevai/dsh-experimental-ptc-runtime-python` 中。协议建立在[可移植标识符 seam](../../archived/architecture/2026-07-31-code-runtime-portable-identifier-seam.md)之上。
 
 ## Decision
 

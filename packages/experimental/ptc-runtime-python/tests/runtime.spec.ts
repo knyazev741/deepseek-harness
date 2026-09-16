@@ -13,7 +13,7 @@ import type { Config } from '../src/index.ts'
 // child only TMPDIR, so a bare `python3` inside a wrapper would resolve against
 // /bin/sh's default PATH rather than the caller's selected interpreter.
 const PYABS = resolvePythonBin('python3') ?? 'python3'
-import type { PtcBindingFunction, PtcJsonValue, PtcRunResult } from '@deepseek-ai/dsh-ptc-runtime'
+import type { PtcBindingFunction, PtcJsonValue, PtcRunResult } from '@knyazevai/dsh-ptc-runtime'
 
 /**
  * Names one `py/` script whose `copyFileSync` must fail, for the partial-staging

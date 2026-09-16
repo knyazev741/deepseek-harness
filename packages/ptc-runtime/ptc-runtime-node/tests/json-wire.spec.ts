@@ -1,6 +1,6 @@
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
-import { snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
+import { snapshotJsonValue } from '@knyazevai/dsh-util-values'
 import { decodePtcJsonWire, encodePtcJsonWire, snapshotPtcJsonValue } from '../src/json-wire.ts'
 
 describe('snapshotPtcJsonValue', () => {

@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { internals, provideCmdline } from '@deepseek-ai/dsh-cmdline'
+import { internals, provideCmdline } from '@knyazevai/dsh-cmdline'
 import { afterEach, describe, expect, it } from 'vitest'
 import { apply, WEB_STARTUP_SERVICE, type WebStartupValues } from '../src/startup.ts'
 
@@ -112,10 +112,10 @@ describe('web command-line provider', () => {
 
   it('leaves deployment values to each consumer when flags omit them', async () => {
     const { values, observed } = await bootProvider([])
-    expect(values).toEqual({ openBrowser: true, trustedHosts: [] })
+    expect(values).toEqual({ openBrowser: false, trustedHosts: [] })
     expect(observed.readerConfig).toEqual({
       host: '127.0.0.1',
-      openBrowser: true,
+      openBrowser: false,
       port: 3080,
       trustedHosts: [],
     })

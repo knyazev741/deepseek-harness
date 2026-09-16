@@ -1,2 +1,2 @@
-/** Browser-safe Schedule vocabulary. @module @deepseek-ai/dsh-schedule/client */
+/** Browser-safe Schedule vocabulary. @module @knyazevai/dsh-schedule/client */
 export type * from './types.ts'

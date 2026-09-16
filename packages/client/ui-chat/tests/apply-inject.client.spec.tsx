@@ -1,22 +1,22 @@
 // @vitest-environment jsdom
 /** Chat inject factories exercised over independently mounted Conversation and Chat plugins. */
 import { describe, expect, it, vi } from 'vitest'
-import { AttachmentId } from '@deepseek-ai/dsh-attachment'
-import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { AttachmentId } from '@knyazevai/dsh-attachment'
+import type { ISession } from '@knyazevai/dsh-api-session-controller/client'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
 import {
   SlotTestRuntime, TestRemote, stubSettingsScope, usePinnedBrowserLanguages,
-} from '@deepseek-ai/dsh-client-test-runtime'
-import type { SessionBehaviorOverrides } from '@deepseek-ai/dsh-client-test-runtime'
-import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
+} from '@knyazevai/dsh-client-test-runtime'
+import type { SessionBehaviorOverrides } from '@knyazevai/dsh-client-test-runtime'
+import type { ClientRemote } from '@knyazevai/dsh-api-remotes/client'
 import {
   apply as applyConversation, inject as injectConversation,
-} from '@deepseek-ai/dsh-client-ui-conversation/client'
+} from '@knyazevai/dsh-client-ui-conversation/client'
 import {
   apply as applyChat, inject as injectChat, type ChatViewInjected,
-} from '@deepseek-ai/dsh-client-ui-chat/client'
-import { SessionSeq, type SessionId } from '@deepseek-ai/dsh-session/types'
-import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+} from '@knyazevai/dsh-client-ui-chat/client'
+import { SessionSeq, type SessionId } from '@knyazevai/dsh-session/types'
+import type { WorkspaceId } from '@knyazevai/dsh-workspace/types'
 import { createChatStore } from '../src/client/stores.ts'
 
 usePinnedBrowserLanguages('zh-CN')

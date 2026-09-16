@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-session-persistence",
+  "name": "@knyazevai/dsh-session-persistence",
   "description": "Abstract durable session persistence seam (ctx.sessionPersistence) for the DeepSeek Harness",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -28,18 +28,18 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-timeout": "workspace:^"
+    "@knyazevai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-timeout": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-scope": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-timeout": "workspace:^"
+    "@knyazevai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-scope": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-timeout": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-util-values": "workspace:^"
+    "@knyazevai/dsh-util-values": "workspace:^"
   }
 }

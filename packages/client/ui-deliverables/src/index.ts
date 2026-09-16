@@ -7,7 +7,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-system-prompt'
+import type {} from '@knyazevai/dsh-system-prompt'
 import { registerPresentOpen } from './present-open.ts'
 
 /** Services required for file-reference guidance and authenticated native opens of declared files. */

@@ -143,8 +143,8 @@ composition ──► SessionService ──► LogicalSession implementation
 
 - [会话子系统](../../../../docs/subsystems/session.zh.md)定义已交付的会话 API 与事件语义。
 - [会话持久化子系统](../../../../docs/subsystems/persistence.zh.md)定义已交付的持久格式与生命周期。
-- [`@deepseek-ai/dsh-session`](../../../../packages/core/session/README.zh.md)拥有会话包约定。
-- [`@deepseek-ai/dsh-session-persistence`](../../../../packages/session/session-persistence/README.zh.md)拥有当前持久化服务约定。
+- [`@knyazevai/dsh-session`](../../../../packages/core/session/README.zh.md)拥有会话包约定。
+- [`@knyazevai/dsh-session-persistence`](../../../../packages/session/session-persistence/README.zh.md)拥有当前持久化服务约定。
 
 ## 考虑过的替代方案
 

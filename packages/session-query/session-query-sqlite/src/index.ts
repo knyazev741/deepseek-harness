@@ -1,20 +1,20 @@
 /**
  * Concrete session-query service with SQLite FTS5 over the live-preferred corpus.
  *
- * @module @deepseek-ai/dsh-session-query-sqlite
+ * @module @knyazevai/dsh-session-query-sqlite
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { SESSION_FORMAT_VERSION, SessionSeq } from '@deepseek-ai/dsh-session'
+import { SESSION_FORMAT_VERSION, SessionSeq } from '@knyazevai/dsh-session'
 import type { DatabaseSync } from 'node:sqlite'
 import { Context, Service, type Fiber } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { Session, SessionEvent, SessionHeader, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
-import type SessionPersistence from '@deepseek-ai/dsh-session-persistence'
+import type { Session, SessionEvent, SessionHeader, SessionId, SessionLogOffset } from '@knyazevai/dsh-session'
+import type SessionPersistence from '@knyazevai/dsh-session-persistence'
 import type {
   SessionPersistenceRevision,
   SessionPersistenceSnapshot,
-} from '@deepseek-ai/dsh-session-persistence'
+} from '@knyazevai/dsh-session-persistence'
 import SessionQueryEngine, {
   SESSION_QUERY_DEFAULT_PERSISTED_INSPECT_CONCURRENCY,
   SESSION_QUERY_DEFAULT_PREPARED_SESSION_CACHE_SIZE,
@@ -24,7 +24,7 @@ import SessionQueryEngine, {
   assertSessionHeadersCompatible,
   buildSessionEventSearchDocuments,
   readColdSessionLog,
-} from '@deepseek-ai/dsh-session-query'
+} from '@knyazevai/dsh-session-query'
 import type {
   Config as SessionQueryConfig,
   SessionEventSearchDocument,
@@ -36,7 +36,7 @@ import type {
   SessionSearchCursor as SessionSearchCursorValue,
   SessionSearchPage,
   SessionSearchRequest,
-} from '@deepseek-ai/dsh-session-query'
+} from '@knyazevai/dsh-session-query'
 import {
   type JournalMode,
   openSearchDatabase,

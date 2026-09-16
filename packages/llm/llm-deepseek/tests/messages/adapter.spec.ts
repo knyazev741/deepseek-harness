@@ -5,22 +5,22 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context, LoggerLevel, Service } from '@deepseek-ai/cordis'
-import LocalAttachments from '@deepseek-ai/dsh-attachment-local'
-import AgentRegistry, { installModelSelection } from '@deepseek-ai/dsh-agent'
-import type { Agent, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import { AttachmentId } from '@deepseek-ai/dsh-attachment'
+import LocalAttachments from '@knyazevai/dsh-attachment-local'
+import AgentRegistry, { installModelSelection } from '@knyazevai/dsh-agent'
+import type { Agent, ModelSelectionRef } from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import { AttachmentId } from '@knyazevai/dsh-attachment'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import LlmRuntime, { createAssistantMessage, createSystemMessage } from '@deepseek-ai/dsh-llm'
-import type { Message } from '@deepseek-ai/dsh-llm'
-import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import LocalCredentials from '@deepseek-ai/dsh-credentials-local'
-import FileSettings from '@deepseek-ai/dsh-settings-file'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import LlmRuntime, { createAssistantMessage, createSystemMessage } from '@knyazevai/dsh-llm'
+import type { Message } from '@knyazevai/dsh-llm'
+import { credentialRef } from '@knyazevai/dsh-credentials'
+import LocalCredentials from '@knyazevai/dsh-credentials-local'
+import FileSettings from '@knyazevai/dsh-settings-file'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
 import { DeepSeekMessagesAdapter } from '../../src/protocols/messages/adapter.ts'
 import { DeepSeekFileStore } from '../../src/common/file-store.ts'
 import * as Messages from '../../src/index.ts'
@@ -200,11 +200,11 @@ describe('Cordis provider composition', () => {
     await ctx.plugin(Loader)
     ctx.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
-      ['@deepseek-ai/dsh-llm', LlmRuntime], ['@deepseek-ai/dsh-llm-deepseek', Messages],
-      ['@deepseek-ai/dsh-credentials-local', LocalCredentials], ['@deepseek-ai/dsh-settings-file', FileSettings],
-      ['@deepseek-ai/dsh-agent', AgentRegistry], ['@deepseek-ai/dsh-agent-loop', AgentLoop],
-      ['@deepseek-ai/dsh-session', SessionStore], ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
-      ['@deepseek-ai/dsh-system-prompt', SystemPrompt], ['@deepseek-ai/dsh-tools', ToolRuntime],
+      ['@knyazevai/dsh-llm', LlmRuntime], ['@knyazevai/dsh-llm-deepseek', Messages],
+      ['@knyazevai/dsh-credentials-local', LocalCredentials], ['@knyazevai/dsh-settings-file', FileSettings],
+      ['@knyazevai/dsh-agent', AgentRegistry], ['@knyazevai/dsh-agent-loop', AgentLoop],
+      ['@knyazevai/dsh-session', SessionStore], ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+      ['@knyazevai/dsh-system-prompt', SystemPrompt], ['@knyazevai/dsh-tools', ToolRuntime],
     ])
     // The importer supplies source modules while Loader still owns configuration and effects.
     for (const name of modules.keys()) {

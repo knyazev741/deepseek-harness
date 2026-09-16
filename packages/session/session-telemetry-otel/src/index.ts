@@ -9,15 +9,15 @@
  * capture mode and an outer shutdown deadline: the SDK's export timeout does
  * not bound its preceding `forceFlush()` wait.
  *
- * @module @deepseek-ai/dsh-session-telemetry-otel
+ * @module @knyazevai/dsh-session-telemetry-otel
  */
 
 import { createRequire } from 'node:module'
 import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-command-feedback'
-import type {} from '@deepseek-ai/dsh-message-feedback'
-import { Session, type SessionEvent } from '@deepseek-ai/dsh-session'
+import type {} from '@knyazevai/dsh-command-feedback'
+import type {} from '@knyazevai/dsh-message-feedback'
+import { Session, type SessionEvent } from '@knyazevai/dsh-session'
 import {
   SessionTelemetryBackend,
   SessionTelemetryCoordinator,
@@ -25,9 +25,9 @@ import {
   type SessionTelemetryRecord,
   type SessionTelemetrySeverity,
   type SessionTelemetrySharingStatus,
-} from '@deepseek-ai/dsh-session-telemetry'
-import { APP_IDENTITY } from '@deepseek-ai/dsh-llm'
-import { getOrCreateAnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+} from '@knyazevai/dsh-session-telemetry'
+import { APP_IDENTITY } from '@knyazevai/dsh-llm'
+import { getOrCreateAnonymousUserId } from '@knyazevai/dsh-anonymous-user-id'
 import {
   BatchLogRecordProcessor,
   LoggerProvider,
@@ -223,7 +223,7 @@ export class OpenTelemetrySessionBackend extends SessionTelemetryBackend {
         }),
       ],
     })
-    const ledger = this.provider.getLogger('@deepseek-ai/dsh-session-telemetry-otel', version)
+    const ledger = this.provider.getLogger('@knyazevai/dsh-session-telemetry-otel', version)
     const enqueue: SessionTelemetrySink['emit'] = (record) => {
       ledger.emit({
         timestamp: record.time,

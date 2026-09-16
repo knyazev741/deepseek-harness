@@ -3,7 +3,7 @@ description: "The session-projection registry for developers serving whole curre
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-session-projection
+# @knyazevai/dsh-session-projection
 
 English | [中文](README.zh.md)
 

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactElement, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { IconCheckOutline16 } from './icons/index.tsx'
@@ -34,6 +34,57 @@ export interface MenuLabel {
 
 /** One primary-menu entry: a row, a separator, or a heading label. */
 export type MenuEntry = MenuItem | MenuSeparator | MenuLabel
+
+/**
+ * Props for one host-provided action row rendered inside a {@link Menu}.
+ * @property label - visible and accessible action name.
+ * @property icon - optional leading icon in the standard menu icon slot.
+ * @property disabled - prevents the action while retaining its menu row.
+ * @property danger - applies destructive action coloring.
+ * @property selected - marks an action as selected without changing its label.
+ * @property pressed - exposes toggle state for actions such as pin/unpin.
+ * @property onClick - callback invoked after the row is clicked.
+ */
+export interface MenuItemButtonProps {
+  label: ReactNode
+  icon?: ReactNode
+  disabled?: boolean
+  danger?: boolean
+  selected?: boolean
+  pressed?: boolean
+  onClick: () => void
+}
+
+/**
+ * Render a React-owned action row using the same presentation as data-backed
+ * menu entries. Plugins use this for actions whose behavior is not known by
+ * the generic menu owner.
+ * @param props - action label, state, optional icon, and click callback.
+ * @returns an accessible menu item button.
+ */
+export function MenuItemButton({
+  label,
+  icon,
+  disabled = false,
+  danger = false,
+  selected = false,
+  pressed,
+  onClick,
+}: MenuItemButtonProps): ReactElement {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className={clsx(css.item, selected && css.selected, danger && css.danger)}
+      disabled={disabled}
+      aria-pressed={pressed}
+      onClick={onClick}
+    >
+      {icon !== undefined && <span className={css.itemIcon} aria-hidden="true">{icon}</span>}
+      <span className={css.itemLabel}>{label}</span>
+    </button>
+  )
+}
 
 function isSeparator(entry: MenuEntry): entry is MenuSeparator {
   return 'type' in entry && entry.type === 'separator'
@@ -82,13 +133,15 @@ const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
  * (`'check'`, default — figma .Menu_cell) or the hover fill held on the row
  * with no check (`'fill'`, for icon-labelled rows where a trailing glyph
  * crowds the cell).
+ * @param props.extra - React-owned action rows rendered before data-backed entries.
  * @returns anchor wrapper with the conditional list.
  */
-export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = 'check', getAnchorRect, footer, className }: {
+export function Menu({ open, anchor, items, extra, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, autoFocus = false, selection = 'check', getAnchorRect, footer, className }: {
   open: boolean
   autoFocus?: boolean
   anchor: ReactNode
   items: readonly MenuEntry[]
+  extra?: ReactNode
   footer?: readonly MenuEntry[]
   selectedId?: string | undefined
   selectedIds?: readonly string[] | undefined
@@ -297,6 +350,7 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
       onClick={(e) => { e.stopPropagation() }}
     >
       <div className={css.viewport} role="presentation">
+        {extra}
         {items.map(renderEntry)}
       </div>
       {footer !== undefined && footer.length > 0 && (

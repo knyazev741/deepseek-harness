@@ -1,9 +1,9 @@
 /** Request conversion and durable replay validation. */
 import { describe, expect, it, vi } from 'vitest'
-import { createAssistantMessage, createMessage, createSystemMessage, createToolResultMessage, ReasoningEffortId, ToolCallId } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, GenerateOptions, ImageBlock, Message } from '@deepseek-ai/dsh-llm'
-import { AttachmentId, ImageVariantId } from '@deepseek-ai/dsh-attachment'
-import type { AttachmentStore, ImageAttachmentRef, RequestImageAttachment } from '@deepseek-ai/dsh-attachment'
+import { createAssistantMessage, createMessage, createSystemMessage, createToolResultMessage, ReasoningEffortId, ToolCallId } from '@knyazevai/dsh-llm'
+import type { ContentBlock, GenerateOptions, ImageBlock, Message } from '@knyazevai/dsh-llm'
+import { AttachmentId, ImageVariantId } from '@knyazevai/dsh-attachment'
+import type { AttachmentStore, ImageAttachmentRef, RequestImageAttachment } from '@knyazevai/dsh-attachment'
 import { resolveAdapterOptions } from '../../src/config.ts'
 import { modelInfo } from '../../src/common/model-info.ts'
 import type { Config } from '../../src/config.ts'

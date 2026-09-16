@@ -3,7 +3,7 @@ description: "面向用户与维护者的 web GUI 客户端模块系统说明：
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-modules
+# @knyazevai/dsh-client-modules
 
 [English](README.md) | 中文
 
@@ -118,7 +118,7 @@ bundle 路由随注入的 `webServer` 生命周期注册：服务就绪时注册
 这些限制说明模块系统不做什么。它们是当前包约束，不是任务积压。
 
 - **有意采用扁平模块图**——每个 bundle 是一个模块节点，其边只指向表中的叶节点；接口（`loadCache`/`edges`/`invalidate`）已经支持通用模块图，因此可以改变 externalization 粒度而不更改接口。
-- **自身不维护卸载记录**——样式移除与 fiber 拆卸顺序属于 HMR 驱动器（`@deepseek-ai/dsh-client-hmr`）；loader 只在每条记录中登记其拥有的样式标签 id。
+- **自身不维护卸载记录**——样式移除与 fiber 拆卸顺序属于 HMR 驱动器（`@knyazevai/dsh-client-hmr`）；loader 只在每条记录中登记其拥有的样式标签 id。
 - **惰性提供会保留已请求的 body**——Host 在内存中保留每个 bundle 与惰性响应计划；脚本或 map body 在首次 `GET` 后保留缓存，HMR 还会保留上一代启动响应。内存仅随客户端实际请求的响应 body 增长，同时保留一代竞态容忍。
 - **从未请求的上一代 map 会读取当前 map 文件**——combo revision 跟踪可执行 bundle，而不跟踪调试产物。若 HMR 在保留的旧 URL 首次收到 map `GET` 前重建 map，该响应会把当前 authored map 与旧 bundle offset 组合；在重建前请求 map 会固定该 URL 的响应。
 

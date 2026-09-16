@@ -1,0 +1,98 @@
+schemaVersion: 1
+features:
+  - id: compaction-bounded-input
+    sourceCommits:
+      - 078d3db591
+    requiredBehavior: Each summarization request is bounded to the configured input budget, so an oversized session is compacted in multiple passes without truncating the durable log.
+    evidence:
+      - packages/compaction/compaction-basic/tests/compaction-basic.spec.ts
+      - packages/compaction/compaction-basic/tests/manual-compaction.spec.ts
+    disposition: adapted
+    replacement: Fork-owned bounded compaction input with focused compaction package tests.
+  - id: stream-first-chunk-idle-timeout
+    sourceCommits:
+      - 3eb7008e09
+    requiredBehavior: A first streamed chunk gets its own idle deadline, later chunks use the inter-chunk deadline, and caller cancellation remains distinguishable.
+    evidence:
+      - packages/fork/llm-first-chunk-timeout/tests/timeout.spec.ts
+      - packages/util/timeout/tests/timeout.spec.ts
+    disposition: adapted
+    replacement: Fork-owned llm/stream waterfall plugin with a configurable first-chunk deadline.
+  - id: workspace-copy-session-id
+    sourceCommits:
+      - eb25108045
+    requiredBehavior: A user can copy the exact opaque session ID from a workspace row and receives success feedback while rejected clipboard writes remain quiet.
+    evidence:
+      - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
+      - packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
+    disposition: adapted
+    replacement: Fork-owned workspace UI contribution using the upstream row action slot.
+  - id: workspace-mark-unread
+    sourceCommits:
+      - cc565b1065
+    requiredBehavior: A user can mark a completed session unread from its row menu, restoring its done reminder until opening the session advances the read watermark.
+    evidence:
+      - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
+      - packages/client/ui-workspace/tests/rows.client.spec.tsx
+    disposition: adapted
+    replacement: Fork-owned workspace UI contribution with a browser-local read watermark.
+  - id: workspace-background-filter
+    sourceCommits:
+      - 44c01788c1
+    requiredBehavior: Background filtering remains available through workspace view contributions; the published fork does not enable a Background tab.
+    evidence:
+      - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
+      - packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
+    disposition: deferred
+    replacement: View and filter slots are retained; no Background tab is registered, matching the current public fork.
+  - id: workspace-session-pin
+    sourceCommits:
+      - 3eb7008e09
+    requiredBehavior: A user can pin and unpin a session, the order survives reload, and another workspace is unaffected.
+    evidence:
+      - packages/fork/workspace-session-state/tests/service.spec.ts
+      - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
+    disposition: adapted
+    replacement: Fork-owned settings-backed Host service, Typert Remote, and UI contribution.
+  - id: github-actions-session-source
+    sourceCommits:
+      - 842170d111
+    requiredBehavior: A session created in GitHub Actions records a fork-owned source marker and exposes it in projections without changing the upstream session origin.
+    evidence:
+      - packages/fork/session-source/tests/session-source.spec.ts
+    disposition: adapted
+    replacement: Fork-owned session-source event, projection, and GitHub Actions producer.
+  - id: subagent-recursive-fork
+    sourceCommits:
+      - 3eb7008e09
+    requiredBehavior: A delegated child can create its own child within the configured depth policy, and the resulting parent-child lineage remains inspectable.
+    evidence:
+      - packages/subagent/subagent-fork-in-process/tests/multi-subagent.spec.ts
+      - packages/subagent/subagent-fork-in-process/tests/subagent-fork-in-process.spec.ts
+    disposition: adapted
+    replacement: Upstream in-process fork provider with recursive child acceptance tests.
+  - id: subagent-per-call-model-routing
+    sourceCommits:
+      - 3eb7008e09
+    requiredBehavior: A delegation request may select a provider and model for one child, validates that route before starting it, and preserves inherited routing when omitted.
+    evidence:
+      - packages/subagent/tool-subagent/tests/tool-subagent.spec.ts
+    disposition: adapted
+    replacement: Upstream model-selection service with the Gonka route list enabled by fork-web; provider, model, and reasoning effort use upstream validation.
+  - id: external-session-generic
+    sourceCommits:
+      - 3a1558b55e..72ff0d079c
+    requiredBehavior: Host code can register and look up named external-session providers with disposer-owned lifecycle and no provider mounted by default.
+    evidence:
+      - packages/fork/external-session/tests/service.spec.ts
+    disposition: adapted
+    replacement: Fork-owned provider-neutral external-session Service Definition and registry.
+  - id: external-session-codex
+    sourceCommits:
+      - 3a1558b55e..72ff0d079c
+    requiredBehavior: Codex-specific process, wire, permission, transcript, and UI integrations remain opt-in; the default fork bundles do not mount them.
+    evidence:
+      - packages/fork/external-session/tests/service.spec.ts
+      - packages/bundle/fork-base/tests/fork-base.spec.ts
+    disposition: deferred
+    replacement: Optional upstream Codex providers remain opt-in; the fork bundles do not enable them.

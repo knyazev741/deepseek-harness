@@ -10,7 +10,7 @@ import { pnpmInvocation } from '../../../../scripts/pnpm-invocation.ts'
 
 const experimentalDirectory = fileURLToPath(new URL('../..', import.meta.url))
 const packages = ['webworker-runtime', 'webworker-packer']
-const packageNames = new Set(packages.map(name => `@deepseek-ai/dsh-experimental-${name}`))
+const packageNames = new Set(packages.map(name => `@knyazevai/dsh-experimental-${name}`))
 
 it('loads both tarballs through plain Node and mounts their base image and overlay', { retry: 0 }, async (test) => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-webworker-packed-'))
@@ -73,15 +73,15 @@ it('loads both tarballs through plain Node and mounts their base image and overl
     import assert from 'node:assert/strict'
     import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
     import { fileURLToPath } from 'node:url'
-    import * as packer from '@deepseek-ai/dsh-experimental-webworker-packer'
-    import * as runtime from '@deepseek-ai/dsh-experimental-webworker-runtime'
-    import * as client from '@deepseek-ai/dsh-experimental-webworker-runtime/client'
+    import * as packer from '@knyazevai/dsh-experimental-webworker-packer'
+    import * as runtime from '@knyazevai/dsh-experimental-webworker-runtime'
+    import * as client from '@knyazevai/dsh-experimental-webworker-runtime/client'
     for (const name of ['webworker-packer', 'webworker-runtime']) {
-      assert.equal(import.meta.resolve('@deepseek-ai/dsh-experimental-' + name),
-        new URL('./node_modules/@deepseek-ai/dsh-experimental-' + name + '/lib/index.js', import.meta.url).href)
+      assert.equal(import.meta.resolve('@knyazevai/dsh-experimental-' + name),
+        new URL('./node_modules/@knyazevai/dsh-experimental-' + name + '/lib/index.js', import.meta.url).href)
     }
     assert.equal(typeof client.connectWorkerHost, 'function')
-    const worker = fileURLToPath(import.meta.resolve('@deepseek-ai/dsh-experimental-webworker-runtime/worker'))
+    const worker = fileURLToPath(import.meta.resolve('@knyazevai/dsh-experimental-webworker-runtime/worker'))
     assert.ok(existsSync(worker))
     assert.equal(readFileSync(worker, 'utf8').match(/^import[ \\t]/m), null)
     const base = packer.packVfsImage({ config: '[]\\n', profile: 'packed-consumer', workspaces: new Map(), resolveFrom: process.cwd(), entries: [] })

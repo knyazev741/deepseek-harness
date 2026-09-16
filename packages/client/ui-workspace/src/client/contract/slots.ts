@@ -22,16 +22,17 @@
  * and a hole has exactly one declaring entry — they carry the same owner
  * contract and the same occupant.
  */
-import type { HostObservable, PropsHooks, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { HostObservable, PropsHooks, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@knyazevai/dsh-client-ui-slots'
 // Type-only: pull the owner SlotMap merges into programs that resolve the
 // runtime shares below.
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { SessionSearchResultItem } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client'
-import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type {} from '@knyazevai/dsh-client-ui-sidebar/client'
+import type {} from '@knyazevai/dsh-client-ui-conversation/client'
+import type { SessionSearchResultItem } from '@knyazevai/dsh-api-session-controller/client'
+import type { RemoteHostFacts } from '@knyazevai/dsh-api-remotes/client'
+import type { WorkspaceId, WorkspaceView } from '@knyazevai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { createWorkspaceViewStore } from '../stores.ts'
+import type { WorkspaceSessionRowContext, WorkspaceSessionRowMenuContext, WorkspaceListPolicy, WorkspaceListView } from './contributions.ts'
 
 /**
  * Owner share of the directory-flow holes: the complete conversation between
@@ -51,12 +52,21 @@ export interface DirectoryFlowOwnerProps {
   onError: (message: string) => void
 }
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface SlotMap {
     /** Directory-flow hole under the conversation empty-state picker (declared by the WorkspacePicker entry). */
     'conversation.hero.workspace.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
+    /** Row badges contributed by registrants; each receives the session/workspace owner context. */
+    /** An empty list leaves the row without badges. */
+    'workspace.session-row.badges': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
+    /** Left status-cell fallback contributions; each receives the session/workspace owner context. */
+    /** Built-in pending, activity, and completion statuses take precedence over this list. */
+    'workspace.session-row.status': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowContext }
+    /** Row actions contributed by registrants; each receives the session/workspace owner context and menu close callback. */
+    /** An empty list leaves the row without actions. */
+    'workspace.session-row.actions': { kind: 'list'; scope: 'root'; owner: WorkspaceSessionRowMenuContext }
   }
 }
 
@@ -96,6 +106,8 @@ export type WorkspaceBrowserInjected = {
      * saw. Select the field the surface needs (`info => info.home`).
      */
     hostInfo: HostObservable<RemoteHostFacts>
+    views: HostObservable<readonly WorkspaceListView[]>
+    policies: HostObservable<readonly WorkspaceListPolicy[]>
   }
   /**
    * Start a New Session in a Workspace: reuse-or-create its blank session and
@@ -138,13 +150,21 @@ export type WorkspaceBrowserInjected = {
   createWorkspace: (input: { path: string }) => Promise<WorkspaceView>
 }
 
+type WorkspaceBrowserBaseHooks = DirectoryPickingInjected['hooks'] & { hostInfo: HostObservable<RemoteHostFacts> }
+
+type WorkspaceBrowserContributionHooks = {
+  views: HostObservable<readonly WorkspaceListView[]>
+  policies: HostObservable<readonly WorkspaceListPolicy[]>
+}
+
 /** Full browser props: shell owner share + viewing store + injected actions + the locale seat. */
 export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
-  & PropsRenderSlots<'sidebar.workspaces.directoryFlow'>
+  & PropsRenderSlots<'sidebar.workspaces.directoryFlow' | 'workspace.session-row.badges' | 'workspace.session-row.status' | 'workspace.session-row.actions'>
   & PropsStore<ReturnType<typeof createWorkspaceViewStore>>
   & Omit<WorkspaceBrowserInjected, 'hooks'>
-  & PropsHooks<WorkspaceBrowserInjected['hooks']>
+  & PropsHooks<WorkspaceBrowserBaseHooks>
+  & Partial<PropsHooks<WorkspaceBrowserContributionHooks>>
   & PropsLocale<'workspace'>
 
 /**

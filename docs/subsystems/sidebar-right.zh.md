@@ -37,7 +37,7 @@ tab 身份是 `(kind, address)` 二元组：注册表的认领把地址原文用
 
 | 字段 | 含义 |
 |---|---|
-| `id` | 该实现的身份，在所有注册中唯一；包名是自然取值（`@deepseek-ai/dsh-client-ui-sidebar-files`）。正文与标题坑位按它注册。 |
+| `id` | 该实现的身份，在所有注册中唯一；包名是自然取值（`@knyazevai/dsh-client-ui-sidebar-files`）。正文与标题坑位按它注册。 |
 | `kind` | 类型的判别名：它的 tab 是什么，也是 `openTab` 点名的对象。不唯一——extension 可以接管 builtin 的 kind。内置 kind 为 `guide`、`text`、`files`。 |
 | `patterns` | 可选的资源地址 glob；按 kind 打开的页面类型省略。含 `:` 的模式匹配整个地址（`dsh-resource://file/**`）；不含的匹配 URL 的路径部分且任意深度都中（`*.md`），不是 URL 的地址不会命中此类模式。匹配不分大小写、不隐藏 dotfile；语法为 picomatch 的 POSIX 方言。 |
 | `priority` | 三档字面量之一：`extension`（缺省且最高：产品之外的类型压过所有内置查看器）、`builtin`（随产品发布的类型）、`fallback`（任何更具体的类型都应压过的纯内容查看器）。 |
@@ -51,7 +51,7 @@ tab 身份是 `(kind, address)` 二元组：注册表的认领把地址原文用
 
 ```ts ignore-check
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@knyazevai/dsh-client-ui-sidebar-right/client'
 
 export const inject = ['sidebarRightTabs', 'slots']
 

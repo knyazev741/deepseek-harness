@@ -35,7 +35,7 @@ export class BundleInputIsolation {
   }
 
   private checkInput(id: string, allowMissing: boolean): void {
-    if (/(?:^|[/:\u0000])@deepseek-ai\/dsh-experimental-[^/?#]+/.test(id)) {
+    if (/(?:^|[/:\u0000])@knyazevai\/dsh-experimental-[^/?#]+/.test(id)) {
       throw new Error(`${this.label}: experimental input ${id}`)
     }
     const file = physicalBundleInput(id)
@@ -54,7 +54,7 @@ export class BundleInputIsolation {
     const canonical = resolve(realpathSync(existing), relative(existing, file))
     if (canonical !== file) this.checkInput(canonical, allowMissing)
     const name = this.packageName(dirname(canonical))
-    if (name?.startsWith('@deepseek-ai/dsh-experimental-')) {
+    if (name?.startsWith('@knyazevai/dsh-experimental-')) {
       throw new Error(`${this.label}: ${id} belongs to experimental package ${name}`)
     }
   }

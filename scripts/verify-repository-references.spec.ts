@@ -44,6 +44,17 @@ function repository(test: TestContext) {
 }
 
 describe('maintained repository reference policy', () => {
+  it('allows pinned fork source identity but still rejects disallowed organization links there', () => {
+    const commit = '1234567'
+    for (const file of ['.fork/features.yaml', '.fork/migration/upstream-commit',
+      'scripts/fork-overlay/features.spec.ts', 'packages/bundle/fork-base/tests/fork-base.spec.ts']) {
+      expect(findRepositoryReferences(file, commit, new Set([commit]))).toEqual([])
+      expect(findRepositoryReferences(file, organizationUrl, new Set())).toEqual([
+        { file, line: 1, kind: 'organization-url' },
+      ])
+    }
+  })
+
   it('rejects complete and abbreviated commit identifiers in tracked, staged, and new files', (test) => {
     const fixture = repository(test)
     fixture.write('tracked.md', `release\n${fixture.commit}\n${fixture.commit.toUpperCase()}\n`)

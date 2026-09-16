@@ -7,7 +7,7 @@ import { globSync, readFileSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
 
 const ROOT = resolve(import.meta.dirname, '..')
-const DSH_PACKAGE_NAME = /^@deepseek-ai\/dsh(?:-|$)/
+const DSH_PACKAGE_NAME = /^@knyazevai\/dsh(?:-|$)/
 
 /** Result of checking every DSH package reachable through the root workspace list. */
 export interface DshPackageLicenseReport {

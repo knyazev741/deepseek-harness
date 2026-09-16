@@ -7,7 +7,7 @@
  *
  * The package also owns the versionless fd-3 wire protocol itself; its host-side codec and
  * hostile-frame validators are re-exported so every consumer of the wire shares one vocabulary.
- * @module @deepseek-ai/dsh-experimental-ptc-runtime-python
+ * @module @knyazevai/dsh-experimental-ptc-runtime-python
  */
 
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
@@ -19,10 +19,10 @@ import { getHeapStatistics } from 'node:v8'
 import type { Duplex } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { PtcRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@deepseek-ai/dsh-ptc-runtime'
-import type { PtcBindingErrorClass, PtcBindingFunction, PtcJsonValue, PtcRunFailure, PtcRunRequest, PtcRunResult, PtcRunSpec } from '@deepseek-ai/dsh-ptc-runtime'
-import { snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { PtcRuntime, DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@knyazevai/dsh-ptc-runtime'
+import type { PtcBindingErrorClass, PtcBindingFunction, PtcJsonValue, PtcRunFailure, PtcRunRequest, PtcRunResult, PtcRunSpec } from '@knyazevai/dsh-ptc-runtime'
+import { snapshotJsonValue } from '@knyazevai/dsh-util-values'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import type { BootMessage, ChildToHost, ReplyMessage } from './protocol.ts'
 import { checkDoneValue, encodeJsonPlain, hasUnsafeIntegerToken, logTruncationMarker, validateChildFrame } from './protocol.ts'
 

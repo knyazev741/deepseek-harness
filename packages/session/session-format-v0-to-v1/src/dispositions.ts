@@ -129,3 +129,14 @@ export const RELEASED_V0_EVENT_DISPOSITIONS: Readonly<Record<string, ReleasedV0P
 export const RELEASED_V0_EVENT_TYPES: readonly string[] = Object.freeze(
   Object.keys(RELEASED_V0_EVENT_DISPOSITIONS).sort((left, right) => left.localeCompare(right, 'en')),
 )
+
+/** Coordinate-free metadata shipped by this fork alongside the frozen upstream vocabulary. */
+export const FORK_EVENT_DISPOSITIONS: Readonly<Record<string, ReleasedV0PayloadDisposition>> = Object.freeze({
+  'fork/session-source': disposition(['source']),
+})
+
+/** Historical events whose coordinates this distribution has audited for migration. */
+export const HISTORICAL_V0_EVENT_DISPOSITIONS: Readonly<Record<string, ReleasedV0PayloadDisposition>> = Object.freeze({
+  ...RELEASED_V0_EVENT_DISPOSITIONS,
+  ...FORK_EVENT_DISPOSITIONS,
+})

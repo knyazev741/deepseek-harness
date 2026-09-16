@@ -8,7 +8,7 @@
  * its bootstrap export, which constructs the system and retains the same
  * exports for this package's graph row. The plugin face enrolls the module
  * system attached to its own Loader as `ctx.modules`.
- * @module @deepseek-ai/dsh-client-modules/client
+ * @module @knyazevai/dsh-client-modules/client
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { Loader } from '@deepseek-ai/cordis-plugin-loader'

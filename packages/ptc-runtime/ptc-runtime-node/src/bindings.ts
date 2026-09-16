@@ -1,6 +1,6 @@
 /** Validate and capture the binding names available to one program. */
-import { DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@deepseek-ai/dsh-ptc-runtime'
-import type { PtcBindingNamespace, PtcRunRequest } from '@deepseek-ai/dsh-ptc-runtime'
+import { DUNDER_MEMBER, PORTABLE_RESERVED_WORDS, RESERVED_BINDING_GLOBALS, RESERVED_ERROR_MEMBERS } from '@knyazevai/dsh-ptc-runtime'
+import type { PtcBindingNamespace, PtcRunRequest } from '@knyazevai/dsh-ptc-runtime'
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
 /**
  * Reject unusable namespaces before starting a process.

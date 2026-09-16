@@ -3,7 +3,7 @@ description: "面向用户与维护者的进程外 SDK subagent 后端，用于�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-subagent-dsh-sdk
+# @knyazevai/dsh-subagent-dsh-sdk
 
 [English](README.md) | 中文
 
@@ -51,13 +51,13 @@ kind: "package-reference"
 | `disposeEofGraceMs` | `6000` | stdin EOF 之后、平台终止之前的宽限 |
 | `disposeGraceMs` | `3000` | 终止后的退出确认宽限 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-subagent-dsh-sdk)是每个受支持字段及其 JSDoc 的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-subagent-dsh-sdk)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 请求 `agentOptions` 会分别覆盖 `provider`、`model` 与 `maxTokens`。`reasoningEffort` 没有提供方实例默认值：请求省略时保持缺省，由所选子模型解析自身默认值。面向模型的 subagent 工具可在每次调用时选择提供方／模型／推理强度；`maxTokens` 仍由工具配置或本提供方默认值在部署侧控制。
 
 ```yaml
 - id: subagent-dsh-sdk
-  name: '@deepseek-ai/dsh-subagent-dsh-sdk'
+  name: '@knyazevai/dsh-subagent-dsh-sdk'
   config:
     providerName: dsh-sdk
     profile: sdk
@@ -67,7 +67,7 @@ kind: "package-reference"
     env:
       DEEPSEEK_API_KEY: !!js process.env.DEEPSEEK_API_KEY
 - id: tool-subagent
-  name: '@deepseek-ai/dsh-tool-subagent'
+  name: '@knyazevai/dsh-tool-subagent'
   config: { provider: dsh-sdk, toolName: subagent, maxDepth: 'provider-managed' }
 ```
 
@@ -127,7 +127,7 @@ kind: "package-reference"
 - [dsh-subagent seam](../subagent/README.zh.md)——本提供方注册于其上的注册表与启动 API。
 - [ACP subagent 后端](../subagent-acp/README.zh.md)——经 Agent Client Protocol 的兄弟进程外提供方。
 - [TypeScript SDK 客户端](../../sdk/client/README.zh.md)——本后端用以驱动子进程的 stdio JSON-RPC 客户端。
-- [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-subagent-dsh-sdk)——每个受支持配置字段及其源声明。
+- [生成配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-subagent-dsh-sdk)——每个受支持配置字段及其源声明。
 
 -----
 

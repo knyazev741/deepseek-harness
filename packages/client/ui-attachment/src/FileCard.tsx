@@ -1,4 +1,4 @@
-import { fileExtension, FileTypeIcon, fileSizeText, IconCloseFill14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { fileExtension, FileTypeIcon, fileSizeText, IconCloseFill14 } from '@knyazevai/dsh-client-ui-primitives'
 import css from './FileCard.module.css'
 
 /** Localized strings consumed by one pending-file card. */

@@ -69,30 +69,30 @@ describe('npm resolution benchmark', () => {
       devDependencies: { ignored: '^1.0.0' },
     })
     writeJson(root, 'apps/cli/package.json', {
-      name: '@deepseek-ai/dsh',
+      name: '@knyazevai/dsh',
       version: '0.1.0',
-      dependencies: { '@deepseek-ai/dsh-child': 'workspace:^', external: '^2.0.0' },
+      dependencies: { '@knyazevai/dsh-child': 'workspace:^', external: '^2.0.0' },
       devDependencies: { ignored: 'workspace:^' },
     })
     writeJson(root, 'packages/core/child/package.json', {
-      name: '@deepseek-ai/dsh-child',
+      name: '@knyazevai/dsh-child',
       version: '0.1.0',
     })
 
     const index = buildRegistryIndex(root)
 
     expect(index.get('external')?.get('2.0.0')).toMatchObject({ dependencies: { child: '^1.0.0' } })
-    expect(index.get('@deepseek-ai/dsh')?.get('0.1.0')).toEqual({
-      name: '@deepseek-ai/dsh',
+    expect(index.get('@knyazevai/dsh')?.get('0.1.0')).toEqual({
+      name: '@knyazevai/dsh',
       version: '0.1.0',
-      dependencies: { '@deepseek-ai/dsh-child': '^0.1.0', external: '^2.0.0' },
+      dependencies: { '@knyazevai/dsh-child': '^0.1.0', external: '^2.0.0' },
     })
   })
 
   it('runs npm against the local registry without requesting an archive', async () => {
     const index: RegistryIndex = new Map([[
-      '@deepseek-ai/dsh',
-      new Map([['0.1.0', { name: '@deepseek-ai/dsh', version: '0.1.0' }]]),
+      '@knyazevai/dsh',
+      new Map([['0.1.0', { name: '@knyazevai/dsh', version: '0.1.0' }]]),
     ]])
     const result = await benchmarkNpmResolution(index, '0.1.0', 10_000)
 
@@ -104,22 +104,22 @@ describe('npm resolution benchmark', () => {
 
   it('returns npm placement for two aliased package versions without requesting archives', async () => {
     const index: RegistryIndex = new Map([[
-      '@deepseek-ai/dsh',
+      '@knyazevai/dsh',
       new Map([
-        ['0.1.0', { name: '@deepseek-ai/dsh', version: '0.1.0' }],
-        ['0.2.0', { name: '@deepseek-ai/dsh', version: '0.2.0' }],
+        ['0.1.0', { name: '@knyazevai/dsh', version: '0.1.0' }],
+        ['0.2.0', { name: '@knyazevai/dsh', version: '0.2.0' }],
       ]),
     ]])
 
     const result = await resolveNpmPackageLock(index, {
-      '@deepseek-ai/dsh': '0.2.0',
-      'dsh-previous': 'npm:@deepseek-ai/dsh@0.1.0',
+      '@knyazevai/dsh': '0.2.0',
+      'dsh-previous': 'npm:@knyazevai/dsh@0.1.0',
     }, 10_000)
 
     expect(result.archiveRequests).toBe(0)
-    expect(result.packageLock.packages['node_modules/@deepseek-ai/dsh']?.version).toBe('0.2.0')
+    expect(result.packageLock.packages['node_modules/@knyazevai/dsh']?.version).toBe('0.2.0')
     expect(result.packageLock.packages['node_modules/dsh-previous']).toMatchObject({
-      name: '@deepseek-ai/dsh',
+      name: '@knyazevai/dsh',
       version: '0.1.0',
     })
   })
@@ -139,21 +139,21 @@ describe('npm resolution benchmark', () => {
     process.env.npm_config_omit = 'peer'
     try {
       const index: RegistryIndex = new Map([
-        ['@deepseek-ai/dsh', new Map([['0.1.0', {
-          name: '@deepseek-ai/dsh',
+        ['@knyazevai/dsh', new Map([['0.1.0', {
+          name: '@knyazevai/dsh',
           version: '0.1.0',
-          peerDependencies: { '@deepseek-ai/dsh-peer': '1.0.0' },
+          peerDependencies: { '@knyazevai/dsh-peer': '1.0.0' },
         }]])],
-        ['@deepseek-ai/dsh-peer', new Map([['1.0.0', {
-          name: '@deepseek-ai/dsh-peer',
+        ['@knyazevai/dsh-peer', new Map([['1.0.0', {
+          name: '@knyazevai/dsh-peer',
           version: '1.0.0',
         }]])],
       ])
 
-      const result = await resolveNpmPackageLock(index, { '@deepseek-ai/dsh': '0.1.0' }, 10_000)
+      const result = await resolveNpmPackageLock(index, { '@knyazevai/dsh': '0.1.0' }, 10_000)
 
       expect(result.archiveRequests).toBe(0)
-      expect(result.packageLock.packages['node_modules/@deepseek-ai/dsh-peer']?.version).toBe('1.0.0')
+      expect(result.packageLock.packages['node_modules/@knyazevai/dsh-peer']?.version).toBe('1.0.0')
     } finally {
       if (previous.userConfig === undefined) delete process.env.npm_config_userconfig
       else process.env.npm_config_userconfig = previous.userConfig

@@ -3,7 +3,7 @@ description: "面向组合作者与能力消费方的子进程服务（`ctx.subp
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-subprocess
+# @knyazevai/dsh-subprocess
 
 [English](README.md) | 中文
 
@@ -32,8 +32,8 @@ kind: "package-reference"
 每个组合由唯一一个提供方注册 `ctx.subprocess`；把它与经由它 spawn 的消费方放在一起加载——bash 执行器、LSP 主机、PTY shell 后端或进程外 subagent 后端。加载第二个提供方会快速失败（每个上下文只有一个服务，这是 Cordis 的标准行为）。
 
 ```yaml
-- name: '@deepseek-ai/dsh-subprocess-local'
-- name: '@deepseek-ai/dsh-bash-local'
+- name: '@knyazevai/dsh-subprocess-local'
+- name: '@knyazevai/dsh-bash-local'
 ```
 
 ### 启动受管进程
@@ -63,7 +63,7 @@ const output = handle.collected.stdout?.readFrom(0)
 <a id="using-a-control-pipe"></a>
 ### 使用控制管道
 
-设置 `stdio.control: 'pipe'` 后，`handle.control` 会返回独立的原始 `Duplex`。Node 子进程通过 `@deepseek-ai/dsh-subprocess/control` 的 `openInheritedControlChannel()` 打开 fd 7；该辅助函数会消费提供方拥有的 `DSH_SUBPROCESS_CONTROL=pipe` 标记。调用方不能通过 `env` 提供该标记。控制字节不会进入 stdout/stderr 收集器。消费方负责分帧、校验、背压和关闭自身端点；提供方销毁时会在进程拆卸后销毁仍存在的端点。省略请求则返回 `control: undefined`。该通道仅适用于普通进程，不授予绕过工具审批的权限。
+设置 `stdio.control: 'pipe'` 后，`handle.control` 会返回独立的原始 `Duplex`。Node 子进程通过 `@knyazevai/dsh-subprocess/control` 的 `openInheritedControlChannel()` 打开 fd 7；该辅助函数会消费提供方拥有的 `DSH_SUBPROCESS_CONTROL=pipe` 标记。调用方不能通过 `env` 提供该标记。控制字节不会进入 stdout/stderr 收集器。消费方负责分帧、校验、背压和关闭自身端点；提供方销毁时会在进程拆卸后销毁仍存在的端点。省略请求则返回 `control: undefined`。该通道仅适用于普通进程，不授予绕过工具审批的权限。
 
 ### 管理进程生命周期
 

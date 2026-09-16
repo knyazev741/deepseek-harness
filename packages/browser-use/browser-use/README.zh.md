@@ -3,7 +3,7 @@ description: "浏览器操作 提供方 注册服务，供一次启用一个浏�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-browser-use
+# @knyazevai/dsh-browser-use
 
 [English](README.md) | 中文
 
@@ -28,10 +28,10 @@ kind: "package-reference"
 在 Cordis 组合中，将服务与所选 提供方 一起挂载一次：
 
 ```yaml
-- name: '@deepseek-ai/dsh-browser-use'
+- name: '@knyazevai/dsh-browser-use'
 ```
 
-服务没有配置。提供方 插件注入 `browserUse` 并调用 `ctx.browserUse.register(BrowserUseProviderName(name))`；品牌类型从 `@deepseek-ai/dsh-browser-use/brand` 导出。返回的 effect 清理器释放该注册。
+服务没有配置。提供方 插件注入 `browserUse` 并调用 `ctx.browserUse.register(BrowserUseProviderName(name))`；品牌类型从 `@knyazevai/dsh-browser-use/brand` 导出。返回的 effect 清理器释放该注册。
 
 提供方 在释放注册前停止接收工具调用、关闭资源并等待自己拥有的工作结束。`ctx.browserUse.providerName` 在释放之前持续报告已注册名称。
 

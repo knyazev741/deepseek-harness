@@ -32,7 +32,7 @@ async function loadComposition(port = 0, gzip = false): Promise<Context> {
   root = await mkdtemp(join(tmpdir(), 'dsh-webserver-loader-'))
   const configPath = join(root, 'cordis.yml')
   await writeFile(configPath, [
-    "- name: '@deepseek-ai/dsh-host-webserver'",
+    "- name: '@knyazevai/dsh-host-webserver'",
     '  config:',
     "    host: '127.0.0.1'",
     `    port: ${String(port)}`,
@@ -51,7 +51,7 @@ async function loadComposition(port = 0, gzip = false): Promise<Context> {
   await context.plugin(Loader)
   context.loader.builtins.include = Include
   const modules = new Map<string, unknown>([
-    ['@deepseek-ai/dsh-host-webserver', HttpServer],
+    ['@knyazevai/dsh-host-webserver', HttpServer],
   ])
   context.loader.internal = {
     version: 'v2',
@@ -364,7 +364,7 @@ describe('real Loader composition', () => {
     let second: Context | undefined
     try {
       second = await loadComposition(takenPort)
-      const entry = [...second.loader.entries()].find(e => e.options.name === '@deepseek-ai/dsh-host-webserver')
+      const entry = [...second.loader.entries()].find(e => e.options.name === '@knyazevai/dsh-host-webserver')
       expect(entry?.fiber?.state).toBe(FiberState.FAILED)
       await expect(entry?.fiber?.await()).rejects.toThrow('EADDRINUSE')
     } finally {

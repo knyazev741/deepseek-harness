@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-anonymous-user-id",
+  "name": "@knyazevai/dsh-anonymous-user-id",
   "description": "Shared anonymous user identity for DeepSeek Harness telemetry and feedback correlation",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -27,13 +27,13 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-home-paths": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-home-paths": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-home-paths": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-home-paths": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   }
 }

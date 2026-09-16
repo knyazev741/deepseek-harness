@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-desktop",
+  "name": "@knyazevai/dsh-desktop",
   "description": "Electron desktop shell for a bundled dsh runtime and external plugins",
   "version": "0.1.6-alpha.1",
   "private": true,
@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "3.1067.0",
-    "@deepseek-ai/dsh-home-paths": "workspace:^",
+    "@knyazevai/dsh-home-paths": "workspace:^",
     "@electron/notarize": "2.5.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.20.0",

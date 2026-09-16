@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { SESSION_FORMAT_VERSION, SessionId, type SessionHeader } from '@deepseek-ai/dsh-session'
-import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
+import SessionStore, { SESSION_FORMAT_VERSION, SessionId, type SessionHeader } from '@knyazevai/dsh-session'
+import TypertRegistry from '@knyazevai/dsh-typert-registry'
 import { describe, expect, it, vi } from 'vitest'
 import WorkspaceFiles from '../src/index.ts'
 
@@ -52,8 +52,8 @@ describe('Workspace Files Session scope lookup', () => {
       expect(lookup).toMatchObject({
         parameter: 'workspaceFileScope',
         wire: 'workspaceFileScopeId',
-        hostTypeSymbol: '@deepseek-ai/dsh-api-workspace-files#WorkspaceFileScope',
-        wireTypeSymbol: '@deepseek-ai/dsh-session/types#SessionId',
+        hostTypeSymbol: '@knyazevai/dsh-api-workspace-files#WorkspaceFileScope',
+        wireTypeSymbol: '@knyazevai/dsh-session/types#SessionId',
       })
       if (lookup === undefined) throw new Error('workspaceFileScope lookup did not register')
 

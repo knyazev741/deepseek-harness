@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-deepseek-llm-api-extensions",
+  "name": "@knyazevai/dsh-deepseek-llm-api-extensions",
   "description": "Additive request-field registry for the official DeepSeek LLM API adapter",
   "version": "0.1.6-alpha.1",
   "publishConfig": {

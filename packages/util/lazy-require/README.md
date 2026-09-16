@@ -3,7 +3,7 @@ description: "Caller-relative lazy loading for CommonJS-compatible Host dependen
 kind: "package-library"
 ---
 
-# @deepseek-ai/dsh-lazy-require
+# @knyazevai/dsh-lazy-require
 
 English | [中文](README.zh.md)
 
@@ -28,7 +28,7 @@ English | [中文](README.zh.md)
 Pass the dependency's literal specifier and the caller's `import.meta.url`:
 
 ```ts
-import { createLazyRequire } from '@deepseek-ai/dsh-lazy-require'
+import { createLazyRequire } from '@knyazevai/dsh-lazy-require'
 
 interface NativeModule { open(): void }
 const requireNative = createLazyRequire<NativeModule>('native-package', import.meta.url)

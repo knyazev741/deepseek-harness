@@ -8,12 +8,12 @@
  * list rows' title projection).
  */
 import { describe, expect } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import { SessionSeq } from '@deepseek-ai/dsh-session/types'
-import { ok, type RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+import type { SessionId } from '@knyazevai/dsh-api-remotes/client'
+import { SessionSeq } from '@knyazevai/dsh-session/types'
+import { ok, type RemoteMock } from '@knyazevai/dsh-remote-mock'
 import {
   createClientTest, type ClientTestFixtures, webApp,
-} from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
+} from '@knyazevai/dsh-client-test-runtime/src/assembly/index.ts'
 import { ProjectionValueStore } from '../src/client/sessions/projection-store.ts'
 import { SessionManager } from '../src/client/sessions/manager.ts'
 import type { SessionRemotes } from '../src/client/sessions/remotes.ts'
@@ -23,7 +23,7 @@ import { FOLLOW, followScript, sessionWorld } from './remote/session.client.ts'
 
 // Test-domain keys merged into the projection map (the Service Definition package's
 // pure-type outlet), the same way domain host plugins merge theirs.
-declare module '@deepseek-ai/dsh-session-projection/types' {
+declare module '@knyazevai/dsh-session-projection/types' {
   interface SessionProjectionMap {
     'test/marks': { marks: string[] }
   }
@@ -31,7 +31,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
 
 const SID = 'fk-s1' as SessionId
 /** A Session talks through the Gateway client; its dependency cone is the Typert registry and the Connection. */
-const API_ROSTER = webApp.closure(['@deepseek-ai/dsh-api-gateway'])
+const API_ROSTER = webApp.closure(['@knyazevai/dsh-api-gateway'])
 const it = createClientTest({ roster: API_ROSTER })
 /** The first client boot pays the cold module transform of the api cone. */
 const COLD_BOOT_TIMEOUT_MS = 60_000

@@ -12,7 +12,7 @@ export interface TypertGatewayFaultDetails {
   readonly field?: string
 }
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@knyazevai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     'gateway/ambiguous-endpoint': TypertGatewayFaultDetails
     'gateway/arguments-invalid': TypertGatewayFaultDetails

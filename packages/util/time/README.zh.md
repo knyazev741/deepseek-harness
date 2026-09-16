@@ -36,7 +36,7 @@ kind: "package-library"
 ## API
 
 ```ts
-import { canonicalClientTimeZone } from '@deepseek-ai/dsh-util-time'
+import { canonicalClientTimeZone } from '@knyazevai/dsh-util-time'
 ```
 
 | 导出 | 职责 |

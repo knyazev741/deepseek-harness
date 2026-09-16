@@ -3,7 +3,7 @@ description: "Web skill references and the dedicated skill tool row for the dsh 
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-skill
+# @knyazevai/dsh-client-ui-skill
 
 English | [中文](README.zh.md)
 

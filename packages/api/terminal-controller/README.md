@@ -3,7 +3,7 @@ description: "Interactive user terminals with execution-environment shell defaul
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-api-terminal-controller
+# @knyazevai/dsh-api-terminal-controller
 
 English | [中文](README.zh.md)
 

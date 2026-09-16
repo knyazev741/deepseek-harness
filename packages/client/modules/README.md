@@ -3,7 +3,7 @@ description: "Client module system for the web GUI: the host composes the boot g
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-modules
+# @knyazevai/dsh-client-modules
 
 English | [中文](README.zh.md)
 
@@ -118,7 +118,7 @@ None; this package neither assembles nor sends a provider request.
 These limits define what the module system does not do. They are current package constraints, not a task backlog.
 
 - **Flat module graph by design** — every bundle is one module node whose edges point only at table leaves; the interface (`loadCache`/`edges`/`invalidate`) already supports a general module graph, so the externalization granularity can change without an interface change.
-- **No unload bookkeeping of its own** — style removal and fiber teardown ordering live with the HMR driver (`@deepseek-ai/dsh-client-hmr`); the loader only inventories owned style tag ids per record.
+- **No unload bookkeeping of its own** — style removal and fiber teardown ordering live with the HMR driver (`@knyazevai/dsh-client-hmr`); the loader only inventories owned style tag ids per record.
 - **Lazy delivery retains requested bodies** — the Host holds each bundle and lazy response plan; a script or map body remains cached after its first `GET`, and HMR additionally retains one prior startup generation. Memory grows only for response bodies that clients request while preserving one-generation race tolerance.
 - **An unrequested prior-generation map reads the current map file** — combo revisions track executable bundles, not debug artifacts. If HMR rebuilds a map before the retained prior URL receives its first map `GET`, that response uses the current authored map with the prior bundle offsets; requesting the map before the rebuild fixes that URL's response.
 

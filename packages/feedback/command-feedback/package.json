@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-command-feedback",
+  "name": "@knyazevai/dsh-command-feedback",
   "description": "Log-only session feedback: the record event, the sessionFeedback Host Remote, and the human-facing slash command",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -44,11 +44,11 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-commands": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-anonymous-user-id": "workspace:^",
+    "@knyazevai/dsh-commands": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-anonymous-user-id": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^"
+    "@knyazevai/dsh-typert-protocol": "workspace:^"
   },
   "dependencies": {
     "zod": "^4.4.3"
@@ -56,13 +56,13 @@
   "devDependencies": {
     "@deepseek-ai/cordis-plugin-include": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
-    "@deepseek-ai/dsh-commands": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-anonymous-user-id": "workspace:^",
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
+    "@knyazevai/dsh-commands": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-anonymous-user-id": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^"
+    "@knyazevai/dsh-typert-protocol": "workspace:^"
   }
 }

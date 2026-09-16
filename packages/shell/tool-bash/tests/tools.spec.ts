@@ -3,25 +3,25 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { ShellExecutor } from '@deepseek-ai/dsh-shell'
-import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellProcessRead, ShellRunResult } from '@deepseek-ai/dsh-shell'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { turnBoundaryProjectionDefinition } from '@deepseek-ai/dsh-agent-loop'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
-import * as ToolJobs from '@deepseek-ai/dsh-tool-jobs'
-import ApprovalService from '@deepseek-ai/dsh-user-approval'
-import type { ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
-import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
-import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import * as ToolBash from '@deepseek-ai/dsh-tool-bash'
-import * as BashEnvPlugin from '@deepseek-ai/dsh-shell-env'
+import { ToolCallId } from '@knyazevai/dsh-llm'
+import { ShellExecutor } from '@knyazevai/dsh-shell'
+import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellProcessRead, ShellRunResult } from '@knyazevai/dsh-shell'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime, { TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH } from '@knyazevai/dsh-tools'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import type { Agent } from '@knyazevai/dsh-agent'
+import { turnBoundaryProjectionDefinition } from '@knyazevai/dsh-agent-loop'
+import { SessionId } from '@knyazevai/dsh-session'
+import LocalJobRegistry from '@knyazevai/dsh-jobs-local'
+import * as ToolJobs from '@knyazevai/dsh-tool-jobs'
+import ApprovalService from '@knyazevai/dsh-user-approval'
+import type { ApprovalOutcome } from '@knyazevai/dsh-user-approval'
+import { LocalBashExecutor } from '@knyazevai/dsh-bash-local'
+import LocalSubprocessRuntime from '@knyazevai/dsh-subprocess-local'
+import SandboxPolicyService from '@knyazevai/dsh-sandbox-policy'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import * as ToolBash from '@knyazevai/dsh-tool-bash'
+import * as BashEnvPlugin from '@knyazevai/dsh-shell-env'
 import { processOutcome } from '../src/background.ts'
 import { renderProcessRead, renderResult } from '../src/render.ts'
 
@@ -510,7 +510,7 @@ describe('background execution through the job runtime', () => {
     const ctx = await setup() // no LocalJobRegistry / ToolJobs
     const result = await call(ctx, 'bash', { command: 'sleep 60', description: 'test command', run_in_background: true })
     expect(result.isError).toBe(true)
-    expect(text(result)).toContain('background jobs unavailable: load @deepseek-ai/dsh-jobs and @deepseek-ai/dsh-tool-jobs')
+    expect(text(result)).toContain('background jobs unavailable: load @knyazevai/dsh-jobs and @knyazevai/dsh-tool-jobs')
   })
 
   it('a pre-aborted call is skipped before the process starts', async () => {

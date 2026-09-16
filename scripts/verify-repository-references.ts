@@ -11,6 +11,12 @@ const organization = ['deepseek', 'harness'].join('-')
 const organizationUrl = new RegExp(`\\bgithub\\.com/${organization}(?![a-z0-9-])`)
 const commitCandidate = /(?<![a-z0-9])[\da-f]{7,40}(?![a-z0-9])/gi
 const excludedPrefixes = ['vendor/', '.agents/notes/archived/']
+// Fork source identity and migration fixtures intentionally pin exact Git inputs.
+const commitSourceIdentityPaths = new Set([
+  '.fork/features.yaml',
+  'scripts/fork-overlay/features.spec.ts',
+  'packages/bundle/fork-base/tests/fork-base.spec.ts',
+])
 const gitOutputLimit = 64 * 1024 * 1024
 
 /** One prohibited reference in a maintained source file. */
@@ -45,7 +51,8 @@ export function findRepositoryReferences(
     if (organizationUrl.test(canonicalReferenceText(line))) {
       references.push({ file, line: index + 1, kind: 'organization-url' })
     }
-    if ([...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
+    if (!file.startsWith('.fork/migration/') && !commitSourceIdentityPaths.has(file)
+      && [...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
       references.push({ file, line: index + 1, kind: 'commit-hash' })
     }
   }

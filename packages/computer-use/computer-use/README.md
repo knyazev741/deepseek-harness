@@ -3,7 +3,7 @@ description: "Computer-use provider registration for deployments that enable one
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-computer-use
+# @knyazevai/dsh-computer-use
 
 English | [中文](README.zh.md)
 
@@ -28,10 +28,10 @@ A deployment can enable one computer-use provider at a time. Loading another pro
 Mount the service once beside the chosen provider in a Cordis composition:
 
 ```yaml
-- name: '@deepseek-ai/dsh-computer-use'
+- name: '@knyazevai/dsh-computer-use'
 ```
 
-The service has no configuration. Provider plugins inject `computerUse` and call `ctx.computerUse.register(ComputerUseProviderName(name))`; the brand is exported from `@deepseek-ai/dsh-computer-use/brand`. The returned effect disposer releases that registration.
+The service has no configuration. Provider plugins inject `computerUse` and call `ctx.computerUse.register(ComputerUseProviderName(name))`; the brand is exported from `@knyazevai/dsh-computer-use/brand`. The returned effect disposer releases that registration.
 
 Providers stop admitting tool calls, close their resources, and await owned work before releasing the registration. `ctx.computerUse.providerName` reports the registered name until release.
 

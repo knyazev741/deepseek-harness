@@ -1,18 +1,18 @@
-import { createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { createAssistantMessage, createUserMessage } from '@knyazevai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import { DatabaseSync } from 'node:sqlite'
 import { chmod, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import SessionStore, { SessionLogOffset, SessionSeq, SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import type { SessionEvent, SessionHeader, SessionId as SessionIdType } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionLogOffset, SessionSeq, SESSION_FORMAT_VERSION, SessionId } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import type { SessionEvent, SessionHeader, SessionId as SessionIdType } from '@knyazevai/dsh-session'
 import SessionPersistence, {
   SessionPersistenceNotFoundError,
   SessionPersistenceRevision,
   SessionReadOnlyError,
-} from '@deepseek-ai/dsh-session-persistence'
+} from '@knyazevai/dsh-session-persistence'
 import type {
   SessionAccess,
   SessionHandle,
@@ -20,11 +20,11 @@ import type {
   SessionHandleReadResult,
   SessionPersistenceListOptions,
   SessionPersistenceSnapshot,
-} from '@deepseek-ai/dsh-session-persistence'
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+} from '@knyazevai/dsh-session-persistence'
+import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import SqliteSessionQueryEngine, {
   SESSION_QUERY_SQLITE_SCHEMA_VERSION,
-} from '@deepseek-ai/dsh-session-query-sqlite'
+} from '@knyazevai/dsh-session-query-sqlite'
 import {
   SESSION_QUERY_DEFAULT_PERSISTED_INSPECT_CONCURRENCY,
   SessionQueryError,
@@ -32,7 +32,7 @@ import {
   type SessionAvailability,
   type SessionQueryErrorCode,
   type SessionSearchRequest,
-} from '@deepseek-ai/dsh-session-query'
+} from '@knyazevai/dsh-session-query'
 
 const temporaryDirectories: string[] = []
 

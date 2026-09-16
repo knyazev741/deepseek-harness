@@ -32,7 +32,7 @@ schedule 组让 agent（智能体）为当前会话创建、列出和取消提�
 ## 相关文档
 
 - [仅限会话内的 Schedule 子系统](../../docs/subsystems/schedule.zh.md)——持久记录、转换、视图与交付约定。
-- [生成的工具目录](../../docs/tool-catalog.zh.md#deepseek-aidsh-schedule)——模型接收的 `schedule_create`／`schedule_list`／`schedule_delete` schema。
+- [生成的工具目录](../../docs/tool-catalog.zh.md#knyazevaidsh-schedule)——模型接收的 `schedule_create`／`schedule_list`／`schedule_delete` schema。
 - [Schedule 用户指南](../../docs/user/guide/schedule.zh.md)——挂载本包的官方配置路径。
 - [Web Schedule 目录](../client/ui-schedule/README.zh.md)——活动记录的可选只读浏览器呈现。
 

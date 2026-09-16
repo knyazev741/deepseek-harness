@@ -3,7 +3,7 @@ description: "面向用户与维护者的工作区指令上下文说明，用于
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-agent-instructions
+# @knyazevai/dsh-agent-instructions
 
 [English](README.md) | 中文
 
@@ -38,7 +38,7 @@ kind: "package-reference"
 只有确认项目根标记不存在时，项目根发现才会继续上溯。权限或 I/O 失败会停止发现，并抛出宿主或文件系统提供方的原始错误，而不会选择祖先项目。[根标记元数据决策](../../../.agents/notes/implemented/bug-fix/2026-09-03-root-marker-metadata-failures.zh.md)说明发现为何必须失败，而不能替换为其他根目录。
 
 ```yaml
-- name: '@deepseek-ai/dsh-agent-instructions'
+- name: '@knyazevai/dsh-agent-instructions'
   config:
     maxBytes: 65536
 ```
@@ -65,7 +65,7 @@ export interface Config {
 | `localInstructionFileCandidates` | `['AGENTS.local.md', 'CLAUDE.local.md']` | 在基础文件之后加载的本地 overlay 文件名 |
 | `dshHome` | `$DSH_HOME` 或 `~/.dsh` | 存放用户全局 `AGENTS.md` 的目录 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-agent-instructions)是每个受支持字段及其 JSDoc 的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-agent-instructions)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 ### 观察预算
 
@@ -117,7 +117,7 @@ export interface Config {
 - [文档标准](../../../docs/AGENTS.md)——`AGENTS.md` 指令文件包含什么、如何维护。
 - [工作区上下文决策记录](../../../.agents/notes/archived/feature/2026-06-24-workspace-context.md)——按 agent／会话隔离与生命周期理由。
 - [上下文组地图](../README.zh.md)——相邻的请求上下文包。
-- [生成的配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-agent-instructions)——每个受支持配置字段及其源声明。
+- [生成的配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-agent-instructions)——每个受支持配置字段及其源声明。
 
 -----
 

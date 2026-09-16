@@ -3,7 +3,7 @@ description: "面向部署方与维护者的 MCP 客户端桥接说明，用于�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-mcp-client
+# @knyazevai/dsh-mcp-client
 
 [English](README.md) | 中文
 
@@ -33,7 +33,7 @@ kind: "package-reference"
 
 ```yaml
 - id: mcp-github
-  name: '@deepseek-ai/dsh-mcp-client'
+  name: '@knyazevai/dsh-mcp-client'
   config:
     serverName: github
     transport: stdio
@@ -43,7 +43,7 @@ kind: "package-reference"
       GITHUB_TOKEN: !!js process.env.GITHUB_TOKEN
 
 - id: mcp-web
-  name: '@deepseek-ai/dsh-mcp-client'
+  name: '@knyazevai/dsh-mcp-client'
   config:
     serverName: web
     transport: streamable-http
@@ -66,7 +66,7 @@ kind: "package-reference"
 | `reconnect.maxDelayMs` | `30,000` | 退避上限；同时是重置尝试预算所需的正常运行时长 |
 | `reconnect.maxAttempts` | `10` | 每次中断内连续失败尝试次数上限，超出后放弃 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-mcp-client)是每个受支持字段的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-mcp-client)是每个受支持字段的穷尽式真源。
 
 启动后，服务器的工具会以 `mcp__<serverName>__<tool>` 形式出现——试着用一条提示词调用其中一个。如果初始连接失败，harness 仍会启动，但该服务器的工具不会出现，并会记录一条错误。设置 `failOnStartupError: true` 会拒绝插件激活；[app-boot 的启动策略](../../boot/app-boot/README.zh.md)仍允许可选 MCP 配置项失败，而不中止 harness。
 
@@ -150,7 +150,7 @@ SDK 通过旧版通知或现代协议订阅接收工具列表变化。监督器�
 - [MCP 客户端插件 Agent Note](../../../.agents/notes/implemented/feature/2026-07-07-mcp-client-plugin.zh.md)——命名不变式、发现与执行设计、备选方案与后果。
 - [规范工具输出约定 Agent Note](../../../.agents/notes/implemented/architecture/2026-07-20-canonical-tool-output-contract.zh.md)——MCP 结果如何映射进规范工具输出约定。
 - [第三方记忆 MCP 指南](../../../docs/user/guide/mcp-memory.zh.md)——使用本包的三份记忆服务器 overlay。
-- [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-mcp-client)——每个受支持配置字段及其源声明。
+- [生成配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-mcp-client)——每个受支持配置字段及其源声明。
 
 -----
 

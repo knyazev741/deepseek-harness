@@ -61,7 +61,7 @@ function styleInjectionModule(
  * Everything else under @deepseek-ai/* is either a module-table entry
  * (external) or a leak the purity gate rejects.
  */
-export const INLINE_SAFE = /^(?:@deepseek-ai\/dsh-(?:file-reference|session|llm|tools|brand|deque|output-retention|typert-protocol|util-crypto|util-values|util-workspace-path)(?:\/|$)|@deepseek-ai\/dsh-token-meter\/client$|@deepseek-ai\/dsh-host-open-in-app\/shared$|@deepseek-ai\/dsh-agent-presets\/display$|@deepseek-ai\/dsh-spill-policy\/notice$)/
+export const INLINE_SAFE = /^(?:@knyazevai\/dsh-(?:file-reference|session|llm|tools|brand|deque|output-retention|typert-protocol|util-crypto|util-values|util-workspace-path)(?:\/|$)|@knyazevai\/dsh-token-meter\/client$|@knyazevai\/dsh-host-open-in-app\/shared$|@knyazevai\/dsh-agent-presets\/display$|@knyazevai\/dsh-spill-policy\/notice$)/
 
 /**
  * Vendored framework libraries: rescoped into @deepseek-ai, so the gate below
@@ -72,7 +72,7 @@ export const INLINE_SAFE = /^(?:@deepseek-ai\/dsh-(?:file-reference|session|llm|
 const VENDORED_LIBRARY = /^@deepseek-ai\/(cosmokit|schemastery)(\/|$)/
 
 /** Generated descriptor/codec contribution with no shared runtime identity. */
-const GENERATED_REMOTE = /^@deepseek-ai\/dsh-[a-z0-9]+(?:-[a-z0-9]+)*\/remote$/
+const GENERATED_REMOTE = /^@knyazevai\/dsh-[a-z0-9]+(?:-[a-z0-9]+)*\/remote$/
 
 /**
  * Workspace mode replaces an empty config array with the root defaults. A
@@ -496,7 +496,7 @@ function clientConfig(id: string, entry: string): UserConfig {
       // Cross-plugin collaboration goes through cordis services instead.
       name: 'dsh-client-bundle-purity',
       resolveId(source: string) {
-        if (!source.startsWith('@deepseek-ai/')) return null
+        if (!source.startsWith('@knyazevai/dsh') && !source.startsWith('@deepseek-ai/')) return null
         if (isRequested(source)) return null // requested module-table row: external wins
         if (VENDORED_LIBRARY.test(source)) return null // vendored library: inline, no shared identity
         if (INLINE_SAFE.test(source) || GENERATED_REMOTE.test(source)) return null // wire contribution: inline is the point
@@ -586,7 +586,7 @@ function clientInputIsolation(id: string): {
   plugin: TsdownPlugin
   sourcePath: (source: string, mapPath: string) => string
 } {
-  const experimental = id.startsWith('@deepseek-ai/dsh-experimental-')
+  const experimental = id.startsWith('@knyazevai/dsh-experimental-')
   const inputs = new BundleInputIsolation(REPOSITORY_ROOT, `client bundle isolation (${id})`)
   return {
     plugin: {

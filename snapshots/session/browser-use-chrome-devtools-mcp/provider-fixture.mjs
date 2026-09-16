@@ -19,7 +19,7 @@ export async function apply(ctx) {
     })
     return () => hooks.deregister()
   }, 'browser-fixture.executable')
-  const provider = await import('@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp')
+  const provider = await import('@knyazevai/dsh-experimental-browser-use-chrome-devtools-mcp')
   await ctx.plugin(provider, { mode: 'launch' })
   if (!replaced) throw new Error('Chrome DevTools snapshot did not replace the upstream executable')
   ctx.on('agent/pre-step', async (_payload, next) => {

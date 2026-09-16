@@ -5,11 +5,11 @@ import type {
   SessionBinding,
   SessionListState,
   SessionSnapshot,
-} from '@deepseek-ai/dsh-api-session-controller/client'
-import { MutableSessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+} from '@knyazevai/dsh-api-session-controller/client'
+import { MutableSessionEventSource } from '@knyazevai/dsh-api-session-controller/client'
+import { createSnapshotStore } from '@knyazevai/dsh-client-store'
+import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import { Fragment } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {

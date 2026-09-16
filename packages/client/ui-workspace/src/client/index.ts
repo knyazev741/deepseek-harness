@@ -9,22 +9,24 @@
  * packages/client/AGENTS.md.
  */
 import type { Context } from '@deepseek-ai/cordis'
-import type { RemoteHostFacts } from '@deepseek-ai/dsh-api-remotes/client'
-import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { IWorkspaces, WorkspaceSnapshot } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type { RemoteHostFacts } from '@knyazevai/dsh-api-remotes/client'
+import type { ISessions } from '@knyazevai/dsh-api-session-controller/client'
+import type { IWorkspaces, WorkspaceSnapshot } from '@knyazevai/dsh-api-workspace-controller/client'
+import type { HostObservable, SnapshotSelectorHook } from '@knyazevai/dsh-client-ui-slots'
 // Type-only: pulls the Controller service merges.
-import type {} from '@deepseek-ai/dsh-api-session-controller/client'
-import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@knyazevai/dsh-api-session-controller/client'
+import type {} from '@knyazevai/dsh-api-workspace-controller/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
-import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@knyazevai/dsh-client-locale/client'
 // Type-only: pulls the SlotRegistry service merge (ctx.slots).
-import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@knyazevai/dsh-client-ui-renderer/client'
+import type {} from '@knyazevai/dsh-client-ui-layout/client'
 // Type-only: pulls the Session root standard-hook merge.
-import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@knyazevai/dsh-client-ui-session/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from './contract/slots.ts'
 import { UiWorkspaceService } from './navigation.ts'
+import type { WorkspaceContributions } from './contract/contributions.ts'
+import { WorkspaceContributionsRuntime } from './contributions.ts'
 import { createWorkspaceViewStore } from './stores.ts'
 import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
 import { WorkspacePicker } from './WorkspacePicker.tsx'
@@ -35,9 +37,17 @@ export type {
   DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected,
   WorkspaceBrowserInjected, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps,
 } from './contract/slots.ts'
+export type { WorkspaceContributions, WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext, WorkspaceSessionRowMenuContext } from './contract/contributions.ts'
 export type { WorkspaceKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Generic Workspace list and row contribution service. */
+    workspaceContributions: WorkspaceContributions
+  }
+}
+
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface GlobalStandardProps {
     /** Selector hook over the pure Workspace Controller snapshot. */
     useWorkspaces: SnapshotSelectorHook<WorkspaceSnapshot>
@@ -76,6 +86,7 @@ export function apply(ctx: Context): void {
   const uiWorkspace = new UiWorkspaceService(
     ctx, ctx.remote.directoryPicker, workspaces, sessions)
   ctx.slots.provideRoot({ hooks: { workspaces: workspaces.list } })
+  const contributions = new WorkspaceContributionsRuntime(ctx)
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-workspace: dictionaries')
 
   const searchSessions: WorkspaceBrowserInjected['searchSessions'] = async (query, signal) => {
@@ -127,7 +138,7 @@ export function apply(ctx: Context): void {
     },
     archiveSession: async (sessionId) => { await uiWorkspace.archiveSession(sessionId) },
     createWorkspace: input => workspaces.create(input),
-    hooks: { directoryFlow: browserFlowSource, hostInfo },
+    hooks: { directoryFlow: browserFlowSource, hostInfo, views: contributions.views, policies: contributions.policies },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({
     createWorkspace: input => workspaces.create(input),
@@ -138,7 +149,12 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('sidebar.workspaces', () => ctx.slots.register(
     {
       name: 'sidebar.workspaces',
-      children: { 'sidebar.workspaces.directoryFlow': { kind: 'single', scope: 'root' } },
+      children: {
+        'sidebar.workspaces.directoryFlow': { kind: 'single', scope: 'root' },
+        'workspace.session-row.badges': { kind: 'list', scope: 'root' },
+        'workspace.session-row.status': { kind: 'list', scope: 'root' },
+        'workspace.session-row.actions': { kind: 'list', scope: 'root' },
+      },
       store: createWorkspaceViewStore(),
       inject: browserInjected,
       locale: NS,

@@ -35,8 +35,8 @@ The extensions group lets an agent inspect and modify the live DSH runtime witho
 ## Related documentation
 
 - [Extensions subsystem](../../docs/subsystems/extensions.md) — the generated `ctx.cordisInspect` and `ctx.dynamicCordisRunner` service API.
-- [Generated tool catalog](../../docs/tool-catalog.md#deepseek-aidsh-tool-cordis) — the seven model-facing tool schemas.
-- [Generated configuration catalog](../../docs/config-catalog.md#deepseek-aidsh-cordis-host-runner) — the runner's accepted config fields.
+- [Generated tool catalog](../../docs/tool-catalog.md#knyazevaidsh-tool-cordis) — the seven model-facing tool schemas.
+- [Generated configuration catalog](../../docs/config-catalog.md#knyazevaidsh-cordis-host-runner) — the runner's accepted config fields.
 - [Self-referential Cordis toolset Agent Note](../../.agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md) — design home for sandbox semantics, lifecycle, and composition.
 - [Client shells and dynamic packages Agent Note](../../.agents/notes/implemented/architecture/2026-08-15-client-shells-and-dynamic-packages.md) — package placement and build faces for the client halves.
 

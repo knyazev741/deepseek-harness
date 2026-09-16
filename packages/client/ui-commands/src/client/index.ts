@@ -6,15 +6,15 @@
  * per-session resolution.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { ISessions } from '@knyazevai/dsh-api-session-controller/client'
 // Type-only: pulls the 'conversation.input.overlay' SlotMap declaration (the
 // key's owner) into this program so the overlay registration below typechecks
 // against the real declaration — no runtime edge to ui-conversation.
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@knyazevai/dsh-client-ui-conversation/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@knyazevai/dsh-client-locale/client'
+import type {} from '@knyazevai/dsh-client-ui-renderer/client'
+import type {} from '@knyazevai/dsh-client-ui-session/client'
 import { CommandUiRuntime } from './service.ts'
 import type { PopupSelectInjected } from './PopupSelectView.tsx'
 import { PopupSelectView } from './PopupSelectView.tsx'
@@ -38,7 +38,7 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** The menu rows' and the popupSelect shell's copy. */
     command: CommandKey

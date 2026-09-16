@@ -256,6 +256,34 @@ Types: [Agent](core.zh.md)
 
 Source: [`packages/extensions/cordis-host-runner/src/index.ts`](../../packages/extensions/cordis-host-runner/src/index.ts)
 
+<a id="ctxexternalsessions--externalsessionregistry"></a>
+
+### `ctx.externalSessions` — `ExternalSessionRegistry`
+
+Effect-owned registry for external-session providers.
+
+The service is intentionally valid with zero registrations. A provider package must explicitly compose itself and contribute its mode type; this registry never selects or mounts a default implementation.
+
+```ts cordis-catalog
+/**
+ * Register one provider under its unique mode id.
+ * @param mode - provider mode declared in {@link ExternalSessionModeMap}.
+ * @param provider - implementation owned by the registering plugin.
+ * @returns a disposer that removes this exact registration.
+ */
+register<Mode extends ExternalSessionMode>(mode: Mode, provider: ExternalSessionProvider<Mode>): () => void
+
+/**
+ * Resolve a provider for a mode and fail explicitly when it is absent.
+ * @param mode - provider mode declared in {@link ExternalSessionModeMap}.
+ * @returns the provider registered for `mode`.
+ * @throws `Error` when no provider owns `mode`.
+ */
+lookup<Mode extends ExternalSessionMode>(mode: Mode): ExternalSessionProvider<Mode>
+```
+
+Source: [`packages/fork/external-session/src/index.ts`](../../packages/fork/external-session/src/index.ts)
+
 <a id="ctxinspector--inspectorservice"></a>
 
 ### `ctx.inspector` — `InspectorService`

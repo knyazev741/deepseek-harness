@@ -32,8 +32,8 @@ todo 组为 agent（智能体）提供可用于规划的会话级任务列表：
 ## 相关文档
 
 - [Todo 子系统](../../docs/subsystems/todo.zh.md)——`todo/write` 事件载荷、归属规则与 `TodoItem`。
-- [生成的工具目录](../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-todo)——模型接收的 `todo_write` schema。
-- [生成的配置目录](../../docs/config-catalog.zh.md#deepseek-aidsh-tool-todo)——每个受支持配置字段。
+- [生成的工具目录](../../docs/tool-catalog.zh.md#knyazevaidsh-tool-todo)——模型接收的 `todo_write` schema。
+- [生成的配置目录](../../docs/config-catalog.zh.md#knyazevaidsh-tool-todo)——每个受支持配置字段。
 - [todo_write 工具 Agent Note](../../.agents/notes/archived/feature/2026-06-29-todo-write-tool.md)——原始设计及其备选方案。
 
 -----

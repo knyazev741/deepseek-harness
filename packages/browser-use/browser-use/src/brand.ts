@@ -1,6 +1,6 @@
-/** Browser-use provider identities. @module @deepseek-ai/dsh-browser-use/brand */
+/** Browser-use provider identities. @module @knyazevai/dsh-browser-use/brand */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@knyazevai/dsh-brand'
 
 /** Provider-owned name identifying a browser-use registration. */
 export type BrowserUseProviderName = Branded<'BrowserUseProviderName'>

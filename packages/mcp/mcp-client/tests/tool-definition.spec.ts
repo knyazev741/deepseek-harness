@@ -1,8 +1,8 @@
 import { Context } from '@deepseek-ai/cordis'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import type { ToolExecution } from '@deepseek-ai/dsh-tools'
+import { ToolCallId } from '@knyazevai/dsh-llm'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import type { ToolExecution } from '@knyazevai/dsh-tools'
 import { describe, expect, it, vi } from 'vitest'
 import { createMcpToolDefinition } from '../src/index.ts'
 

@@ -1,7 +1,7 @@
 /** Same-provider protocol changes retain prepared requests and durable conversation content. */
 import { afterEach, expect, it } from 'vitest'
-import type { Message } from '@deepseek-ai/dsh-llm'
-import type { AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+import type { Message } from '@knyazevai/dsh-llm'
+import type { AnonymousUserId } from '@knyazevai/dsh-anonymous-user-id'
 import { Config, DeepSeekAdapter, resolveAdapterOptions } from '../src/index.ts'
 import type { DeepSeekConnectionOptions } from '../src/index.ts'
 import { assemble, chunks, end, MODEL, options, server, sse, start, textEvents, user } from './messages/helpers.ts'

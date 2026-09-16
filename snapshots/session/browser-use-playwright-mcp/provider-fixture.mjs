@@ -19,7 +19,7 @@ export async function apply(ctx) {
     })
     return () => hooks.deregister()
   }, 'browser-fixture.executable')
-  const provider = await import('@deepseek-ai/dsh-experimental-browser-use-playwright-mcp')
+  const provider = await import('@knyazevai/dsh-experimental-browser-use-playwright-mcp')
   await ctx.plugin(provider, { mode: 'launch' })
   if (!replaced) throw new Error('Playwright snapshot did not replace the upstream executable')
   ctx.on('agent/pre-step', async (_payload, next) => {

@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-acp-app",
+  "name": "@knyazevai/dsh-acp-app",
   "description": "The dsh ACP profile bundle: automation-only JSON-RPC stdio and process lifecycle over dsh-base",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -34,8 +34,8 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-acp": "workspace:^",
-    "@deepseek-ai/dsh-cmdline": "workspace:^",
+    "@knyazevai/dsh-acp": "workspace:^",
+    "@knyazevai/dsh-cmdline": "workspace:^",
     "commander": "^15.0.0"
   },
   "peerDependencies": {

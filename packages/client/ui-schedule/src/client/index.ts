@@ -1,15 +1,15 @@
 /** Browser half of the read-only Schedule catalog. */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-client-ui-session/client'
-import type {} from '@deepseek-ai/dsh-schedule/client'
+import type {} from '@knyazevai/dsh-client-locale/client'
+import type {} from '@knyazevai/dsh-client-ui-conversation/client'
+import type {} from '@knyazevai/dsh-client-ui-renderer/client'
+import type {} from '@knyazevai/dsh-client-ui-session/client'
+import type {} from '@knyazevai/dsh-schedule/client'
 import { ScheduleCatalogAction } from './ScheduleCatalogAction.tsx'
 import { en, NS, zh, type ScheduleCatalogKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Read-only active Schedule catalog copy. */
     'schedule.catalog': ScheduleCatalogKey

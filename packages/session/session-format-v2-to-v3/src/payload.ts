@@ -1,9 +1,9 @@
 /** Audited V2 migration admission and V3 payload validation, independent of installed core Session types. */
 
-import { SessionFormatError, SessionFormatUnsupportedMigrationError, isSessionFormatJsonObject, sessionFormatCount, sessionFormatSafeInteger } from '@deepseek-ai/dsh-session-format'
-import type { SessionFormatEvent, SessionFormatJsonObject, SessionFormatJsonValue } from '@deepseek-ai/dsh-session-format'
-import { assertReleasedPayloadSemantics, assertReleasedSurfaceMetadata } from '@deepseek-ai/dsh-session-format-v0-to-v1'
-import { RELEASED_V2_EVENT_DISPOSITIONS } from '@deepseek-ai/dsh-session-format-v1-to-v2'
+import { SessionFormatError, SessionFormatUnsupportedMigrationError, isSessionFormatJsonObject, sessionFormatCount, sessionFormatSafeInteger } from '@knyazevai/dsh-session-format'
+import type { SessionFormatEvent, SessionFormatJsonObject, SessionFormatJsonValue } from '@knyazevai/dsh-session-format'
+import { FORK_EVENT_DISPOSITIONS, assertReleasedPayloadSemantics, assertReleasedSurfaceMetadata } from '@knyazevai/dsh-session-format-v0-to-v1'
+import { RELEASED_V2_EVENT_DISPOSITIONS } from '@knyazevai/dsh-session-format-v1-to-v2'
 
 /** Audited surface event names; all other admitted events are log-only. */
 export const SURFACE_TYPES: ReadonlySet<string> = new Set(['system/message', 'user/message', 'assistant/message', 'tool/result'])
@@ -44,7 +44,7 @@ export function assertEvent(event: SessionFormatEvent, version: 2 | 3): void {
     assertV3Event(event)
     return
   }
-  const disposition = RELEASED_V2_EVENT_DISPOSITIONS[event.type]
+  const disposition = RELEASED_V2_EVENT_DISPOSITIONS[event.type] ?? FORK_EVENT_DISPOSITIONS[event.type]
   const feedback = event.type === 'feedback/message-put' || event.type === 'feedback/message-delete'
   if (disposition === undefined && !feedback) {
     throw new SessionFormatUnsupportedMigrationError('format v2 to v3 cannot safely transform unclassified event ' + event.type)
@@ -268,6 +268,7 @@ export function assertV3Event(event: SessionFormatEvent, knownEventTypes?: Reado
   const obsolete = event.type === 'tool/code-dispatch-start' || event.type === 'tool/code-dispatch'
   const known = !obsolete && (SURFACE_TYPES.has(event.type)
     || RELEASED_V2_EVENT_DISPOSITIONS[event.type] !== undefined
+    || FORK_EVENT_DISPOSITIONS[event.type] !== undefined
     || event.type === 'tool/ptc-dispatch-start' || event.type === 'tool/ptc-dispatch'
     || event.type === 'feedback/message-put' || event.type === 'feedback/message-delete'
     || knownEventTypes?.has(event.type) === true)

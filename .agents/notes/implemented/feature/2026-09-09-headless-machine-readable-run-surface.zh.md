@@ -22,7 +22,7 @@ Status: implemented
 
 每次运行的 `--model` 覆盖被明确排除在范围之外；组合默认模型仍然权威。
 
-产品改动限于 `packages/bundle/headless`：`src/startup.ts`、`src/index.ts`、新增的 `src/json-stream.ts`、包清单与 `tsconfig.json`，以及测试。围绕它，产品 profile 的期望测试位于 `apps/cli/tests/profiles/headless/tests/headless.expected.e2e.ts`，端到端覆盖两种输出模式，并给 `packages/test-support/loader-smoke` harness 增加了一个可选的调用方自有 `cwd`，让两次唤醒共享同一个世界；`scripts/check-workspace-constraints.ts` 与包清单负责发布两个入口共同引用的共享 chunk `lib/json-stream-*.js`，`pnpm-lock.yaml` 则记录新增的 `@deepseek-ai/dsh-session-query` workspace 链接。不修改任何 core session、持久化、session-controller、base 组合或 launcher 文件。
+产品改动限于 `packages/bundle/headless`：`src/startup.ts`、`src/index.ts`、新增的 `src/json-stream.ts`、包清单与 `tsconfig.json`，以及测试。围绕它，产品 profile 的期望测试位于 `apps/cli/tests/profiles/headless/tests/headless.expected.e2e.ts`，端到端覆盖两种输出模式，并给 `packages/test-support/loader-smoke` harness 增加了一个可选的调用方自有 `cwd`，让两次唤醒共享同一个世界；`scripts/check-workspace-constraints.ts` 与包清单负责发布两个入口共同引用的共享 chunk `lib/json-stream-*.js`，`pnpm-lock.yaml` 则记录新增的 `@knyazevai/dsh-session-query` workspace 链接。不修改任何 core session、持久化、session-controller、base 组合或 launcher 文件。
 
 ### 命令行契约
 

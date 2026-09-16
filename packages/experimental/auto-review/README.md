@@ -3,7 +3,7 @@ description: "Add experimental per-call Auto review to a Web profile, using the 
 kind: "package-bundle"
 ---
 
-# @deepseek-ai/dsh-experimental-auto-review
+# @knyazevai/dsh-experimental-auto-review
 
 English | [中文](README.zh.md)
 
@@ -38,7 +38,7 @@ The CLI initializes the profile when needed and appends this package's declared 
 Remove the layer through the same CLI:
 
 ```sh
-pnpm dsh plugin --profile web remove @deepseek-ai/dsh-experimental-auto-review
+pnpm dsh plugin --profile web remove @knyazevai/dsh-experimental-auto-review
 ```
 
 ### What you get

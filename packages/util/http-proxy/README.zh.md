@@ -3,7 +3,7 @@ description: "Harness 的出站 HTTP 代理支持：从启动环境解析出的�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-http-proxy
+# @knyazevai/dsh-http-proxy
 
 [English](README.md) | 中文
 

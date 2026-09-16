@@ -1,5 +1,5 @@
 /** Combined byte accounting for retained program output. */
-import type { PtcJsonValue, PtcRunFailure, PtcRunResult } from '@deepseek-ai/dsh-ptc-runtime'
+import type { PtcJsonValue, PtcRunFailure, PtcRunResult } from '@knyazevai/dsh-ptc-runtime'
 import { jsonStringBytesUpTo, jsonValueBytesUpTo, truncateJsonStringBytes } from './output-json.ts'
 
 /** One run's combined outer-output ledger; binding values never enter it. */

@@ -1,11 +1,11 @@
 /**
  * File-reference discovery seam shared by host-backed user interfaces.
  *
- * @module @deepseek-ai/dsh-file-reference
+ * @module @knyazevai/dsh-file-reference
  */
 
 import { Service, type Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Agent } from '@knyazevai/dsh-agent'
 
 import type { FileReferenceCandidate } from './types.ts'
 

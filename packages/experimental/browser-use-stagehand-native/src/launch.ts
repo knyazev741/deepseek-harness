@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Browser, ChromeReleaseChannel, CDP_WEBSOCKET_ENDPOINT_REGEX, computeSystemExecutablePath, launch } from '@puppeteer/browsers'
-import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
+import { scrubbedParentEnv } from '@knyazevai/dsh-subprocess'
 import type { NativeBrowserConfig } from './native.ts'
 
 /** Chromium process and profile owned independently of the Stagehand Worker. */

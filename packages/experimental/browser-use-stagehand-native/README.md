@@ -3,7 +3,7 @@ description: "Control Chromium through Stagehand native browser operations and e
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-experimental-browser-use-stagehand-native
+# @knyazevai/dsh-experimental-browser-use-stagehand-native
 
 English | [中文](README.zh.md)
 
@@ -30,8 +30,8 @@ Mount this provider in a profile that supplies Agents, Sessions, the tool regist
 ### Minimal configuration
 
 ```yaml
-- name: '@deepseek-ai/dsh-browser-use'
-- name: '@deepseek-ai/dsh-experimental-browser-use-stagehand-native'
+- name: '@knyazevai/dsh-browser-use'
+- name: '@knyazevai/dsh-experimental-browser-use-stagehand-native'
   config:
     mode: launch
     headless: true
@@ -136,7 +136,7 @@ Unchanged guidance preserves its prompt prefix. Mounting or removing the provide
 
 #### What the model sees
 
-The [`stagehand_` tool catalog](../../../docs/tool-catalog.md#deepseek-aidsh-experimental-browser-use-stagehand-native) defines navigation, tab management, screenshots, actions, observation, and extraction. Results contain current page facts or validated structured data. Supported screenshots appear as durable image attachments. Errors remain visible so the model can inspect state before retrying.
+The [`stagehand_` tool catalog](../../../docs/tool-catalog.md#knyazevaidsh-experimental-browser-use-stagehand-native) defines navigation, tab management, screenshots, actions, observation, and extraction. Results contain current page facts or validated structured data. Supported screenshots appear as durable image attachments. Errors remain visible so the model can inspect state before retrying.
 
 #### Token effect
 

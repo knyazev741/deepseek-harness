@@ -1,10 +1,10 @@
 /**
  * Configuration vocabulary for the replay-aware basic compaction backend.
  *
- * @module @deepseek-ai/dsh-compaction-basic/types
+ * @module @knyazevai/dsh-compaction-basic/types
  */
 
-import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
+import type { LlmCallConfig } from '@knyazevai/dsh-llm'
 
 /** Policy fields shared by the default policy and exact model overrides. */
 export interface CompactionPolicyConfig {
@@ -20,6 +20,15 @@ export interface CompactionPolicyConfig {
   summarizationModel?: string
   /** Provider generation cap for summarization. Defaults to `8192`. */
   maxTokens?: number
+  /**
+   * Maximum conversation tokens replayed into one summarization call. A bounded
+   * pass keeps the summarization prefill small, so huge-context sessions
+   * compact in chunks instead of one request that can idle-timeout on a slow
+   * gateway; `0` replays the whole shadowed region. Defaults to `131072`.
+   */
+  maxSummarizationInputTokens?: number
+  /** Cooldown before retrying a transient summarizer failure after its provider retry budget. Defaults to `600000`. */
+  summarizerCooldownMs?: number
   /** Extra attempts after the first compaction when pressure remains above threshold. Defaults to `1`. */
   compactionRetries?: number
   /** Maximum retries after canonical context overflow; `0` disables recovery. Defaults to `1`. */
@@ -53,6 +62,8 @@ interface ResolvedPolicyFields {
   readonly summarizationProvider: string
   readonly summarizationModel: string
   readonly maxTokens: number
+  readonly maxSummarizationInputTokens: number
+  readonly summarizerCooldownMs: number
   readonly compactionRetries: number
   readonly maxOverflowRetries: number
 }

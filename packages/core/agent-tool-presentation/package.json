@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-agent-tool-presentation",
+  "name": "@knyazevai/dsh-agent-tool-presentation",
   "description": "Agent-plane presentation selector: composes one agent's tools as PTC mode, native, or both",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -30,16 +30,16 @@
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-ptc-runtime": "workspace:^",
-    "@deepseek-ai/dsh-scope": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-ptc-runtime": "workspace:^",
+    "@knyazevai/dsh-scope": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-system-prompt": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   }
 }

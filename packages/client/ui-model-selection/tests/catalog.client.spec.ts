@@ -1,5 +1,5 @@
-import type { ModelCatalog } from '@deepseek-ai/dsh-api-remotes/client'
-import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
+import type { ModelCatalog } from '@knyazevai/dsh-api-remotes/client'
+import { RemoteError } from '@knyazevai/dsh-client-test-runtime'
 import { describe, expect, it, vi } from 'vitest'
 import { ModelCatalogDirectory } from '../src/client/catalog.ts'
 

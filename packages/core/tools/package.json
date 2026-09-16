@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-tools",
+  "name": "@knyazevai/dsh-tools",
   "description": "Tool registry and execution pipeline for the DeepSeek Harness",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -42,34 +42,34 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-ptc-runtime": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-scope": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-user-approval": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-ptc-runtime": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-scope": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-system-prompt": "workspace:^",
+    "@knyazevai/dsh-user-approval": "workspace:^",
+    "@knyazevai/dsh-sandbox": "workspace:^",
+    "@knyazevai/dsh-sandbox-policy": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-util-values": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-util-values": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-ptc-runtime": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-scope": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-user-approval": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-ptc-runtime": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-scope": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-projection": "workspace:^",
+    "@knyazevai/dsh-system-prompt": "workspace:^",
+    "@knyazevai/dsh-user-approval": "workspace:^",
+    "@knyazevai/dsh-sandbox": "workspace:^",
+    "@knyazevai/dsh-sandbox-policy": "workspace:^"
   }
 }

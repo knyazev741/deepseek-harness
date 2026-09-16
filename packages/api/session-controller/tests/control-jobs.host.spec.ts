@@ -1,15 +1,15 @@
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
-import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
-import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
-import type { Session } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import type { Agent } from '@knyazevai/dsh-agent'
+import type { JobOutcome } from '@knyazevai/dsh-jobs'
+import LocalJobRegistry from '@knyazevai/dsh-jobs-local'
+import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@knyazevai/dsh-session'
+import type { Session } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import { describe, expect, it } from 'vitest'
 import { SessionControlController } from '../src/control.ts'
 import type { SessionControlFrame } from '../src/types.ts'
-import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
+import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 
 type BaselineFrame = Extract<SessionControlFrame, { type: 'baseline' }>
 type JobFrame = Extract<SessionControlFrame, { type: 'jobs' }>

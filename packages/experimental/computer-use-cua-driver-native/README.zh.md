@@ -3,7 +3,7 @@ description: "通过原生 npm SDK 运行 Cua Driver 的电脑操作工具，持
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-experimental-computer-use-cua-driver-native
+# @knyazevai/dsh-experimental-computer-use-cua-driver-native
 
 [English](README.md) | 中文
 
@@ -30,8 +30,8 @@ kind: "package-reference"
 ### 最小配置
 
 ```yaml
-- name: '@deepseek-ai/dsh-computer-use'
-- name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
+- name: '@knyazevai/dsh-computer-use'
+- name: '@knyazevai/dsh-experimental-computer-use-cua-driver-native'
 ```
 
 此提供者没有配置字段。它加载 [package.json](package.json) 声明的确切 Cua Driver npm 版本，并采用其进程内默认配置。原生模块导入、运行时初始化、目录格式、工具重名或电脑操作注册冲突会使激活失败，并回滚所拥有的资源。注册的提供者名称为 `cua-driver-native`。

@@ -1,0 +1,3 @@
+agent-default-model:
+  provider: knyazev-ai
+  model: deepseek-v4-flash

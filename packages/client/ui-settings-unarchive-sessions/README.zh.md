@@ -3,7 +3,7 @@ description: "dsh Web 客户端的已归档会话设置页：把注册表全局�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-settings-unarchive-sessions
+# @knyazevai/dsh-client-ui-settings-unarchive-sessions
 
 [English](README.md) | 中文
 
@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-打开设置并选择**已归档会话**，即可看到当前从所有分组视图中隐藏的会话。在已提供设置外壳、Workspace 服务与 Session 列表的 Web 组合中挂载 `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions`；该页面注册自己的导航条目，无需配置。
+打开设置并选择**已归档会话**，即可看到当前从所有分组视图中隐藏的会话。在已提供设置外壳、Workspace 服务与 Session 列表的 Web 组合中挂载 `@knyazevai/dsh-client-ui-settings-unarchive-sessions`；该页面注册自己的导航条目，无需配置。
 
 ### 阅读一行
 

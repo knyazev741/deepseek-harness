@@ -30,6 +30,31 @@ describe('catalog preset migration', () => {
     expect(JSON.stringify({ header, source })).toBe(before)
   })
 
+  it.each([0, 1, 2])('preserves ignorable fork source metadata while upgrading v%i', (version) => {
+    const header = {
+      type: 'session', version, id: 'fork-history', createdAt: 1, delegationDepth: 0,
+      agentPreset: 'code', ...(version === 2 ? { isSeeded: false } : { seedLength: 0 }),
+    }
+    const marker = { type: 'fork/session-source', seq: 0, time: 1, ignorable: true, data: { source: 'github-actions' } }
+    const restore = sessionFormatCatalog.createRestore(header, { recovery: 'strict', validation: 'current' })
+    restore.decodeRow(marker)
+    const artifact = restore.finish()
+    expect(artifact.header).toMatchObject({ version: 3, agentPreset: 'ptc' })
+    expect(artifact.events.filter(event => event.type === marker.type)).toEqual([{ ...marker, seq: version < 2 ? 1 : 0 }])
+  })
+
+  it.each([0, 1, 2])('rejects unaudited fork payload members in v%i', (version) => {
+    const header = {
+      type: 'session', version, id: 'fork-invalid', createdAt: 1, delegationDepth: 0,
+      ...(version === 2 ? { isSeeded: false } : { seedLength: 0 }),
+    }
+    const restore = sessionFormatCatalog.createRestore(header, { recovery: 'strict', validation: 'current' })
+    expect(() =>{  restore.decodeRow({
+      type: 'fork/session-source', seq: 0, time: 1, ignorable: true,
+      data: { source: 'github-actions', sourceEventSeq: 0 },
+    }) }).toThrow()
+  })
+
   it('does not reinterpret a native v3 custom preset named code', () => {
     const header = {
       type: 'session', version: 3, id: 'native', createdAt: 1, isSeeded: false,

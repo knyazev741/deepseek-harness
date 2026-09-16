@@ -3,7 +3,7 @@ description: "面向组合 POSIX 文件、进程与沙箱提供方的部署者�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-ssh
+# @knyazevai/dsh-ssh
 
 [English](README.md) | 中文
 

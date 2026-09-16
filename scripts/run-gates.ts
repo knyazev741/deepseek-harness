@@ -698,6 +698,7 @@ function flagEnabled(envName: string): boolean {
 function hygieneLeafGates(options: { artifactNeeds?: string[] } = {}): Gate[] {
   const artifactOptions = options.artifactNeeds === undefined ? {} : { needs: options.artifactNeeds }
   return [
+    pnpmScript('rescope-dsh', 'rescope-dsh:check', { label: 'dsh rescope' }),
     pnpmScript('rescope-vendor', 'rescope-vendor:check', { label: 'vendor rescope' }),
     pnpmScript('publint', 'publint', artifactOptions),
     pnpmScript('constraints', 'constraints'),

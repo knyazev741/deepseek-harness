@@ -9,14 +9,14 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context, LoggerLevel } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import LocalAttachments from '@deepseek-ai/dsh-attachment-local'
-import DeepSeekLlmApiExtensionRegistry from '@deepseek-ai/dsh-deepseek-llm-api-extensions'
-import LlmRuntime, { BlockAssembler, createSystemMessage, createToolResultMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import type { Message } from '@deepseek-ai/dsh-llm'
-import * as PluginPackageInventoryDeepSeek from '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import * as SessionLogDeepSeek from '@deepseek-ai/dsh-session-log-deepseek'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import LocalAttachments from '@knyazevai/dsh-attachment-local'
+import DeepSeekLlmApiExtensionRegistry from '@knyazevai/dsh-deepseek-llm-api-extensions'
+import LlmRuntime, { BlockAssembler, createSystemMessage, createToolResultMessage, ReasoningEffortId } from '@knyazevai/dsh-llm'
+import type { Message } from '@knyazevai/dsh-llm'
+import * as PluginPackageInventoryDeepSeek from '@knyazevai/dsh-plugin-package-inventory-deepseek'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import * as SessionLogDeepSeek from '@knyazevai/dsh-session-log-deepseek'
 import * as Messages from '../../src/index.ts'
 import { DeepSeekFilesClient, MESSAGES_FILES_BETA } from '../../src/common/files-api.ts'
 import { assemble, options, user } from './helpers.ts'
@@ -145,11 +145,11 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY)('DeepSeek Messages real API', () 
     ctx.loader.internal = {
       version: 'v2',
       async import(specifier: string) {
-        if (specifier !== '@deepseek-ai/dsh-plugin-package-inventory-deepseek') throw new Error(`unexpected Loader import: ${specifier}`)
+        if (specifier !== '@knyazevai/dsh-plugin-package-inventory-deepseek') throw new Error(`unexpected Loader import: ${specifier}`)
         return PluginPackageInventoryDeepSeek
       },
     } as unknown as NonNullable<typeof ctx.loader.internal>
-    await ctx.loader.create({ name: '@deepseek-ai/dsh-plugin-package-inventory-deepseek' })
+    await ctx.loader.create({ name: '@knyazevai/dsh-plugin-package-inventory-deepseek' })
     await ctx.loader.await()
     const packageIdentity = JSON.parse(await readFile(new URL('../../../plugin-package-inventory-deepseek/package.json', import.meta.url), 'utf8')) as { name: string; version: string }
     const session = ctx.sessions.create(SessionId(`real-messages-extensions-${randomUUID()}`))

@@ -37,7 +37,7 @@ Tab identity is the pair `(kind, address)`: the registry's claim uses the addres
 
 | Field | Meaning |
 |---|---|
-| `id` | The implementation's identity, unique across every registration; a package name is the natural value (`@deepseek-ai/dsh-client-ui-sidebar-files`). It is the key the body and title register under. |
+| `id` | The implementation's identity, unique across every registration; a package name is the natural value (`@knyazevai/dsh-client-ui-sidebar-files`). It is the key the body and title register under. |
 | `kind` | The type's discriminator: what its tabs are, and what `openTab` names. Not unique — an extension may take over a builtin's kind. The shipped kinds are `guide`, `text`, `files`. |
 | `patterns` | Optional resource-address globs the type recognizes; a page type opened by kind omits them. A pattern containing `:` matches the whole address (`dsh-resource://file/**`); one without matches the URL's path at any depth (`*.md`), and an address that is not a URL matches no such pattern. Matching is case-insensitive and does not hide dotfiles; the syntax is picomatch's POSIX dialect. |
 | `priority` | One of three literal bands: `extension` (the default and the highest: a type from outside the product outranks every shipped viewer), `builtin` (types shipped with the product), `fallback` (plain-content viewers anything more specific should beat). |
@@ -51,7 +51,7 @@ One `kind` may carry one `builtin` and one `extension` registration at the same 
 
 ```ts ignore-check
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@knyazevai/dsh-client-ui-sidebar-right/client'
 
 export const inject = ['sidebarRightTabs', 'slots']
 

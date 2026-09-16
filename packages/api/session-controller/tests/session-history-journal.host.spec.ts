@@ -2,12 +2,12 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { type Agent, type AssistantStreamFrame } from '@deepseek-ai/dsh-agent'
-import SessionStore from '@deepseek-ai/dsh-session'
-import { LlmAttemptId, ToolCallId, createMessage, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
-import { SessionHistoryController } from '@deepseek-ai/dsh-api-session-controller/src/history.ts'
-import type { SessionFollowFrame, SessionPage, SessionWireEvent } from '@deepseek-ai/dsh-api-session-controller/types'
+import AgentRegistry, { type Agent, type AssistantStreamFrame } from '@knyazevai/dsh-agent'
+import SessionStore from '@knyazevai/dsh-session'
+import { LlmAttemptId, ToolCallId, createMessage, createToolResultMessage, createUserMessage } from '@knyazevai/dsh-llm'
+import type { Session, SessionEvent, SessionId } from '@knyazevai/dsh-session'
+import { SessionHistoryController } from '@knyazevai/dsh-api-session-controller/src/history.ts'
+import type { SessionFollowFrame, SessionPage, SessionWireEvent } from '@knyazevai/dsh-api-session-controller/types'
 import { createSessionTestRemote, installSessionReadTestServices } from './test-remote.ts'
 
 /** Append a production-shaped human prompt to the session surface. */

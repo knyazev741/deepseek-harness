@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-api-terminal-controller",
+  "name": "@knyazevai/dsh-api-terminal-controller",
   "description": "Session-owned interactive terminals with shell discovery, screen recovery and typed Remote control",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -40,10 +40,10 @@
   "dsh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-api-gateway"
+        "@knyazevai/dsh-api-gateway"
       ],
       "external": [
-        "@deepseek-ai/dsh-api-gateway/client"
+        "@knyazevai/dsh-api-gateway/client"
       ],
       "platform": "web"
     }
@@ -54,32 +54,32 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/dsh-deque": "workspace:^",
-    "@deepseek-ai/dsh-lazy-require": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^",
+    "@knyazevai/dsh-deque": "workspace:^",
+    "@knyazevai/dsh-lazy-require": "workspace:^",
+    "@knyazevai/dsh-typert-protocol": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "@xterm/headless": "^6.0.0",
     "@xterm/addon-serialize": "^0.14.0",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-subprocess": "workspace:^",
+    "@knyazevai/dsh-subprocess": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-api-gateway": "workspace:^",
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-client-store": "workspace:^",
-    "@deepseek-ai/dsh-fs": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^",
-    "@deepseek-ai/dsh-subprocess": "workspace:^",
-    "@deepseek-ai/dsh-subprocess-local": "workspace:^",
-    "@deepseek-ai/dsh-util-crypto": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-api-gateway": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-client-store": "workspace:^",
+    "@knyazevai/dsh-fs": "workspace:^",
+    "@knyazevai/dsh-sandbox": "workspace:^",
+    "@knyazevai/dsh-sandbox-policy": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-projection": "workspace:^",
+    "@knyazevai/dsh-subprocess": "workspace:^",
+    "@knyazevai/dsh-subprocess-local": "workspace:^",
+    "@knyazevai/dsh-util-crypto": "workspace:^"
   },
   "files": [
     "lib/index.js",

@@ -5,9 +5,9 @@
  * gone has no row and no action; the set itself stays host-owned.
  */
 import { useMemo, useState, type ReactNode } from 'react'
-import { Button, IconSearchOutline16, relativeTime } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { Button, IconSearchOutline16, relativeTime } from '@knyazevai/dsh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import css from './ArchivedSessionsSection.module.css'
 
 /** Registration-side face used by the page. */

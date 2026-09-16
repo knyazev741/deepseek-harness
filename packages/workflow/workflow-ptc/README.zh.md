@@ -3,7 +3,7 @@ description: "通过共享的沙箱化 PTC Node 进程运行时执行工作流�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-workflow-ptc
+# @knyazevai/dsh-workflow-ptc
 
 [English](README.md) | 中文
 
@@ -32,8 +32,8 @@ kind: "package-reference"
 上述依赖可用后，挂载引擎及其面向模型的消费方：
 
 ```yaml
-- name: '@deepseek-ai/dsh-workflow-ptc'
-- name: '@deepseek-ai/dsh-tool-workflow'
+- name: '@knyazevai/dsh-workflow-ptc'
+- name: '@knyazevai/dsh-tool-workflow'
 ```
 
 | 字段 | 默认值 | 含义 |
@@ -44,7 +44,7 @@ kind: "package-reference"
 | `maxItemsPerCall` | `4096` | 一次 `parallel()` 或 `pipeline()` 调用接受的条目数。 |
 | `syncTimeoutMs` | `5000` | 脚本最初同步片段的 VM 超时时间，单位为毫秒。 |
 
-负责运行的消费方可以为一次运行设置 `WorkflowStartRequest.subagentProvider` 并降低 `WorkflowStartRequest.maxTotalAgents`。脚本钩子不能更改这两项选择。进程堆、输出、控制通信和终止限制由 Node PTC 提供方负责；引擎不增加整体经过时间定时器。生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-workflow-ptc)定义可接受的引擎字段。
+负责运行的消费方可以为一次运行设置 `WorkflowStartRequest.subagentProvider` 并降低 `WorkflowStartRequest.maxTotalAgents`。脚本钩子不能更改这两项选择。进程堆、输出、控制通信和终止限制由 Node PTC 提供方负责；引擎不增加整体经过时间定时器。生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-workflow-ptc)定义可接受的引擎字段。
 
 Node PTC 提供方的 `maxPendingCalls` 也限制工作流并发：子 agent 启动、结果等待与资源释放会占用这些名额。进度批次至多再占用一个名额。设置 `maxConcurrentAgents` 时应预留余量。
 

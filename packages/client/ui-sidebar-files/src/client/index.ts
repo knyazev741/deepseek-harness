@@ -11,10 +11,10 @@
  * and this module, which only wires them together.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-client-ui-session/client'
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@knyazevai/dsh-api-remotes/client'
+import type {} from '@knyazevai/dsh-client-ui-renderer/client'
+import type {} from '@knyazevai/dsh-client-ui-session/client'
+import type {} from '@knyazevai/dsh-client-ui-sidebar-right/client'
 import { FILES_ID, filesDefinition } from './definition.tsx'
 import { createList, filesFace } from './face.ts'
 import { FilesBody } from './FilesBody.tsx'

@@ -6,9 +6,9 @@
 
 import type { Context, Fiber } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { ComputerUseProviderName } from '@deepseek-ai/dsh-computer-use/brand'
-import * as McpClient from '@deepseek-ai/dsh-mcp-client'
-import type {} from '@deepseek-ai/dsh-computer-use'
+import { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/brand'
+import * as McpClient from '@knyazevai/dsh-mcp-client'
+import type {} from '@knyazevai/dsh-computer-use'
 
 /** Cordis plugin identity for the installed Cua Driver provider. */
 export const name = 'experimental-computer-use-cua-driver-mcp'

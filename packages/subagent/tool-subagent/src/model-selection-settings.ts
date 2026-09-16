@@ -2,7 +2,7 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@knyazevai/dsh-settings'
 import {
   AllowedModelRouteSchema,
   assertAllowedModelRoutes,

@@ -6,7 +6,7 @@ import { ImageBody } from './ImageBody.tsx'
 import { en, zh } from './locales.ts'
 
 /** Image implementation identity, shared by metadata and the keyed slot. */
-export const IMAGE_BODY_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/image'
+export const IMAGE_BODY_ID = '@knyazevai/dsh-client-ui-sidebar-documentpreview/image'
 
 /** File suffixes rendered by the builtin image body. */
 export const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'svg'] as const

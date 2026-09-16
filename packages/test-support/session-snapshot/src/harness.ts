@@ -13,7 +13,7 @@
  *
  * See .agents/notes/implemented/testing/2026-06-19-acp-snapshot-tests.md.
  *
- * @module @deepseek-ai/dsh-session-snapshot/harness
+ * @module @knyazevai/dsh-session-snapshot/harness
  */
 
 import { cp, mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
@@ -35,7 +35,7 @@ import {
   type AgentUnderTest,
   type LaunchedAcpTestAgent,
 } from './launcher.ts'
-import { clearedProxyEnv } from '@deepseek-ai/dsh-http-proxy'
+import { clearedProxyEnv } from '@knyazevai/dsh-http-proxy'
 import {
   assertPersistedSessionVersion,
   latestPersistedSessionPaths,

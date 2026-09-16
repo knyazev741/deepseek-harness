@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { Agent } from '@knyazevai/dsh-agent'
+import type { Session, SessionEvent } from '@knyazevai/dsh-session'
 import { boundJsonLine, MAX_STRING_BYTES, projectJsonRun, type JsonProjectionOptions } from '../src/json-stream.ts'
 
 interface ProjectionHarness {

@@ -18,9 +18,9 @@ A thin spill storage seam plus a default spill policy plugin, in a new `packages
 
 | Package | Role |
 |---|---|
-| `@deepseek-ai/dsh-spill` | Interface: `ctx.spillStore`, vocabulary types, no storage implementation. |
-| `@deepseek-ai/dsh-spill-local` | Local backend: private, session-scoped file storage on the host filesystem. |
-| `@deepseek-ai/dsh-spill-policy` | Tool-result policy plugin: wraps final text results after dispatch and replaces oversized results with a retained preview plus a spill locator. |
+| `@knyazevai/dsh-spill` | Interface: `ctx.spillStore`, vocabulary types, no storage implementation. |
+| `@knyazevai/dsh-spill-local` | Local backend: private, session-scoped file storage on the host filesystem. |
+| `@knyazevai/dsh-spill-policy` | Tool-result policy plugin: wraps final text results after dispatch and replaces oversized results with a retained preview plus a spill locator. |
 
 The tool-result Consumer is `dsh-spill-policy`, which consumes final tool results through the `tools/post-execute` waterfall. The model follows the backend-supplied retrieval hint for the returned locator. [Session-reference spill reuse](../bug-fix/2026-09-05-session-reference-spill-reuse.md) adds a direct storage consumer with separate preview, source-description, and failure semantics; it does not change the tool-result policy.
 
@@ -119,15 +119,15 @@ With `dsh-spill-policy` configured, a large formatted fetch result is automatica
 
 ```yaml
 - id: web-fetch-http
-  name: '@deepseek-ai/dsh-web-fetch-http'
+  name: '@knyazevai/dsh-web-fetch-http'
   config:
     maxBodyChars: 500000
 
 - id: spill-local
-  name: '@deepseek-ai/dsh-spill-local'
+  name: '@knyazevai/dsh-spill-local'
 
 - id: spill-policy
-  name: '@deepseek-ai/dsh-spill-policy'
+  name: '@knyazevai/dsh-spill-policy'
   config:
     maxInlineBytes: 50000
 ```
@@ -138,9 +138,9 @@ This separation is important. `web-fetch-http` still owns resource caps (`maxRes
 
 Retention is separate from spill storage:
 
-- `@deepseek-ai/dsh-output-retention` owns preview mechanics (`TextRetainer`, `ItemRetainer`, and omitted metadata).
-- `@deepseek-ai/dsh-spill` owns saving final text and returning a locator plus retrieval hint.
-- `@deepseek-ai/dsh-spill-policy` applies the default final-result policy in the tool pipeline, composing the two.
+- `@knyazevai/dsh-output-retention` owns preview mechanics (`TextRetainer`, `ItemRetainer`, and omitted metadata).
+- `@knyazevai/dsh-spill` owns saving final text and returning a locator plus retrieval hint.
+- `@knyazevai/dsh-spill-policy` applies the default final-result policy in the tool pipeline, composing the two.
 
 The final-result policy cannot replace tool-owned early spill. Some useful content is not present in final `ToolExecutionResult.content`:
 

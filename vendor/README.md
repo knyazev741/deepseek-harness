@@ -50,6 +50,8 @@ Keep this log exhaustive — every divergence from upstream must be listed.
 18. **Entry `disabled` interpolation in `loader/src/config/entry.ts`**: a `disabled: !!js` expression evaluates against the loader context at every mount decision; the raw node stays in the options, so write-back keeps the `!!js` form. `disabled` is the only interpolated metadata field. Covered by `packages/boot/app-boot/tests/user-patches.spec.ts` and `apps/cli/tests/windows-shell.spec.ts`.
 19. **`loader/src/internal.ts` runtime shape detection**: `ModuleLoader.fromInternal()` classifies the internal loader by which module-job API it owns — `getOrCreateModuleJob` for v2, `getModuleJobForImport` for v1 — instead of by Node major version. Upstream tags every major `>= 24` as v2, but the v2 interface arrived in Node 24.12.0, so 24.0–24.11.1 report major 24 while still carrying the v1 loader; consumers then called `resolveSync` with reversed parameters and every call threw. `dsh web` served an empty client graph (`__DSH_BOOT__.entries: []`) and HMR partial reload resolved no entry URL, both behind swallowed or warn-level errors. Arity cannot discriminate the two shapes, because each reports `resolveSync.length === 2`. A loader owning neither API is left unclassified rather than guessed, so consumers take their documented no-internals path. Covered on the `node-compat` Node version matrix, which pins 24.9 for the mistagged range.
 
+20. **Own, data-backed `__jsExpr` detection in `loader/src/config/utils.ts`**: the fork accepts only an own string-valued data property, so inherited properties and getters are not Loader expressions. Covered by `packages/boot/app-boot/tests/user-patches.spec.ts`.
+
 ## Sync procedure
 
 To update a vendored package from upstream:

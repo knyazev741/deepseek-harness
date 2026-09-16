@@ -11,15 +11,15 @@
  * published a service into the ROOT realm is rejected, because such a service
  * is process-global rather than per-session and the second session mounting the
  * same preset collides with the first.
- * @module @deepseek-ai/dsh-agent-presets/mount
+ * @module @knyazevai/dsh-agent-presets/mount
  */
 
 import { pathToFileURL } from 'node:url'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
-import { Include } from '@deepseek-ai/cordis-plugin-include'
+import { Include, type PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import type { EntryTree } from '@deepseek-ai/cordis-plugin-loader'
-import { scopeOf, scopeParentOf, type ScopeKey } from '@deepseek-ai/dsh-scope'
-import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import { scopeOf, scopeParentOf, type ScopeKey } from '@knyazevai/dsh-scope'
+import { RemoteError } from '@knyazevai/dsh-typert-protocol'
 import type { AgentPreset } from './preset.ts'
 import { classifyRowSpecifier } from './specifier.ts'
 
@@ -77,7 +77,7 @@ class PresetTree extends Include {
    * relative specifier — a preset's own files travel with it — and wrong for
    * a package name: a locally authored preset lives under the user's home,
    * where Node's upward `node_modules` walk never reaches the harness's own
-   * dependencies, so every `@deepseek-ai/dsh-*` row would fail to import. The
+   * dependencies, so every `@knyazevai/dsh-*` row would fail to import. The
    * mount records the host composition's base instead, which is inside the
    * installed harness, and bare names resolve from there. An absolute
    * filesystem path names neither base and becomes a file URL before Node's
@@ -363,10 +363,15 @@ function mountDetail(error: unknown): string {
  * the caller receives no disposer. A rejection leaves nothing mounted.
  * @param agentCtx - the agent's scope context, from the agent factory's `setup`.
  * @param preset - the resolved preset to compose the agent from.
+ * @param patches - ordered deployment patches to apply without changing the stored file.
  * @throws when `agentCtx` carries no scope, a row is unusable, or a row
  * published a service into the root realm.
  */
-export async function mountPreset(agentCtx: Context, preset: AgentPreset): Promise<void> {
+export async function mountPreset(
+  agentCtx: Context,
+  preset: AgentPreset,
+  patches?: readonly PatchOptions[],
+): Promise<void> {
   const scope = scopeOf(agentCtx)
   if (scope === undefined) {
     throw new Error(
@@ -374,7 +379,10 @@ export async function mountPreset(agentCtx: Context, preset: AgentPreset): Promi
       + 'its registrations would apply to every agent in the process',
     )
   }
-  const config: Include.Config = { path: pathToFileURL(preset.path).href }
+  const config: Include.Config = {
+    path: pathToFileURL(preset.path).href,
+    ...(patches === undefined ? {} : { patches: structuredClone(patches) as PatchOptions[] }),
+  }
   // Captured before the subtree exists: the standing scope context still
   // carries the host composition's base, which is inside the installed
   // harness and is therefore where a row's package name has to resolve from.

@@ -3,7 +3,7 @@ description: "Local storage for your attached images below DSH_HOME, for users a
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-attachment-local
+# @knyazevai/dsh-attachment-local
 
 English | [中文](README.zh.md)
 
@@ -32,7 +32,7 @@ In the default composition, images and generic files attached to prompts or comm
 Mount the plugin with no required configuration. The defaults below define what you can attach; the generated configuration catalog is the exhaustive source for every field.
 
 ```yaml
-- name: '@deepseek-ai/dsh-attachment-local'
+- name: '@knyazevai/dsh-attachment-local'
 ```
 
 | Field | Default | Meaning |
@@ -48,7 +48,7 @@ Mount the plugin with no required configuration. The defaults below define what 
 | `normalizedImageMaxBytes` | `4 MiB` | Encoded-byte target; the smallest quality-ladder output is kept when none fits |
 | `imageCompressionConcurrency` | `2` | FIFO limit for concurrent normalization and request transforms |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-attachment-local) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-attachment-local) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Where your images are stored and how long they last
 
@@ -112,7 +112,7 @@ For the full service contract and payload types, read the subsystem reference; f
 
 - [Attachment subsystem reference](../../../docs/subsystems/attachment.md) — service contract, payload types, and the `ctx.attachments` Cordis surface.
 - [Attachment seam package](../attachment/README.md) — the image attachment capability this storage backs.
-- [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-attachment-local) — every accepted config field and its source declaration.
+- [Generated configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-attachment-local) — every accepted config field and its source declaration.
 - [Home paths resolution](../../util/home-paths/README.md) — how `DSH_HOME` resolves from explicit config, environment, and the user home.
 
 -----

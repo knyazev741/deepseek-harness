@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { SessionFormatArtifact, SessionFormatHeader } from '@deepseek-ai/dsh-session-format'
+import type { SessionFormatArtifact, SessionFormatHeader } from '@knyazevai/dsh-session-format'
 import {
   validateInstalledCurrentSessionArtifact,
   validateInstalledCurrentSessionHeader,

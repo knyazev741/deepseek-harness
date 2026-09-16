@@ -1,7 +1,7 @@
 /** Length-prefixed JSON transport with bounded input and queued writes. */
 import { Buffer } from 'node:buffer'
 import type { Duplex } from 'node:stream'
-import type { PtcJsonValue } from '@deepseek-ai/dsh-ptc-runtime'
+import type { PtcJsonValue } from '@knyazevai/dsh-ptc-runtime'
 import { jsonValueBytesUpTo } from './output-json.ts'
 
 const stringify = JSON.stringify

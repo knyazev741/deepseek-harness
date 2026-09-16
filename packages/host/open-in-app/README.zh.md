@@ -3,7 +3,7 @@ description: "open-in-app 的主机半边：在 macOS、Windows、Linux 上把�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-host-open-in-app
+# @knyazevai/dsh-host-open-in-app
 
 [English](README.md) | 中文
 
@@ -34,7 +34,7 @@ kind: "package-reference"
 ### 最小配置
 
 ```yaml
-- name: '@deepseek-ai/dsh-host-open-in-app'
+- name: '@knyazevai/dsh-host-open-in-app'
   config:
     probeTimeoutMs: 10000
     iconTimeoutMs: 10000
@@ -47,7 +47,7 @@ kind: "package-reference"
 | `iconTimeoutMs` | 必填 | 图标提取主机命令（macOS 的 `plutil`/`sips`、Windows 的 PowerShell 提取）的逐命令期限（毫秒）。 |
 | `launchWatchMs` | 必填 | 每次启动的早期失败看护窗口：窗口关闭时仍在运行的启动器计为已启动并继续运行，因此它约束的是 open 路由挂起一次成功启动的时长。 |
 
-三个期限彼此独立，调整一种操作的超时不会改变其他操作的响应时间；超时是失败上界而非延迟预算，命令健康时保守的解析/图标期限没有任何代价。生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-host-open-in-app)是所有可接受字段的详尽来源。
+三个期限彼此独立，调整一种操作的超时不会改变其他操作的响应时间；超时是失败上界而非延迟预算，命令健康时保守的解析/图标期限没有任何代价。生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-host-open-in-app)是所有可接受字段的详尽来源。
 
 ### 目录及其解析方式
 
@@ -77,7 +77,7 @@ kind: "package-reference"
 
 本包拆为一张数据表与三个角色。[`src/catalog.ts`](src/catalog.ts) 是编译期表格：每个条目按平台的 locator 链（`fixed`、`app`、`xcode`、`cli`、`file`、`scan`、`app-paths`、`install-record`、`github-desktop`、`desktop`），以及 Linux 上拥有其图标的 desktop 条目 id。[`src/resolver.ts`](src/resolver.ts) 把表格解析到本机：一趟产出目录 id 到已验证启动的映射（主/回退 argv 加图标来源），共享一次批量的 Windows 注册表读取；argv 启动以清理过凭据的环境（`scrubbedParentEnv`）叠加适配器显式环境后 detached 派生，Windows GUI 默认保持可见，只有负责另行打开 GUI 的 CLI 适配器会隐藏自己的进程。`shell-open` 启动（文件管理器）在同一看护窗口下经 `dsh-native-command` 的路径打开器执行 OS shell 的 open verb，spawn 的 `ENOENT` 被归类为 `missing`，让路由能刷新失效条目。[`src/icons.ts`](src/icons.ts) 按平台提取图标：macOS 在解析出的 bundle 上跑 `plutil`/`sips`，Windows 在解析出的可执行文件上跑生成的 PowerShell `ExtractAssociatedIcon` 脚本（`-File` 位置参数让路径不经过命令行解析），Linux 走 desktop 条目/hicolor/pixmaps 的文件系统查找。
 
-[`src/index.ts`](src/index.ts) 在 `ctx.webServer` 上注册三条路由：`GET /open-in-app/apps`（解析映射的 keys）、`GET /open-in-app/icon/<id>`（提取的图标，进程内内存缓存）、`POST /open-in-app/open`（直接使用映射中已验证的启动器——绝不重新检测）。每条路由都先向组合的 `connection` 服务询问是否拒绝；完整的信任叙述——Host/Origin 栅栏与浏览器认证——唯一的出处在 [`src/index.ts`](src/index.ts) 的模块注释。在该栅栏之上，open 路由在 wire 边界校验请求体：`application/json` 媒体类型、64 KiB 上限、解析为可用的目录 id、指向现存目录的绝对路径。解析与图标命令经 [`@deepseek-ai/dsh-native-command`](../../util/native-command/README.zh.md)（argv，绝不走 shell）在各自期限内执行；PATH 名称走 `ctx.subprocess.resolveExecutable()` 进程内解析。
+[`src/index.ts`](src/index.ts) 在 `ctx.webServer` 上注册三条路由：`GET /open-in-app/apps`（解析映射的 keys）、`GET /open-in-app/icon/<id>`（提取的图标，进程内内存缓存）、`POST /open-in-app/open`（直接使用映射中已验证的启动器——绝不重新检测）。每条路由都先向组合的 `connection` 服务询问是否拒绝；完整的信任叙述——Host/Origin 栅栏与浏览器认证——唯一的出处在 [`src/index.ts`](src/index.ts) 的模块注释。在该栅栏之上，open 路由在 wire 边界校验请求体：`application/json` 媒体类型、64 KiB 上限、解析为可用的目录 id、指向现存目录的绝对路径。解析与图标命令经 [`@knyazevai/dsh-native-command`](../../util/native-command/README.zh.md)（argv，绝不走 shell）在各自期限内执行；PATH 名称走 `ctx.subprocess.resolveExecutable()` 进程内解析。
 
 </details>
 

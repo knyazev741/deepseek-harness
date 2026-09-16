@@ -5,8 +5,8 @@
  * this reader does not name fall to the generic line carrying the carrier's
  * message.
  */
-import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
-import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
+import type { RemoteFailure } from '@knyazevai/dsh-api-remotes/client'
+import type { TranslateNS } from '@knyazevai/dsh-client-locale/client'
 
 /** Render a byte count the way a person reads one. */
 function humanBytes(bytes: number): string {

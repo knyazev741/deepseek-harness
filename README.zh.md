@@ -23,10 +23,10 @@ DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来
 安装 `Node.js`，然后运行：
 
 ```sh
-npx @deepseek-ai/dsh web
+npx @knyazevai/dsh web
 ```
 
-该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.zh.md)。
+该命令默认在 `http://127.0.0.1:3080` 启动 Web UI。传入 `--open` 可自动打开浏览器。详见 [Web UI 指南](docs/user/guide/index.zh.md)。
 
 <a id="run-from-source"></a>
 
@@ -35,14 +35,14 @@ npx @deepseek-ai/dsh web
 如需从仓库源码运行：
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/knyazev741/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
 pnpm dsh web
 ```
 
-`pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
+`pnpm run build` 准备仓库产物。`pnpm dsh web` 启动包含 Knyazev AI 提供方和工作区插件的 `fork-web`。将 `KNYAZEV_AI_API_KEY` 设为你在 [knyazevai.work](https://knyazevai.work) 获取的密钥。DeepSeek V4 Flash 和 GLM 5.3 Flash 均具有 400,000 token 上下文、最多 20 次瞬态错误重试；standard、ptc 和 cordis 预设在 50% 压力时触发压缩，每次摘要最多输入 131,072 token。使用 `--profile web` 可运行原始组合。历史 `code` 预设选择会迁移为 `ptc`。
 
 ## 社区与支持
 

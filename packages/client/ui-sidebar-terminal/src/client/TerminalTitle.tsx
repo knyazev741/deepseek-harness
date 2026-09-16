@@ -1,6 +1,6 @@
 /** Live terminal names in docked and floating tab chrome. */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import { TerminalIcon } from './TerminalIcon.tsx'
 import type { TerminalInjected } from './face.ts'
 import type {} from './locales.ts'

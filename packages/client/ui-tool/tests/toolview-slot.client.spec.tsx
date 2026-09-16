@@ -2,18 +2,18 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent } from '@testing-library/react'
-import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+import type { ISession } from '@knyazevai/dsh-api-session-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { WorkspaceId } from '@knyazevai/dsh-workspace/types'
 import {
   apply as applyChat, inject as injectChat, type ToolResultNode,
-} from '@deepseek-ai/dsh-client-ui-chat/client'
-import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotTestRuntime, TestRemote, stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { apply as applyConversation, inject as injectConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { apply as applyTool, inject as injectTool } from '@deepseek-ai/dsh-client-ui-tool/client'
-import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
+} from '@knyazevai/dsh-client-ui-chat/client'
+import type { PropsRenderSlots } from '@knyazevai/dsh-client-ui-slots'
+import { SlotTestRuntime, TestRemote, stubSettingsScope } from '@knyazevai/dsh-client-test-runtime'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
+import { apply as applyConversation, inject as injectConversation } from '@knyazevai/dsh-client-ui-conversation/client'
+import { apply as applyTool, inject as injectTool } from '@knyazevai/dsh-client-ui-tool/client'
+import type { ToolCallViewProps } from '@knyazevai/dsh-client-ui-tool/client'
 import { toolSessionEvents } from './tool-fixtures.client.ts'
 
 const SID = 's1' as SessionId

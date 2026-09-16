@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-api-settings-controller",
+  "name": "@knyazevai/dsh-api-settings-controller",
   "description": "Remote owner for the configuration surfaces over the settings-domain seams",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -49,20 +49,20 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent-presets": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
-    "@deepseek-ai/dsh-native-command": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-settings": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^"
+    "@knyazevai/dsh-agent-presets": "workspace:^",
+    "@knyazevai/dsh-credentials": "workspace:^",
+    "@knyazevai/dsh-native-command": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-settings": "workspace:^",
+    "@knyazevai/dsh-typert-protocol": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent-presets": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
-    "@deepseek-ai/dsh-native-command": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-settings": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^"
+    "@knyazevai/dsh-agent-presets": "workspace:^",
+    "@knyazevai/dsh-credentials": "workspace:^",
+    "@knyazevai/dsh-native-command": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-settings": "workspace:^",
+    "@knyazevai/dsh-typert-protocol": "workspace:^"
   }
 }

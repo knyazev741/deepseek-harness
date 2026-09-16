@@ -8,7 +8,7 @@
  * lives in acl.spec.ts (win32 only).
  */
 
-import { Win32Error } from '@deepseek-ai/dsh-win32-process'
+import { Win32Error } from '@knyazevai/dsh-win32-process'
 import { describe, expect, it, vi } from 'vitest'
 import koffi from 'koffi'
 

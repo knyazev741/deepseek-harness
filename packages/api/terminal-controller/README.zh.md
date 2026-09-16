@@ -3,7 +3,7 @@ description: "用户交互式终端：执行环境默认 shell、有界屏幕恢
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-api-terminal-controller
+# @knyazevai/dsh-api-terminal-controller
 
 [English](README.md) | 中文
 

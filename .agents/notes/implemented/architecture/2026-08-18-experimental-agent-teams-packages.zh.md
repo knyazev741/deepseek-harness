@@ -12,7 +12,7 @@ Agent Teams 的服务与工具约定仍在变化，但它需要使用真实 Sess
 
 ## 决策
 
-`packages/experimental/agent-team`、`packages/experimental/tool-agent-team`、`packages/experimental/agent-team-profile`、`packages/experimental/client-ui-agent-team` 与 `packages/experimental/agent-team-web-profile` 是公开 workspace 包。它们保留现有 `@deepseek-ai/dsh-experimental-*` 名称并加入 dsh 发布系列。[发布拒绝列表决策](../process/2026-09-12-experimental-publication-denylist.zh.md)负责默认公开与私有例外；[实验性包规则](../../../../packages/experimental/AGENTS.md)负责依赖隔离与后续 promotion。
+`packages/experimental/agent-team`、`packages/experimental/tool-agent-team`、`packages/experimental/agent-team-profile`、`packages/experimental/client-ui-agent-team` 与 `packages/experimental/agent-team-web-profile` 是公开 workspace 包。它们保留现有 `@knyazevai/dsh-experimental-*` 名称并加入 dsh 发布系列。[发布拒绝列表决策](../process/2026-09-12-experimental-publication-denylist.zh.md)负责默认公开与私有例外；[实验性包规则](../../../../packages/experimental/AGENTS.md)负责依赖隔离与后续 promotion。
 
 dsh 打包与发布集合以及本地基线发布器包含这五个 Agent Teams 目录和 [Cua Driver 提供方](2026-09-12-computer-use-provider-registration.zh.md)。workspace 约束要求它们省略 `private`、将 `publishConfig.access` 设为 `public`，并保留实验性 npm 前缀。实验组之外的发布包、应用和 Python 运行时不能在 `dependencies`、`optionalDependencies` 或 `peerDependencies` 中引用实验包；实验包可以依赖发布包和彼此。
 

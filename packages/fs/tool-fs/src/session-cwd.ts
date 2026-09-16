@@ -4,10 +4,10 @@
  * `read`/`write`/`edit` act on its workspace, not the server's launch directory.
  * Non-agent calls return `undefined`, leaving the fallback in the provider rather than reading
  * `process.cwd()` at the tool boundary.
- * @module @deepseek-ai/dsh-tool-fs/session-cwd
+ * @module @knyazevai/dsh-tool-fs/session-cwd
  */
 
-import type { ToolExecution } from '@deepseek-ai/dsh-tools'
+import type { ToolExecution } from '@knyazevai/dsh-tools'
 
 /**
  * The session workspace cwd for this call, or `undefined` when none applies.

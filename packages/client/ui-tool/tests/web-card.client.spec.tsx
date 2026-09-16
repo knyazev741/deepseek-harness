@@ -2,15 +2,15 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import type { RunningToolCall, ToolResultNode } from '@deepseek-ai/dsh-client-ui-chat/client'
-import type { ToolCallOwnerProps } from '@deepseek-ai/dsh-client-ui-tool/client'
-import { IconGlobeOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { RunningToolCall, ToolResultNode } from '@knyazevai/dsh-client-ui-chat/client'
+import type { ToolCallOwnerProps } from '@knyazevai/dsh-client-ui-tool/client'
+import { IconGlobeOutline14 } from '@knyazevai/dsh-client-ui-primitives'
 import { webCardModel } from '../src/client/tool/models/web-card-model.ts'
 import { GenericToolCard } from '../src/client/tool/toolviews/GenericToolCard.tsx'
 import { WebRow, webToolview } from '../src/client/tool/toolviews/web-row.tsx'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { zh } from '@deepseek-ai/dsh-client-ui-conversation/src/client/locales.ts'
+import { makeTranslate } from '@knyazevai/dsh-client-test-runtime'
+import { zh as commonZh } from '@knyazevai/dsh-client-locale/src/locales/zh.ts'
+import { zh } from '@knyazevai/dsh-client-ui-conversation/src/client/locales.ts'
 
 afterEach(cleanup)
 

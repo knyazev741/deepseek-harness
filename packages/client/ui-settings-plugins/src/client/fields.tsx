@@ -6,7 +6,7 @@
  * card's save is the single point where a draft becomes a document mutation.
  */
 
-import { Tag } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Tag } from '@knyazevai/dsh-client-ui-primitives'
 import css from './fields.module.css'
 
 /** What every field control needs regardless of its value type. */

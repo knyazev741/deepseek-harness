@@ -1,6 +1,6 @@
 /**
  * Exclusive named registration for the computer-use capability.
- * @module @deepseek-ai/dsh-computer-use
+ * @module @knyazevai/dsh-computer-use
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'

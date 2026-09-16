@@ -3,27 +3,27 @@
  * the derived LLM message history. Persistence is a plugin concern (subscribe
  * to `session/event`, drain on `session/flush`).
  *
- * @module @deepseek-ai/dsh-session
+ * @module @knyazevai/dsh-session
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import { isAbsolute } from 'node:path'
-import { brandString } from '@deepseek-ai/dsh-brand'
-import { assertNever, deepFreeze, snapshotJsonValue } from '@deepseek-ai/dsh-util-values'
-import { scopeOf, scopeTarget } from '@deepseek-ai/dsh-scope'
-import type { Scoped } from '@deepseek-ai/dsh-scope'
-import type { Message } from '@deepseek-ai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { assertNever, deepFreeze, snapshotJsonValue } from '@knyazevai/dsh-util-values'
+import { scopeOf, scopeTarget } from '@knyazevai/dsh-scope'
+import type { Scoped } from '@knyazevai/dsh-scope'
+import type { Message } from '@knyazevai/dsh-llm'
 import { SESSION_FORMAT_VERSION, SessionLogOffset, SessionSeq } from './types.ts'
-import type { TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
-import type { CreateSessionOptions, EpochHeader, PrepareSessionOptions, RequestContext, SessionEvent, SessionEventMap, SessionEventType, SessionHeader, SessionId, SessionSeedEventState, SurfaceIntent, SurfaceEventType } from './types.ts'
-import { SurfaceManager, validateSessionEventData, validateSurfaceMetadata } from './surface.ts'
+import type { TypertLookup } from '@knyazevai/dsh-typert-protocol'
+import type { LogIntent, CreateSessionOptions, EpochHeader, PrepareSessionOptions, RequestContext, SessionEvent, SessionEventMap, SessionEventType, SessionHeader, SessionId, SessionSeedEventState, SurfaceIntent, SurfaceEventType } from './types.ts'
+import { isSurfaceEligibleType, SurfaceManager, validateSessionEventData, validateSurfaceMetadata } from './surface.ts'
 import type { SessionSurface, SessionMessageProjection } from './surface.ts'
 import { foldRequestHeader } from './request-header.ts'
 
 export * from './types.ts'
 export { SessionPreparation } from './preparation.ts'
 export type { SessionPreparationOptions } from './preparation.ts'
-export type { AssistantMessage, SystemMessage, ToolResultMessage, UserMessage } from '@deepseek-ai/dsh-llm'
+export type { AssistantMessage, SystemMessage, ToolResultMessage, UserMessage } from '@knyazevai/dsh-llm'
 export { interruptedTurnClosers, TOOL_NOT_STARTED, TOOL_OUTCOME_UNKNOWN } from './repair.ts'
 export type { SessionSurface, SurfaceFoldReplacement, SurfaceFoldResult, SessionMessageProjection, SessionMessageProjectionContext } from './surface.ts'
 export { deriveEventMessage, foldSurface, isAppendSurfaceEvent, isReplacementSurfaceEvent, isSurfaceEvent, isSurfaceEligibleType } from './surface.ts'
@@ -41,7 +41,7 @@ declare module '@deepseek-ai/cordis' {
      * back with a paired disposal; detach requested during dispatch is deferred.
      * A returned-promise rejection is logged but cannot retroactively veto this
      * synchronous boundary.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners
+     * Scope-filtered dispatch (`@knyazevai/dsh-scope`): agent-scoped listeners
      * receive only sessions entered through that agent's context.
      * @param session - the session just entered and announced.
      * @dshScopeScan unsupported
@@ -52,7 +52,7 @@ declare module '@deepseek-ai/cordis' {
      * Emitted once when an announced session leaves the store, including
      * publication rollback, but never for an entry whose creation announcement
      * did not begin. Listener failures are logged and contained.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`) reuses the owner scope.
+     * Scope-filtered dispatch (`@knyazevai/dsh-scope`) reuses the owner scope.
      * @param session - the session that is no longer live in the store.
      * @dshScopeScan unsupported
      * @mode emit
@@ -62,7 +62,7 @@ declare module '@deepseek-ai/cordis' {
      * Post-commit, fire-and-forget append feed. The listener snapshot resolves
      * before the log push, but callbacks run after it; observer failures are
      * logged and contained without making the committed append fail.
-     * Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners
+     * Scope-filtered dispatch (`@knyazevai/dsh-scope`): agent-scoped listeners
      * receive only events from sessions entered through that agent's context.
      * @param session - the session whose log grew.
      * @param event - the appended event, exactly as recorded.
@@ -73,7 +73,7 @@ declare module '@deepseek-ai/cordis' {
     /**
      * Awaited parallel durability checkpoint: every listener runs and the
      * caller awaits all of them, with no waterfall veto. Scope-filtered dispatch
-     * (`@deepseek-ai/dsh-scope`) reuses the session's owner scope.
+     * (`@knyazevai/dsh-scope`) reuses the session's owner scope.
      * @param session - the session whose buffered events must reach durable storage.
      * @dshScopeScan unsupported
      * @mode parallel
@@ -82,7 +82,7 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@knyazevai/dsh-typert-protocol' {
   interface TypertLookupMap {
     session: TypertLookup<Session, SessionId>
   }
@@ -392,6 +392,48 @@ function hasProviderModel(value: unknown): boolean {
     && typeof pair['model'] === 'string' && pair['model'].length > 0
 }
 
+/** Whether a public append intent is an ordinary object that can be inspected without coercion. */
+function isPlainAppendIntent(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+  const prototype = Reflect.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+/** Validate one append intent before it can be projected into the event envelope. */
+function validateAppendIntent(
+  type: SessionEventType,
+  intent: unknown,
+  provided: boolean,
+): SurfaceIntent | LogIntent | undefined {
+  if (!provided || intent === undefined) return undefined
+  if (!isPlainAppendIntent(intent)) {
+    throw new Error(`session append intent for "${type}" must be a plain object`)
+  }
+  const record = intent
+  for (const key of Reflect.ownKeys(record)) {
+    const keyName = typeof key === 'symbol' ? String(key) : key
+    if (isSurfaceEligibleType(type) && key === 'ignorable') {
+      throw new Error(`session append intent for "${type}" cannot request ignorable`)
+    }
+    const valid = isSurfaceEligibleType(type)
+      ? key === 'surfaceOp' || key === 'sourceEventSeqs'
+      : key === 'ignorable'
+    if (!valid) {
+      if (keyName === 'surfaceOp' || keyName === 'sourceEventSeqs') {
+        throw new Error(`session event "${type}" is not surface-eligible and cannot carry ${keyName}`)
+      }
+      throw new Error(`session append intent for "${type}" has an invalid field "${keyName}"`)
+    }
+  }
+  if (isSurfaceEligibleType(type)) {
+    return record
+  }
+  if (Object.hasOwn(record, 'ignorable') && record['ignorable'] !== true) {
+    throw new Error(`session append intent for "${type}" has an invalid ignorable marker`)
+  }
+  return record
+}
+
 type SessionCallback = (...args: unknown[]) => unknown
 
 /** Resolve one listener snapshot, including Cordis's internal dispatch checks. */
@@ -689,15 +731,13 @@ export class Session {
    *
    * @param type - The event type (key of {@link SessionEventMap}).
    * @param data - The event payload; must be JSON-serializable.
-   * @param opts - Surface metadata: `surfaceOp` controls how the event enters
-   *   the ordered surface; `sourceEventSeqs` lists the seq numbers of earlier
-   *   events this one derives from. REQUIRED for
-   *   {@link SurfaceEventType} events (every message-producing event must
-   *   declare how it joins the surface, the sole source of derived model
-   *   history) and
-   *   rejected by the compiler for non-surface types like `turn/start` or
-   *   `assistant/attempt`. Assistant messages embed their exact provider
-   *   stream and cannot cite top-level source events.
+   * @param opts - Surface metadata for message-producing events, or the optional
+   *   {@link LogIntent} for a log-only event. `surfaceOp` controls how a surface
+   *   event enters the ordered surface; `sourceEventSeqs` lists the seq numbers
+   *   of earlier events it derives from. Surface events require a
+   *   {@link SurfaceIntent} and cannot request `ignorable`; log-only events may
+   *   pass `{ ignorable: true }` so older readers can skip them.
+   * Assistant messages embed their exact provider stream and cannot cite top-level source events.
    * @returns the logged event — its assigned `seq`/`time` plus the SNAPSHOT of
    *   `data` that entered the log, so reading `event.data` back sees the logged
    *   value, never the caller's still-mutable input.
@@ -719,9 +759,12 @@ export class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : []
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : [opts?: LogIntent]
   ): SessionEvent<T> {
-    const surfaceOpts: SurfaceIntent | undefined = opts[0]
+    const appendIntent = validateAppendIntent(type, opts[0], opts.length > 0)
+    const surfaceOpts: SurfaceIntent | undefined = isSurfaceEligibleType(type)
+      ? appendIntent as SurfaceIntent | undefined
+      : undefined
     const surfaceMetadata = {
       ...surfaceOpts?.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: surfaceOpts.sourceEventSeqs },
       ...surfaceOpts?.surfaceOp === undefined ? {} : { surfaceOp: surfaceOpts.surfaceOp },
@@ -744,6 +787,9 @@ export class Session {
       time: Date.now(),
       data: dataSnapshot,
       ...(surfaceMetadataSnapshot as { surfaceOp?: unknown; sourceEventSeqs?: unknown }),
+      ...!isSurfaceEligibleType(type) && (appendIntent as LogIntent | undefined)?.ignorable === true
+        ? { ignorable: true as const }
+        : {},
     } as unknown as SessionEvent<T>)
     validateSessionEventData(event, `session event "${type}" at seq ${event.seq}`)
     this.surfaceManager.validateNext(event as SessionEvent)
@@ -938,8 +984,8 @@ export class SessionStore extends Service {
       typeCtx.typert.lookups.register('session', {
         parameter: 'session',
         wire: 'sessionId',
-        hostTypeSymbol: '@deepseek-ai/dsh-session#Session',
-        wireTypeSymbol: '@deepseek-ai/dsh-session/types#SessionId',
+        hostTypeSymbol: '@knyazevai/dsh-session#Session',
+        wireTypeSymbol: '@knyazevai/dsh-session/types#SessionId',
         resolve: sessionId => this.get(sessionId),
       })
     })

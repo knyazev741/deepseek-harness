@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-loader-smoke",
+  "name": "@knyazevai/dsh-loader-smoke",
   "description": "Shared subprocess and direct-agent harness for keyless real-Loader example smoke tests",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -32,17 +32,17 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-http-proxy": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-http-proxy": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-app-boot": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-http-proxy": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-app-boot": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-http-proxy": "workspace:^"
   }
 }

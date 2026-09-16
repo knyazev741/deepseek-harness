@@ -4,25 +4,25 @@
  * isolation, and prompt failure mapping.
  */
 
-import { SESSION_FORMAT_VERSION, SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
+import { SESSION_FORMAT_VERSION, SessionLogOffset, SessionSeq } from '@knyazevai/dsh-session'
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore from '@deepseek-ai/dsh-session'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import { SessionHistoryController } from '@deepseek-ai/dsh-api-session-controller/src/history.ts'
-import { subagentIdentityProjectionDefinition } from '@deepseek-ai/dsh-subagent/src/projection.ts'
-import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
-import { createUserMessage, MessageId } from '@deepseek-ai/dsh-llm'
-import { snapshotSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
-import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
-import type { Agent, Inbox } from '@deepseek-ai/dsh-agent'
-import type { SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
-import AttachmentStore from '@deepseek-ai/dsh-attachment'
+import SessionStore from '@knyazevai/dsh-session'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import { SessionHistoryController } from '@knyazevai/dsh-api-session-controller/src/history.ts'
+import { subagentIdentityProjectionDefinition } from '@knyazevai/dsh-subagent/src/projection.ts'
+import TypertRegistry from '@knyazevai/dsh-typert-registry'
+import { createUserMessage, MessageId } from '@knyazevai/dsh-llm'
+import { snapshotSubagentDescriptor } from '@knyazevai/dsh-subagent'
+import { createInboxStub } from '@knyazevai/dsh-agent-loop-testkit'
+import type { Agent, Inbox } from '@knyazevai/dsh-agent'
+import type { SessionEvent, SessionHeader, SessionId } from '@knyazevai/dsh-session'
+import AttachmentStore from '@knyazevai/dsh-attachment'
 import type { SessionPromptRequest, SessionRequestId } from '../src/types.ts'
 import {
   SessionPersistenceRevision,
   type SessionPersistenceSnapshot,
-} from '@deepseek-ai/dsh-session-persistence'
+} from '@knyazevai/dsh-session-persistence'
 import {
   createSessionTestRemote,
   testSessionPersistence,
@@ -283,7 +283,7 @@ describe('Remote Agent and Session lookup policy', () => {
       list: () => Promise.resolve([meta]),
       inspect,
     })
-    const resumedSession = { id: sessionId, header: meta, events: [] } as unknown as import('@deepseek-ai/dsh-session').Session
+    const resumedSession = { id: sessionId, header: meta, events: [] } as unknown as import('@knyazevai/dsh-session').Session
     const resumedAgent = { id: sessionId, session: resumedSession, status: 'idle', ctx } as Agent
     const release = Promise.withResolvers<undefined>()
     const resume = vi.spyOn(ctx.agents, 'resume').mockImplementation(async () => {

@@ -5213,6 +5213,76 @@
       }
     },
     {
+      "key": "event:fork/session-source",
+      "kind": "event",
+      "event": "fork/session-source",
+      "surface": false,
+      "digest": "a0c62a56072e68f47eab94ede3cd898c4dfb75f3c0b239791728eac1c9441f3e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "source",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "github-actions"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "fork/session-source"
+          }
+        ]
+      }
+    },
+    {
       "key": "event:goal/change",
       "kind": "event",
       "event": "goal/change",
@@ -35010,9 +35080,9 @@
         ]
       },
       "names": [
-        "SessionEventEnvelope[39].sourceEventSeqs",
-        "SessionEventEnvelope[52].sourceEventSeqs",
-        "SessionEventEnvelope[55].sourceEventSeqs",
+        "SessionEventEnvelope[40].sourceEventSeqs",
+        "SessionEventEnvelope[53].sourceEventSeqs",
+        "SessionEventEnvelope[56].sourceEventSeqs",
         "event:assistant/attempt.data.stream[0][0].dt",
         "event:assistant/attempt.data.stream[0][1].dt",
         "event:assistant/attempt.data.stream[0][2].dt",
@@ -37190,6 +37260,20 @@
           {
             "kind": "literal",
             "value": "reasoning-chunks"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "68ddfcc3a73b098ff519332483bfe0ec78d988f60f0ba3c5fea9e67a01573444",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "github-actions"
           }
         ]
       },
@@ -44479,9 +44563,9 @@
         ]
       },
       "names": [
-        "SessionEventEnvelope[39]",
-        "SessionEventEnvelope[52]",
-        "SessionEventEnvelope[55]"
+        "SessionEventEnvelope[40]",
+        "SessionEventEnvelope[53]",
+        "SessionEventEnvelope[56]"
       ],
       "sources": []
     },
@@ -46361,6 +46445,76 @@
       },
       "names": [
         "event:compaction/summary.data[0]"
+      ],
+      "sources": []
+    },
+    {
+      "digest": "a0c62a56072e68f47eab94ede3cd898c4dfb75f3c0b239791728eac1c9441f3e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "source",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "github-actions"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "fork/session-source"
+          }
+        ]
+      },
+      "names": [
+        "event:fork/session-source"
       ],
       "sources": []
     },
@@ -52554,6 +52708,20 @@
       ]
     },
     {
+      "digest": "c2fb61c42b98c56b8370c7b170180fb2f5ed22c3a0af3b64296646ed12f96a4a",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "fork/session-source"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "c43b119ce579b3e9983a0d3adc4ba402ebb9ba773d89738a2dab01ecf5813943",
       "schema": {
         "root": 0,
@@ -52566,6 +52734,35 @@
       },
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "c51ef71616f7fe38858698e12eaf802040150c76f6a9e476d961b921a1cd9d18",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "source",
+                "type": 1,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "github-actions"
+          }
+        ]
+      },
+      "names": [
+        "event:fork/session-source.data"
+      ],
+      "sources": [
+        "packages/fork/session-source/src/types.ts:9"
+      ]
     },
     {
       "digest": "c55a891c7aac496de6ee64c91c1fb65728c977314013033e42c863428aada854",
@@ -58441,8 +58638,8 @@
         "SessionEventEnvelope[36]",
         "SessionEventEnvelope[37]",
         "SessionEventEnvelope[38]",
+        "SessionEventEnvelope[39]",
         "SessionEventEnvelope[3]",
-        "SessionEventEnvelope[40]",
         "SessionEventEnvelope[41]",
         "SessionEventEnvelope[42]",
         "SessionEventEnvelope[43]",
@@ -58455,9 +58652,10 @@
         "SessionEventEnvelope[4]",
         "SessionEventEnvelope[50]",
         "SessionEventEnvelope[51]",
-        "SessionEventEnvelope[53]",
+        "SessionEventEnvelope[52]",
         "SessionEventEnvelope[54]",
-        "SessionEventEnvelope[56]",
+        "SessionEventEnvelope[55]",
+        "SessionEventEnvelope[57]",
         "SessionEventEnvelope[5]",
         "SessionEventEnvelope[7]",
         "SessionEventEnvelope[8]",

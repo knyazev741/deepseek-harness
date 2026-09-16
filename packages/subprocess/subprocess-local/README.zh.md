@@ -3,7 +3,7 @@ description: "子进程服务的本地宿主提供方：在宿主机器上运行
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-subprocess-local
+# @knyazevai/dsh-subprocess-local
 
 [English](README.md) | 中文
 
@@ -32,8 +32,8 @@ kind: "package-reference"
 在与消费方相同的组合中加载本提供方。它没有任何配置字段：每项选择都随 spawn 请求到达，因此随部署变化的决策留在调用方的配置里。 `terminalEnvironment()` 在 POSIX 读取非空的 `SHELL`，缺失时使用账户登录 shell；在 Windows 读取非空的 `ComSpec`。空值会被省略，由消费者选择平台回退。
 
 ```yaml
-- name: '@deepseek-ai/dsh-subprocess-local'
-- name: '@deepseek-ai/dsh-bash-local'
+- name: '@knyazevai/dsh-subprocess-local'
+- name: '@knyazevai/dsh-bash-local'
 ```
 
 ### 解析可执行文件

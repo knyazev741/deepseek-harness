@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
+import { SESSION_FORMAT_VERSION } from '@knyazevai/dsh-session'
 import { assertSnapshotCorpusPolicy } from './session-snapshot-corpus-policy.ts'
 
 const completeV0 = {

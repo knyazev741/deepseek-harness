@@ -15,14 +15,14 @@
  * header and system prompt is checked against the composed pin, so
  * session-dependent composition must declare a separate class instead of
  * escaping coverage.
- * @module @deepseek-ai/dsh-session-snapshot/suite
+ * @module @knyazevai/dsh-session-snapshot/suite
  */
 
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { isSurfaceEligibleType } from '@deepseek-ai/dsh-session/surface'
-import { SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
+import { isSurfaceEligibleType } from '@knyazevai/dsh-session/surface'
+import { SESSION_FORMAT_VERSION } from '@knyazevai/dsh-session'
 import { describe, expect, it } from 'vitest'
 import { type AgentUnderTest, type HarvestedLog, type InputScript, runScenario } from './harness.ts'
 import {

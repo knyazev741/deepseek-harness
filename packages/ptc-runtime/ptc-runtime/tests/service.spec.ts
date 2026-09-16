@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { PtcRuntime } from '@deepseek-ai/dsh-ptc-runtime'
-import type { PtcRunRequest, PtcRunResult } from '@deepseek-ai/dsh-ptc-runtime'
+import { PtcRuntime } from '@knyazevai/dsh-ptc-runtime'
+import type { PtcRunRequest, PtcRunResult } from '@knyazevai/dsh-ptc-runtime'
 
 /**
  * Minimal concrete runtime: records requests, "executes" by invoking every
@@ -10,7 +10,7 @@ import type { PtcRunRequest, PtcRunResult } from '@deepseek-ai/dsh-ptc-runtime'
  * the smallest subclass that honors it.
  */
 class StubRuntime extends PtcRuntime {
-  resolve(request: import('@deepseek-ai/dsh-ptc-runtime').PtcRunRequest): import('@deepseek-ai/dsh-ptc-runtime').PtcRunSpec { return { ...request, cwd: request.cwd ?? process.cwd(), timeoutMs: request.timeoutMs ?? 120_000 } }
+  resolve(request: import('@knyazevai/dsh-ptc-runtime').PtcRunRequest): import('@knyazevai/dsh-ptc-runtime').PtcRunSpec { return { ...request, cwd: request.cwd ?? process.cwd(), timeoutMs: request.timeoutMs ?? 120_000 } }
 
   readonly language = 'typescript'
   readonly isolation = 'in-process-stub'

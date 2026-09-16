@@ -3,13 +3,13 @@ description: "Published experimental Agent Teams profile layer over dsh-base wit
 kind: "package-bundle"
 ---
 
-# @deepseek-ai/dsh-experimental-agent-team-profile
+# @knyazevai/dsh-experimental-agent-team-profile
 
 English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-experimental-agent-team-profile` is a published experimental profile layer that enables [Agent Teams](../agent-team/README.md) over `@deepseek-ai/dsh-base`. Its patch inserts the Team domain and Team-scoped tools and disables ordinary subagent delegation and the overlapping global continuable-child controls. Workflow remains available with fresh children. Add it explicitly to an initialized profile; no shipped profile enables it by default.
+`dsh-experimental-agent-team-profile` is a published experimental profile layer that enables [Agent Teams](../agent-team/README.md) over `@knyazevai/dsh-base`. Its patch inserts the Team domain and Team-scoped tools and disables ordinary subagent delegation and the overlapping global continuable-child controls. Workflow remains available with fresh children. Add it explicitly to an initialized profile; no shipped profile enables it by default.
 
 ## Table of Contents
 
@@ -30,11 +30,11 @@ English | [中文](README.zh.md)
 Add the package to an initialized profile, then run a task that asks the Lead to delegate work:
 
 ```sh
-dsh plugin --profile headless add @deepseek-ai/dsh-experimental-agent-team-profile
+dsh plugin --profile headless add @knyazevai/dsh-experimental-agent-team-profile
 dsh --profile headless "Use Agent Teams to split this task between two teammates, wait, and summarize."
 ```
 
-The profile must already contain `@deepseek-ai/dsh-base`, whose Subagent services and provider rows this layer consumes. Removing the package with `dsh plugin --profile <name> remove @deepseek-ai/dsh-experimental-agent-team-profile` removes the bundle from the profile's ordered layer list.
+The profile must already contain `@knyazevai/dsh-base`, whose Subagent services and provider rows this layer consumes. Removing the package with `dsh plugin --profile <name> remove @knyazevai/dsh-experimental-agent-team-profile` removes the bundle from the profile's ordered layer list.
 
 ### What you get
 
@@ -77,11 +77,11 @@ The package's runtime content is [`cordis.patch.yml`](cordis.patch.yml). Applied
 
 #### What the model sees
 
-The Team policy and schemas belong to [`@deepseek-ai/dsh-experimental-tool-agent-team`](../tool-agent-team/README.md). This bundle changes composition only: Team-scoped `list_agents`, `send_message`, and `interrupt_agent` replace the disabled global continuable-child controls. `spawn_teammate` is the direct delegation tool. Workflow’s `agent()` calls create fresh one-shot children; their prompts must contain the context needed for their tasks.
+The Team policy and schemas belong to [`@knyazevai/dsh-experimental-tool-agent-team`](../tool-agent-team/README.md). This bundle changes composition only: Team-scoped `list_agents`, `send_message`, and `interrupt_agent` replace the disabled global continuable-child controls. `spawn_teammate` is the direct delegation tool. Workflow’s `agent()` calls create fresh one-shot children; their prompts must contain the context needed for their tasks.
 
 #### Token effect
 
-The bundle adds the Team policy and tool schemas described by `@deepseek-ai/dsh-experimental-tool-agent-team`; it adds no prompt text of its own.
+The bundle adds the Team policy and tool schemas described by `@knyazevai/dsh-experimental-tool-agent-team`; it adds no prompt text of its own.
 
 #### KV Cache effect
 

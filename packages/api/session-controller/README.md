@@ -8,7 +8,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`@deepseek-ai/dsh-api-session-controller` owns the Host `ctx.sessionController` service and the generated Client `session`, `skills`, and `fileReferences` Remote namespaces. It serves Session lifecycle and history, the Host-generation model catalog, workspace-path opening, user-invocable skill discovery, and Agent-scoped file references. Use it through API Gateway when a Client needs operations addressed by a Session.
+`@knyazevai/dsh-api-session-controller` owns the Host `ctx.sessionController` service and the generated Client `session`, `skills`, and `fileReferences` Remote namespaces. It serves Session lifecycle and history, the Host-generation model catalog, workspace-path opening, user-invocable skill discovery, and Agent-scoped file references. Use it through API Gateway when a Client needs operations addressed by a Session.
 
 ## Table of Contents
 
@@ -53,7 +53,7 @@ Fork copies history through the selected completed turn, including its `turn/end
 |---|---:|---|
 | `nativeOpen` | platform-detected | Whether Session workspace paths can be handed to a native desktop opener |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-api-session-controller) is the exhaustive source for accepted fields and their JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-api-session-controller) is the exhaustive source for accepted fields and their JSDoc.
 
 -----
 

@@ -9,7 +9,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { SidebarRightTabRegistry } from '@deepseek-ai/dsh-client-ui-sidebar-right/src/client/tab-registry.ts'
+import { SidebarRightTabRegistry } from '@knyazevai/dsh-client-ui-sidebar-right/src/client/tab-registry.ts'
 import { FILES_ID, FILES_KIND } from '../src/client/definition.tsx'
 import { apply, inject } from '../src/client/index.ts'
 import { apply as hostApply } from '../src/index.ts'

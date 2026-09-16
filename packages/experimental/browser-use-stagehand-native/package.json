@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-experimental-browser-use-stagehand-native",
+  "name": "@knyazevai/dsh-experimental-browser-use-stagehand-native",
   "description": "Experimental Stagehand browser tools with separately configured native models",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -33,36 +33,36 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-browser-use": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-browser-use": "workspace:^",
+    "@knyazevai/dsh-system-prompt": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "4.1.0",
-    "@deepseek-ai/dsh-experimental-browser-use-runtime": "workspace:^",
-    "@deepseek-ai/dsh-mcp-client": "workspace:^",
-    "@deepseek-ai/dsh-util-values": "workspace:^",
+    "@knyazevai/dsh-experimental-browser-use-runtime": "workspace:^",
+    "@knyazevai/dsh-mcp-client": "workspace:^",
+    "@knyazevai/dsh-util-values": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "zod": "^4.4.3",
-    "@deepseek-ai/dsh-subprocess": "workspace:^",
+    "@knyazevai/dsh-subprocess": "workspace:^",
     "@puppeteer/browsers": "3.2.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-include": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
-    "@deepseek-ai/dsh-attachment": "workspace:^",
-    "@deepseek-ai/dsh-attachment-local": "workspace:^",
-    "@deepseek-ai/dsh-browser-use": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-agent-loop": "workspace:^",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
+    "@knyazevai/dsh-attachment": "workspace:^",
+    "@knyazevai/dsh-attachment-local": "workspace:^",
+    "@knyazevai/dsh-browser-use": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-projection": "workspace:^",
+    "@knyazevai/dsh-system-prompt": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^",
     "tsx": "^4.19.2"
   }
 }

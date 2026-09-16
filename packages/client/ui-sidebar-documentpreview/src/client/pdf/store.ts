@@ -1,6 +1,6 @@
 /** Restorable PDF viewing preferences; document objects and canvases remain component-local. */
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-store'
-import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
+import { defineStore, type EngineStoreHandle } from '@knyazevai/dsh-client-store'
+import type { TabId } from '@knyazevai/dsh-client-ui-dockkit'
 
 /** One tab's last visible page. */
 export interface PdfView {

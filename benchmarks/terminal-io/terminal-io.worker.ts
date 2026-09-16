@@ -2,7 +2,7 @@
 import { Buffer } from 'node:buffer'
 import { performance } from 'node:perf_hooks'
 import { Readable } from 'node:stream'
-import type { SubprocessOutcome, SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessOutcome, SubprocessTerminalHandle } from '@knyazevai/dsh-subprocess'
 import { assertBuiltBenchmarkRuntime } from '../support/built-worker.ts'
 import { LocalPtySession } from './session-adapter.ts'
 
@@ -96,7 +96,7 @@ async function measure(capacityBytes: number, mode: string): Promise<TerminalIoR
 }
 
 assertBuiltBenchmarkRuntime(import.meta.url, {
-  '@deepseek-ai/dsh-terminal': import.meta.resolve('@deepseek-ai/dsh-terminal'),
+  '@knyazevai/dsh-terminal': import.meta.resolve('@knyazevai/dsh-terminal'),
 })
 const capacityBytes = Number(process.argv[2])
 const mode = process.argv[3]

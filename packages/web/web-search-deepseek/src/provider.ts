@@ -3,18 +3,18 @@
  * `web_search_20250305` server tool. Each search costs a model turn, but returns structured
  * result blocks; absence of those blocks is an error rather than a prose-scraping fallback.
  * The wire format and native `fetch` client are provider-private and do not use `ctx.llm`.
- * @module @deepseek-ai/dsh-web-search-deepseek/provider
+ * @module @knyazevai/dsh-web-search-deepseek/provider
  */
 
-import { WebError } from '@deepseek-ai/dsh-web'
+import { WebError } from '@knyazevai/dsh-web'
 import type {
   WebSearchProvider,
   WebSearchRequest,
   WebSearchResult,
   WebSearchSource,
-} from '@deepseek-ai/dsh-web'
-import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
-import type {} from '@deepseek-ai/dsh-session'
+} from '@knyazevai/dsh-web'
+import type { CredentialRef } from '@knyazevai/dsh-credentials'
+import type {} from '@knyazevai/dsh-session'
 import type {
   AnthropicError,
   AnthropicResponse,
@@ -76,7 +76,7 @@ export interface DeepSeekSearchLlmRequest {
   }
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
     /** Secret-free auxiliary DeepSeek search request recorded before dispatch. */
     'web/deepseek-search-llm-request': DeepSeekSearchLlmRequest

@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-file-upload",
+  "name": "@knyazevai/dsh-client-file-upload",
   "description": "Agent-scoped browser file upload, streaming intake, and staged receipt service",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -40,7 +40,7 @@
   "dsh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-api-remotes"
+        "@knyazevai/dsh-api-remotes"
       ],
       "platform": "web",
       "immediately": true
@@ -63,22 +63,22 @@
   ],
   "dependencies": {
     "zod": "^4.4.3",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/dsh-brand": "workspace:^"
+    "@knyazevai/dsh-typert-protocol": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-scope": "workspace:^"
+    "@knyazevai/dsh-scope": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-client-connection": "workspace:^",
-    "@deepseek-ai/dsh-commands": "workspace:^",
-    "@deepseek-ai/dsh-scope": "workspace:^",
-    "@deepseek-ai/dsh-util-crypto": "workspace:^",
-    "@deepseek-ai/dsh-api-remotes": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-attachment": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-client-connection": "workspace:^",
+    "@knyazevai/dsh-commands": "workspace:^",
+    "@knyazevai/dsh-scope": "workspace:^",
+    "@knyazevai/dsh-util-crypto": "workspace:^",
+    "@knyazevai/dsh-api-remotes": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-attachment": "workspace:^"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-agent-instructions",
+  "name": "@knyazevai/dsh-agent-instructions",
   "description": "Workspace context loader for AGENTS.md/CLAUDE.md instruction files",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -28,33 +28,33 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-fs": "workspace:^",
-    "@deepseek-ai/dsh-home-paths": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-fs": "workspace:^",
+    "@knyazevai/dsh-home-paths": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-projection": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-util-values": "workspace:^",
+    "@knyazevai/dsh-util-values": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
-    "@deepseek-ai/dsh-fs": "workspace:^",
-    "@deepseek-ai/dsh-fs-local": "workspace:^",
-    "@deepseek-ai/dsh-home-paths": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-llm-deepseek": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-tool-fs": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-agent-loop": "workspace:^",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
+    "@knyazevai/dsh-fs": "workspace:^",
+    "@knyazevai/dsh-fs-local": "workspace:^",
+    "@knyazevai/dsh-home-paths": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-llm-deepseek": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-projection": "workspace:^",
+    "@knyazevai/dsh-system-prompt": "workspace:^",
+    "@knyazevai/dsh-tool-fs": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^"
   }
 }

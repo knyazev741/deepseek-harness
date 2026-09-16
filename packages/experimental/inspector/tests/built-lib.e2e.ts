@@ -54,7 +54,7 @@ describe.skipIf(!built)('experimental Inspector built artifact', () => {
     await symlink(join(packageDirectory, 'node_modules'), dependencies, process.platform === 'win32' ? 'junction' : 'dir')
     linked = true
     const script = `
-      const { startInspector } = await import('@deepseek-ai/dsh-experimental-inspector')
+      const { startInspector } = await import('@knyazevai/dsh-experimental-inspector')
       const { default: WebSocket } = await import('ws')
       globalThis.__builtInspectorProbe = 42
       const inspector = await startInspector({ port: 0, captureFetch: false, startupTimeoutMs: ${String(test.task.timeout)} })

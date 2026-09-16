@@ -3,7 +3,7 @@ description: "dsh Web 客户端的 Client 工具展示插件：完整调用树�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-tool
+# @knyazevai/dsh-client-ui-tool
 
 [English](README.md) | 中文
 
@@ -68,7 +68,7 @@ Chat diff 卡片在折叠前保留九行，足以容纳文件标题、一对删�
 
 Auto 拒绝优先于按工具名选择的专门视图。其通用行保留调用身份、省略原始参数，并且只在显示时归一化存储的理由：去除首尾空白，把行分隔符折叠为空格，结果为空时使用本地化通用理由。Session 与 SDK 错误详情保留原始理由。
 
-terminal model 使用浏览器安全入口 `@deepseek-ai/dsh-spill-policy/notice` 的 `hasSpillNotice`，而非独立的 UI 匹配规则。[spill-policy README](../../spill/spill-policy/README.zh.md#shared-notice-ownership) 负责提示文本的格式化与识别。该检查保守地选择通用输出；匹配的文本无法证明其来源，回放也不改变已记录的结果字节。
+terminal model 使用浏览器安全入口 `@knyazevai/dsh-spill-policy/notice` 的 `hasSpillNotice`，而非独立的 UI 匹配规则。[spill-policy README](../../spill/spill-policy/README.zh.md#shared-notice-ownership) 负责提示文本的格式化与识别。该检查保守地选择通用输出；匹配的文本无法证明其来源，回放也不改变已记录的结果字节。
 </details>
 
 -----

@@ -27,11 +27,11 @@
  * The registration adopts Session stores and injects the mounted seat binding;
  * callers use the service's navigation methods.
  */
-import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
-import type { FloatRect, PaneId, TabId, TabRecord } from '@deepseek-ai/dsh-client-ui-dockkit'
-import { activeDockPaneId, canSplit, findContentTab, dockPaneIds, findTabPane, getPane } from '@deepseek-ai/dsh-client-ui-dockkit'
-import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { randomUUID } from '@knyazevai/dsh-util-crypto'
+import type { FloatRect, PaneId, TabId, TabRecord } from '@knyazevai/dsh-client-ui-dockkit'
+import { activeDockPaneId, canSplit, findContentTab, dockPaneIds, findTabPane, getPane } from '@knyazevai/dsh-client-ui-dockkit'
+import type { BoundActions } from '@knyazevai/dsh-client-ui-slots'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { SidebarRightNavigationParams, SidebarRightResourceParams, SidebarRightTabParamsFor } from './contract/params.ts'
 import { pageAddress } from './contract/seed.ts'
 import type { SidebarRightTabClaim, SidebarRightTabRegistry } from './tab-registry.ts'

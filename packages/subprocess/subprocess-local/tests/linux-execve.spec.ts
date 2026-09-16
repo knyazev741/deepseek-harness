@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 afterEach(() => {
-  vi.doUnmock('@deepseek-ai/dsh-lazy-require')
+  vi.doUnmock('@knyazevai/dsh-lazy-require')
   vi.resetModules()
 })
 
@@ -17,7 +17,7 @@ describe.skipIf(process.platform !== 'linux')('Linux libc execve binding', () =>
       : nativeFcntl)
     const load = vi.fn(() => ({ func }))
     const errno = vi.fn(() => 2)
-    vi.doMock('@deepseek-ai/dsh-lazy-require', () => ({
+    vi.doMock('@knyazevai/dsh-lazy-require', () => ({
       createLazyRequire: () => () => ({ errno, load }),
     }))
 
@@ -67,7 +67,7 @@ describe.skipIf(process.platform !== 'linux')('Linux libc execve binding', () =>
       ? nativeExecve
       : nativeFcntl)
     const errno = vi.fn(() => 9)
-    vi.doMock('@deepseek-ai/dsh-lazy-require', () => ({
+    vi.doMock('@knyazevai/dsh-lazy-require', () => ({
       createLazyRequire: () => () => ({ errno, load: () => ({ func }) }),
     }))
 
@@ -91,7 +91,7 @@ describe.skipIf(process.platform !== 'linux')('Linux libc execve binding', () =>
       ? nativeExecve
       : nativeFcntl)
     const errno = vi.fn(() => 5)
-    vi.doMock('@deepseek-ai/dsh-lazy-require', () => ({
+    vi.doMock('@knyazevai/dsh-lazy-require', () => ({
       createLazyRequire: () => () => ({ errno, load: () => ({ func }) }),
     }))
 

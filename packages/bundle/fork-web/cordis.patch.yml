@@ -1,0 +1,21 @@
+# The dsh-fork-web bundle composes the upstream Web rows and adds exactly one
+# browser plugin row. Host fork rows remain owned by dsh-fork-base so the two
+# overlays can be disabled independently by row id.
+
+- insert:
+    - id: ui-workspace-overlay
+      name: '@knyazevai/dsh-fork-ui-workspace-overlay'
+
+# Use upstream's persisted route selection, with Gonka routes available by default.
+- id: subagent-model-selection-settings
+  config:
+    enabled: true
+    allowedModels:
+      - provider: knyazev-ai
+        model: deepseek-v4-flash
+      - provider: knyazev-ai
+        model: glm-5.3-flash
+      - provider: knyazev-ai
+        model: kimi-2.6
+      - provider: knyazev-ai
+        model: minimax-2.7

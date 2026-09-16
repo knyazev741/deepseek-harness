@@ -2,7 +2,7 @@
  * Surface retention selection and the shared log-recorded compaction
  * transaction for automatic open-turn and manual idle-session compaction.
  *
- * @module @deepseek-ai/dsh-compaction-basic/region
+ * @module @knyazevai/dsh-compaction-basic/region
  */
 
 import { randomUUID } from 'node:crypto'
@@ -13,14 +13,14 @@ import {
   compactCheckpointSource,
   toolPairingBalancedAfter,
   toolPairingBalancedBefore,
-} from '@deepseek-ai/dsh-compaction'
-import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
-import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
-import { createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
-import type { Message, UserMessage } from '@deepseek-ai/dsh-llm'
-import type { TokenMeasurement, TokenMeter } from '@deepseek-ai/dsh-token-meter'
-import { SessionSeq, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+} from '@knyazevai/dsh-compaction'
+import type { CompactionResult } from '@knyazevai/dsh-compaction'
+import type { CommandId } from '@knyazevai/dsh-commands/brand'
+import { createUserMessage, errorChain } from '@knyazevai/dsh-llm'
+import type { Message, UserMessage } from '@knyazevai/dsh-llm'
+import type { TokenMeasurement, TokenMeter } from '@knyazevai/dsh-token-meter'
+import { SessionSeq, type Session, type SessionEvent } from '@knyazevai/dsh-session'
+import type { Agent } from '@knyazevai/dsh-agent'
 import { frameSummary } from './summarizer.ts'
 import type { SummarizationInput, SummaryResult } from './summarizer.ts'
 
@@ -113,12 +113,16 @@ function systemHead(session: Session, headSeq: SessionSeq): SessionEvent<'system
  * @param session - session supplying authoritative current surface positions.
  * @param measurement - unified pressure and surface measurement from the conversation meter.
  * @param retainTokens - minimum recent tail budget retained verbatim.
+ * @param maxInputTokens - maximum conversation tokens one pass may replay to the
+ *   summarizer; `0` keeps the whole region. The budget is soft: the span is the
+ *   shortest prefix exceeding it, and a tool-pair boundary may add one pair.
  * @returns the inclusive positional seq range to compact, or `null`.
  */
 export function selectCompactableRange(
   session: Session,
   measurement: TokenMeasurement,
   retainTokens: number,
+  maxInputTokens = 0,
 ): { start: SessionSeq; end: SessionSeq } | null {
   const pricedNodes = measurement.nodes
   if (pricedNodes.length === 0) return null
@@ -148,10 +152,34 @@ export function selectCompactableRange(
   }
   if (keepFromIdx <= firstIdx) return null
 
+  // A summarization input budget bounds the shadowed span head-ward, so a
+  // huge-context session is compacted in small fast passes instead of one
+  // prefill that can idle-timeout on a slow gateway. The span is the shortest
+  // prefix whose priced tokens exceed the budget — never a pathologically
+  // small slice, which would fail the "summary must be smaller" check — and
+  // the end cut then extends forward until it is tool-pair balanced; the tail
+  // boundary is already balanced, so the extension terminates there.
+  let headEndIdx = keepFromIdx
+  if (maxInputTokens > 0) {
+    let inputTokens = 0
+    headEndIdx = firstIdx
+    for (let index = firstIdx; index < keepFromIdx; index += 1) {
+      // oxlint-disable-next-line typescript/no-non-null-assertion
+      inputTokens += pricedNodes[index]!.tokens
+      headEndIdx = index + 1
+      if (inputTokens > maxInputTokens) break
+    }
+    while (headEndIdx < keepFromIdx
+      // oxlint-disable-next-line typescript/no-non-null-assertion
+      && !toolPairingBalancedAfter(session, surfaceNodes[headEndIdx - 1]!)) {
+      headEndIdx += 1
+    }
+  }
+
   // oxlint-disable-next-line typescript/no-non-null-assertion
   const first = surfaceNodes[firstIdx]!
   // oxlint-disable-next-line typescript/no-non-null-assertion
-  const cutoff = surfaceNodes[keepFromIdx - 1]!
+  const cutoff = surfaceNodes[headEndIdx - 1]!
   return { start: first, end: cutoff }
 }
 

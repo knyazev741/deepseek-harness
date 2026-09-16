@@ -71,7 +71,7 @@ export function installBrowserFixtureHooks() {
 
 export async function apply(ctx) {
   ctx.effect(installBrowserFixtureHooks, 'browser-use-stagehand-native-fixture.module')
-  const provider = await import('@deepseek-ai/dsh-experimental-browser-use-stagehand-native')
+  const provider = await import('@knyazevai/dsh-experimental-browser-use-stagehand-native')
   await ctx.plugin(provider, {
     mode: 'launch', model: { modelName: 'openai/gpt-5.4-mini', apiKey: 'snapshot-placeholder' },
   })

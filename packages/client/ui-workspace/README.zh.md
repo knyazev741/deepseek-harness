@@ -3,7 +3,7 @@ description: "dsh Web 客户端的共享 Workspace 浏览器与选择器插件�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-workspace
+# @knyazevai/dsh-client-ui-workspace
 
 [English](README.md) | 中文
 
@@ -67,7 +67,7 @@ Session 行渲染运行时的实时 `pendingInteraction` 分类：审批显示**
 
 ### 视图状态
 
-Workspace 列表基线就绪后，浏览器持久化的展开状态和手动 Session 顺序记录只保留当前 Workspace id、Ungrouped 和单列表记账。`WorkspaceView.sessionIds` 提供真实 Workspace 的成员关系，而不提供 Session 显示顺序。视图操作要求显式传入当前各记账的顺序。单列表的成员筛选和排序使用 Session id，行渲染只计算一次状态指示。进入手动排序会从当前显示结果一次性记录每个有效记账；对账会保留仍属于该记账的已保存成员、移除已经离开的成员，并按最近更新时间追加新发现的成员。尚无 Session 摘要的新成员会等摘要到达后再加入，而已经保存的位置在摘要暂时缺失时仍会保留。Workspace 重连期间，手动排序会将已观察到的空白 Session 记录到已保存的单列表及已知分组顺序首位，不移除其他已保存成员；完整成员对账等待 Workspace 基线到齐。即使侧边栏收成窄栏或搜索替代列表主体，这项对账也保持挂载。最近更新直接从每份当前列表快照派生，不读取或写入已保存位置；时间相同时按 Session id 稳定排序。共享侧边栏投影会隐藏持久化 Session 摘要中带有 `origin: 'subagent'` 的行；每个可见普通行都会在经不间断的 subagent 谱系可达的任一后代运行时继承蓝色活动指示器。同一项纯派生逻辑还会为分组、平铺与搜索节点读取列表 projection value 中的 Schedule key；本包只使用纯类型依赖 `@deepseek-ai/dsh-schedule/client`，不会导入 Schedule 运行时或 `ui-schedule`。
+Workspace 列表基线就绪后，浏览器持久化的展开状态和手动 Session 顺序记录只保留当前 Workspace id、Ungrouped 和单列表记账。`WorkspaceView.sessionIds` 提供真实 Workspace 的成员关系，而不提供 Session 显示顺序。视图操作要求显式传入当前各记账的顺序。单列表的成员筛选和排序使用 Session id，行渲染只计算一次状态指示。进入手动排序会从当前显示结果一次性记录每个有效记账；对账会保留仍属于该记账的已保存成员、移除已经离开的成员，并按最近更新时间追加新发现的成员。尚无 Session 摘要的新成员会等摘要到达后再加入，而已经保存的位置在摘要暂时缺失时仍会保留。Workspace 重连期间，手动排序会将已观察到的空白 Session 记录到已保存的单列表及已知分组顺序首位，不移除其他已保存成员；完整成员对账等待 Workspace 基线到齐。即使侧边栏收成窄栏或搜索替代列表主体，这项对账也保持挂载。最近更新直接从每份当前列表快照派生，不读取或写入已保存位置；时间相同时按 Session id 稳定排序。共享侧边栏投影会隐藏持久化 Session 摘要中带有 `origin: 'subagent'` 的行；每个可见普通行都会在经不间断的 subagent 谱系可达的任一后代运行时继承蓝色活动指示器。同一项纯派生逻辑还会为分组、平铺与搜索节点读取列表 projection value 中的 Schedule key；本包只使用纯类型依赖 `@knyazevai/dsh-schedule/client`，不会导入 Schedule 运行时或 `ui-schedule`。
 
 ### 悬浮卡片
 

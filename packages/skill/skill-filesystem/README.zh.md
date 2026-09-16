@@ -3,7 +3,7 @@ description: "本地文件系统 skill 提供方，供编写本地 skill 或配�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-skill-filesystem
+# @knyazevai/dsh-skill-filesystem
 
 [English](README.md) | 中文
 
@@ -60,8 +60,8 @@ skill 可以是被扫描根目录顶层的目录 bundle `<name>/SKILL.md`，也�
 与 skill 注册表一起加载该插件；它需要 `ctx.skills`。
 
 ```yaml
-- name: '@deepseek-ai/dsh-skill'
-- name: '@deepseek-ai/dsh-skill-filesystem'
+- name: '@knyazevai/dsh-skill'
+- name: '@knyazevai/dsh-skill-filesystem'
 ```
 
 | 字段 | 默认值 | 含义 |
@@ -74,7 +74,7 @@ skill 可以是被扫描根目录顶层的目录 bundle `<name>/SKILL.md`，也�
 | `watch` | `true` | 监视本地根，并在目录可能变化时使提供方失效 |
 | `bundledSkillDir` | — | 配置后按 rank 600 扫描的随包提供的 skill 根目录 |
 
-其余 `watch*` 字段用于调节 Chokidar 行为——轮询、稳定窗口、间隔、项目上限与符号链接跟随。生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-skill-filesystem)完整列出了所有字段，是这些字段的真源。
+其余 `watch*` 字段用于调节 Chokidar 行为——轮询、稳定窗口、间隔、项目上限与符号链接跟随。生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-skill-filesystem)完整列出了所有字段，是这些字段的真源。
 
 ### 变更检测
 

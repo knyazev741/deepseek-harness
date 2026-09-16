@@ -3,7 +3,7 @@ import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   classifyFileType, fileExtension, FileTypeIcon, type FileTypeKind,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@knyazevai/dsh-client-ui-primitives'
 import css from '../src/FileTypeIcon.module.css'
 
 afterEach(cleanup)

@@ -3,12 +3,12 @@
  * `--session-id`, `--json`, and `--help`, then publishes
  * {@link HEADLESS_STARTUP_SERVICE}. The runner is an ordinary consumer whose
  * lazy config waits for that service.
- * @module @deepseek-ai/dsh-headless/startup
+ * @module @knyazevai/dsh-headless/startup
  */
 
 import { Command, CommanderError } from 'commander'
 import type { Context } from '@deepseek-ai/cordis'
-import { parseCmdline } from '@deepseek-ai/dsh-cmdline'
+import { parseCmdline } from '@knyazevai/dsh-cmdline'
 import { boundJsonLine } from './json-stream.ts'
 import { internals } from './startup-internals.ts'
 

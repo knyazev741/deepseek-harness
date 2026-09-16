@@ -1,0 +1,87 @@
+{
+  "name": "@knyazevai/dsh-fork-ui-workspace-overlay",
+  "description": "Fork-owned Background, pin, unread, source badge, and session-id actions for Workspace rows",
+  "version": "0.1.6-alpha.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/fork/ui-workspace-overlay"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@knyazevai/dsh-api-session-controller",
+        "@knyazevai/dsh-api-remotes",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-workspace",
+        "@knyazevai/dsh-fork-session-source",
+        "@knyazevai/dsh-fork-workspace-session-state"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@knyazevai/dsh-api-remotes": "workspace:^",
+    "@knyazevai/dsh-client-locale": "workspace:^",
+    "@knyazevai/dsh-api-session-controller": "workspace:^",
+    "@knyazevai/dsh-client-ui-workspace": "workspace:^",
+    "@knyazevai/dsh-fork-session-source": "workspace:^",
+    "@knyazevai/dsh-fork-workspace-session-state": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-typert-protocol": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^"
+  },
+  "devDependencies": {
+    "@knyazevai/dsh-api-remotes": "workspace:^",
+    "@knyazevai/dsh-client-locale": "workspace:^",
+    "@knyazevai/dsh-api-session-controller": "workspace:^",
+    "@knyazevai/dsh-client-test-runtime": "workspace:^",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
+    "@knyazevai/dsh-client-ui-slots": "workspace:^",
+    "@knyazevai/dsh-client-ui-workspace": "workspace:^",
+    "@knyazevai/dsh-fork-session-source": "workspace:^",
+    "@knyazevai/dsh-fork-workspace-session-state": "workspace:^",
+    "@knyazevai/dsh-invariants": "workspace:^",
+    "@knyazevai/dsh-typert-protocol": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:^",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "~18.3.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@knyazevai/dsh-session": "workspace:^"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts"
+  ]
+}

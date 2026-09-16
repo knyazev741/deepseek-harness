@@ -1,7 +1,7 @@
 /**
  * Electron child-process entry: boots the desktop project without a listening
  * socket and carries API plus validated Web assets over framed byte pipes.
- * @module @deepseek-ai/dsh-desktop-host
+ * @module @knyazevai/dsh-desktop-host
  */
 
 import { createRequire } from 'node:module'
@@ -21,13 +21,13 @@ import {
   loadOverlayPatches,
   PluginPackages,
   type Profile,
-} from '@deepseek-ai/dsh-app-boot'
-import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
-import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
-import type {} from '@deepseek-ai/dsh-api-gateway'
-import type { ConnectionFetchHandler } from '@deepseek-ai/dsh-client-connection'
-import type {} from '@deepseek-ai/dsh-client-modules'
-import { renderIndexInjections, type IndexInjection } from '@deepseek-ai/dsh-host-webserver'
+} from '@knyazevai/dsh-app-boot'
+import { provideCmdline } from '@knyazevai/dsh-cmdline'
+import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@knyazevai/dsh-launch-environment'
+import type {} from '@knyazevai/dsh-api-gateway'
+import type { ConnectionFetchHandler } from '@knyazevai/dsh-client-connection'
+import type {} from '@knyazevai/dsh-client-modules'
+import { renderIndexInjections, type IndexInjection } from '@knyazevai/dsh-host-webserver'
 import {
   DESKTOP_HOST_PROTOCOL_VERSION,
   DESKTOP_PIPE_CHUNK_BYTES,
@@ -163,7 +163,7 @@ function desktopComposition(
   projectDir: string,
   allowLinkedPackages: boolean,
 ): DesktopComposition {
-  const installAnchor = packageManifestPath(runtimeDir, '@deepseek-ai/dsh')
+  const installAnchor = packageManifestPath(runtimeDir, '@knyazevai/dsh')
   const dshRoot = dirname(installAnchor)
   const profile = loadProfileDirectory('dsh desktop', projectDir, installAnchor)
   for (const layer of profile.layers) {
@@ -191,14 +191,14 @@ function desktopComposition(
 }
 
 function dshVersion(runtimeDir: string): string {
-  const manifest = readManifest(packageManifestPath(runtimeDir, '@deepseek-ai/dsh'))
+  const manifest = readManifest(packageManifestPath(runtimeDir, '@knyazevai/dsh'))
   if (typeof manifest.version !== 'string') throw new Error('dsh desktop: installed dsh manifest has no version')
   return manifest.version
 }
 
 function assetHandler(ctx: Context, runtimeDir: string): ConnectionFetchHandler {
   const require = createRequire(join(runtimeDir, 'package.json'))
-  const distIndex = require.resolve('@deepseek-ai/dsh-web-frontend/dist/index.html')
+  const distIndex = require.resolve('@knyazevai/dsh-web-frontend/dist/index.html')
   const distRoot = realpathSync(dirname(distIndex))
   const renderIndex = async (): Promise<Response> => {
     const rows: IndexInjection[] = [{ kind: 'script', placement: 'head', text: DESKTOP_TRANSPORT_SCRIPT }]

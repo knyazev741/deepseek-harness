@@ -3,7 +3,7 @@ description: "Configure DeepSeek Messages, Chat Completions overrides, reasoning
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-llm-deepseek
+# @knyazevai/dsh-llm-deepseek
 
 English | [中文](README.zh.md)
 
@@ -34,7 +34,7 @@ Choose this adapter for DeepSeek's official API or a gateway that supports the s
 ### Minimal configuration
 
 ```yaml
-- name: '@deepseek-ai/dsh-llm-deepseek'
+- name: '@knyazevai/dsh-llm-deepseek'
   config:
     apiKeyEnv: DEEPSEEK_API_KEY  # credential reference, resolved per request
     reasoningEffort: high        # optional; off | low | high | max
@@ -70,7 +70,7 @@ A request selects the route with `provider: deepseek-official`; the model id pas
 | `fileQuotaCleanupBatch` | `100` | Oldest harness-owned files removed before one quota retry |
 | `retryPolicy` | normal, 5 retries | Provider-owned retry policy executed by `dsh-llm-retry` |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-llm-deepseek) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-llm-deepseek) is the exhaustive source for every accepted field and its JSDoc.
 
 <a id="choose-a-protocol"></a>
 ### Choose a protocol

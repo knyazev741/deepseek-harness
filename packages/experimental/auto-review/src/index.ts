@@ -3,12 +3,12 @@
  * preset. Every native call and every started PTC inner call is reviewed once
  * before its body; the outer `run_code` transport is deliberately excluded.
  *
- * @module @deepseek-ai/dsh-experimental-auto-review
+ * @module @knyazevai/dsh-experimental-auto-review
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-agent-instructions'
+import type { Agent } from '@knyazevai/dsh-agent'
+import type {} from '@knyazevai/dsh-agent-instructions'
 import {
   BlockAssembler,
   createUserMessage,
@@ -18,16 +18,16 @@ import {
   type StreamChunk,
   type ToolCallId,
   type ToolSchema,
-} from '@deepseek-ai/dsh-llm'
-import { deepFreeze } from '@deepseek-ai/dsh-util-values'
-import { AUTO_PRESET } from '@deepseek-ai/dsh-permission-presets'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-subagent'
+} from '@knyazevai/dsh-llm'
+import { deepFreeze } from '@knyazevai/dsh-util-values'
+import { AUTO_PRESET } from '@knyazevai/dsh-permission-presets'
+import type { SessionEvent } from '@knyazevai/dsh-session'
+import type {} from '@knyazevai/dsh-subagent'
 import {
   RUN_CODE_NAME,
   type PreToolDecision,
   type ToolExecution,
-} from '@deepseek-ai/dsh-tools'
+} from '@knyazevai/dsh-tools'
 
 /** Structured error name persisted for every reviewer denial or failure. */
 const AUTO_REVIEW_DENIED_ERROR_NAME = 'AutoReviewDeniedError'

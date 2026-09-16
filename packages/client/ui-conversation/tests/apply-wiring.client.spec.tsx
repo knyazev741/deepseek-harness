@@ -2,11 +2,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   SlotTestRuntime, stubSettingsScope, usePinnedBrowserLanguages,
-} from '@deepseek-ai/dsh-client-test-runtime'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { apply, inject, type ViewTab } from '@deepseek-ai/dsh-client-ui-conversation/client'
+} from '@knyazevai/dsh-client-test-runtime'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
+import type { ObservableSnapshot } from '@knyazevai/dsh-client-store'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import { apply, inject, type ViewTab } from '@knyazevai/dsh-client-ui-conversation/client'
 
 usePinnedBrowserLanguages('zh-CN')
 

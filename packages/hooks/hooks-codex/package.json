@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-hooks-codex",
+  "name": "@knyazevai/dsh-hooks-codex",
   "description": "Bridge plugin: run a Codex hooks.json hook config on the DeepSeek Harness interception seams",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -30,27 +30,27 @@
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-hook-protocol": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-hook-protocol": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^"
+    "@knyazevai/dsh-session-projection": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
-    "@deepseek-ai/dsh-shell": "workspace:^",
-    "@deepseek-ai/dsh-bash-local": "workspace:^",
-    "@deepseek-ai/dsh-subprocess-local": "workspace:^",
-    "@deepseek-ai/dsh-hook-protocol": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-persistence-jsonl": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-agent-loop": "workspace:^",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
+    "@knyazevai/dsh-shell": "workspace:^",
+    "@knyazevai/dsh-bash-local": "workspace:^",
+    "@knyazevai/dsh-subprocess-local": "workspace:^",
+    "@knyazevai/dsh-hook-protocol": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^"
+    "@knyazevai/dsh-session-projection": "workspace:^"
   }
 }

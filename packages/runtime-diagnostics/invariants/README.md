@@ -3,7 +3,7 @@ description: "Runtime invariant checks for live compositions: the registry servi
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-invariants
+# @knyazevai/dsh-invariants
 
 English | [中文](README.zh.md)
 
@@ -36,11 +36,11 @@ Use the registry for compositions that want live diagnostics. [`dsh-sdk-minimal`
 The registry is enabled by default and checks every registered package unless filters say otherwise. Use `enabled` as a global switch, `package_allowlist` to admit only named packages, and `package_blocklist` to exclude packages after allowlist matching — a blocklist match overrides an allowlist match. Patterns are case-sensitive JavaScript regular-expression sources (unanchored unless they supply `^` and `$`), and an invalid, blank, or duplicate entry fails service startup instead of being skipped.
 
 ```yaml
-- name: '@deepseek-ai/dsh-invariants'
+- name: '@knyazevai/dsh-invariants'
   config:
     enabled: true
     package_allowlist:
-      - '^@deepseek-ai/dsh-'
+      - '^@knyazevai/dsh-'
 ```
 
 | Field | Default | Meaning |
@@ -49,7 +49,7 @@ The registry is enabled by default and checks every registered package unless fi
 | `package_allowlist` | `[]` | Regex sources admitting package names; empty admits all |
 | `package_blocklist` | `[]` | Regex sources excluding package names after allowlist matching |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-invariants) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-invariants) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Which checks run
 
@@ -76,8 +76,8 @@ A companion is a normal plugin you mount beside the registry. It declares any se
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
+import InvariantRegistry from '@knyazevai/dsh-invariants'
+import * as SessionInvariant from '@knyazevai/dsh-session/invariant'
 
 declare const ctx: Context
 
@@ -127,7 +127,7 @@ This section explains the design behind the registry; the observable behavior is
 Read these pages when the package-level contract is not enough. They move from the generated service reference to the decision evidence and the group map.
 
 - [Runtime invariants subsystem](../../../docs/subsystems/invariants.md) — the generated reference for `Config`, the installer, the service, and the companion contract.
-- [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-invariants) — every accepted config field and its source declaration.
+- [Generated configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-invariants) — every accepted config field and its source declaration.
 - [Invariant runtime contracts Agent Note](../../../.agents/notes/implemented/architecture/2026-07-19-package-invariant-runtime-contracts.md) — what a runtime invariant may assert and the mechanical gate that enforces companion wiring.
 - [Runtime-diagnostics group map](../../README.md) — adjacent diagnostics packages.
 

@@ -3,7 +3,7 @@ description: "面向与 SSH 子进程共享文件的消费方，说明远端文�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-fs-ssh
+# @knyazevai/dsh-fs-ssh
 
 [English](README.md) | 中文
 

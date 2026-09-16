@@ -29,15 +29,15 @@ describe.skipIf(!built)('built workflow PTC runtime', () => {
       const driver = join(driverRoot, 'driver.mjs')
       await writeFile(driver, `
 import { Context } from '@deepseek-ai/cordis'
-import PtcWorkflowEngine from '@deepseek-ai/dsh-workflow-ptc'
+import PtcWorkflowEngine from '@knyazevai/dsh-workflow-ptc'
 const ctx = new Context()
 try {
   for (const name of ['session', 'session-projection', 'fs-local', 'subprocess-local', 'sandbox-local']) {
-    await ctx.plugin((await import('@deepseek-ai/dsh-' + name)).default, {})
+    await ctx.plugin((await import('@knyazevai/dsh-' + name)).default, {})
   }
-  await ctx.plugin((await import('@deepseek-ai/dsh-sandbox-policy')).default, { mode: 'read-only', workspaceRoot: process.argv[2] })
-  await ctx.plugin((await import('@deepseek-ai/dsh-ptc-runtime-node')).default, {})
-  await ctx.plugin((await import('@deepseek-ai/dsh-subagent')).default, {})
+  await ctx.plugin((await import('@knyazevai/dsh-sandbox-policy')).default, { mode: 'read-only', workspaceRoot: process.argv[2] })
+  await ctx.plugin((await import('@knyazevai/dsh-ptc-runtime-node')).default, {})
+  await ctx.plugin((await import('@knyazevai/dsh-subagent')).default, {})
   let selectedStarts = 0
   ctx.subagents.registerProvider({
     name: 'built-selected',

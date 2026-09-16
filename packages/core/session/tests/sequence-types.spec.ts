@@ -10,7 +10,7 @@ import {
   type SessionHeader,
   type SessionSeq as SessionSeqType,
   type SessionSeqCursor,
-} from '@deepseek-ai/dsh-session'
+} from '@knyazevai/dsh-session'
 
 describe('Session log positions', () => {
   it('admits non-negative safe integers into distinct sequence roles', () => {

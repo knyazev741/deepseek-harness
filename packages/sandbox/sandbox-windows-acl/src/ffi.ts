@@ -1,14 +1,14 @@
 /** ACL/token bindings layered on the shared Win32 process owner. */
 
-import { createLazyRequire } from '@deepseek-ai/dsh-lazy-require'
+import { createLazyRequire } from '@knyazevai/dsh-lazy-require'
 import {
   ERROR_INSUFFICIENT_BUFFER,
   Win32Error,
   extendWin32ProcessBindings,
   isNullPtr,
   throwLastError,
-} from '@deepseek-ai/dsh-win32-process'
-import type { NativePtr, Win32ProcessBindings } from '@deepseek-ai/dsh-win32-process'
+} from '@knyazevai/dsh-win32-process'
+import type { NativePtr, Win32ProcessBindings } from '@knyazevai/dsh-win32-process'
 import * as abi from './win32-abi.ts'
 
 export {
@@ -19,8 +19,8 @@ export {
   isNullPtr,
   throwLastError,
   throwWin32,
-} from '@deepseek-ai/dsh-win32-process'
-export type { NativePtr } from '@deepseek-ai/dsh-win32-process'
+} from '@knyazevai/dsh-win32-process'
+export type { NativePtr } from '@knyazevai/dsh-win32-process'
 
 type Koffi = typeof import('koffi')['default']
 type Ptr = ReturnType<Koffi['pointer']>

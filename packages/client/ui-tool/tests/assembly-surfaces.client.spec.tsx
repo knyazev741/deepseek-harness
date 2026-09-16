@@ -3,17 +3,17 @@ import { toolSessionEvents } from './tool-fixtures.client.ts'
 /** Tool assembly acceptance through the real ui-conversation host. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, waitFor } from '@testing-library/react'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
-import type { TodoItem } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
+import type { ISession } from '@knyazevai/dsh-api-session-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { WorkspaceId } from '@knyazevai/dsh-workspace/types'
+import type { TodoItem } from '@knyazevai/dsh-client-ui-conversation/client'
 import {
   apply as applyChat, inject as injectChat, type ToolResultNode,
-} from '@deepseek-ai/dsh-client-ui-chat/client'
-import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotTestRuntime, TestRemote, usePinnedBrowserLanguages, stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
-import { apply as applyConversation, inject as injectConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
+} from '@knyazevai/dsh-client-ui-chat/client'
+import type { PropsRenderSlots } from '@knyazevai/dsh-client-ui-slots'
+import { SlotTestRuntime, TestRemote, usePinnedBrowserLanguages, stubSettingsScope } from '@knyazevai/dsh-client-test-runtime'
+import { apply as applyConversation, inject as injectConversation } from '@knyazevai/dsh-client-ui-conversation/client'
 import { apply as applyTool, inject as injectTool } from '../src/client/apply.ts'
 
 // The service reads its initial locale from the browser; these specs assert

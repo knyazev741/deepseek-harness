@@ -3,7 +3,7 @@ description: "在全新 Node 进程中运行 TypeScript 程序，使用会话文
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-ptc-runtime-node
+# @knyazevai/dsh-ptc-runtime-node
 
 [English](README.md) | 中文
 
@@ -32,7 +32,7 @@ kind: "package-reference"
 在所需服务可用后，配置提供方条目：
 
 ```yaml
-- name: '@deepseek-ai/dsh-ptc-runtime-node'
+- name: '@knyazevai/dsh-ptc-runtime-node'
   config:
     timeoutMs: 120000
     maxTimeoutMs: 600000
@@ -55,7 +55,7 @@ kind: "package-reference"
 | `nodeExecutable` | 当前 Node 可执行文件 | 在子进程执行世界中解析的可执行文件 |
 | `bootstrapPath` | 包内 bootstrap | 该执行世界中预先安装的构建后 bootstrap 的可选绝对路径 |
 
-[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-ptc-runtime-node)定义可接受的配置字段。`resolve(request)` 补全 cwd、数值或 null 截止选择与执行策略；`run(spec)` 接受这些已解析输入，不补缺省值。
+[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-ptc-runtime-node)定义可接受的配置字段。`resolve(request)` 补全 cwd、数值或 null 截止选择与执行策略；`run(spec)` 接受这些已解析输入，不补缺省值。
 
 ### 执行与结果
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { PtcJsonValue } from '@deepseek-ai/dsh-ptc-runtime'
+import type { PtcJsonValue } from '@knyazevai/dsh-ptc-runtime'
 import { jsonStringBytesUpTo, jsonValueBytesUpTo, truncateJsonStringBytes } from '../src/output-json.ts'
 
 describe('truncateJsonStringBytes', () => {

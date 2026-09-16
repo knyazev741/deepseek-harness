@@ -1,10 +1,10 @@
 /** Session-owned observable state excluding Conversation target data. */
-import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
-import type { FileAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { SubagentAddress } from '@deepseek-ai/dsh-subagent/client'
-import type { RemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
+import type { ContentBlock } from '@knyazevai/dsh-llm/types'
+import type { FileAttachmentRef } from '@knyazevai/dsh-attachment'
+import type { MessageId } from '@knyazevai/dsh-llm/brand'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { SubagentAddress } from '@knyazevai/dsh-subagent/client'
+import type { RemoteFailure } from '@knyazevai/dsh-typert-protocol'
 import type { SessionRequestId } from '../../types.ts'
 
 /** One transient inbox occurrence from the authoritative queue snapshot. */

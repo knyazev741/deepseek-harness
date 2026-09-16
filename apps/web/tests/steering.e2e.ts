@@ -8,9 +8,9 @@ import { join } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
-import { parseSessionLog } from '@deepseek-ai/dsh-llm-replay'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import { expandAssistantStream } from '@deepseek-ai/dsh-llm'
+import { parseSessionLog } from '@knyazevai/dsh-llm-replay'
+import type { SessionEvent } from '@knyazevai/dsh-session'
+import { expandAssistantStream } from '@knyazevai/dsh-llm'
 import {
   assertFixtureInventory, captureExpandedTurnProcessAria, captureStableAria,
   compareOrRefreshGolden, fixtureUserPrompts,

@@ -3,7 +3,7 @@ description: "One-shot task mode for dsh: run a single task from the command lin
 kind: "package-bundle"
 ---
 
-# @deepseek-ai/dsh-headless
+# @knyazevai/dsh-headless
 
 English | [中文](README.zh.md)
 
@@ -47,7 +47,7 @@ The task and run options are supplied through three settings:
 | `sessionId` | `session-<uuid>` | Exact Session identity to adopt; an unknown id fails |
 | `json` | `false` | Project the run as newline-delimited events on stdout |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-headless) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-headless) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Choosing the session identity
 
@@ -117,7 +117,7 @@ Read these pages when you want to go deeper into the shared core, the sibling GU
 - [dsh-base](../base/README.md) — the shared core headless runs on.
 - [dsh-web-app](../web-app/README.md) — the interactive browser sibling for multi-turn work.
 - [dsh-cmdline](../../boot/cmdline/README.md) — how the launcher hands the command line to the app.
-- [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-headless) — every accepted config field and its source declaration.
+- [Generated configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-headless) — every accepted config field and its source declaration.
 
 -----
 

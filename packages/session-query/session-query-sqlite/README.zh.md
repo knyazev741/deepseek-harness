@@ -3,7 +3,7 @@ description: "面向部署方与维护者的 SQLite FTS5 会话历史全文搜�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-session-query-sqlite
+# @knyazevai/dsh-session-query-sqlite
 
 [English](README.md) | 中文
 
@@ -34,8 +34,8 @@ kind: "package-reference"
 ### 最小配置
 
 ```yaml
-- name: '@deepseek-ai/dsh-session'
-- name: '@deepseek-ai/dsh-session-query-sqlite'
+- name: '@knyazevai/dsh-session'
+- name: '@knyazevai/dsh-session-query-sqlite'
   config:
     path: /absolute/path/to/session-search.db
 ```
@@ -52,7 +52,7 @@ kind: "package-reference"
 | `persistedReadConcurrency` | `4` | 继承批量读取的并发持久化日志读取数 |
 | `preparedSessionCacheSize` | `5` | 继承的 `observeSession` 读取器为复用保留的冷 prepared-Session 观察数 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-session-query-sqlite)是每个受支持字段及其 JSDoc 的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-session-query-sqlite)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 ### 搜索行为
 

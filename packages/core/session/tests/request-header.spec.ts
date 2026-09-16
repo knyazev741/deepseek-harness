@@ -1,10 +1,10 @@
 /** Request-header canonicalization, equality, and snapshot folding. */
 
 import { describe, expect, it } from 'vitest'
-import { Session, SessionId, SessionSeq, canonicalHeader, foldRequestHeader, headerEquals } from '@deepseek-ai/dsh-session'
-import type { EpochHeader, SessionEvent } from '@deepseek-ai/dsh-session'
-import { createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import type { ToolSchema } from '@deepseek-ai/dsh-llm'
+import { Session, SessionId, SessionSeq, canonicalHeader, foldRequestHeader, headerEquals } from '@knyazevai/dsh-session'
+import type { EpochHeader, SessionEvent } from '@knyazevai/dsh-session'
+import { createUserMessage, ReasoningEffortId } from '@knyazevai/dsh-llm'
+import type { ToolSchema } from '@knyazevai/dsh-llm'
 
 const CONFIG = { provider: 'mock', model: 'm' }
 

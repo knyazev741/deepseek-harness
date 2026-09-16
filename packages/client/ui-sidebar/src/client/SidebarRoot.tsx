@@ -20,8 +20,8 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FishLogo, IconNewChatOutline16, IconPanelLeftOutline16, Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@knyazevai/dsh-client-ui-primitives'
+import type { InjectFace, PropsRenderSlots, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import type {
   SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps,
 } from './contract/slots.ts'

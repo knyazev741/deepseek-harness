@@ -3,7 +3,7 @@ description: "The SQLite FTS5 full-text search backend for session history, for 
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-session-query-sqlite
+# @knyazevai/dsh-session-query-sqlite
 
 English | [中文](README.zh.md)
 
@@ -34,8 +34,8 @@ Choose it when you want full-text recall over prior sessions with ranking and pa
 ### Minimal configuration
 
 ```yaml
-- name: '@deepseek-ai/dsh-session'
-- name: '@deepseek-ai/dsh-session-query-sqlite'
+- name: '@knyazevai/dsh-session'
+- name: '@knyazevai/dsh-session-query-sqlite'
   config:
     path: /absolute/path/to/session-search.db
 ```
@@ -52,7 +52,7 @@ Choose it when you want full-text recall over prior sessions with ranking and pa
 | `persistedReadConcurrency` | `4` | Concurrent persisted-log reads for inherited batch reads |
 | `preparedSessionCacheSize` | `5` | Cold prepared-Session observations the inherited `observeSession` reader retains for reuse |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-session-query-sqlite) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-session-query-sqlite) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Search behavior
 

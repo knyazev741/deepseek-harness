@@ -1,7 +1,7 @@
 /** A Session header lifetime restores retained Host terminals without saving sidebar layout. */
 import { useEffect, useState, type ReactNode } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
+import type {} from '@knyazevai/dsh-client-ui-conversation/client'
 import type {} from './locales.ts'
 
 /** The plugin coordinates once-per-page recovery; the component only owns an error notice. */

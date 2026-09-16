@@ -5,14 +5,14 @@
  */
 import {
   type SessionListState, type SessionSearchResultItem, type SessionSummary,
-} from '@deepseek-ai/dsh-api-session-controller/client'
-import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
+} from '@knyazevai/dsh-api-session-controller/client'
+import type { WorkspaceId, WorkspaceView } from '@knyazevai/dsh-api-workspace-controller/client'
 import type {
   SessionPendingInteractionBase,
-} from '@deepseek-ai/dsh-client-ui-session/client'
-import type {} from '@deepseek-ai/dsh-schedule/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
+} from '@knyazevai/dsh-client-ui-session/client'
+import type {} from '@knyazevai/dsh-schedule/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import { workspaceTitleOf } from '@knyazevai/dsh-util-workspace-path'
 import {
   indexSubagentDescendants, type SubagentDescendantSummary,
 } from './subagent-lineage.ts'
@@ -37,6 +37,8 @@ export function owningGroupKey(
 /** Pending interaction kinds with dedicated Workspace-row presentation. */
 export type SessionPendingInteractionStatus = 'approval' | 'plan-review' | 'question'
 type SessionPendingInteractions = ReadonlyMap<SessionId, SessionPendingInteractionBase>
+/** Group key for sessions promoted above all Workspace sections. */
+export const PROMOTED_KEY = '__workspace.promoted__'
 
 /** One top-level session row in a group or the flat list. */
 export interface SessionNode {
@@ -75,6 +77,8 @@ export interface GroupNode {
   expanded: boolean
   /** The group contains the selected session (active folder tint; supplied here so the renderer never scans). */
   containsCurrent: boolean
+  /** This synthetic group contains sessions promoted by a list policy. */
+  promoted?: boolean
   /** Visible session rows (empty while the group is folded). */
   sessions: readonly SessionNode[]
 }
@@ -107,6 +111,8 @@ export interface TreeView {
   expandedGroups: readonly string[]
   /** Browser-local order for Sessions without a backing Workspace account. */
   ungroupedOrder?: readonly string[]
+  /** Session ids promoted into the shared top section by list policies. */
+  promotedSessionIds?: readonly SessionId[]
 }
 
 interface Group {
@@ -260,6 +266,7 @@ function groupByWorkspace(
   workspaces: readonly WorkspaceView[],
   archived: ReadonlySet<SessionId>,
   ungroupedOrder: readonly string[] | undefined,
+  promoted: ReadonlySet<SessionId>,
 ): Group[] {
   const groups: Group[] = []
   const accounted = new Set<SessionId>()
@@ -269,6 +276,7 @@ function groupByWorkspace(
       const summary = list.byId[id]
       if (summary === undefined) continue // account may lead the list pull; the row appears when the summary lands
       accounted.add(id)
+      if (promoted.has(id)) continue
       if (!sessionVisible(summary, list.current, archived)) continue
       members.push(summary)
     }
@@ -280,7 +288,7 @@ function groupByWorkspace(
   const stray = list.ids
     .map(id => list.byId[id])
     .filter((s): s is SessionSummary =>
-      s !== undefined && !accounted.has(s.id) && sessionVisible(s, list.current, archived))
+      s !== undefined && !accounted.has(s.id) && !promoted.has(s.id) && sessionVisible(s, list.current, archived))
   if (stray.length > 0) {
     groups.push(buildGroup(
       UNGROUPED_KEY,
@@ -349,12 +357,34 @@ export function deriveGroups(
 ): GroupNode[] {
   const archived = new Set(archivedSessionIds)
   const expandedGroups = new Set(view.expandedGroups)
+  const promotedIds = view.promotedSessionIds ?? []
+  const promoted = new Set(promotedIds)
   const descendants = indexSubagentDescendants(list.byId)
-  const currentGroup = list.current === undefined
-    ? undefined
-    : owningGroupKey(workspaces, list.current)
+  const currentGroup = list.current !== undefined && promoted.has(list.current)
+    ? PROMOTED_KEY
+    : list.current === undefined
+      ? undefined
+      : owningGroupKey(workspaces, list.current)
   const groups: GroupNode[] = []
-  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder)) {
+  const promotedSessions = promotedIds
+    .map(id => list.byId[id])
+    .filter((session): session is SessionSummary =>
+      session !== undefined && sessionVisible(session, list.current, archived))
+  if (promotedSessions.length > 0) {
+    groups.push({
+      key: PROMOTED_KEY,
+      workspaceId: undefined,
+      cwd: undefined,
+      createdAt: undefined,
+      label: '',
+      sessionCount: promotedSessions.length,
+      expanded: true,
+      containsCurrent: currentGroup === PROMOTED_KEY,
+      promoted: true,
+      sessions: promotedSessions.map(session => sessionNode(session, descendants, pendingInteractions)),
+    })
+  }
+  for (const g of groupByWorkspace(list, workspaces, archived, view.ungroupedOrder, promoted)) {
     const expanded = expandedGroups.has(g.key)
     groups.push({
       key: g.key,
@@ -365,6 +395,7 @@ export function deriveGroups(
       sessionCount: g.sessions.length,
       expanded,
       containsCurrent: g.key === currentGroup,
+      promoted: false,
       sessions: expanded
         ? g.sessions.map(session => sessionNode(session, descendants, pendingInteractions))
         : [],

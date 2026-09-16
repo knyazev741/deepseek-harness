@@ -1,5 +1,5 @@
 /** A bounded output queue for one Remote stream generation. */
-import { Deque } from '@deepseek-ai/dsh-deque'
+import { Deque } from '@knyazevai/dsh-deque'
 import type { TerminalFrame } from './types.ts'
 
 /** Slow followers fail explicitly; a later attachment recovers from the screen. */

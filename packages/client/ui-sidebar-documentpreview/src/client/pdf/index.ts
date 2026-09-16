@@ -7,7 +7,7 @@ import { createPdfStore } from './store.ts'
 import { en, zh } from './locales.ts'
 
 /** PDF metadata and keyed body share this package-local implementation identity. */
-export const PDF_BODY_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/pdf'
+export const PDF_BODY_ID = '@knyazevai/dsh-client-ui-sidebar-documentpreview/pdf'
 
 /**
  * Describe the builtin PDF renderer independently from its keyed body slot.

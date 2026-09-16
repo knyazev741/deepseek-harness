@@ -83,10 +83,10 @@ Limits are schema-backed configuration on the Task Surface service. The initial 
 
 The tool definition omits `isConcurrencySafe`. Under the existing tool-registry contract, omission classifies every call as an exclusive ordering barrier; no new `ToolDefinition` field is introduced. The tool is composed only in Web profiles that mount both the Host service and Web renderer. Version 1 supports `native` and `both` tool modes; a `ptc`-only profile does not advertise it because PTC mode dispatch is nested and cannot carry its presentation metadata to the outer result.
 
-The browser-safe domain package imports the type-only `Branded` primitive from `@deepseek-ai/dsh-brand` and owns all three Task Surface IDs. The canonical value is execution-local under the [canonical tool output contract](../../implemented/architecture/2026-07-20-canonical-tool-output-contract.md). Replay therefore uses `output.presentationMeta(args, value)` to persist this tagged payload with `tool/result.meta`:
+The browser-safe domain package imports the type-only `Branded` primitive from `@knyazevai/dsh-brand` and owns all three Task Surface IDs. The canonical value is execution-local under the [canonical tool output contract](../../implemented/architecture/2026-07-20-canonical-tool-output-contract.md). Replay therefore uses `output.presentationMeta(args, value)` to persist this tagged payload with `tool/result.meta`:
 
 ```ts
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@knyazevai/dsh-brand'
 
 type TaskSurfaceId = Branded<'TaskSurfaceId'>
 type TaskSurfaceSubmissionId = Branded<'TaskSurfaceSubmissionId'>
@@ -229,7 +229,7 @@ The capability is split where ownership changes:
 | `packages/core/agent` and `packages/core/agent-loop` | Generic terminal outcome for a claimed next-turn inbox occurrence, allowing a Host observer to distinguish durable admission from discard without Task Surface-specific types |
 | `packages/task-surface/task-surface` | Browser-safe model, branded IDs, correlation and pending types, parser, limits, submission validator/formatter, Session event extension, projection unit, and Host service contract |
 | `packages/task-surface/tool-task-surface` | `show_task_surface`, canonical output, presentation metadata, generic render intent, active-Surface check, and `concludeTurn()` behavior |
-| `packages/client/runtime` | Generic queued-message `source` projection and Session-scoped active-projection access |
+| `packages/api/session-controller` | Generic queued-message `source` projection and Session-scoped active-projection access |
 | `packages/client/ui-primitives` | Task Surface-agnostic `MarkdownText.remoteImages` policy, including the `alt-only` image branch and URL-policy tests |
 | `packages/client/ui-task-surface` | Static actionable `TaskSurfaceDock`, read-only keyed transcript row, declarative Web renderer that consumes the Task Surface model and `MarkdownText` in `alt-only` mode, per-Session draft store, and submit client |
 | `packages/host/apiproxy` | Typed active-read/submit/dismiss transport, user-source augmentation and carriage, queue-action restrictions, and routing of claim and terminal outcomes; delegates validation, pending coordination, and admission to the Task Surface service |

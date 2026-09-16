@@ -4,12 +4,12 @@
  * reaches a Host-only symbol, so a Client compilation face reads the same
  * `commands/change` signature the Host emits.
  *
- * @module @deepseek-ai/dsh-commands/types
+ * @module @knyazevai/dsh-commands/types
  */
 
-import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
+import type { SessionSeq } from '@knyazevai/dsh-session/types'
 import type { CommandDefinitionId, CommandId } from './brand.ts'
-import type { EncodedImageAttachment } from '@deepseek-ai/dsh-attachment/types'
+import type { EncodedImageAttachment } from '@knyazevai/dsh-attachment/types'
 
 /** One browser-submitted command attachment: encoded image input or a staged file receipt. */
 export type CommandSubmitAttachment =
@@ -90,7 +90,7 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
     /**
      * A resolved slash command entered its handler. Log-only (never model
@@ -113,7 +113,7 @@ declare module '@deepseek-ai/dsh-session/types' {
       commandId: CommandId
       kind: 'success' | 'error'
       text?: string
-      sourceEventSeq?: import('@deepseek-ai/dsh-session/types').SessionSeq
+      sourceEventSeq?: import('@knyazevai/dsh-session/types').SessionSeq
     }
   }
 }

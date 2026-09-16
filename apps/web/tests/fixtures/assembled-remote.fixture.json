@@ -16,7 +16,73 @@
           "running": false,
           "blank": false,
           "parentSessionId": "fx-alpha",
-          "cwd": "/tmp/fixture"
+          "cwd": "/tmp/fixture",
+          "projections": {
+            "asOfSeq": -1,
+            "values": {
+              "modelSelection": {
+                "lastUsed": null,
+                "next": null
+              },
+              "todos": null,
+              "permissions": {
+                "options": [
+                  {
+                    "value": "workspace-write",
+                    "name": "workspace-write",
+                    "description": "Write inside the workspace and permitted temporary directories; wider retries require approval."
+                  },
+                  {
+                    "value": "danger-full-access",
+                    "name": "danger-full-access",
+                    "description": "Full file access without approval prompts."
+                  }
+                ],
+                "currentValue": "workspace-write"
+              },
+              "plan": {
+                "active": false,
+                "pending": false
+              },
+              "goal": null,
+              "tokenUsage": {
+                "uncachedInputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0
+              },
+              "contextPressure": {},
+              "contextBreakdown": {
+                "systemTokens": 0,
+                "toolsTokens": 0,
+                "messageTokens": 0
+              },
+              "sessionStats": {
+                "turns": 0,
+                "steps": 0,
+                "llmMs": 0,
+                "toolMs": 0,
+                "ttftMs": 0,
+                "ttftSteps": 0,
+                "decodeMs": 0,
+                "decodeTokens": 0
+              },
+              "imageLimits": {
+                "maxImageBytes": 5242880,
+                "maxImagesPerMessage": 20,
+                "maxMessageImageBytes": 104857600,
+                "maxImagePixels": 40000000,
+                "maxImageDimension": 2000,
+                "mediaTypes": [
+                  "image/png",
+                  "image/jpeg",
+                  "image/webp",
+                  "image/gif"
+                ]
+              },
+              "forkSessionSource": "github-actions"
+            }
+          }
         },
         {
           "sessionId": "fx-gamma",
@@ -201,7 +267,7 @@
         }
       },
       {
-        "definitionId": "@deepseek-ai/dsh-command-goal",
+        "definitionId": "@knyazevai/dsh-command-goal",
         "name": "goal",
         "description": "Set or view the goal for a long-running task",
         "input": {
@@ -210,7 +276,7 @@
         }
       },
       {
-        "definitionId": "@deepseek-ai/dsh-permission-presets",
+        "definitionId": "@knyazevai/dsh-permission-presets",
         "name": "permission",
         "description": "Switch the permission preset (sandbox mode + approval policy)",
         "input": {
@@ -218,7 +284,7 @@
         }
       },
       {
-        "definitionId": "@deepseek-ai/dsh-plan-mode",
+        "definitionId": "@knyazevai/dsh-plan-mode",
         "name": "plan",
         "description": "Enter or leave plan mode",
         "input": {
@@ -420,7 +486,8 @@
                 "image/webp",
                 "image/gif"
               ]
-            }
+            },
+            "forkSessionSource": "github-actions"
           }
         },
         "fx-gamma": {

@@ -1,7 +1,7 @@
 /** Select a DeepSeek wire implementation from one validated configuration generation. */
-import { assertNever } from '@deepseek-ai/dsh-util-values'
-import { LlmAdapter } from '@deepseek-ai/dsh-llm'
-import type { GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm'
+import { assertNever } from '@knyazevai/dsh-util-values'
+import { LlmAdapter } from '@knyazevai/dsh-llm'
+import type { GenerateOptions, PreparedAdapterCall, StreamChunk } from '@knyazevai/dsh-llm'
 import type { DeepSeekAdapterOptions } from './common/types.ts'
 import { ChatCompletionsAdapter } from './protocols/chat-completions/adapter.ts'
 import { DeepSeekFileStore } from './common/file-store.ts'

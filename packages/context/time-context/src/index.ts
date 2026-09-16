@@ -2,17 +2,17 @@
  * Opt-in request clock context. Eligible steps add durable,
  * source-attributed time readings to the request history.
  *
- * @module @deepseek-ai/dsh-time-context
+ * @module @knyazevai/dsh-time-context
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { UserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionSeq } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-session-projection'
+import type { Agent, PreStepDecision } from '@knyazevai/dsh-agent'
+import { createUserMessage } from '@knyazevai/dsh-llm'
+import type { UserMessage } from '@knyazevai/dsh-llm'
+import { SessionSeq } from '@knyazevai/dsh-session'
+import type {} from '@knyazevai/dsh-session-projection'
 import {
   deriveBrowserTimeZoneContext,
   renderBrowserTimeZoneContext,
@@ -23,7 +23,7 @@ import { createTimestampFormatter, formatTimestamp } from './timestamp.ts'
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'time-context'
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
+declare module '@knyazevai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
     /** Latest time-context readings. */
     timeContext: TimeContextProjection

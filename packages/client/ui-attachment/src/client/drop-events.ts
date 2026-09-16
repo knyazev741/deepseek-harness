@@ -1,5 +1,5 @@
 /** Document drag-and-drop listeners owned by one mounted attachment view. */
-import type { ComposerAttachmentsProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ComposerAttachmentsProps } from '@knyazevai/dsh-client-ui-conversation/client'
 
 /**
  * Install one attachment view's file-drop listeners.

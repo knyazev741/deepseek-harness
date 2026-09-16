@@ -6,12 +6,12 @@
  * derives them from its log, and builders for the `session/control` queue
  * frame and the attachment references the Host's log carries.
  */
-import { AttachmentId, type FileAttachmentRef, type ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
-import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
-import { ok, type RemoteMock, type RemoteTable, type StreamScript, type UnaryRuleFn } from '@deepseek-ai/dsh-remote-mock'
-import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
-import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import { AttachmentId, type FileAttachmentRef, type ImageAttachmentRef } from '@knyazevai/dsh-attachment'
+import type { ContentBlock } from '@knyazevai/dsh-llm/types'
+import type { MessageId } from '@knyazevai/dsh-llm/brand'
+import { ok, type RemoteMock, type RemoteTable, type StreamScript, type UnaryRuleFn } from '@knyazevai/dsh-remote-mock'
+import type { SessionEvent, SessionId } from '@knyazevai/dsh-session/types'
+import type { RemoteFailure, RemoteResult } from '@knyazevai/dsh-typert-protocol'
 import type {
   SessionAssistantStreamBaseline, SessionControlFrame, SessionFollowFrame, SessionFollowRequest,
   SessionPage, SessionPageRequest, SessionQueuedItem, SessionRequestId,

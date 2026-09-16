@@ -1,10 +1,10 @@
 /**
  * The per-session storage handle: one open channel onto a stored session's
  * append-only event log, returned by `SessionPersistence.create`/`open`.
- * @module @deepseek-ai/dsh-session-persistence/handle
+ * @module @knyazevai/dsh-session-persistence/handle
  */
 
-import type { SessionEvent, SessionHeader, SessionId, SessionLogOffset, SessionSeedEventState } from '@deepseek-ai/dsh-session'
+import type { SessionEvent, SessionHeader, SessionId, SessionLogOffset, SessionSeedEventState } from '@knyazevai/dsh-session'
 
 /**
  * Log access granted by an open. `write` is read-write: the session's single

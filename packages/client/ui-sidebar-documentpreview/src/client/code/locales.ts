@@ -1,7 +1,7 @@
 /** Locale-owned code renderer name and CodeBlock controls. */
-import type {} from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@knyazevai/dsh-client-ui-slots'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Code document implementation name and copy controls. */
     sidebarCodePreview: keyof typeof zh

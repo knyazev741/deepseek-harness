@@ -2,8 +2,8 @@
 // The input order is authoritative; lineage only makes each child adjacent to its parent.
 // Orphaned lineage degrades to root level; cycles fail soft and emit as roots.
 
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { SessionProjectionMap } from '@knyazevai/dsh-session-projection/types'
 import type { SessionSummary } from '../../types.ts'
 
 /** Host list summary enriched with the latest Session Controller title projection. */
@@ -11,6 +11,8 @@ export interface TitledSessionSummary extends SessionSummary {
   title?: string
   /** Current host-computed projection values for list consumers. */
   projectionValues?: Readonly<Partial<SessionProjectionMap>>
+  /** Highest host projection sequence observed for this row. */
+  projectionAsOfSeq?: number
 }
 
 /** One flattened session-list row with lineage depth. */
@@ -27,6 +29,8 @@ export interface SessionListEntry {
   cwd?: string
   /** Current host-computed projection values for list consumers. */
   projectionValues?: Readonly<Partial<SessionProjectionMap>>
+  /** Highest host projection sequence observed for this row. */
+  projectionAsOfSeq?: number
   /** Finished running while not selected and not yet opened — the sidebar's green "done" reminder (clears on select or the next run). */
   completed: boolean
   /** Lineage indent depth: root = 0; the UI just multiplies by the indent width. */

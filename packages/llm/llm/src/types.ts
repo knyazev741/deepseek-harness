@@ -4,8 +4,8 @@
  * mapped interfaces make the content, source, and finish unions extensible.
  */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
+import type { Branded } from '@knyazevai/dsh-brand'
+import type { FileAttachmentRef, ImageAttachmentRef } from '@knyazevai/dsh-attachment'
 import type { ToolCallId, ProviderRequestId, ReasoningEffortId } from './brand.ts'
 import type { Message } from './message.ts'
 
@@ -285,7 +285,7 @@ export interface LlmModelDiscoveryOperation extends LlmModelDiscoveryRequest {
   signal?: AbortSignal
 }
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@knyazevai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** A draft provider interrogation refused or failed. */
     'llm/model-discovery-rejected': {

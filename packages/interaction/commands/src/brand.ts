@@ -1,15 +1,15 @@
 /**
  * Command definition identities and execution ids for discovery and lifecycle pairing.
  *
- * The `Branded<B>` primitive lives in `@deepseek-ai/dsh-brand`; this module
+ * The `Branded<B>` primitive lives in `@knyazevai/dsh-brand`; this module
  * is a pure type/constructor outlet (no cordis imports, no module
  * augmentation) so wire and client programs can name the brand without
  * loading the host plugin's Context merges — the `dsh-llm/brand` shape.
  *
- * @module @deepseek-ai/dsh-commands/brand
+ * @module @knyazevai/dsh-commands/brand
  */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@knyazevai/dsh-brand'
 
 /** Stable, plugin-owned identity of a command definition, independent of its name and copy. */
 export type CommandDefinitionId = Branded<'CommandDefinitionId'>

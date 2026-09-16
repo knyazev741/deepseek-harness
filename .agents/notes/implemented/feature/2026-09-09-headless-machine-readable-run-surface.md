@@ -22,7 +22,7 @@ Three additions extend the app-owned command line that [Apps own their command l
 
 A per-run `--model` override is deliberately out of scope; the composition default stays authoritative.
 
-The product change is confined to `packages/bundle/headless`: `src/startup.ts`, `src/index.ts`, the new `src/json-stream.ts`, the package manifest and `tsconfig.json`, and its tests. Around it, the product-profile expectation test in `apps/cli/tests/profiles/headless/tests/headless.expected.e2e.ts` covers both output modes end to end and adds one optional caller-owned `cwd` to the `packages/test-support/loader-smoke` harness so two wakes can share a world. `scripts/check-workspace-constraints.ts` and the package manifest publish the shared `lib/json-stream-*.js` chunk both entries import, and `pnpm-lock.yaml` records the new `@deepseek-ai/dsh-session-query` workspace link. No core session, persistence, session-controller, base composition, or launcher file changes.
+The product change is confined to `packages/bundle/headless`: `src/startup.ts`, `src/index.ts`, the new `src/json-stream.ts`, the package manifest and `tsconfig.json`, and its tests. Around it, the product-profile expectation test in `apps/cli/tests/profiles/headless/tests/headless.expected.e2e.ts` covers both output modes end to end and adds one optional caller-owned `cwd` to the `packages/test-support/loader-smoke` harness so two wakes can share a world. `scripts/check-workspace-constraints.ts` and the package manifest publish the shared `lib/json-stream-*.js` chunk both entries import, and `pnpm-lock.yaml` records the new `@knyazevai/dsh-session-query` workspace link. No core session, persistence, session-controller, base composition, or launcher file changes.
 
 ### Command-line contract
 

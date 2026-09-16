@@ -1,6 +1,6 @@
 /** Opaque webhook identities shared by adapters, rules, and Session message sources. */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@knyazevai/dsh-brand'
 
 /** Identifies one programmatic webhook rule. */
 export type WebhookRuleId = Branded<'WebhookRuleId'>

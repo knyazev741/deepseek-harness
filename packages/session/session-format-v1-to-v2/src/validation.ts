@@ -1,17 +1,18 @@
+import { FORK_EVENT_DISPOSITIONS } from '@knyazevai/dsh-session-format-v0-to-v1'
 import { isAbsolute } from 'node:path'
 import {
   SessionFormatError,
   SessionFormatUnsupportedMigrationError,
   sessionFormatCount,
   sessionFormatSafeInteger,
-} from '@deepseek-ai/dsh-session-format'
+} from '@knyazevai/dsh-session-format'
 import type {
   SessionFormatArtifact,
   SessionFormatHeader,
   SessionFormatJsonObject,
   SessionFormatJsonValue,
-} from '@deepseek-ai/dsh-session-format'
-import { assertReleasedArtifactRelationships } from '@deepseek-ai/dsh-session-format-v0-to-v1'
+} from '@knyazevai/dsh-session-format'
+import { assertReleasedArtifactRelationships } from '@knyazevai/dsh-session-format-v0-to-v1'
 import { RELEASED_V2_EVENT_DISPOSITIONS } from './dispositions.ts'
 
 const HEADER_REQUIRED = ['version', 'id', 'createdAt', 'isSeeded', 'delegationDepth'] as const
@@ -66,7 +67,7 @@ function validateReleasedV2Artifact(
     const record = releasedV2Record(event, `format v2 event ${index}`)
     const type = record['type']
     if (typeof type !== 'string') throw new SessionFormatError(`format v2 event ${index} type must be a string`)
-    const disposition = RELEASED_V2_EVENT_DISPOSITIONS[type]
+    const disposition = RELEASED_V2_EVENT_DISPOSITIONS[type] ?? FORK_EVENT_DISPOSITIONS[type]
     const installed = knownEventTypes?.has(type) === true
     const ignorableUnknown = disposition === undefined && record['ignorable'] === true
     if (mode === 'current' && disposition === undefined && !installed && !ignorableUnknown) {

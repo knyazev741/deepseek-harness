@@ -3,7 +3,7 @@ description: "Run Cua Driver computer-use tools from its native npm SDK, with du
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-experimental-computer-use-cua-driver-native
+# @knyazevai/dsh-experimental-computer-use-cua-driver-native
 
 English | [中文](README.zh.md)
 
@@ -30,8 +30,8 @@ Mount the provider in a composition that already supplies the tool registry and 
 ### Minimal configuration
 
 ```yaml
-- name: '@deepseek-ai/dsh-computer-use'
-- name: '@deepseek-ai/dsh-experimental-computer-use-cua-driver-native'
+- name: '@knyazevai/dsh-computer-use'
+- name: '@knyazevai/dsh-experimental-computer-use-cua-driver-native'
 ```
 
 The provider has no configuration fields. It loads the exact Cua Driver npm version declared in [package.json](package.json) and uses its same-process defaults. Native import, runtime initialization, malformed catalog, duplicate tool name, or occupied computer-use registration failures reject activation and roll back owned resources. The registered provider name is `cua-driver-native`.

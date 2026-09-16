@@ -1,5 +1,5 @@
 /** Shell selection and executable verification use the target execution provider. */
-import { SubprocessExecutableNotFoundError, type SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
+import { SubprocessExecutableNotFoundError, type SubprocessRuntime } from '@knyazevai/dsh-subprocess'
 import type { TerminalShell } from './types.ts'
 
 /**

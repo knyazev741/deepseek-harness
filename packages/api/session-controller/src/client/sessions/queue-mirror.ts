@@ -1,6 +1,6 @@
-import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
+import type { ContentBlock } from '@knyazevai/dsh-llm/types'
 import type { SessionQueuedItem } from '../../types.ts'
-import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
+import type { SessionEvent } from '@knyazevai/dsh-session/types'
 import type { QueuedMessage } from '../contract/snapshot.ts'
 
 const QUEUE_PREVIEW_CHARS = 200
@@ -23,7 +23,7 @@ function textOf(content: readonly ContentBlock[]): string | null {
 
 type QueueItems = readonly SessionQueuedItem[]
 
-/** Authoritative transient queue projection and durable steering handoff. */
+/** Authoritative transient queue projection with exact durable-message retirement. */
 export class SessionQueueMirror {
   private current: readonly QueuedMessage[] = []
 
@@ -55,15 +55,14 @@ export class SessionQueueMirror {
   }
 
   /**
-   * Retire a transient steering row once its durable message enters the log.
+   * Retire one transient row once its exact message enters the durable log.
    * @param event - newly contiguous durable Session event.
    * @returns whether the projection changed.
    */
   acceptDurable(event: SessionEvent): boolean {
     if (event.type !== 'user/message') return false
     const messageId = event.data.id
-    const index = this.current.findIndex(item =>
-      item.placement === 'steering' && item.messageId === messageId)
+    const index = this.current.findIndex(item => item.messageId === messageId)
     if (index < 0) return false
     this.current = this.current.filter((_item, candidate) => candidate !== index)
     return true

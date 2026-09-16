@@ -2,11 +2,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import ComputerUseRegistry from '@deepseek-ai/dsh-computer-use'
-import { ComputerUseProviderName } from '@deepseek-ai/dsh-computer-use/brand'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import ComputerUseRegistry from '@knyazevai/dsh-computer-use'
+import { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/brand'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import { ToolCallId } from '@knyazevai/dsh-llm'
 import * as NativeProvider from '../src/index.ts'
 import { catalog, fixture, resetFixture } from './fixtures/cua-driver.ts'
 

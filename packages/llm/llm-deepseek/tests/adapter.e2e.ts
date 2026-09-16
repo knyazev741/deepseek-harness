@@ -6,11 +6,11 @@ import { randomBytes } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import LlmRuntime, { createUserMessage, ToolCallId, ReasoningEffortId, createMessage, createSystemMessage } from '@deepseek-ai/dsh-llm'
-import type { Message, ToolSchema } from '@deepseek-ai/dsh-llm'
-import AttachmentStore, { AttachmentId, ImageVariantId } from '@deepseek-ai/dsh-attachment'
-import LocalAttachments from '@deepseek-ai/dsh-attachment-local'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import LlmRuntime, { createUserMessage, ToolCallId, ReasoningEffortId, createMessage, createSystemMessage } from '@knyazevai/dsh-llm'
+import type { Message, ToolSchema } from '@knyazevai/dsh-llm'
+import AttachmentStore, { AttachmentId, ImageVariantId } from '@knyazevai/dsh-attachment'
+import LocalAttachments from '@knyazevai/dsh-attachment-local'
 import type {
   ImageAttachmentLimits,
   ImageAttachmentRef,
@@ -18,14 +18,14 @@ import type {
   RequestImageAttachment,
   SaveImageAttachment,
   StoredImageAttachment,
-} from '@deepseek-ai/dsh-attachment'
-import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import DeepSeekLlmApiExtensionRegistry from '@deepseek-ai/dsh-deepseek-llm-api-extensions'
-import * as PluginPackageInventoryDeepSeek from '@deepseek-ai/dsh-plugin-package-inventory-deepseek'
-import * as SessionLogDeepSeek from '@deepseek-ai/dsh-session-log-deepseek'
-import * as LlmDeepSeek from '@deepseek-ai/dsh-llm-deepseek'
-import type { Config } from '@deepseek-ai/dsh-llm-deepseek'
+} from '@knyazevai/dsh-attachment'
+import { LocalCredentialProvider } from '@knyazevai/dsh-credentials-local'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import DeepSeekLlmApiExtensionRegistry from '@knyazevai/dsh-deepseek-llm-api-extensions'
+import * as PluginPackageInventoryDeepSeek from '@knyazevai/dsh-plugin-package-inventory-deepseek'
+import * as SessionLogDeepSeek from '@knyazevai/dsh-session-log-deepseek'
+import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek'
+import type { Config } from '@knyazevai/dsh-llm-deepseek'
 import type { WireMessage, WireRequest } from '../src/protocols/chat-completions/types.ts'
 import { assemble, type AssembledResult } from './assemble.ts'
 

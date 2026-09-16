@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-plugin-package-inventory-deepseek",
+  "name": "@knyazevai/dsh-plugin-package-inventory-deepseek",
   "description": "Active Loader-backed plugin package inventory for official DeepSeek LLM API requests",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -32,32 +32,32 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-presets": "workspace:^",
-    "@deepseek-ai/dsh-deepseek-llm-api-extensions": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-agent-presets": "workspace:^",
+    "@knyazevai/dsh-deepseek-llm-api-extensions": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-agent-presets": {
+    "@knyazevai/dsh-agent-presets": {
       "optional": true
     }
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-app-boot": "workspace:^",
+    "@knyazevai/dsh-app-boot": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-include": "workspace:^",
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-presets": "workspace:^",
-    "@deepseek-ai/dsh-deepseek-llm-api-extensions": "workspace:^",
-    "@deepseek-ai/dsh-scope": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-agent-presets": "workspace:^",
+    "@knyazevai/dsh-deepseek-llm-api-extensions": "workspace:^",
+    "@knyazevai/dsh-scope": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-projection": "workspace:^"
   }
 }

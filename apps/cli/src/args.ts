@@ -5,14 +5,14 @@
  * patch overlays to apply, and the config dumps — and hands **everything after
  * its own flags** to the booted tree verbatim, where injected app plugins parse
  * their own flag families and print their own `--help` (see
- * `@deepseek-ai/dsh-cmdline`). Launcher flags therefore come first: the first
+ * `@knyazevai/dsh-cmdline`). Launcher flags therefore come first: the first
  * token this parser does not recognize starts the inner arguments, so
  * `dsh --profile tui --resume abc` boots the tui profile with `--resume abc`,
  * and `dsh --profile web -h` prints the web app's help, not this one's.
  *
  * `web` is a hardcoded alias for `--profile web`; `plugin` manages a profile's
  * plugin dependencies by forwarding to pnpm.
- * @module @deepseek-ai/dsh/args
+ * @module @knyazevai/dsh/args
  */
 
 import { Command, CommanderError } from 'commander'
@@ -172,7 +172,9 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     }
   }
 
-  const web = program.command('web').description('boot the web profile (alias of --profile web); the web app\'s own flags follow')
+  const webProfile = process.env.DSH_REPOSITORY_WEB_PROFILE ?? 'fork-web'
+  if (webProfile === '') program.error('error: DSH_REPOSITORY_WEB_PROFILE needs a profile name')
+  const web = program.command('web').description('boot the fork-web profile (alias of --profile fork-web); the web app\'s own flags follow')
   web
     .helpOption(false)
     .allowUnknownOption()
@@ -184,7 +186,7 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     .option('--dump-default-config', 'print the web profile\'s bundle layers (no user layer) and exit')
     .action((args: string[], options: BootOptions) => {
       rejectParentOptions('web')
-      resolved = resolveBoot(web, 'web', options, args)
+      resolved = resolveBoot(web, webProfile, options, args)
     })
 
   const plugin = program.command('plugin').description('manage a profile\'s plugins by forwarding the remaining arguments to pnpm in the profile directory')

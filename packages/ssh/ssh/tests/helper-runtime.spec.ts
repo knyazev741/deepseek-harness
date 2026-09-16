@@ -1,7 +1,7 @@
 /** Real helper dispatch over private in-memory transport, without changing the Harness process cwd. */
 import { symlink, writeFile } from 'node:fs/promises'
 import { describe, expect, it, vi } from 'vitest'
-import { LocalSandboxProvider } from '@deepseek-ai/dsh-sandbox-local'
+import { LocalSandboxProvider } from '@knyazevai/dsh-sandbox-local'
 import { z } from 'zod'
 import { createHelperHarness as helper } from './fixtures/helper.ts'
 import { targetSchema, writeResultSchema, editResultSchema, infoSchema, entriesSchema } from '../src/schemas.ts'

@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-home-paths",
+  "name": "@knyazevai/dsh-home-paths",
   "description": "Shared filesystem path helpers for the DeepSeek Harness",
   "version": "0.1.6-alpha.1",
   "publishConfig": {

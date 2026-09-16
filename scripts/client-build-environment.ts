@@ -280,6 +280,7 @@ export function writeClientBuildRecord(
   root: string,
   environment: ClientBuildEnvironment,
 ): ClientBuildRecord {
+  assertWebThemeArtifact(root)
   const record: ClientBuildRecord = {
     formatVersion: CLIENT_BUILD_RECORD_FORMAT,
     environment: clientBuildEnvironment(environment),
@@ -289,6 +290,16 @@ export function writeClientBuildRecord(
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`)
   return record
+}
+
+/** Fail a complete build whose static or dynamic Web output lost the shell theme. */
+function assertWebThemeArtifact(root: string): void {
+  const sheets = globSync('apps/web/dist/**/*.css', { cwd: root })
+  const hasThemeSheet = sheets.some(path => readFileSync(resolve(root, path), 'utf8').includes('--dsw-font-family:'))
+  const dynamicThemeBundles = globSync('packages/client/ui-theme/lib/client.js', { cwd: root })
+  const hasDynamicTheme = dynamicThemeBundles.some(path => readFileSync(resolve(root, path), 'utf8').includes('--dsw-font-family:'))
+  const hasTheme = hasThemeSheet || hasDynamicTheme
+  if (!hasTheme) throw new Error('Web bundle is missing the shell theme')
 }
 
 /**

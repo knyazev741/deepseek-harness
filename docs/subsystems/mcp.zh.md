@@ -21,7 +21,7 @@
 <a id="configuration"></a>
 ## 配置
 
-MCP 服务器需要主动配置。在目标 Cordis 作用域中，为每台服务器配置一个 `@deepseek-ai/dsh-mcp-client` 条目。每个随附 profile 都提供[工具注册表](tools.zh.md)，并统一挂载共享资源服务一次；用户只需配置客户端条目。调用方没有可见的已配置服务器时，在 native 或 PTC 模式下都不会获得 MCP 提示词文本或工具。
+MCP 服务器需要主动配置。在目标 Cordis 作用域中，为每台服务器配置一个 `@knyazevai/dsh-mcp-client` 条目。每个随附 profile 都提供[工具注册表](tools.zh.md)，并统一挂载共享资源服务一次；用户只需配置客户端条目。调用方没有可见的已配置服务器时，在 native 或 PTC 模式下都不会获得 MCP 提示词文本或工具。
 
 | 选择 | 配置维护位置 |
 |---|---|
@@ -31,7 +31,7 @@ MCP 服务器需要主动配置。在目标 Cordis 作用域中，为每台服�
 | 服务器指令大小限制 | 客户端 `maxInstructionBytes`；组合提供[系统提示词装配](system-prompt.zh.md) |
 | 权限决策和受支持的图像输出 | [工具执行](tools.zh.md)和[附件](attachment.zh.md) |
 
-协议协商遵循 SDK 支持的修订版；产品没有强制指定协议修订版的设置。[配置目录](../config-catalog.zh.md#deepseek-aidsh-mcp-client) 列出客户端接受的字段和默认值。
+协议协商遵循 SDK 支持的修订版；产品没有强制指定协议修订版的设置。[配置目录](../config-catalog.zh.md#knyazevaidsh-mcp-client) 列出客户端接受的字段和默认值。
 
 -----
 
@@ -60,7 +60,7 @@ stdio 和 Streamable HTTP 都使用官方 SDK 的协商、发现、协议校验�
 <a id="resources-and-instructions"></a>
 ## 资源与指令
 
-资源调用必须显式指定配置的服务器名称。系统提示词组装服务可用时，资源服务从派发所用的同一注册表列出调用方可见的名称，包括没有工具或指令的服务器。共享注册表在分发前，于调用 Agent 的作用域中解析该名称；不可用的服务器会在发出网络请求前失败。发现和读取均按需执行，也支持只提供资源而不提供工具的服务器。[资源包](../../packages/mcp/mcp-resources/README.zh.md) 维护分页和内容渲染规则；其生成的工具 schema 位于[工具目录](../tool-catalog.zh.md#deepseek-aidsh-mcp-resources)。
+资源调用必须显式指定配置的服务器名称。系统提示词组装服务可用时，资源服务从派发所用的同一注册表列出调用方可见的名称，包括没有工具或指令的服务器。共享注册表在分发前，于调用 Agent 的作用域中解析该名称；不可用的服务器会在发出网络请求前失败。发现和读取均按需执行，也支持只提供资源而不提供工具的服务器。[资源包](../../packages/mcp/mcp-resources/README.zh.md) 维护分页和内容渲染规则；其生成的工具 schema 位于[工具目录](../tool-catalog.zh.md#knyazevaidsh-mcp-resources)。
 
 资源提供方仍由连接拥有。作用域释放时移除注册；MCP 客户端控制取消和恢复。规范结果为程序化调用方保留完整 JSON，文本投影则以描述替换二进制 blob。返回的文本进入普通工具历史；服务器连接本身不会触发内容读取。
 

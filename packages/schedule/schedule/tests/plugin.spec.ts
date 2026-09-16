@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { agentEvents } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { SessionLogOffset, SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
+import { agentEvents } from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
+import { ToolCallId } from '@knyazevai/dsh-llm'
+import { SessionLogOffset, SessionId } from '@knyazevai/dsh-session'
+import type { SessionEvent, SessionHeader } from '@knyazevai/dsh-session'
 import {
   SessionPersistence,
   SessionPersistenceNotFoundError,
   SessionPersistenceRevision,
-} from '@deepseek-ai/dsh-session-persistence'
-import type { SessionAccess, SessionHandle, SessionPersistenceSnapshot } from '@deepseek-ai/dsh-session-persistence'
+} from '@knyazevai/dsh-session-persistence'
+import type { SessionAccess, SessionHandle, SessionPersistenceSnapshot } from '@knyazevai/dsh-session-persistence'
 import * as toolSchedule from '../src/index.ts'
 
 interface StoredProbeSession {

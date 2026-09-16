@@ -2,13 +2,13 @@
 
 import { Buffer } from 'node:buffer'
 import type { IDisposable, Terminal as HeadlessTerminalType } from '@xterm/headless'
-import { createLazyRequire } from '@deepseek-ai/dsh-lazy-require'
+import { createLazyRequire } from '@knyazevai/dsh-lazy-require'
 import type {
   SubprocessOutcome,
   SubprocessTerminalForeground,
   SubprocessTerminalHandle,
-} from '@deepseek-ai/dsh-subprocess'
-import { TerminalError } from '@deepseek-ai/dsh-terminal'
+} from '@knyazevai/dsh-subprocess'
+import { TerminalError } from '@knyazevai/dsh-terminal'
 import type {
   TerminalBackendSession,
   TerminalReadRequest,
@@ -21,7 +21,7 @@ import type {
   TerminalSignal,
   TerminalSignalResult,
   TerminalWaitReason,
-} from '@deepseek-ai/dsh-terminal'
+} from '@knyazevai/dsh-terminal'
 import type { ResolvedConfig } from './config.ts'
 import { CONTROLLED_PROMPT, TerminalSanitizer } from './sanitize.ts'
 

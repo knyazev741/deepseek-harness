@@ -1,8 +1,8 @@
 /** Browser-safe durable image selection declaration and pure replay definition. */
 
-import type { Message } from '@deepseek-ai/dsh-llm'
-import type { SessionSeq } from '@deepseek-ai/dsh-session/types'
-import type { SessionMessageProjection } from '@deepseek-ai/dsh-session/surface'
+import type { Message } from '@knyazevai/dsh-llm'
+import type { SessionSeq } from '@knyazevai/dsh-session/types'
+import type { SessionMessageProjection } from '@knyazevai/dsh-session/surface'
 import { offloadMessageImages } from './project-message.ts'
 
 /** Exact input-image occurrences selected by one durable offload decision. */
@@ -13,7 +13,7 @@ export interface ImageOffloadTarget {
   imageIndexes: number[]
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
     /**
      * Permanently omit selected input-image occurrences from subsequent model requests.

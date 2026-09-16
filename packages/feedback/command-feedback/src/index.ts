@@ -5,15 +5,15 @@
  * authoritative log-only event and does not start model work. The append is
  * eager but unflushed, so acknowledgement reports that the entry is logged,
  * not that it reached disk.
- * @module @deepseek-ai/dsh-command-feedback
+ * @module @knyazevai/dsh-command-feedback
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
-import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
-import type { Session } from '@deepseek-ai/dsh-session'
-import { getOrCreateAnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
-import { TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
+import { CommandDefinitionId } from '@knyazevai/dsh-commands/brand'
+import type { CommandInvocation, CommandResult } from '@knyazevai/dsh-commands'
+import type { Session } from '@knyazevai/dsh-session'
+import { getOrCreateAnonymousUserId } from '@knyazevai/dsh-anonymous-user-id'
+import { TypertRemoteService, Remote } from '@knyazevai/dsh-typert-protocol'
 import type {
   FeedbackCategory,
   FeedbackRecord,
@@ -117,7 +117,7 @@ export class SessionFeedbackService extends TypertRemoteService {
 export function apply(ctx: Context): void {
   ctx.plugin(SessionFeedbackService)
   ctx.commands.register({
-    definitionId: CommandDefinitionId('@deepseek-ai/dsh-command-feedback'),
+    definitionId: CommandDefinitionId('@knyazevai/dsh-command-feedback'),
     name: 'feedback',
     description: 'Record feedback about this session',
     input: { hint: '<text>' },

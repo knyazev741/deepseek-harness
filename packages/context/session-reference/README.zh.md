@@ -3,7 +3,7 @@ description: "跨会话快照引用与持久的不受信任模型上下文，供
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-session-reference
+# @knyazevai/dsh-session-reference
 
 [English](README.md) | 中文
 
@@ -52,7 +52,7 @@ kind: "package-reference"
 
 自动预算为每个来源 `max(65536, floor(contextWindow × 4 × referenceContextFraction))` 字节。模型上下文容量以 token 计量；每个 token 四字节是容量估算，不是精确的 token 换算。缺少路由、LLM（大语言模型）服务、适配器或容量时使用 64 KiB；其他模型元数据查询错误与取消会使准备失败。
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-session-reference)是每个受支持字段及其 JSDoc 的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-session-reference)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 -----
 
@@ -102,7 +102,7 @@ kind: "package-reference"
 - [会话引用 spill 复用](../../../.agents/notes/implemented/bug-fix/2026-09-05-session-reference-spill-reuse.zh.md)——快照身份、省略通知、存储归属与替代方案。
 - [会话查询子系统](../../../docs/subsystems/session-query.zh.md)——提供会话表层的读取服务。
 - [上下文组地图](../README.zh.md)——相邻的请求上下文包。
-- [生成的配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-session-reference)——每个受支持配置字段及其源声明。
+- [生成的配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-session-reference)——每个受支持配置字段及其源声明。
 
 -----
 

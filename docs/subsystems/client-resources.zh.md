@@ -24,12 +24,12 @@
 
 ```ts ignore-check
 import type { Context } from '@deepseek-ai/cordis'
-import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
-import type {} from '@deepseek-ai/dsh-client-resources/client'
+import type { RemoteResult } from '@knyazevai/dsh-typert-protocol'
+import type {} from '@knyazevai/dsh-client-resources/client'
 
 interface NoteView { readonly title: string; readonly updatedAt: string }
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface ResourceProtocolMap { note: NoteView }
 }
 
@@ -61,8 +61,8 @@ export function apply(ctx: Context): void {
 | `failed` | 最新一帧报告了失败 | 保留的上一个 `ok` 值 | 该帧的 `RemoteFailure` |
 
 ```tsx ignore-check
-import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-api-workspace-files/client'
+import type { PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
+import type {} from '@knyazevai/dsh-api-workspace-files/client'
 
 type Props = PropsRuntime<'sidebar.right.pane.tab'>
 

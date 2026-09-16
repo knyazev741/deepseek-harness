@@ -2,7 +2,7 @@
 
 import { StagehandClientCreateConfigSchema } from '@browserbasehq/stagehand'
 import type { ModelConfig, Page, StagehandBrowser } from '@browserbasehq/stagehand'
-import { assertNever } from '@deepseek-ai/dsh-util-values'
+import { assertNever } from '@knyazevai/dsh-util-values'
 import { z } from 'zod'
 
 /** Profile-owned model settings accepted by the pinned Stagehand SDK. */

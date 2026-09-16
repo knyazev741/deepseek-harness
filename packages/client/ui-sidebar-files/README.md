@@ -3,7 +3,7 @@ description: "The right Sidebar's file-tree tab type for the dsh web client: the
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-sidebar-files
+# @knyazevai/dsh-client-ui-sidebar-files
 
 English | [中文](README.zh.md)
 
@@ -24,7 +24,7 @@ The right Sidebar's navigator tab type: the session's workspace root as a tree, 
 <a id="what-it-registers"></a>
 ## What it registers
 
-- **The type** — `ctx.sidebarRightTabs.register(...)` with kind `files`, id `@deepseek-ai/dsh-client-ui-sidebar-files`, band `builtin`, no patterns, and one guide entry (order 10, its title and description from the `sidebarFiles` namespace, its glyph the shared folder icon) that opens the type.
+- **The type** — `ctx.sidebarRightTabs.register(...)` with kind `files`, id `@knyazevai/dsh-client-ui-sidebar-files`, band `builtin`, no patterns, and one guide entry (order 10, its title and description from the `sidebarFiles` namespace, its glyph the shared folder icon) that opens the type.
 - **The body** — the keyed `sidebar.right.pane.tab` seat under that id: a header row under the strip, then the tree. The header row is the document preview's (`ui-sidebar-documentpreview`): the root path, its directories greyed and its last segment in full ink, never ellipsized (a path wider than the row keeps its end and fades its start), with the one control, reload, at its right. The row is copied rather than shared because a plugin bundle shares runtime code only through the platform modules; once the artifact and slot surfaces settle, one copy in `ui-primitives` could serve every pane header.
 - **The chip title** — the keyed `sidebar.right.pane.tab.title` seat under that id: a shared `FileTypeIcon` folder glyph at 16px before the type's label. The tree's own rows never draw this sheet.
 
@@ -33,12 +33,12 @@ Seven source files under `src/client/`: `definition.tsx` (the type), `store.ts` 
 <a id="the-tree"></a>
 ## The tree
 
-The root is the session's working directory, read from `useSessions().byId[sessionId].cwd`, and split for the header row by `pathPartsOf` from `@deepseek-ai/dsh-util-workspace-path`. Every level is keyed by absolute path; a child's path is its parent's joined with the entry name by `/`. A level is listed when it is first expanded, through `remote.workspaceFiles.list(sessionId, absolutePath)` on the `@deepseek-ai/dsh-api-workspace-files` namespace; the adapter keeps the listing's entries and truncation flag and drops its workspace-relative path. Rows are ordered directories first, then by natural, case-insensitive name; dotfiles are shown like any other entry.
+The root is the session's working directory, read from `useSessions().byId[sessionId].cwd`, and split for the header row by `pathPartsOf` from `@knyazevai/dsh-util-workspace-path`. Every level is keyed by absolute path; a child's path is its parent's joined with the entry name by `/`. A level is listed when it is first expanded, through `remote.workspaceFiles.list(sessionId, absolutePath)` on the `@knyazevai/dsh-api-workspace-files` namespace; the adapter keeps the listing's entries and truncation flag and drops its workspace-relative path. Rows are ordered directories first, then by natural, case-insensitive name; dotfiles are shown like any other entry.
 
 | Entry type | Row |
 |---|---|
 | `directory` | Toggles; the level is fetched the first time it opens and kept while collapsed. |
-| `file` | Opens `dsh-resource://file/session/<sessionId>/<encoded path relative to the root>`, built by `fileAddressFor` from `@deepseek-ai/dsh-util-workspace-path` from the entry's absolute path and the tree's root, through `useTabInfo().tab.actions.openResource`, landing in the tab's own pane. |
+| `file` | Opens `dsh-resource://file/session/<sessionId>/<encoded path relative to the root>`, built by `fileAddressFor` from `@knyazevai/dsh-util-workspace-path` from the entry's absolute path and the tree's root, through `useTabInfo().tab.actions.openResource`, landing in the tab's own pane. |
 | `other` | Shown greyed and not clickable, so the directory is reported whole. |
 
 A level cut by the endpoint's entry cap ends with a marker; an empty level says so; a level that failed shows one line per code — `workspace-file/not-found`, `outside-workspace`, `not-directory` — and the transport's own message otherwise. Reload drops every listed level and asks again for the expanded ones; collapsed levels are fetched again when they next open. A session without a working directory shows a single line instead of a tree.

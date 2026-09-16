@@ -2,7 +2,7 @@
 # this integration lane covers both in-process lifecycle modes.
 - insert:
     - id: auto-review-one-shot-subagent
-      name: '@deepseek-ai/dsh-tool-subagent'
+      name: '@knyazevai/dsh-tool-subagent'
       config:
         provider: spawn
         toolName: subagent_one_shot

@@ -67,7 +67,7 @@ describe('Python SDK dsh profile keyless smoke', () => {
     if (editorEnabled) await writeFile(editorPatch, [
       '- insert:',
       '    - id: tool-str-replace-editor',
-      "      name: '@deepseek-ai/dsh-tool-str-replace-editor'",
+      "      name: '@knyazevai/dsh-tool-str-replace-editor'",
       '',
     ].join('\n'))
     const modelRequests: Record<string, unknown>[] = []
@@ -293,7 +293,7 @@ describe('Python SDK dsh profile keyless smoke', () => {
         await readFile(join(root, '.dsh', 'profiles', 'sdk-minimal', 'package.json'), 'utf8'),
       ) as { dsh?: { profile?: { bundles?: string[]; patchReload?: string } } }
       expect(profile.dsh?.profile).toEqual({
-        bundles: ['@deepseek-ai/dsh-sdk-minimal'],
+        bundles: ['@knyazevai/dsh-sdk-minimal'],
         patchReload: 'startup',
       })
       expect(modelRequests[0]?.tools).toEqual(expect.any(Array))
@@ -361,7 +361,7 @@ describe('Python SDK dsh profile keyless smoke', () => {
       expect(stdout).toBe('')
       expect(stderr).toContain('plugin tree failed to load')
       expect(stderr).toContain('required startup failure')
-      expect(stderr).toContain('sdk-jsonrpc-server (@deepseek-ai/dsh-sdk-jsonrpc-server): SyntaxError')
+      expect(stderr).toContain('sdk-jsonrpc-server (@knyazevai/dsh-sdk-jsonrpc-server): SyntaxError')
       expect(stderr).toContain('sometimes')
     } finally {
       await rm(root, { recursive: true, force: true })

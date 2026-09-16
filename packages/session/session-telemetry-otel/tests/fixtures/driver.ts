@@ -10,9 +10,9 @@ import { writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { gunzipSync } from 'node:zlib'
-import { resolveConfigPath } from '@deepseek-ai/dsh-app-boot'
-import { recordFeedback } from '@deepseek-ai/dsh-command-feedback'
-import { runFixtureTurn } from '@deepseek-ai/dsh-loader-smoke'
+import { resolveConfigPath } from '@knyazevai/dsh-app-boot'
+import { recordFeedback } from '@knyazevai/dsh-command-feedback'
+import { runFixtureTurn } from '@knyazevai/dsh-loader-smoke'
 import { bootProductionProfile } from '../../../../test-support/loader-smoke/tests/fixtures/production-profile.ts'
 
 const configPath = process.argv[2]

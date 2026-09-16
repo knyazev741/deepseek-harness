@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm'
-import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import { RemoteError } from '@knyazevai/dsh-typert-protocol'
 import { describe, expect, it, vi } from 'vitest'
 import type { Mock } from 'vitest'
 import { handleFileUploadHttp } from '../src/http-route.ts'

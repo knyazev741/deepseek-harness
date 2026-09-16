@@ -2,7 +2,7 @@
  * Active Loader-backed plugin package inventory for official DeepSeek requests.
  * Host entries and the requesting agent's standing preset are resolved at request time;
  * installed dependencies and plugin fibers without Loader-backed package identity are excluded.
- * @module @deepseek-ai/dsh-plugin-package-inventory-deepseek
+ * @module @knyazevai/dsh-plugin-package-inventory-deepseek
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -11,13 +11,13 @@ import { dirname, isAbsolute, join, parse } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { FiberState, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { brandString } from '@deepseek-ai/dsh-brand'
+import { brandString } from '@knyazevai/dsh-brand'
 import type { Entry, EntryTree } from '@deepseek-ai/cordis-plugin-loader'
-import type {} from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-deepseek-llm-api-extensions'
-import type { SessionId } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-agent-presets'
-import type {} from '@deepseek-ai/dsh-app-boot'
+import type {} from '@knyazevai/dsh-agent'
+import type {} from '@knyazevai/dsh-deepseek-llm-api-extensions'
+import type { SessionId } from '@knyazevai/dsh-session'
+import type {} from '@knyazevai/dsh-agent-presets'
+import type {} from '@knyazevai/dsh-app-boot'
 import type { DeepSeekPluginPackageIdentity, DeepSeekPluginPackageInventoryExtension } from './types.ts'
 import type {} from './types.ts'
 
@@ -166,7 +166,7 @@ async function collectActivePluginPackages(
     if (agent !== undefined) {
       // The optional peer is loaded only when its service is present. Its existing
       // mount query keeps Loader internals off the public AgentPresets service.
-      const { standingMountFor } = await import('@deepseek-ai/dsh-agent-presets')
+      const { standingMountFor } = await import('@knyazevai/dsh-agent-presets')
       const presetTree = standingMountFor(agent.ctx)?.tree
       // PresetTree deliberately resolves its root bare rows from the harness;
       // nested ordinary includes retain their own tree base.

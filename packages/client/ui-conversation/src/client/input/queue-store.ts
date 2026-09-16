@@ -5,8 +5,8 @@
  * reference-stable across unrelated snapshot swaps, so this is a pure
  * projection — no second store, no copy.
  */
-import type { SessionFace } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
+import type { SessionFace } from '@knyazevai/dsh-api-session-controller/client'
+import type { ObservableSnapshot } from '@knyazevai/dsh-client-store'
 import type { QueuedMessage } from '../contract/input.ts'
 
 /**

@@ -1,19 +1,19 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { createUserMessage, ToolCallId, HarnessError, type ContentBlock  } from '@deepseek-ai/dsh-llm'
-import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
+import LlmRuntime, { createUserMessage, ToolCallId, HarnessError, type ContentBlock  } from '@knyazevai/dsh-llm'
+import SessionStore, { Session, SessionId } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@knyazevai/dsh-user-approval'
 import ToolRuntime, {
   defineContentToolFixture, defineTool, JsonSchemaError, parameterSchemaSpecToJsonSchema, validateArgs, ToolArgsError, ToolNotFoundError,
   TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH,
   type InferArgs, type ParameterSchemaSpec, type PreToolDecision, type PostToolDecision,
   type JsonSchemaNode, type ToolDefinition, type ToolDispatchExecution, type ToolExecutionResult, type ToolExecutionToken,
-} from '@deepseek-ai/dsh-tools'
-import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+} from '@knyazevai/dsh-tools'
+import type { JsonValue } from '@knyazevai/dsh-util-values'
 
 const testToolSignal = new AbortController().signal
 
@@ -669,7 +669,7 @@ describe('ToolRuntime', () => {
   })
 
   it('ToolNotFoundError carries a stable message and code', async () => {
-    const { HarnessError } = await import('@deepseek-ai/dsh-llm')
+    const { HarnessError } = await import('@knyazevai/dsh-llm')
     const err = new ToolNotFoundError('ghost')
     expect(err).toBeInstanceOf(HarnessError)
     expect(err.name).toBe('ToolNotFoundError')
@@ -2673,7 +2673,7 @@ describe('defineTool validation (the runtime-validation Agent Note, part 1)', ()
   })
 
   it('a tool throwing a HarnessError surfaces its name and code', async () => {
-    const { HarnessError } = await import('@deepseek-ai/dsh-llm')
+    const { HarnessError } = await import('@knyazevai/dsh-llm')
     const ctx = await setup()
     ctx.tools.register({
       ...echoTool,

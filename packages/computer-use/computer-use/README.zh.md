@@ -3,7 +3,7 @@ description: "计算机操作提供方注册：供每次启用一个桌面驱动
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-computer-use
+# @knyazevai/dsh-computer-use
 
 [English](README.md) | 中文
 
@@ -28,10 +28,10 @@ kind: "package-reference"
 在 Cordis 组合中，将服务与选定的提供方一起挂载一次：
 
 ```yaml
-- name: '@deepseek-ai/dsh-computer-use'
+- name: '@knyazevai/dsh-computer-use'
 ```
 
-服务没有配置项。提供方插件注入 `computerUse` 并调用 `ctx.computerUse.register(ComputerUseProviderName(name))`；该品牌类型从 `@deepseek-ai/dsh-computer-use/brand` 导出。返回的 effect 清理函数释放此次注册。
+服务没有配置项。提供方插件注入 `computerUse` 并调用 `ctx.computerUse.register(ComputerUseProviderName(name))`；该品牌类型从 `@knyazevai/dsh-computer-use/brand` 导出。返回的 effect 清理函数释放此次注册。
 
 提供方先停止接收工具调用、关闭资源并等待自有工作结束，再释放注册。释放前，`ctx.computerUse.providerName` 始终报告已注册的名称。
 

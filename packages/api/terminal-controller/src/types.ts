@@ -1,8 +1,8 @@
 /** Browser terminal identities, metadata and screen-stream frames. */
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type {} from '@deepseek-ai/dsh-typert-protocol'
+import type { Branded } from '@knyazevai/dsh-brand'
+import type {} from '@knyazevai/dsh-typert-protocol'
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@knyazevai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** Input or resize was refused without invalidating the output attachment. */
     'terminal/control-unavailable': { readonly reason: 'read-only' | 'not-running' }

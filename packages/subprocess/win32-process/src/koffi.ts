@@ -1,7 +1,7 @@
 /** Process-realm lazy access to Koffi's CommonJS entry. */
 
 import type koffi from 'koffi'
-import { createLazyRequire } from '@deepseek-ai/dsh-lazy-require'
+import { createLazyRequire } from '@knyazevai/dsh-lazy-require'
 
 /** Koffi runtime export type. */
 export type Koffi = typeof koffi

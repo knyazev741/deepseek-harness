@@ -8,8 +8,8 @@
 import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { ok, RemoteMock } from '@deepseek-ai/dsh-remote-mock'
-import { remoteDefaultResponses } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/remote-default-responses.ts'
+import { ok, RemoteMock } from '@knyazevai/dsh-remote-mock'
+import { remoteDefaultResponses } from '@knyazevai/dsh-client-test-runtime/src/assembly/remote-default-responses.ts'
 
 interface SessionSummary {
   readonly sessionId: string
@@ -131,6 +131,7 @@ export function createAssembledRemote(options: AssembledRemoteOptions = {}): Ass
   const mock = RemoteMock.create().load(remoteDefaultResponses)
   mock.load({
     unary: {
+      'forkWorkspaceSessionState/list': ok({ revision: 1, pinnedSessionIds: [] }),
       'settings/describe': structuredClone(fixture.settingsDescribe),
       'credentials/describe': structuredClone(fixture.credentialsDescribe),
       'session/modelCatalog': structuredClone(fixture.modelCatalog),

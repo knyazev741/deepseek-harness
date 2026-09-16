@@ -3,10 +3,10 @@
  * {@link ../index.ts | PtcRuntime} and what it gets back. Pure types — no
  * runtime code lives here.
  *
- * @module @deepseek-ai/dsh-ptc-runtime/src/types
+ * @module @knyazevai/dsh-ptc-runtime/src/types
  */
 
-import type { SandboxEnforcement, SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
+import type { SandboxEnforcement, SandboxExecutionPolicy, SandboxMode } from '@knyazevai/dsh-sandbox'
 
 /**
  * One host-side function exposed to the program as an async callable. The

@@ -1,6 +1,6 @@
 - insert:
     - id: mcp-resource-catalog
-      name: '@deepseek-ai/dsh-mcp-client'
+      name: '@knyazevai/dsh-mcp-client'
       config:
         transport: stdio
         serverName: catalog
@@ -11,6 +11,6 @@
           enabled: false
 
 - id: tools
-  name: '@deepseek-ai/dsh-tools'
+  name: '@knyazevai/dsh-tools'
   config:
     mode: ptc

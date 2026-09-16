@@ -4,7 +4,7 @@ import { join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
+import SystemPrompt, { renderPrompt } from '@knyazevai/dsh-system-prompt'
 import {
   addHarnessSourceSection, auditStartupEntries, boot,
   FAIL_LOUD_RELEASE_TIMEOUT_MS, HARNESS_SOURCE_SECTION,
@@ -559,7 +559,7 @@ describe('auditStartupEntries', () => {
     const original = new Error('todo apply failure')
     await auditStartupEntries(ctxWith([
       { options: { id: 'missing-tool', name: './missing.mjs' } },
-      { fiber: fiber(3, original), options: { id: 'tool-todo', name: '@deepseek-ai/dsh-tool-todo' } },
+      { fiber: fiber(3, original), options: { id: 'tool-todo', name: '@knyazevai/dsh-tool-todo' } },
       {
         fiber: fiber(0, undefined, { ready: {}, missing: {} }, ['ready']),
         options: { id: 'waiting-tool', name: './waiting.mjs' },
@@ -569,7 +569,7 @@ describe('auditStartupEntries', () => {
     expect(warn).toHaveBeenCalledWith([
       `${NAME}: warning: 3 entries did not activate`,
       'missing-tool (./missing.mjs): failed to import',
-      `tool-todo (@deepseek-ai/dsh-tool-todo): ${original.stack!}`,
+      `tool-todo (@knyazevai/dsh-tool-todo): ${original.stack!}`,
       'waiting-tool (./waiting.mjs): pending (waiting for service: missing)',
       '',
     ].join('\n'))
@@ -676,20 +676,20 @@ describe('auditStartupEntries', () => {
     const optionalError = new Error('todo unavailable')
     await expect(auditStartupEntries(ctxWith([
       { fiber: fiber(3, requiredError), options: { id, name: './required.mjs' } },
-      { fiber: fiber(3, optionalError), options: { id: 'tool-todo', name: '@deepseek-ai/dsh-tool-todo' } },
+      { fiber: fiber(3, optionalError), options: { id: 'tool-todo', name: '@knyazevai/dsh-tool-todo' } },
     ]), NAME, warn)).rejects.toThrow([
       'required startup failure: 1 entry did not activate',
       `${id} (./required.mjs): ${requiredError.stack!}`,
     ].join('\n'))
-    expect(warn).toHaveBeenCalledWith(`${NAME}: warning: 1 entry did not activate\ntool-todo (@deepseek-ai/dsh-tool-todo): ${optionalError.stack!}\n`)
+    expect(warn).toHaveBeenCalledWith(`${NAME}: warning: 1 entry did not activate\ntool-todo (@knyazevai/dsh-tool-todo): ${optionalError.stack!}\n`)
   })
 
   it('rejects a required entry pending on an injected service', async () => {
     await expect(auditStartupEntries(ctxWith([{
       fiber: fiber(0, undefined, { headlessStartup: {} }),
-      options: { id: 'headless-runner', name: '@deepseek-ai/dsh-headless' },
+      options: { id: 'headless-runner', name: '@knyazevai/dsh-headless' },
     }]), NAME, vi.fn())).rejects.toThrow(
-      'headless-runner (@deepseek-ai/dsh-headless): pending (waiting for service: headlessStartup)',
+      'headless-runner (@knyazevai/dsh-headless): pending (waiting for service: headlessStartup)',
     )
   })
 })
@@ -731,12 +731,12 @@ describe('boot', () => {
     const dir = tmp()
     const harness = tmp()
     const absolutePlugin = join(dir, 'absolute.mjs')
-    const shadow = join(dir, 'node_modules', '@deepseek-ai', 'dsh-system-prompt')
-    const harnessPlugin = join(harness, 'node_modules', '@deepseek-ai', 'dsh-system-prompt')
+    const shadow = join(dir, 'node_modules', '@knyazevai', 'dsh-system-prompt')
+    const harnessPlugin = join(harness, 'node_modules', '@knyazevai', 'dsh-system-prompt')
     mkdirSync(shadow, { recursive: true })
     mkdirSync(harnessPlugin, { recursive: true })
     writeFileSync(join(shadow, 'package.json'), JSON.stringify({
-      name: '@deepseek-ai/dsh-system-prompt',
+      name: '@knyazevai/dsh-system-prompt',
       type: 'module',
       exports: './index.mjs',
     }))
@@ -747,7 +747,7 @@ describe('boot', () => {
       '',
     ].join('\n'))
     writeFileSync(join(harnessPlugin, 'package.json'), JSON.stringify({
-      name: '@deepseek-ai/dsh-system-prompt',
+      name: '@knyazevai/dsh-system-prompt',
       type: 'module',
       exports: './index.mjs',
     }))
@@ -761,7 +761,7 @@ describe('boot', () => {
     writeFileSync(absolutePlugin, 'export function apply(ctx) { ctx.provide("absolutePluginLoaded", true) }\n')
     const entries = [
       '- id: prompt',
-      "  name: '@deepseek-ai/dsh-system-prompt'",
+      "  name: '@knyazevai/dsh-system-prompt'",
       '- id: relative',
       "  name: './relative.mjs'",
     ]

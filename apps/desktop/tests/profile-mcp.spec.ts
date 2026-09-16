@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, it } from 'vitest'
-import { composeEntries, loadOverlayPatches, loadProfileDirectory } from '@deepseek-ai/dsh-app-boot'
+import { composeEntries, loadOverlayPatches, loadProfileDirectory } from '@knyazevai/dsh-app-boot'
 import { createPluginProfile } from '../src/project-manager.ts'
 
 it('retains one shared resource consumer after the Desktop host overlay', () => {
@@ -23,10 +23,10 @@ it('retains one shared resource consumer after the Desktop host overlay', () => 
       loadOverlayPatches('dsh desktop', overlay),
     ], message => warnings.push(message))
 
-    expect(rows.filter(row => row.name === '@deepseek-ai/dsh-mcp-resources')).toEqual([
-      { id: 'mcp-resources', name: '@deepseek-ai/dsh-mcp-resources' },
+    expect(rows.filter(row => row.name === '@knyazevai/dsh-mcp-resources')).toEqual([
+      { id: 'mcp-resources', name: '@knyazevai/dsh-mcp-resources' },
     ])
-    expect(rows.filter(row => row.name === '@deepseek-ai/dsh-mcp-client')).toEqual([])
+    expect(rows.filter(row => row.name === '@knyazevai/dsh-mcp-client')).toEqual([])
     expect(rows.find(row => row.id === 'webserver')?.disabled).toBe(true)
     expect(warnings).toEqual([])
   } finally {

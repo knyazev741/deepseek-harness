@@ -3,7 +3,7 @@ description: "面向模型的 skill（技能）目录与加载工具，供希望
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-tool-skill
+# @knyazevai/dsh-tool-skill
 
 [English](README.md) | 中文
 
@@ -36,16 +36,16 @@ agent 可以在会话期间发现并加载 skill。在首次请求前，如果�
 与 skill 注册表和至少一个提供方一起加载该插件。唯一配置项限制目录中渲染的规范化描述长度。
 
 ```yaml
-- name: '@deepseek-ai/dsh-skill'
-- name: '@deepseek-ai/dsh-skill-filesystem'
-- name: '@deepseek-ai/dsh-tool-skill'
+- name: '@knyazevai/dsh-skill'
+- name: '@knyazevai/dsh-skill-filesystem'
+- name: '@knyazevai/dsh-tool-skill'
 ```
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `catalogDescriptionMaxLength` | `500` | 会话目录中渲染的规范化描述最大长度；最小为 3 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-tool-skill)是每个受支持字段的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-tool-skill)是每个受支持字段的穷尽式真源。
 
 ### 模型得到什么
 
@@ -98,7 +98,7 @@ agent 可以在会话期间发现并加载 skill。在首次请求前，如果�
 
 - [skill 子系统参考](../../../docs/subsystems/skills.zh.md)——目录背后的注册表与提供方词汇。
 - [skill 包](../skill/README.zh.md)——注册表与共享的 `renderSkillContent` 渲染。
-- [生成工具目录](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-skill)——模型接收的精确 `skill` schema。
+- [生成工具目录](../../../docs/tool-catalog.zh.md#knyazevaidsh-tool-skill)——模型接收的精确 `skill` schema。
 - [用户显式 skill 调用 Agent Note](../../../.agents/notes/archived/feature/2026-08-08-user-explicit-skill-invocation.md)——`/name` 手势设计。
 
 -----
@@ -110,7 +110,7 @@ agent 可以在会话期间发现并加载 skill。在首次请求前，如果�
 
 #### 模型看到什么
 
-如果存在模型可调用 skill，且可见的正是这个 `skill` 工具，agent 会在第一个请求之前收到下方目录模板，其中包含每个已排序 skill 的一条随数据而定的条目。该目录是一条持久的用户角色消息。后续成员关系、描述或可见性的变化会使用同一个 `<available_skills>` 信封追加完整替换；删除所有 skill 时，会追加一个空信封，并明确指示不得使用旧名称。模板的结尾一句是防止双重加载的规则：用户显式的手势边界（下文的 pre-step 监听器）会把同一份 `renderSkillContent` 输出（共享自 `@deepseek-ai/dsh-skill`）内联注入，目录则告诉模型遵循该块，而不是再经工具重新加载该 skill；替换目录模板的两个分支——包括清空后的目录——都携带同一条防双重加载规则。
+如果存在模型可调用 skill，且可见的正是这个 `skill` 工具，agent 会在第一个请求之前收到下方目录模板，其中包含每个已排序 skill 的一条随数据而定的条目。该目录是一条持久的用户角色消息。后续成员关系、描述或可见性的变化会使用同一个 `<available_skills>` 信封追加完整替换；删除所有 skill 时，会追加一个空信封，并明确指示不得使用旧名称。模板的结尾一句是防止双重加载的规则：用户显式的手势边界（下文的 pre-step 监听器）会把同一份 `renderSkillContent` 输出（共享自 `@knyazevai/dsh-skill`）内联注入，目录则告诉模型遵循该块，而不是再经工具重新加载该 skill；替换目录模板的两个分支——包括清空后的目录——都携带同一条防双重加载规则。
 
 ##### Skill 目录模板
 
@@ -139,7 +139,7 @@ A user may also invoke a skill directly; its <skill_content> block then appears 
 
 #### 模型看到什么
 
-模型会看到生成的 [`skill` schema](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-skill)。
+模型会看到生成的 [`skill` schema](../../../docs/tool-catalog.zh.md#knyazevaidsh-tool-skill)。
 
 #### Token 影响
 

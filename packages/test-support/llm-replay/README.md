@@ -3,7 +3,7 @@ description: "Keyless LLM replay plugin for snapshot tests, for test authors boo
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-llm-replay
+# @knyazevai/dsh-llm-replay
 
 English | [中文](README.zh.md)
 
@@ -33,7 +33,7 @@ With `providers` configured, the plugin registers a replay-only adapter whose ca
 
 ```yaml
 - id: llm-replay
-  name: '@deepseek-ai/dsh-llm-replay'
+  name: '@knyazevai/dsh-llm-replay'
   config:
     providers:
       - id: deepseek-official
@@ -61,7 +61,7 @@ With `providers` configured, the plugin registers a replay-only adapter whose ca
 | `providers` | — | Optional replay-only provider and model catalog; a model may declare `contextWindow`, text/image modalities, positive `imageRequestTokens` when image-capable, and `systemPromptUpdate: in-history` so a keyless scenario exercises in-history system prompt replacement; invalid values fail at load (`llm-replay: provider "…" model "…" systemPromptUpdate must be "in-history" when present`) and routes never perform provider I/O |
 | `paceMs` | — (burst) | Optional per-chunk delay in ms for genuinely incremental delivery |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-llm-replay) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-llm-replay) is the exhaustive source for every accepted field and its JSDoc.
 
 ### How the fixture works
 

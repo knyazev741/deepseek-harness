@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { createSnapshotStore } from '@knyazevai/dsh-client-store'
+import { bindSnapshotSelector, makeTranslate } from '@knyazevai/dsh-client-test-runtime'
 import type {
   PermissionCatalog, PermissionSelection,
-} from '@deepseek-ai/dsh-permission-presets/client'
+} from '@knyazevai/dsh-permission-presets/client'
 import {
   PermissionSelect, type PermissionSelectProps,
 } from '../src/client/PermissionSelect.tsx'

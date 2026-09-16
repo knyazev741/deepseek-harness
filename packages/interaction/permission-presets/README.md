@@ -3,7 +3,7 @@ description: "User-facing permission presets for users and maintainers choosing,
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-permission-presets
+# @knyazevai/dsh-permission-presets
 
 English | [中文](README.zh.md)
 
@@ -32,7 +32,7 @@ Choose this service when a deployment wants to offer users one Permissions selec
 The plugin config defines the preset table and the default for fresh sessions. Each preset name bundles one sandbox mode with one approval policy; `name` and `description` are optional client presentation. The reserved names `custom` and `auto` cannot appear in this table.
 
 ```yaml
-- name: '@deepseek-ai/dsh-permission-presets'
+- name: '@knyazevai/dsh-permission-presets'
   config:
     presets:
       workspace-write:
@@ -49,7 +49,7 @@ The plugin config defines the preset table and the default for fresh sessions. E
 | `presets` | `workspace-write`, `danger-full-access` | Table of preset name → sandbox/approval bundle |
 | `defaultPreset` | inferred | Preset pinned into fresh sessions; required when composition defaults match no preset |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-permission-presets) is the exhaustive source for every accepted field and its JSDoc. `custom` is reserved for the derived not-a-preset state, while `auto` is reserved for the Auto review integration. Mounting requires a confining bash executor (one that reports a `sandboxMode`) and the approval service.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-permission-presets) is the exhaustive source for every accepted field and its JSDoc. `custom` is reserved for the derived not-a-preset state, while `auto` is reserved for the Auto review integration. Mounting requires a confining bash executor (one that reports a `sandboxMode`) and the approval service.
 
 ### Switching presets
 

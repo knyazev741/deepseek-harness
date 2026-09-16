@@ -8,9 +8,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import ts from 'typescript'
-import { projectCordisCatalog } from '@deepseek-ai/dsh-typert-generator'
+import { projectCordisCatalog } from '@knyazevai/dsh-typert-generator'
 import { CORDIS_CATALOG_POLICY } from './gen-cordis-catalog.ts'
-import type { EventEntry, ServiceEntry } from '@deepseek-ai/dsh-typert-generator'
+import type { EventEntry, ServiceEntry } from '@knyazevai/dsh-typert-generator'
 import {
   collectPackageGraph,
   escapeMermaidLabel as escLabel,
@@ -361,6 +361,21 @@ const SERVICE_ROLES: ServiceRole[] = [
     mode: 'core',
     consumers: ['api-workspace-controller', 'api-session-controller'],
     note: 'Owns WorkspaceId-branded records over the domain facility; stable sessionIds accounts drive Host RPC and GUI projections.',
+  },
+  {
+    key: 'externalSessions',
+    pkg: 'external-session',
+    title: 'External-session provider registry',
+    mode: 'seam',
+    note: 'Registers explicitly composed external-session providers by mode; transports, permissions, and transcript policy remain owned by each provider package.',
+  },
+  {
+    key: 'forkWorkspaceSessionState',
+    pkg: 'workspace-session-state',
+    title: 'Fork workspace session state',
+    mode: 'core',
+    consumers: ['ui-workspace-overlay'],
+    note: 'Persists the ordered global pin list and exposes the compare-and-set Host Remote consumed by the opt-in browser overlay.',
   },
   {
     key: 'sessionQuery',

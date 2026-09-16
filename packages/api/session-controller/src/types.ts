@@ -2,17 +2,17 @@
 
 import type {
   AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType,
-} from '@deepseek-ai/dsh-attachment'
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { LlmAttemptId, MessageId } from '@deepseek-ai/dsh-llm/brand'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { SessionId, SessionSeqCursor } from '@deepseek-ai/dsh-session/types'
-import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
-import type { JobId } from '@deepseek-ai/dsh-jobs/brand'
-import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+} from '@knyazevai/dsh-attachment'
+import type { Branded } from '@knyazevai/dsh-brand'
+import type { LlmAttemptId, MessageId } from '@knyazevai/dsh-llm/brand'
+import type { ContentBlock } from '@knyazevai/dsh-llm'
+import type { SessionId, SessionSeqCursor } from '@knyazevai/dsh-session/types'
+import type { SessionProjectionMap } from '@knyazevai/dsh-session-projection/types'
+import type { JobId } from '@knyazevai/dsh-jobs/brand'
+import type { JsonValue } from '@knyazevai/dsh-util-values'
+import type { WorkspaceId } from '@knyazevai/dsh-workspace/types'
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
+declare module '@knyazevai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
     /** Host state persisted for cold Session list summaries. */
     sessionListMetadata: SessionListMetadata
@@ -31,7 +31,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
   }
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
     /**
      * Complete validated model selection requested for subsequent prompt
@@ -183,7 +183,7 @@ export const SESSION_SEARCH_RESULT_LIMIT = 20
 /** Maximum search snippet length in Unicode code points. */
 export const SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS = 240
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@knyazevai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     'session/model-unavailable': { readonly provider: string; readonly model: string }
     'session/conflict': {
@@ -374,7 +374,7 @@ export interface SessionOpenWorkspacePathValue {
 /** Client-minted prompt identity used to reconcile optimistic and durable messages. */
 export type SessionRequestId = Branded<'session-request-id'>
 
-declare module '@deepseek-ai/dsh-llm' {
+declare module '@knyazevai/dsh-llm' {
   interface MessageSourceMap {
     /** Browser prompt correlation and optional Host-validated time zone. */
     'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string }

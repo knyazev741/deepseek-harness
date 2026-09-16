@@ -1,33 +1,35 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { AttachmentId } from '@deepseek-ai/dsh-attachment'
-import BasicCompactionEngine from '@deepseek-ai/dsh-compaction-basic'
-import type { BasicCompactionConfig } from '@deepseek-ai/dsh-compaction-basic'
-import { selectCompactableRange } from '@deepseek-ai/dsh-compaction-basic/src/region.ts'
-import { frameSummary } from '@deepseek-ai/dsh-compaction-basic/src/summarizer.ts'
-import type { SummarizationInput, SummaryResult } from '@deepseek-ai/dsh-compaction-basic/src/summarizer.ts'
-import { CompactionId, toolPairingBalancedAfter, toolPairingBalancedBefore } from '@deepseek-ai/dsh-compaction'
+import { AttachmentId } from '@knyazevai/dsh-attachment'
+import BasicCompactionEngine from '@knyazevai/dsh-compaction-basic'
+import type { BasicCompactionConfig } from '@knyazevai/dsh-compaction-basic'
+import { selectCompactableRange } from '@knyazevai/dsh-compaction-basic/src/region.ts'
+import { frameSummary, summarizeWithLlm } from '@knyazevai/dsh-compaction-basic/src/summarizer.ts'
+import type { SummarizationInput, SummaryResult } from '@knyazevai/dsh-compaction-basic/src/summarizer.ts'
+import { CompactionId, toolPairingBalancedAfter, toolPairingBalancedBefore } from '@knyazevai/dsh-compaction'
 import {
   resolveCompactSpec,
   resolveConfig,
   resolveTargetPolicy,
-} from '@deepseek-ai/dsh-compaction-basic/src/config.ts'
-import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
-import LlmRuntime, { createUserMessage, ToolCallId, CONTEXT_WINDOW_EXCEEDED_CODE, createSystemMessage, createToolResultMessage, LlmAdapter , createMessage } from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-compaction-basic/src/config.ts'
+import type { CompactionResult } from '@knyazevai/dsh-compaction'
+import LlmRuntime, { createUserMessage, ToolCallId, CONTEXT_WINDOW_EXCEEDED_CODE, createSystemMessage, createToolResultMessage, LlmAdapter , createMessage, ProviderRequestId, resolveRetryPolicy } from '@knyazevai/dsh-llm'
 import type {
   ContentBlock,
   GenerateOptions,
   LlmFailure,
   LlmResolvedModelInfo,
   Message,
+  ResolvedRetryPolicy,
   StreamChunk,
   TokenUsage,
-} from '@deepseek-ai/dsh-llm'
-import SessionStore, { Session, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import TokenMeter from '@deepseek-ai/dsh-token-meter'
-import { agentEvents, type Agent, type RequestErrorAction } from '@deepseek-ai/dsh-agent'
-import ToolResultPruner from '@deepseek-ai/dsh-compaction-tool-result-pruner'
+} from '@knyazevai/dsh-llm'
+import SessionStore, { Session, SessionId, SessionSeq } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import TokenMeter from '@knyazevai/dsh-token-meter'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
+import { agentEvents, type Agent, type RequestErrorAction } from '@knyazevai/dsh-agent'
+import ToolResultPruner from '@knyazevai/dsh-compaction-tool-result-pruner'
 
 const SIGNAL = new AbortController().signal
 const MODEL = 'test-model'
@@ -71,6 +73,52 @@ class RoutedContextAdapter extends LlmAdapter {
   }
 }
 
+class SummaryRetryAdapter extends LlmAdapter {
+  requests = 0
+
+  private readonly policy: ResolvedRetryPolicy
+
+  constructor(
+    options: {
+      readonly policy?: ResolvedRetryPolicy
+      readonly failures?: number
+      readonly failure?: LlmFailure
+    } = {},
+  ) {
+    super()
+    this.policy = options.policy ?? resolveRetryPolicy({
+      mode: 'normal',
+      maxRetries: 1,
+      retryableCodes: ['RATE_LIMIT'],
+      backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
+    }, 'summary retry test provider retryPolicy')
+    this.failureCount = options.failures ?? 2
+    this.failure = options.failure ?? { message: 'upstream overloaded', code: 'RATE_LIMIT' }
+  }
+
+  private readonly failureCount: number
+  private readonly failure: LlmFailure
+
+  override providerRetryPolicy(): ResolvedRetryPolicy {
+    return this.policy
+  }
+
+  override async * stream(): AsyncIterable<StreamChunk> {
+    this.requests += 1
+    if (this.requests <= this.failureCount) {
+      yield {
+        type: 'finish',
+        reason: { kind: 'error', failure: this.failure },
+      }
+      return
+    }
+    yield { type: 'block-start', index: 0, blockType: 'text' }
+    yield { type: 'text-delta', index: 0, text: 'recovered summary' }
+    yield { type: 'block-end', index: 0, block: { type: 'text', text: 'recovered summary' } }
+    yield { type: 'finish', reason: { kind: 'stop' } }
+  }
+}
+
 function createContext(contextWindow = 1_000): Context {
   const ctx = new Context()
   void new LlmRuntime(ctx)
@@ -107,7 +155,7 @@ function promptInput(text: string): SummarizationInput {
   })] }
 }
 
-const SYSTEM_PROMPT_PLUGIN = '@deepseek-ai/dsh-system-prompt'
+const SYSTEM_PROMPT_PLUGIN = '@knyazevai/dsh-system-prompt'
 
 /**
  * Closed two-message turns followed by one open turn for durable compaction events.
@@ -309,11 +357,13 @@ describe('compact configuration and defaults', () => {
     const resolved = resolveConfig({})
 
     expect(resolved).toEqual({
-      thresholdRatio: 0.8,
+      thresholdRatio: 0.5,
       retainRatio: 0.16,
       summarizationProvider: '',
       summarizationModel: '',
       maxTokens: 8192,
+      maxSummarizationInputTokens: 131072,
+      summarizerCooldownMs: 600000,
       compactionRetries: 1,
       maxOverflowRetries: 1,
       modelPolicies: [],
@@ -335,7 +385,7 @@ describe('compact configuration and defaults', () => {
       retainTokens: 70,
     })
     expect(retentionOnly).toMatchObject({
-      thresholdRatio: 0.8,
+      thresholdRatio: 0.5,
       retainTokens: 70,
     })
     expect(retentionOnly).not.toHaveProperty('retainRatio')
@@ -380,6 +430,8 @@ describe('compact configuration and defaults', () => {
         summarizationProvider: 'summary-provider',
         summarizationModel: 'summary-model',
         maxTokens: 512,
+        maxSummarizationInputTokens: 65_536,
+        summarizerCooldownMs: 7,
         compactionRetries: 2,
         maxOverflowRetries: 3,
       }],
@@ -390,9 +442,38 @@ describe('compact configuration and defaults', () => {
       summarizationProvider: 'summary-provider',
       summarizationModel: 'summary-model',
       maxTokens: 512,
+      maxSummarizationInputTokens: 65_536,
+      summarizerCooldownMs: 7,
       compactionRetries: 2,
       maxOverflowRetries: 3,
     })
+  })
+
+  it('inherits the summarization input budget and accepts explicit unlimited mode', () => {
+    const config = resolveConfig({
+      maxSummarizationInputTokens: 0,
+      summarizerCooldownMs: 9,
+      modelPolicies: [{
+        provider: 'inherit-budget-provider',
+        model: MODEL,
+      }, {
+        provider: 'override-budget-provider',
+        model: MODEL,
+        maxSummarizationInputTokens: 4_096,
+        summarizerCooldownMs: 11,
+      }],
+    })
+
+    expect(config.maxSummarizationInputTokens).toBe(0)
+    expect(config.summarizerCooldownMs).toBe(9)
+    expect(resolveTargetPolicy(config, {
+      provider: 'inherit-budget-provider',
+      model: MODEL,
+    })).toMatchObject({ maxSummarizationInputTokens: 0, summarizerCooldownMs: 9 })
+    expect(resolveTargetPolicy(config, {
+      provider: 'override-budget-provider',
+      model: MODEL,
+    })).toMatchObject({ maxSummarizationInputTokens: 4_096, summarizerCooldownMs: 11 })
   })
 
   it('inherits, clears, and replaces the summarization target as a pair', () => {
@@ -433,6 +514,15 @@ describe('compact configuration and defaults', () => {
   it('validates common values and pressure-policy invariants', () => {
     const bad = [
       [{ maxTokens: 0 }, /maxTokens/],
+      [{ maxSummarizationInputTokens: -1 }, /maxSummarizationInputTokens/],
+      [{ maxSummarizationInputTokens: 1.5 }, /maxSummarizationInputTokens/],
+      [{ maxSummarizationInputTokens: Number.MAX_SAFE_INTEGER + 1 }, /maxSummarizationInputTokens/],
+      [{ maxSummarizationInputTokens: 'many' }, /maxSummarizationInputTokens/],
+      [{ summarizerCooldownMs: 0 }, /summarizerCooldownMs/],
+      [{ summarizerCooldownMs: 1.5 }, /summarizerCooldownMs/],
+      [{ summarizerCooldownMs: Number.MAX_SAFE_INTEGER + 1 }, /summarizerCooldownMs/],
+      [{ summarizerCooldownMs: MAX_TIMER_DELAY_MS + 1 }, /summarizerCooldownMs/],
+      [{ summarizerCooldownMs: 'soon' }, /summarizerCooldownMs/],
       [{ compactionRetries: -1 }, /compactionRetries/],
       [{ maxOverflowRetries: -1 }, /maxOverflowRetries/],
       [{ auto: 'yes' }, /auto must be a boolean/],
@@ -444,7 +534,7 @@ describe('compact configuration and defaults', () => {
       [{ summarizationModel: '' }, /must be set together/],
       [{ thresholdRatio: 0 }, /number in \(0, 1\]/],
       [{ thresholdRatio: 1.1 }, /number in \(0, 1\]/],
-      [{ retainRatio: 0.9 }, /retainRatio \(0.9\) must be less than the resolved thresholdRatio \(0.8\)/],
+      [{ retainRatio: 0.9 }, /retainRatio \(0.9\) must be less than the resolved thresholdRatio \(0.5\)/],
       [{ thresholdRatio: 0.1 }, /retainRatio \(0.16\) must be less than the resolved thresholdRatio \(0.1\)/],
       [{ retainTokens: -1 }, /non-negative integer/],
       [{ retainRatio: 0.2, retainTokens: 100 }, /mutually exclusive/],
@@ -474,7 +564,7 @@ describe('compact configuration and defaults', () => {
       ],
       [
         { modelPolicies: [{ provider: MODEL, model: MODEL, retainRatio: 0.9 }] },
-        /modelPolicies\[0\]: retainRatio \(0.9\).*thresholdRatio \(0.8\)/,
+        /modelPolicies\[0\]: retainRatio \(0.9\).*thresholdRatio \(0.5\)/,
       ],
       [{ modelPolicies: [{ provider: MODEL, model: MODEL }, { provider: MODEL, model: MODEL }] }, /duplicate model policy/],
       [{ models: { [MODEL]: { retainTokens: 10 } } }, /BasicCompactionConfig: unknown key "models"/],
@@ -822,6 +912,339 @@ describe('pressure measurement and retention', () => {
 
     const priced = ctx.tokenMeter.measure(session)
     expect(selectCompactableRange(session, priced, 1)).toBeNull()
+  })
+})
+
+describe('bounded summarization input', () => {
+  it('selects the whole region unchanged when the budget covers it', () => {
+    const ctx = createContext()
+    const session = conversation(4)
+    const priced = ctx.tokenMeter.measure(session)
+    const full = selectCompactableRange(session, priced, 0)!
+    const bounded = selectCompactableRange(session, priced, 0, 10_000)!
+    expect(bounded).toEqual(full)
+  })
+
+  it('bounds the head span to the shortest prefix exceeding the budget', () => {
+    const ctx = createContext()
+    const session = conversation(6)
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    const bounded = selectCompactableRange(session, priced, 0, 100)!
+    // One fixture message prices at 88 tokens, so the crossing rule stops
+    // after the second message: the span is never smaller than a single node.
+    expect(bounded).toEqual({ start: nodes[0], end: nodes[1] })
+    expect(selectCompactableRange(session, priced, 0, 10_000))
+      .toEqual(selectCompactableRange(session, priced, 0))
+  })
+
+  it('extends the bounded cut forward to a tool-pair balanced boundary', () => {
+    const ctx = createContext()
+    const session = toolConversation()
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    // The budget stops the walk inside the first open tool pair; the end cut
+    // must land after its result instead of splitting the pair.
+    const bounded = selectCompactableRange(session, priced, 0, 1_000)!
+    expect(bounded.start).toBe(nodes[0])
+    expect(bounded.end).toBe(nodes[2])
+    expect(toolPairingBalancedAfter(session, bounded.end)).toBe(true)
+  })
+
+  it('selects one oversized node alone instead of returning an empty range', () => {
+    const ctx = createContext()
+    const session = conversation(2, 'oversized '.repeat(500))
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    const bounded = selectCompactableRange(session, priced, 0, 1)!
+
+    expect(bounded).toEqual({ start: nodes[0], end: nodes[0] })
+  })
+
+  it('applies the budget after tail retention', () => {
+    const ctx = createContext()
+    const session = conversation(10)
+    const priced = ctx.tokenMeter.measure(session)
+    const nodes = session.surface.nodes
+    const unbounded = selectCompactableRange(session, priced, 300)!
+    const bounded = selectCompactableRange(session, priced, 300, 200)!
+    expect(bounded.end).toBe(nodes[2])
+    expect(bounded.end).toBeLessThan(unbounded.end)
+    expect(unbounded.end).toBeGreaterThan(nodes[3]!)
+  })
+
+  it('converges a huge pressure session over bounded summarization passes', async () => {
+    const ctx = createContext(2_000)
+    const compact = service({
+      auto: false,
+      thresholdRatio: 0.8,
+      retainTokens: 300,
+      maxSummarizationInputTokens: 400,
+      compactionRetries: 6,
+    }, ctx)
+    const session = conversation(20)
+
+    const result = await compactIfNeeded(compact, session)
+
+    expect(result).not.toBeNull()
+    // 40 fixture messages at 88 tokens each need several passes at a 400-token
+    // budget; every call replayed only a bounded prefix, never the whole span.
+    expect(compact.calls.length).toBeGreaterThan(1)
+    for (const call of compact.calls) {
+      expect(call.input.messages.length).toBeGreaterThan(0)
+      expect(call.input.messages.length).toBeLessThan(10)
+    }
+    expect(summarizedText(compact.calls[0]!.input)).toContain('fixture user 1')
+    // The retained recent tail was never replayed into a summarization call.
+    for (const call of compact.calls) {
+      expect(summarizedText(call.input)).not.toContain('fixture user 20')
+    }
+  })
+
+  it('uses an unlimited input budget on the real pressure compaction path', async () => {
+    const ctx = createContext(100_000)
+    const compact = service({
+      auto: false,
+      thresholdRatio: 0.8,
+      retainTokens: 300,
+      maxSummarizationInputTokens: 0,
+      compactionRetries: 6,
+    }, ctx)
+    const session = conversation(20, 'fixture '.repeat(5_000).trim())
+
+    const result = await compactIfNeeded(compact, session)
+
+    expect(result).not.toBeNull()
+    expect(compact.calls).toHaveLength(1)
+    const input = compact.calls[0]!.input
+    // The zero policy must replay the whole selected head even when it is
+    // larger than the finite default budget; a finite pass would stop earlier.
+    expect(input.messages.length).toBeGreaterThan(20)
+    expect(summarizedText(input)).toContain('fixture user 19')
+    expect(summarizedText(input)).toContain('fixture assistant 19')
+    expect(summarizedText(input)).toContain('fixture user 20')
+  })
+})
+
+describe('summarizer retry', () => {
+  it('retries transient failures through the fast budget and then a cooldown', async () => {
+    vi.useFakeTimers()
+    const ctx = new Context()
+    const adapter = new SummaryRetryAdapter()
+    void new LlmRuntime(ctx)
+    ctx.llm.registerAdapter(['summary'], adapter)
+    const session = Session.create(SessionId('summary-retry'))
+    const summaryAgent = agent(session, 'summary')
+
+    const running = summarizeWithLlm(
+      ctx,
+      {
+        summarizationProvider: '',
+        summarizationModel: '',
+        maxTokens: 128,
+        summarizerCooldownMs: 5,
+      },
+      promptInput('history'),
+      summaryAgent,
+      new AbortController().signal,
+    )
+
+    await vi.runAllTimersAsync()
+    await expect(running).resolves.toMatchObject({
+      summary: [{ type: 'text', text: 'recovered summary' }],
+      provider: 'summary',
+      model: 'summary',
+    })
+    expect(adapter.requests).toBe(3)
+  })
+
+  it('does not retry a failure outside the normal policy and preserves provider facts', async () => {
+    const ctx = new Context()
+    void new LlmRuntime(ctx)
+    const adapter = new SummaryRetryAdapter({
+      failures: 1,
+      failure: {
+        message: 'invalid credentials',
+        code: 'AUTH',
+        status: 401,
+        providerRetryAfterMs: 3,
+        requestId: ProviderRequestId('summary-request'),
+      },
+    })
+    ctx.llm.registerAdapter(['summary'], adapter)
+
+    await expect(summarizeWithLlm(
+      ctx,
+      {
+        summarizationProvider: '',
+        summarizationModel: '',
+        maxTokens: 128,
+        summarizerCooldownMs: 5,
+      },
+      promptInput('history'),
+      agent(Session.create(SessionId('summary-nonretryable')), 'summary'),
+    )).rejects.toMatchObject({
+      code: 'AUTH',
+      failure: {
+        message: 'invalid credentials',
+        code: 'AUTH',
+        status: 401,
+        providerRetryAfterMs: 3,
+        requestId: 'summary-request',
+      },
+    })
+    expect(adapter.requests).toBe(1)
+  })
+
+  it('honors a valid provider Retry-After without adding jitter', async () => {
+    vi.useFakeTimers()
+    const ctx = new Context()
+    void new LlmRuntime(ctx)
+    const adapter = new SummaryRetryAdapter({
+      failures: 1,
+      policy: resolveRetryPolicy({
+        mode: 'normal',
+        maxRetries: 1,
+        retryableCodes: ['RATE_LIMIT'],
+        backoff: { initialDelayMs: 1, maxDelayMs: 4, jitterRatio: 0.1 },
+      }, 'summary retry-after test provider retryPolicy'),
+      failure: { message: 'busy', code: 'RATE_LIMIT', providerRetryAfterMs: 3 },
+    })
+    ctx.llm.registerAdapter(['summary'], adapter)
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    const running = summarizeWithLlm(
+      ctx,
+      {
+        summarizationProvider: '',
+        summarizationModel: '',
+        maxTokens: 128,
+        summarizerCooldownMs: 5,
+      },
+      promptInput('history'),
+      agent(Session.create(SessionId('summary-retry-after')), 'summary'),
+    )
+
+    await vi.runAllTimersAsync()
+    await expect(running).resolves.toMatchObject({ provider: 'summary', model: 'summary' })
+    expect(timers.mock.calls.map(call => call[1])).toContain(3)
+    expect(adapter.requests).toBe(2)
+  })
+
+  it('returns the original failure when normal Retry-After exceeds the route cap', async () => {
+    const ctx = new Context()
+    void new LlmRuntime(ctx)
+    const adapter = new SummaryRetryAdapter({
+      failures: 1,
+      policy: resolveRetryPolicy({
+        mode: 'normal',
+        maxRetries: 1,
+        retryableCodes: ['RATE_LIMIT'],
+        backoff: { initialDelayMs: 1, maxDelayMs: 2, jitterRatio: 0 },
+      }, 'summary over-cap test provider retryPolicy'),
+      failure: { message: 'retry later', code: 'RATE_LIMIT', providerRetryAfterMs: 3 },
+    })
+    ctx.llm.registerAdapter(['summary'], adapter)
+
+    await expect(summarizeWithLlm(
+      ctx,
+      {
+        summarizationProvider: '',
+        summarizationModel: '',
+        maxTokens: 128,
+        summarizerCooldownMs: 5,
+      },
+      promptInput('history'),
+      agent(Session.create(SessionId('summary-over-cap')), 'summary'),
+    )).rejects.toMatchObject({ code: 'RATE_LIMIT' })
+    expect(adapter.requests).toBe(1)
+  })
+
+  it('uses local backoff for an always policy after an over-cap Retry-After', async () => {
+    vi.useFakeTimers()
+    const ctx = new Context()
+    void new LlmRuntime(ctx)
+    const adapter = new SummaryRetryAdapter({
+      failures: 1,
+      policy: resolveRetryPolicy({
+        mode: 'always',
+        backoff: { initialDelayMs: 1, maxDelayMs: 2, jitterRatio: 0 },
+      }, 'summary always test provider retryPolicy'),
+      failure: { message: 'unauthorized once', code: 'AUTH', providerRetryAfterMs: 10 },
+    })
+    ctx.llm.registerAdapter(['summary'], adapter)
+
+    const running = summarizeWithLlm(
+      ctx,
+      {
+        summarizationProvider: '',
+        summarizationModel: '',
+        maxTokens: 128,
+        summarizerCooldownMs: 5,
+      },
+      promptInput('history'),
+      agent(Session.create(SessionId('summary-always')), 'summary'),
+    )
+    await vi.runAllTimersAsync()
+    await expect(running).resolves.toMatchObject({ provider: 'summary', model: 'summary' })
+    expect(adapter.requests).toBe(2)
+  })
+
+  it('cancels a cooldown wait without starting another summarization attempt', async () => {
+    vi.useFakeTimers()
+    const ctx = new Context()
+    void new LlmRuntime(ctx)
+    const adapter = new SummaryRetryAdapter({ failures: 2 })
+    ctx.llm.registerAdapter(['summary'], adapter)
+    const controller = new AbortController()
+    const running = summarizeWithLlm(
+      ctx,
+      {
+        summarizationProvider: '',
+        summarizationModel: '',
+        maxTokens: 128,
+        summarizerCooldownMs: 5,
+      },
+      promptInput('history'),
+      agent(Session.create(SessionId('summary-cancel')), 'summary'),
+      controller.signal,
+    )
+
+    await vi.advanceTimersByTimeAsync(1)
+    await Promise.resolve()
+    controller.abort(new Error('summary cancelled'))
+    await expect(running).rejects.toThrow('summary cancelled')
+    expect(adapter.requests).toBe(2)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('retries a coded middleware failure through the same policy', async () => {
+    vi.useFakeTimers()
+    const ctx = new Context()
+    void new LlmRuntime(ctx)
+    const adapter = new SummaryRetryAdapter({ failures: 0 })
+    ctx.llm.registerAdapter(['summary'], adapter)
+    let middlewareCalls = 0
+    ctx.on('llm/stream', (_options, next) => {
+      middlewareCalls += 1
+      if (middlewareCalls === 1) throw Object.assign(new Error('transport overloaded'), { code: 'RATE_LIMIT' })
+      return next()
+    })
+
+    const running = summarizeWithLlm(
+      ctx,
+      {
+        summarizationProvider: '',
+        summarizationModel: '',
+        maxTokens: 128,
+        summarizerCooldownMs: 5,
+      },
+      promptInput('history'),
+      agent(Session.create(SessionId('summary-thrown')), 'summary'),
+    )
+    await vi.runAllTimersAsync()
+    await expect(running).resolves.toMatchObject({ provider: 'summary', model: 'summary' })
+    expect(adapter.requests).toBe(1)
+    expect(middlewareCalls).toBe(2)
   })
 })
 
@@ -1679,6 +2102,38 @@ describe('automatic listener and loader composition', () => {
     expect(session.surface.replaceGeneration).toBe(beforeGeneration + 1)
     expect(session.snapshotEvents().some(event => event.type === 'compaction/summary')).toBe(true)
     expect(session.surface.nodes).toContain(retainedSeq)
+  })
+
+  it('bounds repeated provider-overflow recovery without mutating the durable tail', async () => {
+    const ctx = createContext(10_000)
+    const compact = new TestCompactionEngine(ctx, {
+      maxSummarizationInputTokens: 400,
+      maxOverflowRetries: 2,
+    })
+    const owner = agent(conversation(20), MODEL)
+    const durableEventCount = owner.session.snapshotEvents().length
+
+    expect(await recover(ctx, owner, overflow())).toBe(true)
+    expect(await recover(ctx, owner, overflow())).toBe(true)
+
+    expect(compact.calls).toHaveLength(2)
+    for (const call of compact.calls) {
+      expect(call.input.messages.length).toBeGreaterThan(0)
+      expect(call.input.messages.length).toBeLessThan(10)
+    }
+    expect(summarizedText(compact.calls[0]!.input)).toContain('fixture user 1')
+    expect(summarizedText(compact.calls[0]!.input)).not.toContain('fixture user 20')
+    expect(summarizedText(compact.calls[1]!.input)).not.toContain('fixture user 20')
+    expect(owner.session.snapshotEvents().length).toBeGreaterThan(durableEventCount)
+    expect(owner.session.snapshotEvents().filter(event =>
+      event.type === 'user/message' && event.data.source.kind === 'user',
+    )).toHaveLength(20)
+    expect(owner.session.snapshotEvents().find(event =>
+      event.type === 'user/message'
+      && event.data.source.kind === 'user'
+      && event.data.content.some(block =>
+        block.type === 'text' && block.text.includes('fixture user 20')),
+    )).toBeDefined()
   })
 
   it('authorizes overflow retry when pruning alone advances an indivisible surface', async () => {

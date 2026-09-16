@@ -3,7 +3,7 @@ description: "Shared Loader boot support for dsh profiles and the temporary Pyth
 kind: "package-library"
 ---
 
-# @deepseek-ai/dsh-app-boot
+# @knyazevai/dsh-app-boot
 
 English | [中文](README.zh.md)
 
@@ -45,7 +45,7 @@ With that entry point, startup keeps every plugin that can activate. An enabled 
 <a id="profiles"></a>
 ### Profiles
 
-Import profile and bundle declaration types from [`@deepseek-ai/dsh-package-manifest`](../../util/package-manifest/README.md). App-boot adapts `DshPackageManifest` to `ProfileManifest` with optional package identity because local profiles need no published version. App-boot owns profile loading, JSON validation, and resolved runtime data.
+Import profile and bundle declaration types from [`@knyazevai/dsh-package-manifest`](../../util/package-manifest/README.md). App-boot adapts `DshPackageManifest` to `ProfileManifest` with optional package identity because local profiles need no published version. App-boot owns profile loading, JSON validation, and resolved runtime data.
 
 A profile is how one dsh installation ships different app surfaces: `web`, `headless`, `acp`, `sdk`, and `sdk-minimal` start distinct compositions from the same launcher. A profile lives at `$DSH_HOME/profiles/<name>` and combines installable bundles, its own `cordis.patch.yml`, and `patchReload: live | startup`; omitted reload policy keeps the historical `live` default for custom profiles. The shipped `web` template uses live reload, while the other shipped templates apply patches only at startup. `sdk-minimal` names only its standalone bundle; the other templates retain base-plus-mode stacks. `dsh --profile <name> --from-default-profile <template>` creates a custom profile at a new non-shipped name from one shipped template, while `dsh plugin` initializes a base-backed profile and manages its installed bundles. A missing bundle or one without a patch declaration fails startup loudly. Application-owned npm projects, such as Electron's reserved Desktop profile, use `loadProfileDirectory` to load an already initialized directory without exposing it through CLI profile lookup.
 
@@ -109,7 +109,7 @@ This section explains how the outcomes above are realized and points at the code
 - **Two Loader builtins.** `mountRootInclude` registers `cordis:include` and `cordis:group` as Loader builtins: a group row gives one `isolate` realm to a provider and its consumers together, and an agent preset outside this workspace cannot resolve `@deepseek-ai/cordis-plugin-group` by name. Both load through the ambient module pipeline rather than the included tree's own specifier resolution.
 - **Consumer-owned strictness.** Ordinary Loader groups keep successful siblings. App-boot applies the global required-entry policy after initial settlement; agent presets and dynamic multi-entry compositions own and dispose their separate generation when they require all-or-nothing setup. App-boot reads failed fibers to report their recorded errors and coalesces duplicate Loader rejection notifications through one process checkpoint.
 - **One fallback generation.** The installation-first and ordered-bundle breadth-first traversal produces both the runtime table and the retained disk materializer. Runtime mode creates no resolution links and ignores stale projections at their former lookup positions. External bare targets selected by package `imports` use the same package order, while Node retains mapping, conditions, and exact target resolution. Link mode materializes the same table; dual mode also compares Node's disk result with the table. A complete successor may add package names atomically, while changing or removing an existing mapping requires restart.
-- **Owned Workers.** Worker build banners import `@deepseek-ai/dsh-app-boot/worker/profile-resolution-bootstrap` before bundled business code. Each Worker installs the structured-cloned generation in its own isolate. The bootstrap bundle has no static package imports. Source Worker entries retain their self-contained dependency closure, and third-party Workers receive no injection.
+- **Owned Workers.** Worker build banners import `@knyazevai/dsh-app-boot/worker/profile-resolution-bootstrap` before bundled business code. Each Worker installs the structured-cloned generation in its own isolate. The bootstrap bundle has no static package imports. Source Worker entries retain their self-contained dependency closure, and third-party Workers receive no injection.
 - **Update completion.** App boot observes restart failures through the `internal/update` waterfall. Live patch reloads wait for the tree's fibers before auditing activation; `Fiber.update()` and `Entry.update()` alone do not establish restart success.
 - **One rejection checkpoint.** `assertEntriesActivated` keeps the exact reasons it folds into the boot diagnostic visible through the next process rejection checkpoint, so `installFailLoud` coalesces Loader's duplicate notification while unrelated unhandled rejections remain fatal.
 - **Two-stage failure labels.** `boot()` distinguishes `host preparation failed` — `prepare` threw before any config-tree entry mounted — from `plugin tree failed to load`, and appends the deepest plugin error's stack. Plugin diagnostics retain nested causes and aggregate member failures; cyclic causes stop traversal without replacing the original error.

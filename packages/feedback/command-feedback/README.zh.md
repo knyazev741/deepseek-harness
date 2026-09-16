@@ -3,7 +3,7 @@ description: "会话反馈：`/feedback` 命令、Web 反馈弹窗背后的 `ses
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-command-feedback
+# @knyazevai/dsh-command-feedback
 
 [English](README.md) | 中文
 
@@ -61,11 +61,11 @@ kind: "package-reference"
 
 ```yaml
 - id: session
-  name: '@deepseek-ai/dsh-session'
+  name: '@knyazevai/dsh-session'
 - id: commands
-  name: '@deepseek-ai/dsh-commands'
+  name: '@knyazevai/dsh-commands'
 - id: command-feedback
-  name: '@deepseek-ai/dsh-command-feedback'
+  name: '@knyazevai/dsh-command-feedback'
 ```
 
 Web 客户端随附该命令。无头模式、ACP 自动化和 JSON-RPC 不提供斜杠命令，因此 `/feedback` 在那里不可用。

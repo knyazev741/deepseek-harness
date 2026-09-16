@@ -73,6 +73,9 @@
     },
     {
       "path": "../terminal-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../../fork/workspace-session-state/tsconfig.host.json"
     }
   ]
 }

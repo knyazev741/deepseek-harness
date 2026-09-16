@@ -12,7 +12,7 @@ An allowlist for public experimental packages requires a policy edit whenever a 
 
 The local npm baseline publisher and the public dsh release family discover experimental packages by default. [`PRIVATE_EXPERIMENTAL_PACKAGE_DIRECTORIES`](../../../../scripts/experimental-package-policy.ts) owns explicit private exclusions. The [complete experimental publication decision](2026-09-12-publish-all-experimental-packages.md) leaves this denylist empty; all current experimental packages publish.
 
-Every experimental directory outside the denylist is public by default. Workspace constraints require public packages to omit `private` and set `publishConfig.access: public`; all experimental packages retain the `@deepseek-ai/dsh-experimental-*` npm prefix. Adding a private prototype requires a denylist entry as well as its private manifest.
+Every experimental directory outside the denylist is public by default. Workspace constraints require public packages to omit `private` and set `publishConfig.access: public`; all experimental packages retain the `@knyazevai/dsh-experimental-*` npm prefix. Adding a private prototype requires a denylist entry as well as its private manifest.
 
 This decision supersedes the private publication default in the [Agent Teams package decision](../architecture/2026-08-18-experimental-agent-teams-packages.md). Its dependency isolation, opt-in composition, engineering requirements, and promotion rules remain active. Publication grants neither stability nor a support promise.
 

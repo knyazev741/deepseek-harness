@@ -2,18 +2,18 @@
  * Whole-client test carrier: boots an {@link AssemblyPlan} through the
  * production `bootClient` over an in-process module table, with a
  * `RemoteMock` bound to that client's Connection plugin instance.
- * @module @deepseek-ai/dsh-client-test-runtime/src/assembly/test-client
+ * @module @knyazevai/dsh-client-test-runtime/src/assembly/test-client
  */
 import { Context, type Plugin } from '@deepseek-ai/cordis'
 import type { Entry } from '@deepseek-ai/cordis-plugin-loader'
-import { tearDownEntryFiber } from '@deepseek-ai/dsh-client-hmr/client'
+import { tearDownEntryFiber } from '@knyazevai/dsh-client-hmr/client'
 import {
   installConnection,
   type ConnectionHandle,
-} from '@deepseek-ai/dsh-client-connection/client'
-import { bootClient } from '@deepseek-ai/dsh-client-web/src/boot-client.ts'
-import { mountClient } from '@deepseek-ai/dsh-client-web/src/mount.ts'
-import type { RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+} from '@knyazevai/dsh-client-connection/client'
+import { bootClient } from '@knyazevai/dsh-client-web/src/boot-client.ts'
+import { mountClient } from '@knyazevai/dsh-client-web/src/mount.ts'
+import type { RemoteMock } from '@knyazevai/dsh-remote-mock'
 import { act } from '@testing-library/react'
 import { createInProcessModules, loadPluginModules } from './modules.ts'
 import { assertPlan, graphFromRoster, type AssemblyPlan } from './roster.ts'
@@ -60,7 +60,7 @@ class SharedJsdomShims {
 
 const sharedJsdomShims = new SharedJsdomShims()
 
-const CONNECTION_PACKAGE = '@deepseek-ai/dsh-client-connection'
+const CONNECTION_PACKAGE = '@knyazevai/dsh-client-connection'
 
 /** Default readiness budget; the mock answers `$events` immediately, so a miss means a boot-time fixture is absent. */
 const DEFAULT_CONNECT_TIMEOUT_MS = 5_000
@@ -166,7 +166,7 @@ export class TestClient {
    * `installConnection`, while this path supplies the mock carrier, uses
    * default recovery timings, and captures the current page hostname once for
    * later reloads. A caller-provided Connection row remains unchanged and owns
-   * its readiness behavior. The `@deepseek-ai/dsh-api-remotes` row is
+   * its readiness behavior. The `@knyazevai/dsh-api-remotes` row is
    * dropped from the roster: its generated Remote clients exist only in built
    * `lib/`, and the `remote.<ns>` services the roster injects (plus the
    * namespaces the mock has rules for at this point) are provided as

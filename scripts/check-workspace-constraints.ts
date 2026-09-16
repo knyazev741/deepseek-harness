@@ -52,22 +52,22 @@ const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harn
 /** Packages that participate in the experimental policy. */
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 /** npm namespace reserved for experimental packages. */
-const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
+const experimentalPackageNamePrefix = '@knyazevai/dsh-experimental-'
 /** Ordinary directories whose packages this repository publishes: one release member each. */
 const standardReleaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|apps\/(?!desktop(?:-host)?$)[^/]+|vendor\/[^/]+)$/
 /** Installable application assembled by electron-builder rather than published to npm. */
 const desktopApplicationDirectory = 'apps/desktop'
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
-  '@deepseek-ai/dsh': ['lib/*.js'],
-  '@deepseek-ai/dsh-desktop-host': [
+  '@knyazevai/dsh': ['bin.mjs', 'lib/*.js'],
+  '@knyazevai/dsh-desktop-host': [
     'lib/index.js',
     'config/desktop.cordis.patch.yml',
   ],
   // Sourcemaps stay out by payload policy; the worker-preview surface
   // (dist/preview.html and dist/preview/) backs opt-in experimental
   // packages and is not published.
-  '@deepseek-ai/dsh-web-frontend': ['dist', '!dist/**/*.map', '!dist/preview.html', '!dist/preview'],
+  '@knyazevai/dsh-web-frontend': ['dist', '!dist/**/*.map', '!dist/preview.html', '!dist/preview'],
 }
 
 /** The subset of package.json fields this constraint check cares about. */
@@ -149,45 +149,45 @@ function workspaceManifests(): WorkspaceManifest[] {
 
 const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // Owned Worker bundles import this public bootstrap before their business entry.
-  '@deepseek-ai/dsh-app-boot': ['lib/worker/profile-resolution-bootstrap.js'],
+  '@knyazevai/dsh-app-boot': ['lib/worker/profile-resolution-bootstrap.js'],
   // Statically linked client libraries keep their stylesheets next to the emitted
   // JavaScript, which imports them by relative path: the compile shell runs
   // them through its own CSS pipeline, so the sheets are published artifacts.
   // The glob covers whichever sheets a package emits; sourcemaps stay
   // unpublished, as everywhere else in the repository.
-  '@deepseek-ai/dsh-client-ui-primitives': ['lib/**/*.css'],
-  '@deepseek-ai/dsh-client-ui-dockkit': ['lib/**/*.css'],
-  '@deepseek-ai/dsh-client-web': ['lib/**/*.css'],
-  '@deepseek-ai/dsh-client-ui-theme': ['lib/styles'],
+  '@knyazevai/dsh-client-ui-primitives': ['lib/**/*.css'],
+  '@knyazevai/dsh-client-ui-dockkit': ['lib/**/*.css'],
+  '@knyazevai/dsh-client-web': ['lib/**/*.css'],
+  '@knyazevai/dsh-client-ui-theme': ['lib/styles'],
   // The CPython side ships as source .py files, published as-is rather than built.
-  '@deepseek-ai/dsh-experimental-ptc-runtime-python': ['py/**/*.py'],
+  '@knyazevai/dsh-experimental-ptc-runtime-python': ['py/**/*.py'],
   // The isolated Node bootstrap is a separately launched bundle.
-  '@deepseek-ai/dsh-ptc-runtime-node': ['lib/process.js'],
+  '@knyazevai/dsh-ptc-runtime-node': ['lib/process.js'],
   // The Host entry starts its sibling Worker by URL rather than a package export.
-  '@deepseek-ai/dsh-experimental-inspector': ['lib/worker.js'],
+  '@knyazevai/dsh-experimental-inspector': ['lib/worker.js'],
   // The shipped preset compositions travel inside the roster package.
-  '@deepseek-ai/dsh-agent-presets': ['presets'],
+  '@knyazevai/dsh-agent-presets': ['presets'],
   // The Web Host mounts the default-off settings owner independently of each
   // Agent-scoped delegation-tool instance.
-  '@deepseek-ai/dsh-tool-subagent': ['lib/model-selection-settings.js'],
+  '@knyazevai/dsh-tool-subagent': ['lib/model-selection-settings.js'],
   // The JSONL backend resolves its private verification Worker relative to
   // import.meta.url; it is shipped without a public package subpath.
-  '@deepseek-ai/dsh-session-persistence-jsonl': ['lib/worker.cjs'],
+  '@knyazevai/dsh-session-persistence-jsonl': ['lib/worker.cjs'],
   // The argv-prefix runner entry ships beside the lib as its own bundle;
   // sandbox-local resolves it through the package's ./runner export. tsdown
   // also shares its generated FFI code through a hashed runtime chunk.
-  '@deepseek-ai/dsh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js'],
-  '@deepseek-ai/dsh-skill-badge': ['assets'],
-  '@deepseek-ai/dsh-subprocess': ['lib/control.js'],
+  '@knyazevai/dsh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js'],
+  '@knyazevai/dsh-skill-badge': ['assets'],
+  '@knyazevai/dsh-subprocess': ['lib/control.js'],
   // SSH launches a private helper and shares wire definitions and TLS setup
   // between that helper and the connection owner.
-  '@deepseek-ai/dsh-ssh': [
+  '@knyazevai/dsh-ssh': [
     'lib/helper.js', 'lib/protocol.js', 'lib/schemas.js',
     'lib/protocol-*.js', 'lib/schemas-*.js', 'lib/stream-security-*.js',
   ],
   // Ordinary native containment ships a path-loaded runner and its shared
   // runner chunk beside the existing node-pty permission repair.
-  '@deepseek-ai/dsh-subprocess-local': [
+  '@knyazevai/dsh-subprocess-local': [
     'lib/runner.js',
     'lib/runner-*.js',
     'lib/output.js',
@@ -196,10 +196,10 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // tsdown shares the repository/pack code between the lib entry and the bin
   // through a hashed chunk. The committed bin.js is the link target pnpm can
   // resolve at install time, before the build produces lib/bin.js.
-  '@deepseek-ai/dsh-experimental-webworker-packer': ['bin.js', 'lib/repository-*.js'],
+  '@knyazevai/dsh-experimental-webworker-packer': ['bin.js', 'lib/repository-*.js'],
   // The headless entry and its startup row share the JSON projection code
   // through a hashed tsdown chunk; both import it by relative path.
-  '@deepseek-ai/dsh-headless': ['lib/json-stream-*.js'],
+  '@knyazevai/dsh-headless': ['lib/json-stream-*.js'],
 }
 
 function sameStringList(actual: readonly string[] | undefined, expected: readonly string[]): boolean {
@@ -325,7 +325,7 @@ function isReleaseMemberDirectory(dir: string): boolean {
  */
 export function checkDshFamilyVersion(manifest: PackageManifest, expected: string | undefined): string | undefined {
   const name = manifest.name
-  if (name !== '@deepseek-ai/dsh' && name?.startsWith('@deepseek-ai/dsh-') !== true) return undefined
+  if (name !== '@knyazevai/dsh' && name?.startsWith('@knyazevai/dsh-') !== true) return undefined
   if (manifest.version !== expected) {
     return `${name}: package.json version must match root version ${expected ?? '(missing)'}`
   }
@@ -389,7 +389,7 @@ export function checkWorkspaceManifest({ dir, manifest }: WorkspaceManifest): st
     return errors
   }
 
-  if (manifest.name?.startsWith('@deepseek-ai/')) {
+  if (manifest.name?.startsWith('@knyazevai/dsh') || manifest.name?.startsWith('@deepseek-ai/')) {
     const allowedSources = publicationSourceAllowlist[manifest.name] ?? []
     for (const file of manifest.files ?? []) {
       if (isForbiddenPublicationFile(file) && !allowedSources.includes(file)) {
@@ -398,7 +398,7 @@ export function checkWorkspaceManifest({ dir, manifest }: WorkspaceManifest): st
     }
   }
 
-  if (dir.startsWith('apps/') && dir !== desktopApplicationDirectory && manifest.name?.startsWith('@deepseek-ai/')) {
+  if (dir.startsWith('apps/') && dir !== desktopApplicationDirectory && manifest.name?.startsWith('@knyazevai/dsh')) {
     const expectedFiles = appPackageFiles[manifest.name]
     if (expectedFiles === undefined) {
       errors.push(`${label}: app package has no publication files policy`)
@@ -416,7 +416,7 @@ export function checkWorkspaceManifest({ dir, manifest }: WorkspaceManifest): st
     }
   }
 
-  if (dir.startsWith('packages/') && manifest.name?.startsWith('@deepseek-ai/dsh-')) {
+  if (dir.startsWith('packages/') && manifest.name?.startsWith('@knyazevai/dsh-')) {
     const peer = manifest.peerDependencies?.['@deepseek-ai/cordis']
     const dev = manifest.devDependencies?.['@deepseek-ai/cordis']
 

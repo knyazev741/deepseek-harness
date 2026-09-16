@@ -26,7 +26,7 @@ Subpath exports keep their path: `@cordisjs/plugin-loader/repository` becomes `@
 - **Dependency ranges.** Renaming changes dependency keys without changing ranges. Workspace manifests use `workspace:^` for repository-owned runtime dependencies, so pnpm resolves the pinned local packages and substitutes release ranges when publishing.
 - **The Loader's `cordis:` builtin prefix.** `cordis:include` and `cordis:group` are a protocol prefix, not a package name.
 - **The `cordis.yml` configuration family**, including `*.cordis.yml`, `*.cordis.snapshot.yml`, and `cordis.patch.yml`.
-- **Harness packages whose own names contain the word**, such as `@deepseek-ai/dsh-tool-cordis`.
+- **Harness packages whose own names contain the word**, such as `@knyazevai/dsh-tool-cordis`.
 - **Upstream runtime identifiers**, such as Schemastery's `Symbol.for('schemastery')` and its `vendor:` metadata field.
 - **Prose outside `docs/`.** `vendor/*/README.md`, package READMEs, and Agent Notes keep the names they were written with; a bare `cordis` there can also be the Python SDK's option name or an agent-preset id. Inside `docs/`, prose and every Markdown fence follow the rename.
 

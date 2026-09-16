@@ -6,16 +6,17 @@
  * idempotence. All through the production SlotRegistry + createSlotRenderer
  * stack — this suite is the fixture the migrated feature specs rely on.
  */
+import type * as React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { stubSettingsScope } from '../src/settings-scope.ts'
 import { cleanup } from '@testing-library/react'
-import { defineStore } from '@deepseek-ai/dsh-client-store'
-import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { PropsRenderSlots, SessionStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
+import { defineStore } from '@knyazevai/dsh-client-store'
+import type { WorkspaceId } from '@knyazevai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { PropsRenderSlots, SessionStandardProps } from '@knyazevai/dsh-client-ui-slots'
+import { SlotTestRuntime } from '@knyazevai/dsh-client-test-runtime'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface SlotMap {
     'trt.panel': { kind: 'single'; scope: 'root'; owner: { label?: string } }
     'trt.chat': { kind: 'single'; scope: 'session' }

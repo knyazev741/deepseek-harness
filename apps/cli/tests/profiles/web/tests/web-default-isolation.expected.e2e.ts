@@ -1,12 +1,12 @@
 /** Real Web startup, mounted plugin package identities, and delivered Client graph isolation. */
 
 import { FiberState } from '@deepseek-ai/cordis'
-import type { WebBootGraph } from '@deepseek-ai/dsh-client-modules/client'
+import type { WebBootGraph } from '@knyazevai/dsh-client-modules/client'
 import { expect, it } from 'vitest'
 import { experimentalRuntimeReferences, modulePackage } from './runtime-roster.ts'
 import { withDefaultWeb, webGet } from './default-web-process.ts'
 
-const experimentalName = '@deepseek-ai/dsh-experimental-client-ui-agent-team'
+const experimentalName = '@knyazevai/dsh-experimental-client-ui-agent-team'
 
 it('boots the default Web profile without experimental Host modules, mounted plugins, or Client entries', async (test) => {
   await withDefaultWeb(test, async ({ url, request }) => {
@@ -22,12 +22,12 @@ it('boots the default Web profile without experimental Host modules, mounted plu
     const roster = await request('roster')
     expect(roster.client).toEqual(delivered)
     expect(roster.entries).toEqual(expect.arrayContaining([
-      expect.objectContaining({ name: '@deepseek-ai/dsh-host-webserver', state: FiberState.ACTIVE }),
-      expect.objectContaining({ name: '@deepseek-ai/dsh-client-modules', state: FiberState.ACTIVE }),
+      expect.objectContaining({ name: '@knyazevai/dsh-host-webserver', state: FiberState.ACTIVE }),
+      expect.objectContaining({ name: '@knyazevai/dsh-client-modules', state: FiberState.ACTIVE }),
     ]))
     expect(roster.entries.some(entry => entry.name.endsWith('/runtime-roster-observer.js') && entry.state === FiberState.ACTIVE)).toBe(true)
     expect(roster.plugins.length).toBeGreaterThan(roster.entries.length)
-    expect(roster.modules.some(url => modulePackage(url) === '@deepseek-ai/dsh')).toBe(true)
+    expect(roster.modules.some(url => modulePackage(url) === '@knyazevai/dsh')).toBe(true)
     expect(roster.client.entries.length).toBeGreaterThan(0)
     expect(experimentalRuntimeReferences(roster)).toEqual([])
 

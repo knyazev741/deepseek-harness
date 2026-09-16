@@ -3,7 +3,7 @@ description: "Client Tool presentation plugin for the dsh web client: whole-call
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-tool
+# @knyazevai/dsh-client-ui-tool
 
 English | [中文](README.zh.md)
 
@@ -68,7 +68,7 @@ Chat diff cards keep nine rows before folding, enough for a file header, one rem
 
 An Auto denial takes precedence over keyed specialized views. Its generic row preserves the call identity, omits raw arguments, and normalizes the stored reason only for display: trim surrounding whitespace and collapse line separators to spaces, with localized fallback for an empty result. Session and SDK error details keep the original reason.
 
-The terminal model uses `hasSpillNotice` from the browser-safe `@deepseek-ai/dsh-spill-policy/notice` entry, not an independent UI pattern. The [spill-policy README](../../spill/spill-policy/README.md#shared-notice-ownership) owns notice formatting and recognition. This check conservatively selects generic output; matching text cannot authenticate its source, and replay leaves recorded result bytes untouched.
+The terminal model uses `hasSpillNotice` from the browser-safe `@knyazevai/dsh-spill-policy/notice` entry, not an independent UI pattern. The [spill-policy README](../../spill/spill-policy/README.md#shared-notice-ownership) owns notice formatting and recognition. This check conservatively selects generic output; matching text cannot authenticate its source, and replay leaves recorded result bytes untouched.
 </details>
 
 -----

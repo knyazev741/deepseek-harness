@@ -1,0 +1,173 @@
+# Upstream-sync review: the "agent" that wakes up when the sync PR appears,
+# checks the diff, and merges it only when nothing dangerous is found.
+#
+# - Runs for pull requests whose head is `sync/upstream-master` (opened by
+#   `upstream-sync.yml`).
+# - Runs the fork's own sanity gates (typecheck + unit tests) on the PR head,
+#   so a broken upstream state is caught before merge.
+# - Runs a multi-turn DeepSeek Harness headless agent on knyazevai.work
+#   (deepseek-v4-flash) that reviews the diff over several turns and returns a
+#   JSON verdict { safe, summary, risks } that CI parses from stdout.
+# - Posts the review as a PR comment. Merges the PR (merge commit) only when
+#   the verdict is safe AND the gates pass. A "risky" verdict leaves the PR
+#   open for human review — the automation never merges a dangerous diff and
+#   never deploys anything.
+#
+# Required repository secret: KNYAZEV_AI_API_KEY (the same key the local
+# knyazev-ai provider route uses). A missing or invalid key fails the review
+# run, which fails closed to safe=false: the PR is never auto-merged without
+# a review.
+
+name: upstream-review
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    if: github.head_ref == 'sync/upstream-master' && github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/head
+          fetch-depth: 0
+
+      - name: Fetch the base branch for diffing
+        run: git fetch origin master:refs/remotes/origin/master
+
+      - name: Install dependencies
+        uses: pnpm/action-setup@v4
+        # No explicit version: the repo's package.json `packageManager`
+        # field (pnpm@11.7.0) selects the version; passing `version` here
+        # makes pnpm/action-setup fail with "Multiple versions of pnpm
+        # specified".
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Sanity gates (typecheck + unit tests)
+        id: gates
+        continue-on-error: true
+        run: |
+          pnpm run typecheck
+          pnpm run test
+
+      - name: AI review of the diff
+        id: review
+        env:
+          KNYAZEV_AI_API_KEY: ${{ secrets.KNYAZEV_AI_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          # 1. Write the full sync diff for the review agent to read.
+          git diff origin/master...HEAD > /tmp/sync-diff.txt
+
+          # 2. Fresh, isolated DSH home carrying the knyazev-ai route so the
+          #    headless runner resolves the agent to knyazev-ai/deepseek-v4-flash.
+          DSH_HOME="$RUNNER_TEMP/dsh-home"
+          mkdir -p "$DSH_HOME"
+          export DSH_HOME
+          cp .github/review/headless-settings.yaml "$DSH_HOME/settings.yaml"
+          export KNYAZEV_AI_API_KEY
+
+          # 3. The multi-turn review task, from a committed file.
+          TASK="$(cat .github/review/reviewer-task.txt)"
+
+          # 4. Run the multi-turn headless agent; it runs fully from source
+          #    (no build needed). Exit 0 == final turn completed, 1 == error.
+          set +e
+          pnpm dsh --profile fork-headless "$TASK" > review.stdout 2> review.stderr
+          DSH_RC=$?
+          set -e
+
+          # 5. Extract the trailing JSON verdict robustly (prose may precede it;
+          #    pnpm adds its own stdout banner). Fail closed to safe=false on a
+          #    nonzero run or an unparseable verdict.
+          if [ "$DSH_RC" -eq 0 ]; then
+            REVIEW_STDOUT="$(cat review.stdout)"
+          else
+            REVIEW_STDOUT=""
+            echo "dsh headless exited $DSH_RC; stderr:" >&2
+            cat review.stderr >&2
+          fi
+          export REVIEW_STDOUT
+          python3 - <<'PYEOF'
+          import json, os
+
+          raw = os.environ.get("REVIEW_STDOUT", "")
+
+          def iter_objects(s):
+              dec = json.JSONDecoder()
+              i, n = 0, len(s)
+              while i < n:
+                  try:
+                      obj, end = dec.raw_decode(s, i)
+                      yield obj
+                      i = end
+                  except ValueError:
+                      i += 1
+
+          verdict = None
+          for obj in iter_objects(raw):
+              if isinstance(obj, dict) and isinstance(obj.get("safe"), bool):
+                  verdict = obj
+
+          if verdict is None:
+              verdict = {"safe": False, "summary": "review failed", "risks": []}
+          else:
+              risks = verdict.get("risks")
+              verdict["safe"] = bool(verdict.get("safe"))
+              verdict["summary"] = str(verdict.get("summary") or "review failed")
+              verdict["risks"] = [str(r) for r in risks] if isinstance(risks, list) else []
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"verdict={'safe' if verdict['safe'] else 'risky'}\n")
+              out.write("summary=" + json.dumps(verdict["summary"]) + "\n")
+              out.write("risks=" + json.dumps(json.dumps(verdict["risks"])) + "\n")
+          PYEOF
+
+      - name: Upload review session artifact
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-session
+          path: ${{ runner.temp }}/dsh-home/sessions/
+          if-no-files-found: warn
+
+      - name: Post the review comment
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEW_VERDICT: ${{ steps.review.outputs.verdict }}
+          REVIEW_SUMMARY: ${{ steps.review.outputs.summary }}
+          REVIEW_RISKS: ${{ steps.review.outputs.risks }}
+          GATES_OUTCOME: ${{ steps.gates.outcome }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python3 - <<'PYEOF'
+          import os
+          from pathlib import Path
+          Path('/tmp/review-comment.md').write_text(
+              '**AI review verdict:** ' + os.environ['REVIEW_VERDICT'] + '\n\n'
+              + 'Summary: ' + os.environ['REVIEW_SUMMARY'] + '\n\n'
+              + 'Risks: ' + os.environ['REVIEW_RISKS'] + '\n\n'
+              + 'Sanity gates: ' + os.environ['GATES_OUTCOME'] + '\n')
+          PYEOF
+          gh pr comment "$PR_NUMBER" --body-file /tmp/review-comment.md
+
+      - name: Merge when safe and gates pass
+        if: steps.review.outputs.verdict == 'safe' && steps.gates.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "${{ github.event.pull_request.number }}" --merge --auto --match-head-commit "$(git rev-parse HEAD)"

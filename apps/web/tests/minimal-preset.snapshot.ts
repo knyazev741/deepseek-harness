@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
-import type { AgentHandle } from '@deepseek-ai/dsh-agent'
-import { ToolCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import type { Session } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-agent-presets'
-import type {} from '@deepseek-ai/dsh-system-prompt'
+import type { AgentHandle } from '@knyazevai/dsh-agent'
+import { ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
+import { SessionId } from '@knyazevai/dsh-session'
+import type { Session } from '@knyazevai/dsh-session'
+import type {} from '@knyazevai/dsh-agent-presets'
+import type {} from '@knyazevai/dsh-system-prompt'
 import {
   assertFixtureInventory,
   captureStableAria,
@@ -83,7 +83,7 @@ describe('minimal agent preset', () => {
     if (systemPrompt === undefined) throw new Error('the minimal agent issued no system prompt')
     expect(agentHandle.agent.session.snapshotEvents().some(event => event.type === 'user/message'
       && event.data.source.kind === 'plugin'
-      && event.data.source.plugin === '@deepseek-ai/dsh-system-prompt')).toBe(false)
+      && event.data.source.plugin === '@knyazevai/dsh-system-prompt')).toBe(false)
     expect(scaffold.ctx.agentPresets.serviceFor(agentHandle.agent, 'fs')).toBeUndefined()
     expect(scaffold.ctx.agentPresets.serviceFor(agentHandle.agent, 'compaction')).toBeUndefined()
 

@@ -12,7 +12,7 @@ Status: implemented
 
 本地 npm baseline 发布器与公开 dsh 发布系列默认发现实验性包。[`PRIVATE_EXPERIMENTAL_PACKAGE_DIRECTORIES`](../../../../scripts/experimental-package-policy.ts) 负责显式私有排除项。[完整实验包发布决策](2026-09-12-publish-all-experimental-packages.zh.md)使该拒绝列表保持为空；所有当前实验性包都参与发布。
 
-拒绝列表以外的每个实验性目录默认公开。workspace 约束要求公开包省略 `private` 并设置 `publishConfig.access: public`；所有实验性包保留 `@deepseek-ai/dsh-experimental-*` npm 前缀。添加私有原型需要拒绝列表条目及其私有 manifest（元数据清单）。
+拒绝列表以外的每个实验性目录默认公开。workspace 约束要求公开包省略 `private` 并设置 `publishConfig.access: public`；所有实验性包保留 `@knyazevai/dsh-experimental-*` npm 前缀。添加私有原型需要拒绝列表条目及其私有 manifest（元数据清单）。
 
 本决策取代 [Agent Teams 包决策](../architecture/2026-08-18-experimental-agent-teams-packages.zh.md)中的默认私有发布原则。该决策的依赖隔离、显式启用组合、工程要求与 promotion 规则继续生效。发布不提供稳定性或支持承诺。
 

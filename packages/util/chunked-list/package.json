@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-chunked-list",
+  "name": "@knyazevai/dsh-chunked-list",
   "description": "Persistent append-only chunked lists with bounded copying and JSON checkpoint validation",
   "version": "0.1.6-alpha.1",
   "publishConfig": {

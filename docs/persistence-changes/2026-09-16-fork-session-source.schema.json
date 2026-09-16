@@ -1,0 +1,76 @@
+{
+  "formatVersion": 1,
+  "roots": [
+    {
+      "key": "event:fork/session-source",
+      "kind": "event",
+      "event": "fork/session-source",
+      "surface": false,
+      "digest": "a0c62a56072e68f47eab94ede3cd898c4dfb75f3c0b239791728eac1c9441f3e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "source",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "github-actions"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "fork/session-source"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

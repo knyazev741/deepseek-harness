@@ -7,8 +7,8 @@
  * here is the submit plane (phase, claim, attempt) alone.
  */
 import type { Context } from '@deepseek-ai/cordis'
-import type { ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { ObservableSnapshot, SnapshotStore } from '@knyazevai/dsh-client-store'
+import type { Branded } from '@knyazevai/dsh-brand'
 import type { ArbitrateKey, ArbitrateOutcome, Occurrence, ReferenceInsert, TokenSpan } from './draft-editor.ts'
 import type { QueueRow } from './queue.ts'
 import type { InputSubmitMode } from './composer-submission.ts'

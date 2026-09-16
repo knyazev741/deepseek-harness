@@ -3,15 +3,15 @@ import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import {
   IconChevronDownOutline14, Menu, RiskConfirmation, SHIELD_OUTLINE_PATH, SHIELD_OUTLINE_STROKE,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@knyazevai/dsh-client-ui-primitives'
+import type { MenuEntry } from '@knyazevai/dsh-client-ui-primitives'
 import type {
   HostObservable, InjectFace, PropsLocale, PropsRuntime,
-} from '@deepseek-ai/dsh-client-ui-slots'
-import type { PresetOption } from '@deepseek-ai/dsh-permission-presets/client'
+} from '@knyazevai/dsh-client-ui-slots'
+import type { PresetOption } from '@knyazevai/dsh-permission-presets/client'
 // Type-only: pulls the conversation-owned permission slot declaration and
 // the standard session projection hook into this package's Client face.
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@knyazevai/dsh-client-ui-conversation/client'
 import type { PermissionCatalogState } from './catalog.ts'
 import { PERMISSION_ACCESS_NS } from './locales.ts'
 import {

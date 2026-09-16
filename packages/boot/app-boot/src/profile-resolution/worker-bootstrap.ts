@@ -5,7 +5,7 @@ import { installProfileResolution, type ProfileResolutionBehavior } from './reso
 import type { ProfileResolutionGeneration } from '../profile.ts'
 
 const registration = getEnvironmentData(
-  '@deepseek-ai/dsh-app-boot/profile-resolution',
+  '@knyazevai/dsh-app-boot/profile-resolution',
 ) as {
   generation: ProfileResolutionGeneration
   behavior: ProfileResolutionBehavior

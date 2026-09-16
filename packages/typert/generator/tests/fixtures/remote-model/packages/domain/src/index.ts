@@ -1,4 +1,4 @@
-import type { TypertContext, TypertLookup } from '@deepseek-ai/dsh-typert-protocol'
+import type { TypertContext, TypertLookup } from '@knyazevai/dsh-typert-protocol'
 import type { AgentId } from './types.ts'
 
 /** Host-only live Agent object. */
@@ -6,7 +6,7 @@ export class Agent {
   constructor(readonly id: AgentId) {}
 }
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@knyazevai/dsh-typert-protocol' {
   interface TypertLookupMap {
     agent: TypertLookup<Agent, AgentId>
   }

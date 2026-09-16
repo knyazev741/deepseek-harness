@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { closeSync, mkdtempSync, openSync, rmdirSync, unlinkSync, writeSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type { CollectedOutput } from '@deepseek-ai/dsh-subprocess'
+import type { CollectedOutput } from '@knyazevai/dsh-subprocess'
 
 let spillCounter = 0
 let defaultSpillDir: string | undefined

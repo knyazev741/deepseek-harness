@@ -3,7 +3,7 @@ description: "目录选择 seam 的原生 OS 选择器后端：为坐在 web GUI
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-host-directory-picker-native
+# @knyazevai/dsh-host-directory-picker-native
 
 [English](README.md) | 中文
 

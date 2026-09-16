@@ -3,7 +3,7 @@ description: "Operate Chromium through Playwright MCP with separate browser stat
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-experimental-browser-use-playwright-mcp
+# @knyazevai/dsh-experimental-browser-use-playwright-mcp
 
 English | [中文](README.zh.md)
 
@@ -28,8 +28,8 @@ Use Playwright MCP to inspect pages and operate Chromium through its upstream to
 Mount both entries before creating or resuming a Session, in a profile composition that supplies Agents, tools, and system prompts. Loading or reloading this provider does not adopt Sessions that are already active. Browser installation follows the upstream runtime; select an existing Chromium installation with `executablePath`.
 
 ```yaml
-- name: '@deepseek-ai/dsh-browser-use'
-- name: '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp'
+- name: '@knyazevai/dsh-browser-use'
+- name: '@knyazevai/dsh-experimental-browser-use-playwright-mcp'
   config:
     mode: launch
     headless: true
@@ -45,7 +45,7 @@ Use `mode: attach` and set `endpoint` to an HTTP(S) debugging URL or WS(S) brows
 | `endpoint` | required for attach | Existing browser debugging endpoint |
 | `toolCallTimeoutMs` | MCP client default | Per-call timeout in milliseconds |
 
-The [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-experimental-browser-use-playwright-mcp) lists accepted fields. The profile or preset selects the browser mode. The child process clears inherited `PLAYWRIGHT_MCP_*` options so they cannot replace that configuration.
+The [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-experimental-browser-use-playwright-mcp) lists accepted fields. The profile or preset selects the browser mode. The child process clears inherited `PLAYWRIGHT_MCP_*` options so they cannot replace that configuration.
 
 When configuring the system prompt's `toolOrder` for the whole process, leave browser tools under `<unlisted-tools>`. Explicitly listing browser tool names can make prompt assembly fail for Sessions without a browser connection.
 

@@ -1,4 +1,4 @@
-/** Durable attachment storage seam (`ctx.attachments`). @module @deepseek-ai/dsh-attachment */
+/** Durable attachment storage seam (`ctx.attachments`). @module @knyazevai/dsh-attachment */
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import { admitEncodedFile as admitFileInput, admitEncodedImages } from './admission.ts'

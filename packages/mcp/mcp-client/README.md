@@ -3,7 +3,7 @@ description: "MCP client bridge for deployments and maintainers choosing, config
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-mcp-client
+# @knyazevai/dsh-mcp-client
 
 English | [中文](README.zh.md)
 
@@ -33,7 +33,7 @@ Add one entry per server; nothing else is required. After the harness starts, th
 
 ```yaml
 - id: mcp-github
-  name: '@deepseek-ai/dsh-mcp-client'
+  name: '@knyazevai/dsh-mcp-client'
   config:
     serverName: github
     transport: stdio
@@ -43,7 +43,7 @@ Add one entry per server; nothing else is required. After the harness starts, th
       GITHUB_TOKEN: !!js process.env.GITHUB_TOKEN
 
 - id: mcp-web
-  name: '@deepseek-ai/dsh-mcp-client'
+  name: '@knyazevai/dsh-mcp-client'
   config:
     serverName: web
     transport: streamable-http
@@ -66,7 +66,7 @@ Add one entry per server; nothing else is required. After the harness starts, th
 | `reconnect.maxDelayMs` | `30,000` | Backoff ceiling; also the uptime after which the attempt budget resets |
 | `reconnect.maxAttempts` | `10` | Consecutive failed attempts per outage before giving up |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-mcp-client) is the exhaustive source for every accepted field.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-mcp-client) is the exhaustive source for every accepted field.
 
 After startup, the server's tools appear as `mcp__<serverName>__<tool>` — try a prompt that uses one. If the initial connection fails, the harness still starts but no tools from that server appear, and an error is logged. Setting `failOnStartupError: true` rejects plugin activation; [app-boot's startup policy](../../boot/app-boot/README.md) still permits an optional MCP entry to fail without aborting the harness.
 
@@ -150,7 +150,7 @@ Read these pages when the package-level contract is not enough. They move from t
 - [MCP client plugin Agent Note](../../../.agents/notes/implemented/feature/2026-07-07-mcp-client-plugin.md) — the naming invariants, discovery and execution design, alternatives, and consequences.
 - [Canonical tool output contract Agent Note](../../../.agents/notes/implemented/architecture/2026-07-20-canonical-tool-output-contract.md) — how MCP results map into the canonical tool-output contract.
 - [Third-party memory MCP guide](../../../docs/user/guide/mcp-memory.md) — three memory-server overlays using this package.
-- [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-mcp-client) — every accepted config field and its source declaration.
+- [Generated configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-mcp-client) — every accepted config field and its source declaration.
 
 -----
 

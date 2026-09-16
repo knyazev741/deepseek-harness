@@ -2,24 +2,24 @@
  * Cross-session snapshot preparation. Hosts adapt mentions into structured
  * references; this service owns exact reads, projection, budgets, and durable context.
  *
- * @module @deepseek-ai/dsh-session-reference
+ * @module @knyazevai/dsh-session-reference
  */
 
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-import { createUserMessage, freezeMessage, LlmError } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, LlmResolvedModelInfo, UserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionLogOffset } from '@deepseek-ai/dsh-session'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { Agent, PreStepDecision } from '@knyazevai/dsh-agent'
+import { Remote, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
+import { createUserMessage, freezeMessage, LlmError } from '@knyazevai/dsh-llm'
+import type { ContentBlock, LlmResolvedModelInfo, UserMessage } from '@knyazevai/dsh-llm'
+import { SessionLogOffset } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 // Type-only: the `title` projection key plus the live registry and durable
 // cache Context merges — the two projection faces discovery labels from.
-import type { ProjectionSnapshot } from '@deepseek-ai/dsh-session-projection'
-import type {} from '@deepseek-ai/dsh-session-projection-cache'
-import type {} from '@deepseek-ai/dsh-session-title'
-import type {} from '@deepseek-ai/dsh-system-prompt'
-import type { SessionRecord, SessionSurfaceSnapshot } from '@deepseek-ai/dsh-session-query'
+import type { ProjectionSnapshot } from '@knyazevai/dsh-session-projection'
+import type {} from '@knyazevai/dsh-session-projection-cache'
+import type {} from '@knyazevai/dsh-session-title'
+import type {} from '@knyazevai/dsh-system-prompt'
+import type { SessionRecord, SessionSurfaceSnapshot } from '@knyazevai/dsh-session-query'
 import { prepareReferenceOmission, REFERENCE_WARNING } from './spill.ts'
 import {
   DEFAULT_CANDIDATE_LIMIT,

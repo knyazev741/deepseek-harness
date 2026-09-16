@@ -1,8 +1,8 @@
 /** Compiled synthetic model for the shipped sdk-minimal profile; tools remain production plugins. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { LlmAdapter, ToolCallId } from '@deepseek-ai/dsh-llm'
-import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
+import { LlmAdapter, ToolCallId } from '@knyazevai/dsh-llm'
+import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@knyazevai/dsh-llm'
 import { response, WORKLOAD } from './workload.ts'
 
 class ProfileAdapter extends LlmAdapter {

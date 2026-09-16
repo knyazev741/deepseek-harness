@@ -16,7 +16,7 @@ Profile startup computes one immutable `ResolutionGeneration` from the same depe
 
 ### One selection algorithm
 
-The package traversal remains in `@deepseek-ai/dsh-app-boot` beside profile loading. The disk materializer and the runtime resolver consume one pure plan; neither owns a copy of the precedence algorithm. Ordinary Node callers can select link, dual, or runtime mode, while an omitted mode selects link. Packaged executables and the Electron Host select runtime mode because their dependency trees may live in a virtual filesystem; dual remains an internal comparison path.
+The package traversal remains in `@knyazevai/dsh-app-boot` beside profile loading. The disk materializer and the runtime resolver consume one pure plan; neither owns a copy of the precedence algorithm. Ordinary Node callers can select link, dual, or runtime mode, while an omitted mode selects link. Packaged executables and the Electron Host select runtime mode because their dependency trees may live in a virtual filesystem; dual remains an internal comparison path.
 
 The installation manifest is the first root. Its graph traverses `dependencies` followed by `peerDependencies` breadth-first, resolving each edge from the manifest that declares it. The first installed package reached under a name owns that name. Selected bundle roots then run in profile order, with each earlier root's complete graph taking precedence over every later root. Names supplied by the installation are reserved, and bundle package roots themselves do not become plugin fallbacks. Missing declared packages are skipped as before.
 
@@ -48,7 +48,7 @@ The resolution generation lists available fallback packages; Loader entries form
 
 The resolver does not expose `imported(entry)` and does not observe ModuleJobs, wrap Entry methods, associate fibers with import calls, replace registry or tree methods, or adapt HMR transactions. A repeated query uses the same generation and therefore cannot drift from the route used for the import. Non-Node importers that need package metadata must explicitly implement the same deterministic resolver interface.
 
-The implementation lives under `app-boot/src/profile-resolution/`. `service.ts` provides the long-lived `ctx.pluginPackages` and owns the main-thread resolver and Worker-generation lifetimes; `resolver.ts` implements generation lookup and the Node Internal adapters; `worker-bootstrap.ts` installs an inherited generation in one thread. Existing profile selection and disk materialization remain in `profile.ts`. Workers reference the bootstrap only through the public `@deepseek-ai/dsh-app-boot/worker/profile-resolution-bootstrap` export.
+The implementation lives under `app-boot/src/profile-resolution/`. `service.ts` provides the long-lived `ctx.pluginPackages` and owns the main-thread resolver and Worker-generation lifetimes; `resolver.ts` implements generation lookup and the Node Internal adapters; `worker-bootstrap.ts` installs an inherited generation in one thread. Existing profile selection and disk materialization remain in `profile.ts`. Workers reference the bootstrap only through the public `@knyazevai/dsh-app-boot/worker/profile-resolution-bootstrap` export.
 
 The service definition and provider remain together in `app-boot` because profile boot owns the resolver lifetime. Extracting a separate capability seam becomes warranted when a launcher-independent provider or independently evolving consumers require it.
 

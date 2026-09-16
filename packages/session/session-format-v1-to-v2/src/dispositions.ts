@@ -2,7 +2,7 @@ import {
   RELEASED_V0_EVENT_DISPOSITIONS,
   defineReleasedPayloadDisposition,
   type ReleasedV0PayloadDisposition,
-} from '@deepseek-ai/dsh-session-format-v0-to-v1'
+} from '@knyazevai/dsh-session-format-v0-to-v1'
 
 const retained = Object.fromEntries(
   Object.entries(RELEASED_V0_EVENT_DISPOSITIONS).filter(([type]) => (

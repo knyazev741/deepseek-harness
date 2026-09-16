@@ -1,12 +1,12 @@
 /** TestClient without a DOM: the api roster boots and connects; mount is refused; flush degrades to a microtask flush. */
-import type { ClientTransportHooks } from '@deepseek-ai/dsh-client-connection/client'
-import { RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+import type { ClientTransportHooks } from '@knyazevai/dsh-client-connection/client'
+import { RemoteMock } from '@knyazevai/dsh-remote-mock'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { TestClient, remoteDefaultResponses, webApp } from '../src/assembly/index.ts'
 
 /** The Gateway client and what it injects: the Typert registry and the Connection. */
-const API_ROSTER = webApp.closure(['@deepseek-ai/dsh-api-gateway'])
-const TYPERT_ONLY = webApp.pick(['@deepseek-ai/dsh-typert-registry'])
+const API_ROSTER = webApp.closure(['@knyazevai/dsh-api-gateway'])
+const TYPERT_ONLY = webApp.pick(['@knyazevai/dsh-typert-registry'])
 const globals = globalThis as { __DSH_TRANSPORT__?: ClientTransportHooks }
 
 describe('TestClient (node environment)', () => {
@@ -40,7 +40,7 @@ describe('TestClient (node environment)', () => {
 
   it('rethrows a row that fails to apply and lets the next client boot', async () => {
     const failing = { apply(): void { throw new Error('apply boom') } }
-    await expect(TestClient.start({ roster: TYPERT_ONLY, provide: { '@deepseek-ai/dsh-typert-registry': failing } }, RemoteMock.create()))
+    await expect(TestClient.start({ roster: TYPERT_ONLY, provide: { '@knyazevai/dsh-typert-registry': failing } }, RemoteMock.create()))
       .rejects.toThrow(/apply boom|typert-registry/)
     const mock = RemoteMock.create().load(remoteDefaultResponses)
     const client = await TestClient.start({ roster: API_ROSTER }, mock)
@@ -49,9 +49,9 @@ describe('TestClient (node environment)', () => {
   })
 
   it('refuses a provide entry for the api-remotes row, whose services are the proxies', async () => {
-    const roster = webApp.closure(['@deepseek-ai/dsh-api-remotes'])
-    await expect(TestClient.start({ roster, provide: { '@deepseek-ai/dsh-api-remotes': { apply() {} } } }, RemoteMock.create()))
-      .rejects.toThrow('@deepseek-ai/dsh-api-remotes cannot be provided; its remote.<ns> services are the tier\'s proxies')
+    const roster = webApp.closure(['@knyazevai/dsh-api-remotes'])
+    await expect(TestClient.start({ roster, provide: { '@knyazevai/dsh-api-remotes': { apply() {} } } }, RemoteMock.create()))
+      .rejects.toThrow('@knyazevai/dsh-api-remotes cannot be provided; its remote.<ns> services are the tier\'s proxies')
   })
 
   it('reports unmatched requests alongside a failed teardown instead of hiding them', async () => {

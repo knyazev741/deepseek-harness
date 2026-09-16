@@ -3,7 +3,7 @@ description: "通过同一官方提供方配置 DeepSeek Messages、Chat Complet
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-llm-deepseek
+# @knyazevai/dsh-llm-deepseek
 
 [English](README.md) | 中文
 
@@ -34,7 +34,7 @@ kind: "package-reference"
 ### 最小配置
 
 ```yaml
-- name: '@deepseek-ai/dsh-llm-deepseek'
+- name: '@knyazevai/dsh-llm-deepseek'
   config:
     apiKeyEnv: DEEPSEEK_API_KEY  # credential reference, resolved per request
     reasoningEffort: high        # optional; off | low | high | max
@@ -70,7 +70,7 @@ kind: "package-reference"
 | `fileQuotaCleanupBatch` | `100` | 配额重试前删除的、归 harness 所有的最旧文件数 |
 | `retryPolicy` | normal，5 次重试 | 由 `dsh-llm-retry` 执行的提供方自有重试策略 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-llm-deepseek)是每个受支持字段及其 JSDoc 的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-llm-deepseek)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 <a id="choose-a-protocol"></a>
 ### 选择协议

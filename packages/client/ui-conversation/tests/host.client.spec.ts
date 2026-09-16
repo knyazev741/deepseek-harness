@@ -1,9 +1,9 @@
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it } from 'vitest'
-import { SettingsProvider, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { SettingsProvider, type SettingsNamespace } from '@knyazevai/dsh-settings'
 import {
   CONVERSATION_SETTINGS_NAMESPACE, DEFAULT_BUSY_ENTER_BEHAVIOR, apply,
-} from '@deepseek-ai/dsh-client-ui-conversation'
+} from '@knyazevai/dsh-client-ui-conversation'
 
 class MemorySettings extends SettingsProvider {
   readonly writable = true

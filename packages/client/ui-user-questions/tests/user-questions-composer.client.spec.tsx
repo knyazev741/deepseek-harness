@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
-import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
+import type { GlobalStandardProps } from '@knyazevai/dsh-client-ui-slots'
 import { useSyncExternalStore } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import { PendingQuestion, type QuestionComposerProps } from '../src/client/contract/slots.ts'
 import { createQuestionDraftStore } from '../src/client/draft-store.ts'
 import { QuestionComposer, parseRecommendedLabel } from '../src/client/QuestionComposer.tsx'
 import { en, zh } from '../src/client/locales.ts'
-import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+import { en as commonEn } from '@knyazevai/dsh-client-locale/src/locales/en.ts'
+import { zh as commonZh } from '@knyazevai/dsh-client-locale/src/locales/zh.ts'
 
 // Every session-scope fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
 const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']

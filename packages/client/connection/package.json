@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-connection",
+  "name": "@knyazevai/dsh-client-connection",
   "description": "Authenticated RPC transport and generation lifecycle",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -34,7 +34,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/dsh-credentials": "workspace:^",
+    "@knyazevai/dsh-credentials": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "zod": "^4.4.3"
   },
@@ -48,10 +48,10 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-attachment": "workspace:^",
-    "@deepseek-ai/dsh-brand": "workspace:^",
-    "@deepseek-ai/dsh-host-webserver": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^"
+    "@knyazevai/dsh-attachment": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:^",
+    "@knyazevai/dsh-host-webserver": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^"
   }
 }

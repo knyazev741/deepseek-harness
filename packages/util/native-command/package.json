@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-native-command",
+  "name": "@knyazevai/dsh-native-command",
   "description": "Host-native command and path-opening utilities with shell-free execution, cancellation, desktop detection, and WSL handoff",
   "version": "0.1.6-alpha.1",
   "publishConfig": {

@@ -3,7 +3,7 @@ description: "Workspace file service for the web GUI: bounded file reads through
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-api-workspace-files
+# @knyazevai/dsh-api-workspace-files
 
 English | [中文](README.zh.md)
 
@@ -66,7 +66,7 @@ Every operation first uses `lstat` to reject a missing path, a final symlink, or
 | `maxLines` | `5000` | Default and largest page size in lines; a larger `limit` is refused |
 | `maxEntries` | `2000` | Cap on returned directory entries; the rest is dropped and reported cut |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-api-workspace-files) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-api-workspace-files) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Failures
 

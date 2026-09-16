@@ -10,9 +10,9 @@ import {
   type ReplayEnvelope,
   type StreamChunk,
   type TokenUsage,
-} from '@deepseek-ai/dsh-llm'
-import type { AssistantStreamFrame } from '@deepseek-ai/dsh-agent'
-import type { SessionEventMap, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
+} from '@knyazevai/dsh-llm'
+import type { AssistantStreamFrame } from '@knyazevai/dsh-agent'
+import type { SessionEventMap, SessionId, SessionSeq } from '@knyazevai/dsh-session'
 
 /** Folds one model attempt into one compact stream plus ordered transient frames. */
 export class AssistantStreamAttempt {

@@ -83,10 +83,10 @@ Task Surface 服务通过受 schema 校验的配置定义限制。初始默认�
 
 工具定义省略 `isConcurrencySafe`。根据现有工具注册表约定，省略该字段会将每次调用归类为独占排序屏障，无需新增 `ToolDefinition` 字段。该工具只会组装到同时挂载 Host 服务和 Web 渲染器的 Web profile 中。版本 1 支持 `native` 和 `both` 工具模式；仅支持 `ptc` 的 profile 不会向模型公布该工具，因为 PTC mode 分发属于嵌套调用，无法把呈现元数据传到外层结果。
 
-浏览器安全的领域包从 `@deepseek-ai/dsh-brand` 以仅类型方式导入 `Branded` 原语，并拥有全部三个 Task Surface ID。根据[规范工具输出约定](../../implemented/architecture/2026-07-20-canonical-tool-output-contract.zh.md)，规范值仅存在于本次执行中。因此，回放通过 `output.presentationMeta(args, value)` 将以下带标签的载荷随 `tool/result.meta` 一并持久化：
+浏览器安全的领域包从 `@knyazevai/dsh-brand` 以仅类型方式导入 `Branded` 原语，并拥有全部三个 Task Surface ID。根据[规范工具输出约定](../../implemented/architecture/2026-07-20-canonical-tool-output-contract.zh.md)，规范值仅存在于本次执行中。因此，回放通过 `output.presentationMeta(args, value)` 将以下带标签的载荷随 `tool/result.meta` 一并持久化：
 
 ```ts
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@knyazevai/dsh-brand'
 
 type TaskSurfaceId = Branded<'TaskSurfaceId'>
 type TaskSurfaceSubmissionId = Branded<'TaskSurfaceSubmissionId'>
@@ -229,7 +229,7 @@ Web 插件将未提交值保存在一个有界、按会话持久化的 slot stor
 | `packages/core/agent` 和 `packages/core/agent-loop` | 为已认领的下一轮 inbox 条目提供通用终态结果，让 Host 观察方无需使用 Task Surface 专用类型，即可区分持久接纳和丢弃 |
 | `packages/task-surface/task-surface` | 浏览器安全的模型、带品牌类型的 ID、关联和待处理类型、解析器、限制、提交校验器／格式化器、会话事件扩展、投影单元，以及 Host 服务约定 |
 | `packages/task-surface/tool-task-surface` | `show_task_surface`、规范输出、呈现元数据、通用 render intent、活动 Surface 检查和 `concludeTurn()` 行为 |
-| `packages/client/runtime` | 通用排队消息 `source` 投影和会话作用域的活动投影访问 |
+| `packages/api/session-controller` | 通用排队消息 `source` 投影和会话作用域的活动投影访问 |
 | `packages/client/ui-primitives` | 与 Task Surface 无关的 `MarkdownText.remoteImages` 策略，包括 `alt-only` 图片分支和 URL 策略测试 |
 | `packages/client/ui-task-surface` | 静态且可操作的 `TaskSurfaceDock`、带 key 的只读 transcript 行、消费 Task Surface 模型并以 `alt-only` 模式使用 `MarkdownText` 的声明式 Web 渲染器、按会话划分的草稿 store，以及提交客户端 |
 | `packages/host/apiproxy` | 类型化的活动 Surface 读取／提交／关闭传输、用户消息来源扩展与传递、队列操作限制，以及认领和终态结果的路由；将校验、待处理协调和接纳委托给 Task Surface 服务 |

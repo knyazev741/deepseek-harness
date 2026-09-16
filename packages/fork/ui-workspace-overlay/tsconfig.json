@@ -1,0 +1,22 @@
+{
+  "extends": "../../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../api/remotes/tsconfig.client.json" },
+    { "path": "../../client/locale" },
+    { "path": "../../api/session-controller/tsconfig.client.json" },
+    { "path": "../../client/ui-primitives" },
+    { "path": "../../client/ui-slots" },
+    { "path": "../../client/ui-workspace" },
+    { "path": "../session-source" },
+    { "path": "../workspace-session-state/tsconfig.client.json" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

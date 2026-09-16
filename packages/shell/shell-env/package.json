@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-shell-env",
+  "name": "@knyazevai/dsh-shell-env",
   "description": "Tool-independent managed DSH_* shell environment registry",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -27,20 +27,20 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-shell": "workspace:^",
-    "@deepseek-ai/dsh-home-paths": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@knyazevai/dsh-shell": "workspace:^",
+    "@knyazevai/dsh-home-paths": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-shell": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-home-paths": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@knyazevai/dsh-agent": "workspace:^",
+    "@knyazevai/dsh-shell": "workspace:^",
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-home-paths": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   }
 }

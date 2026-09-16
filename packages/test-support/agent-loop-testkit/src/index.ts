@@ -2,21 +2,21 @@
  * Shared service mounting, real AgentLoop drivers, and structural Inbox stubs
  * for agent-loop tests. Callers retain ownership of their contexts, adapters,
  * optional plugins, agents, and teardown.
- * @module @deepseek-ai/dsh-agent-loop-testkit
+ * @module @knyazevai/dsh-agent-loop-testkit
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentOptions, Inbox, InboxTarget } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
-import SessionStore from '@deepseek-ai/dsh-session'
-import type { SessionHeader, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import type { Config as SystemPromptConfig } from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import type { Config as ToolRuntimeConfig } from '@deepseek-ai/dsh-tools'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import type { Agent, AgentOptions, Inbox, InboxTarget } from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import LlmRuntime from '@knyazevai/dsh-llm'
+import SessionStore from '@knyazevai/dsh-session'
+import type { SessionHeader, SessionId, UserMessage } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import type { Config as SystemPromptConfig } from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import type { Config as ToolRuntimeConfig } from '@knyazevai/dsh-tools'
 
 export { createInboxStub, unsupportedInbox } from './inbox.ts'
 

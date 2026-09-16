@@ -2,16 +2,16 @@ import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type {
   ISessions, SessionListState, SessionSummary,
-} from '@deepseek-ai/dsh-api-session-controller/client'
+} from '@knyazevai/dsh-api-session-controller/client'
 import type {
   IWorkspaces, WorkspaceId, WorkspaceSnapshot, WorkspaceView,
-} from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { ClientRemote, DirectoryListing } from '@deepseek-ai/dsh-api-remotes/client'
-import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
-import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
-import { SessionId } from '@deepseek-ai/dsh-session/types'
-import { LayoutController } from '@deepseek-ai/dsh-client-ui-layout/client'
-import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+} from '@knyazevai/dsh-api-workspace-controller/client'
+import type { ClientRemote, DirectoryListing } from '@knyazevai/dsh-api-remotes/client'
+import { RemoteError } from '@knyazevai/dsh-client-test-runtime'
+import type { RemoteResult } from '@knyazevai/dsh-api-remotes/client'
+import { SessionId } from '@knyazevai/dsh-session/types'
+import { LayoutController } from '@knyazevai/dsh-client-ui-layout/client'
+import type { MainPanelId } from '@knyazevai/dsh-client-ui-layout/client'
 import { DirectoryBrowseError, UiWorkspaceService } from '../src/client/navigation.ts'
 
 const sid = (id: string): SessionId => SessionId(id)

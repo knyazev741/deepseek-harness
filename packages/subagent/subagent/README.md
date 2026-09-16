@@ -3,7 +3,7 @@ description: "The subagent delegation seam for users and maintainers choosing a 
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-subagent
+# @knyazevai/dsh-subagent
 
 English | [中文](README.zh.md)
 
@@ -32,9 +32,9 @@ This package is the contract every delegation setup shares. You enable it by mou
 Mount the service with a provider and the delegation tool. The provider registers under the name you configure (the in-process spawn backend defaults to `spawn`); the tool row names that provider so the model sees a static tool. A minimal one-shot setup:
 
 ```yaml
-- name: '@deepseek-ai/dsh-subagent'
-- name: '@deepseek-ai/dsh-subagent-spawn-in-process'
-- name: '@deepseek-ai/dsh-tool-subagent'
+- name: '@knyazevai/dsh-subagent'
+- name: '@knyazevai/dsh-subagent-spawn-in-process'
+- name: '@knyazevai/dsh-tool-subagent'
   config:
     provider: spawn
     toolName: subagent

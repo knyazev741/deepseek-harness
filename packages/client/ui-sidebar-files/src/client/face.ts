@@ -18,10 +18,10 @@
  * record goes away the bucket and the tab's listing bookkeeping are forgotten,
  * so no later settlement writes to it.
  */
-import type { ClientRemote, RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
-import type { BoundActions } from '@deepseek-ai/dsh-client-store'
-import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ClientRemote, RemoteResult } from '@knyazevai/dsh-api-remotes/client'
+import type { BoundActions } from '@knyazevai/dsh-client-store'
+import type { TabId } from '@knyazevai/dsh-client-ui-dockkit'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { DirLevel, createFilesStore } from './store.ts'
 
 /**

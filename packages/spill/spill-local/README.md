@@ -3,7 +3,7 @@ description: "The local filesystem spill backend: how spilled text is saved to p
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-spill-local
+# @knyazevai/dsh-spill-local
 
 English | [中文](README.zh.md)
 
@@ -32,7 +32,7 @@ Mount this backend in a composition that spills text to the local filesystem. It
 Loading the plugin with no config is safe: files land in a lazily-created private (0700) per-process directory under the OS temp directory. Set `root` when the files must live under a known location.
 
 ```yaml
-- name: '@deepseek-ai/dsh-spill-local'
+- name: '@knyazevai/dsh-spill-local'
   config:
     root: /absolute/path/to/spill
     cleanupPeriodDays: 30
@@ -43,7 +43,7 @@ Loading the plugin with no config is safe: files land in a lazily-created privat
 | `root` | private 0700 temp dir | Root directory for spill files; set to keep them under a known location |
 | `cleanupPeriodDays` | `30` | File age in days before the one-shot startup cleanup may delete it; `0` disables cleanup |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-spill-local) is the exhaustive source for every accepted field.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-spill-local) is the exhaustive source for every accepted field.
 
 ### What you get back
 

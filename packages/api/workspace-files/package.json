@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-api-workspace-files",
+  "name": "@knyazevai/dsh-api-workspace-files",
   "description": "Workspace file service and Client resource provider: bounded reads, directory listing, and live metadata over the workspaceFiles Remote namespace",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -40,8 +40,8 @@
   "dsh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-api-gateway",
-        "@deepseek-ai/dsh-client-resources"
+        "@knyazevai/dsh-api-gateway",
+        "@knyazevai/dsh-client-resources"
       ],
       "platform": "web"
     }
@@ -52,8 +52,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/dsh-deque": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^",
+    "@knyazevai/dsh-deque": "workspace:^",
+    "@knyazevai/dsh-typert-protocol": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "zod": "^4.4.3"
   },
@@ -62,14 +62,14 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-api-gateway": "workspace:^",
-    "@deepseek-ai/dsh-client-resources": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
-    "@deepseek-ai/dsh-fs": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-persistence": "workspace:^",
-    "@deepseek-ai/dsh-util-workspace-path": "workspace:^"
+    "@knyazevai/dsh-api-gateway": "workspace:^",
+    "@knyazevai/dsh-client-resources": "workspace:^",
+    "@knyazevai/dsh-client-ui-slots": "workspace:^",
+    "@knyazevai/dsh-fs": "workspace:^",
+    "@knyazevai/dsh-sandbox-policy": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^",
+    "@knyazevai/dsh-session-persistence": "workspace:^",
+    "@knyazevai/dsh-util-workspace-path": "workspace:^"
   },
   "files": [
     "lib/index.js",

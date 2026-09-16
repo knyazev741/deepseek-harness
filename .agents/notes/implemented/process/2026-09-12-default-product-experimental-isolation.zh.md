@@ -20,7 +20,7 @@ Status: implemented
 
 构建输入检查覆盖浏览器打包的两个阶段。[Client preset](../../../../packages/client/tsdown.client.ts) 在原始路径被折叠进 `lib/client.js` 前，拒绝非实验输出中的实验输入。[Web 图检查](../../../../scripts/web-product-bundle-isolation.ts) 从 `index.html` 沿真实 Vite 输出边遍历，覆盖延迟加载 chunk、Worker、CSS 依赖和资源。独立 preview 不属于产品图。缺少必需的模块或资源输入记录会使构建失败；失败的 Web 构建无法产生成功的完整 Client 构建记录。Notices 生成器通过显式分析标记检查其部分依赖图，该标记要求禁用输出写入。其他内存内产品构建仍执行这些检查。
 
-[`verify-packed-install`](../../../../scripts/release/verify-packed-install.ts) 从 `@deepseek-ai/dsh` 遍历已安装依赖图，通过解析后的 manifest 名称识别别名和外部传递依赖。开发依赖以及安装在产品旁边的不相关 tarball 不参与遍历。缺失必需依赖会失败；允许省略可选依赖，但其名称不得指向实验包。
+[`verify-packed-install`](../../../../scripts/release/verify-packed-install.ts) 从 `@knyazevai/dsh` 遍历已安装依赖图，通过解析后的 manifest 名称识别别名和外部传递依赖。开发依赖以及安装在产品旁边的不相关 tarball 不参与遍历。缺失必需依赖会失败；允许省略可选依赖，但其名称不得指向实验包。
 
 此检查执行现有的[实验包依赖隔离规则](../architecture/2026-08-18-experimental-agent-teams-packages.zh.md)。[发布策略](2026-09-12-experimental-publication-denylist.zh.md) 独立决定显式消费者可以安装哪些实验包。
 

@@ -5,11 +5,11 @@ import {
 import {
   DisclosureRow, IconChevronRightOutline14, StateDot,
   type DisclosureRowProps, type StateDotState,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
-import { shallowEqual } from '@deepseek-ai/dsh-client-store'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+} from '@knyazevai/dsh-client-ui-primitives'
+import type { PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
+import type { SessionListState } from '@knyazevai/dsh-api-session-controller/client'
+import { shallowEqual } from '@knyazevai/dsh-client-store'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { WorkflowRunKey } from './locales.ts'
 import type {
   WorkflowRunMemberData, WorkflowRunPhaseData, WorkflowRunStatus,

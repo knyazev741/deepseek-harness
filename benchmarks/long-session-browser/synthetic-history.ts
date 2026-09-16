@@ -1,9 +1,9 @@
 /** Synthetic current-generation history and paced reply for browser measurements. */
-import { createAssistantMessage, createSystemMessage, createUserMessage, createToolResultMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
-import type { StreamChunk } from '@deepseek-ai/dsh-llm'
-import { AssistantStreamAccumulator } from '@deepseek-ai/dsh-llm/assistant-stream'
-import { Session, SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-session-title'
+import { createAssistantMessage, createSystemMessage, createUserMessage, createToolResultMessage, ToolCallId } from '@knyazevai/dsh-llm'
+import type { StreamChunk } from '@knyazevai/dsh-llm'
+import { AssistantStreamAccumulator } from '@knyazevai/dsh-llm/assistant-stream'
+import { Session, SessionId, SESSION_FORMAT_VERSION } from '@knyazevai/dsh-session'
+import type {} from '@knyazevai/dsh-session-title'
 
 /** Closed turns in the browser history workload. */
 export const HISTORY_TURNS = 240
@@ -28,7 +28,7 @@ export function syntheticHistory(): string {
     session.append('turn/start', { turn })
     session.append('step/start', { turn, step: 1 })
     if (turn === 1) session.append('system/message', {
-      turn, step: 1, message: createSystemMessage('', '@deepseek-ai/dsh-system-prompt'),
+      turn, step: 1, message: createSystemMessage('', '@knyazevai/dsh-system-prompt'),
     }, { surfaceOp: 'append' })
     const user = session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'Review synthetic change ' + String(turn) + ': 检查增量渲染。 '.repeat(30) }],

@@ -9,7 +9,7 @@
  * until `stat` supplies its Host absolute path, then filters queued and live
  * frames by that path, with `\\` normalized to `/`.
  */
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { WorkspaceFileChange, WorkspaceFileWatchFrame } from '../types.ts'
 import type { SupervisedStream, WorkspaceFilesRemote } from './remote.ts'
 import type { WorkspaceFileEdit, WorkspaceFileNotice } from './types.ts'

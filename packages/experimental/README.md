@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The experimental group contains prototype capabilities whose contracts can change and carry no support promise. All current packages publish under their `@deepseek-ai/dsh-experimental-*` names, including the opt-in Agent Teams composition, Auto review, Cua Driver providers, browser-use backends, cross-realm Inspector, CPython PTC backend, and browser-worker preview libraries. Released products outside this group must not depend on experimental packages.
+The experimental group contains prototype capabilities whose contracts can change and carry no support promise. All current packages publish under their `@knyazevai/dsh-experimental-*` names, including the opt-in Agent Teams composition, Auto review, Cua Driver providers, browser-use backends, cross-realm Inspector, CPython PTC backend, and browser-worker preview libraries. Released products outside this group must not depend on experimental packages.
 
 ## Table of Contents
 

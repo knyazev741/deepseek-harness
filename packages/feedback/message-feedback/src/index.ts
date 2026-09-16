@@ -1,6 +1,6 @@
 /**
  * Canonical Session-log feedback for finalized assistant messages.
- * @module @deepseek-ai/dsh-message-feedback
+ * @module @knyazevai/dsh-message-feedback
  */
 
 import { Buffer } from 'node:buffer'
@@ -9,13 +9,13 @@ import { isDeepStrictEqual } from 'node:util'
 import { Context, Service } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
 import { z } from 'zod'
-import { FEEDBACK_CATEGORIES } from '@deepseek-ai/dsh-command-feedback'
-import { SessionSeq } from '@deepseek-ai/dsh-session/types'
-import { deriveEventMessage, isAppendSurfaceEvent } from '@deepseek-ai/dsh-session/surface'
-import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
-import type {} from '@deepseek-ai/dsh-session'
-import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
-import { TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
+import { FEEDBACK_CATEGORIES } from '@knyazevai/dsh-command-feedback'
+import { SessionSeq } from '@knyazevai/dsh-session/types'
+import { deriveEventMessage, isAppendSurfaceEvent } from '@knyazevai/dsh-session/surface'
+import type { SessionEvent, SessionId } from '@knyazevai/dsh-session/types'
+import type {} from '@knyazevai/dsh-session'
+import type { SessionInspection } from '@knyazevai/dsh-session-persistence'
+import { TypertRemoteService, Remote } from '@knyazevai/dsh-typert-protocol'
 import type {
   MessageFeedbackDeleteRequest,
   MessageFeedbackDeleteResult,

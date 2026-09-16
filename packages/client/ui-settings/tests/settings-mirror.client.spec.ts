@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
-import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
+import type { SettingsNamespaceView } from '@knyazevai/dsh-api-remotes/client'
+import { RemoteError } from '@knyazevai/dsh-client-test-runtime'
 import { SettingsDescribeMirror, type SettingsDescribeView } from '../src/client/settings-mirror.ts'
 
 /** What a Remote call answers with: no carrier envelope, and a typed failure. */

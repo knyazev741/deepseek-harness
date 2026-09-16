@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-22-fork-overlay-manifest.md
+2026-08-22-fork-overlay-manifest.md: 8e52f64bcf8be4a11fa9fdc829ebad2c53550553
+2026-08-22-fork-overlay-manifest.zh.md: 7826282618bb292f0391ca7aca73a8e82d2dfaec

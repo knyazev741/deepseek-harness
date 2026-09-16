@@ -5,10 +5,10 @@ import { accessSync, constants as fsConstants, lstatSync, statSync } from 'node:
 import { extname, isAbsolute } from 'node:path'
 import { inspect } from 'node:util'
 import { fileURLToPath } from 'node:url'
-import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessSpawnSpec } from '@knyazevai/dsh-subprocess'
 import { childEnv } from './spawn.ts'
 import { controlEnvironment } from './control-spawn.ts'
-import { SUBPROCESS_CONTROL_FD } from '@deepseek-ai/dsh-subprocess/control'
+import { SUBPROCESS_CONTROL_FD } from '@knyazevai/dsh-subprocess/control'
 
 /** The one private environment variable consumed before target state is restored. */
 export const SUBPROCESS_RUNNER_ENV = 'DSH_SUBPROCESS_RUNNER' as const
@@ -31,7 +31,7 @@ export function spawnRunnerInvocation(): RunnerInvocation {
   /* v8 ignore next -- built-artifact smoke imports the emitted JavaScript runner entry;
    * source-unit coverage cannot change import.meta.url. */
   if (extname(fileURLToPath(import.meta.url)) !== '.ts') {
-    return [process.execPath, fileURLToPath(import.meta.resolve('@deepseek-ai/dsh-subprocess-local/runner'))]
+    return [process.execPath, fileURLToPath(import.meta.resolve('@knyazevai/dsh-subprocess-local/runner'))]
   }
   return [
     process.execPath,

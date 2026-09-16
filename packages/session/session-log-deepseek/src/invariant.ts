@@ -1,12 +1,12 @@
 /** Package-owned invariants for DeepSeek session-log acceptance watermarks. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { SessionSeq } from '@deepseek-ai/dsh-session'
-import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
-import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import { SessionSeq } from '@knyazevai/dsh-session'
+import type { Session, SessionEvent } from '@knyazevai/dsh-session'
+import type { InvariantFailure, InvariantInstaller } from '@knyazevai/dsh-invariants'
 import type {} from './types.ts'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-session-log-deepseek'
+const PACKAGE_NAME = '@knyazevai/dsh-session-log-deepseek'
 
 /** Cordis companion plugin name. */
 export const name = 'session-log-deepseek-invariant'

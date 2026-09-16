@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-24-fork-llm-rate-limit-cooldown.md
+2026-08-24-fork-llm-rate-limit-cooldown.md: 0608a80cfeb5e82ad78ce74457ba4b48d655614d
+2026-08-24-fork-llm-rate-limit-cooldown.zh.md: c19b8dbad8f9e392a9abfcbd122ecce24671ada4

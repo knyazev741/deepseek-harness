@@ -3,7 +3,7 @@ description: "DSH_HOME 下附加图片的本地存储，供用户与维护者选
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-attachment-local
+# @knyazevai/dsh-attachment-local
 
 [English](README.md) | 中文
 
@@ -32,7 +32,7 @@ kind: "package-reference"
 挂载插件，无需任何必填配置。下列默认值规定了可以附加的内容；生成的配置目录完整列出了所有字段。
 
 ```yaml
-- name: '@deepseek-ai/dsh-attachment-local'
+- name: '@knyazevai/dsh-attachment-local'
 ```
 
 | 字段 | 默认值 | 含义 |
@@ -48,7 +48,7 @@ kind: "package-reference"
 | `normalizedImageMaxBytes` | `4 MiB` | 编码字节目标；没有候选满足时保留质量阶梯中的最小输出 |
 | `imageCompressionConcurrency` | `2` | 并发规范化与请求变换的 FIFO 上限 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-attachment-local)完整列出了所有受支持的字段及其 JSDoc。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-attachment-local)完整列出了所有受支持的字段及其 JSDoc。
 
 ### 图片存储在哪里、会保留多久
 
@@ -112,7 +112,7 @@ kind: "package-reference"
 
 - [附件子系统参考](../../../docs/subsystems/attachment.zh.md)——服务约定、载荷类型与 `ctx.attachments` 的 Cordis 接口面。
 - [附件 seam 包](../attachment/README.zh.md)——本存储支撑的图片附件能力。
-- [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-attachment-local)——每个受支持配置字段及其源声明。
+- [生成配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-attachment-local)——每个受支持配置字段及其源声明。
 - [Home 路径解析](../../util/home-paths/README.zh.md)——`DSH_HOME` 如何从显式配置、环境变量与用户主目录解析。
 
 -----

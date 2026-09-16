@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AttachmentId, ImageVariantId } from '@deepseek-ai/dsh-attachment'
-import type { AttachmentStore, ImageAttachmentRef, ImageRequestTarget, RequestImageAttachment } from '@deepseek-ai/dsh-attachment'
-import { createUserMessage, ToolCallId, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, createMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, StreamChunk } from '@deepseek-ai/dsh-llm'
+import { AttachmentId, ImageVariantId } from '@knyazevai/dsh-attachment'
+import type { AttachmentStore, ImageAttachmentRef, ImageRequestTarget, RequestImageAttachment } from '@knyazevai/dsh-attachment'
+import { createUserMessage, ToolCallId, CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, createMessage } from '@knyazevai/dsh-llm'
+import type { ContentBlock, StreamChunk } from '@knyazevai/dsh-llm'
 import type { AssistantMessage, AssistantMessageEvent, Usage } from '@earendil-works/pi-ai'
 import { transformMessages } from '@earendil-works/pi-ai/api/transform-messages'
 import { getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
@@ -912,6 +912,10 @@ describe('mapStopReason / mapUsage', () => {
       stopReason: 'error',
       errorMessage: 'HTTP 400: invalid input: temperature exceeds maximum allowed value',
     }))).toMatchObject({ kind: 'error', failure: { code: 'INVALID_REQUEST' } })
+    expect(mapStopReason(assistant({
+      stopReason: 'error',
+      errorMessage: '502: {"message":"Upstream returned HTTP 400.","type":"api_error","code":"upstream_error"}',
+    }))).toMatchObject({ kind: 'error', failure: { code: 'SERVER' } })
     expect(mapStopReason(assistant({ stopReason: 'error', errorMessage: 'HTTP 413: Payload Too Large' })))
       .toMatchObject({ kind: 'error', failure: { code: 'INVALID_REQUEST' } })
     expect(mapStopReason(assistant({

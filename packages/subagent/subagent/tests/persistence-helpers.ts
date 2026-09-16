@@ -1,7 +1,7 @@
 /** Handle-based session-persistence helpers shared by the subagent test suites. */
 
-import type { SessionEvent, SessionHeader, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
-import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
+import type { SessionEvent, SessionHeader, SessionId, SessionLogOffset } from '@knyazevai/dsh-session'
+import type { SessionPersistence } from '@knyazevai/dsh-session-persistence'
 
 /** Read one stored session's header and complete event log through a read handle. */
 export async function loadStoredSession(

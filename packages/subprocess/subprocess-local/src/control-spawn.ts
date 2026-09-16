@@ -1,6 +1,6 @@
 /** Parent-side setup for one explicitly requested inherited control pipe. */
 
-import { SUBPROCESS_CONTROL_ENV, SUBPROCESS_CONTROL_FD } from '@deepseek-ai/dsh-subprocess/control'
+import { SUBPROCESS_CONTROL_ENV, SUBPROCESS_CONTROL_FD } from '@knyazevai/dsh-subprocess/control'
 import type { Duplex, Readable, Writable } from 'node:stream'
 
 /**

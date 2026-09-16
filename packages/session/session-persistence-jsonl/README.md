@@ -3,7 +3,7 @@ description: "The shipped JSONL session-persistence backend for deployments and 
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-session-persistence-jsonl
+# @knyazevai/dsh-session-persistence-jsonl
 
 English | [中文](README.zh.md)
 
@@ -34,8 +34,8 @@ Choose this backend when consumers benefit from one artifact per session — nav
 ### Minimal configuration
 
 ```yaml
-- name: '@deepseek-ai/dsh-session'
-- name: '@deepseek-ai/dsh-session-persistence-jsonl'
+- name: '@knyazevai/dsh-session'
+- name: '@knyazevai/dsh-session-persistence-jsonl'
   config:
     root: /absolute/path/to/session-logs
 ```
@@ -49,7 +49,7 @@ Choose this backend when consumers benefit from one artifact per session — nav
 
 Live-event write batching is not configuration: the batching window is the seam's internal scheduling policy inside each write handle.
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-session-persistence-jsonl) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-session-persistence-jsonl) is the exhaustive source for every accepted field and its JSDoc.
 
 ### On-disk layout
 

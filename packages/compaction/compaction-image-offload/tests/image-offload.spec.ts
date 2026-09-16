@@ -5,17 +5,17 @@
 
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import BasicCompactionEngine from '@deepseek-ai/dsh-compaction-basic'
-import TokenMeter from '@deepseek-ai/dsh-token-meter'
-import { ImageVariantId } from '@deepseek-ai/dsh-attachment'
-import { serializeRequestWithImages } from '@deepseek-ai/dsh-llm-deepseek/src/protocols/chat-completions/serialize.ts'
-import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
-import { createAssistantMessage, createToolResultMessage, createUserMessage, IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ToolCallId } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
-import { isReplacementSurfaceEvent, SessionId } from '@deepseek-ai/dsh-session'
-import type { Session } from '@deepseek-ai/dsh-session'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import type { Agent } from '@knyazevai/dsh-agent'
+import BasicCompactionEngine from '@knyazevai/dsh-compaction-basic'
+import TokenMeter from '@knyazevai/dsh-token-meter'
+import { ImageVariantId } from '@knyazevai/dsh-attachment'
+import { serializeRequestWithImages } from '@knyazevai/dsh-llm-deepseek/src/protocols/chat-completions/serialize.ts'
+import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
+import { createAssistantMessage, createToolResultMessage, createUserMessage, IMAGE_OFFLOAD_REQUIRED_CODE, LlmAdapter, LlmError, ToolCallId } from '@knyazevai/dsh-llm'
+import type { ContentBlock, GenerateOptions, StreamChunk } from '@knyazevai/dsh-llm'
+import { isReplacementSurfaceEvent, SessionId } from '@knyazevai/dsh-session'
+import type { Session } from '@knyazevai/dsh-session'
 import * as offload from '../src/index.ts'
 
 type ScriptEntry = StreamChunk[] | (() => never)
@@ -176,10 +176,10 @@ describe('summary image offload', () => {
 
   it('preserves omission when a subsequent summary failure is terminal', async () => {
     const { compact, agent, adapter } = await summaryHarness([
-      textResponse('answer'), offloadRequired(1), () => { throw new LlmError('provider outage', 'SERVER') },
+      textResponse('answer'), offloadRequired(1), () => { throw new LlmError('invalid summary request', 'INVALID_REQUEST') },
     ])
     await seedImages(agent, ['first'])
-    await expect(compact.compactNow(agent, new AbortController().signal)).rejects.toMatchObject({ code: 'summary', cause: { code: 'SERVER' } })
+    await expect(compact.compactNow(agent, new AbortController().signal)).rejects.toMatchObject({ code: 'summary', cause: { code: 'INVALID_REQUEST' } })
     expect(adapter.requests).toHaveLength(3)
     expect(decisions(agent.session)).toHaveLength(1)
     expect(agent.session.surface.replaceGeneration).toBe(0)

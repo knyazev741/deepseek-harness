@@ -1,6 +1,6 @@
 /** Adapt a Remote relative read without changing its Session or Host path authority. */
-import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
-import type { WorkspaceFileBytes } from '@deepseek-ai/dsh-api-workspace-files/types'
+import type { RemoteResult } from '@knyazevai/dsh-api-remotes/client'
+import type { WorkspaceFileBytes } from '@knyazevai/dsh-api-workspace-files/types'
 import { documentFileBytes } from '../rpc.ts'
 import type { ReadHtmlRelative } from './pack.ts'
 

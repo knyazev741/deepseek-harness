@@ -1,5 +1,5 @@
 /** Root-scoped main occupant; Session binding belongs to its Conversation child. */
-import type { PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsRenderSlots, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import type {} from '../contract/slots.ts'
 
 /**

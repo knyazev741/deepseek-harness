@@ -15,12 +15,12 @@
 
 import type { CacheRetention, ChatTemplateKwargValue, ModelThinkingLevel, Provider, ThinkingBudgets, Transport } from '@earendil-works/pi-ai'
 import z from '@deepseek-ai/schemastery'
-import { credentialRef } from '@deepseek-ai/dsh-credentials'
-import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import { resolveRetryPolicy, RetryPolicySchema } from '@deepseek-ai/dsh-llm'
-import type { ResolvedRetryPolicy, RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
-import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
+import { credentialRef } from '@knyazevai/dsh-credentials'
+import type { CredentialRef } from '@knyazevai/dsh-credentials'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
+import { resolveRetryPolicy, RetryPolicySchema } from '@knyazevai/dsh-llm'
+import type { ResolvedRetryPolicy, RetryPolicyConfig } from '@knyazevai/dsh-llm'
+import { deepEqualJson } from '@knyazevai/dsh-util-values'
 import {
   CACHE_CONTROL_FORMATS,
   CHAT_TEMPLATE_VARS,

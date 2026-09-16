@@ -10,15 +10,15 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { agentEvents } from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore from '@deepseek-ai/dsh-session'
-import type { Session } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import GoalService, { GoalId, applyGoalProjection, foldGoal, goalProjectionDefinition } from '@deepseek-ai/dsh-goal'
-import type { GoalProjection, GoalProjectionState, GoalRef } from '@deepseek-ai/dsh-goal'
-import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
+import AgentRegistry, { agentEvents } from '@knyazevai/dsh-agent'
+import type { Agent, AgentStatus } from '@knyazevai/dsh-agent'
+import { createUserMessage } from '@knyazevai/dsh-llm'
+import SessionStore from '@knyazevai/dsh-session'
+import type { Session } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import GoalService, { GoalId, applyGoalProjection, foldGoal, goalProjectionDefinition } from '@knyazevai/dsh-goal'
+import type { GoalProjection, GoalProjectionState, GoalRef } from '@knyazevai/dsh-goal'
+import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 
 interface Bench {
   ctx: Context

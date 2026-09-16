@@ -44,7 +44,7 @@ import {
   LlmAdapter,
   LlmError,
   ReasoningEffortId,
-} from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-llm'
 import type {
   GenerateOptions,
   ImageAttachmentAccess,
@@ -55,9 +55,9 @@ import type {
   ReasoningEffortId as ReasoningEffortIdType,
   ResolvedRetryPolicy,
   StreamChunk,
-} from '@deepseek-ai/dsh-llm'
-import type { AttachmentStore, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
+} from '@knyazevai/dsh-llm'
+import type { AttachmentStore, ImageAttachmentRef } from '@knyazevai/dsh-attachment'
+import { idleWatchdog, timeoutOf } from '@knyazevai/dsh-timeout'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { toPiContext } from './context.ts'
 import { toStreamChunks } from './stream.ts'

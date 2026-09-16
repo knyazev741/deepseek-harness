@@ -1,12 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { AssistantStreamAccumulator, createUserMessage, createSystemMessage, ToolCallId, createMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, Message, TokenUsage } from '@deepseek-ai/dsh-llm'
-import SessionStore, { Session, SessionId, SessionSeq, canonicalHeader } from '@deepseek-ai/dsh-session'
-import type { EpochHeader, SessionEvent, SessionSeq as SessionSeqType } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import TokenMeter from '@deepseek-ai/dsh-token-meter'
-import type { TokenMeasurement, TokenMeterConfig } from '@deepseek-ai/dsh-token-meter'
+import { AssistantStreamAccumulator, createUserMessage, createSystemMessage, ToolCallId, createMessage } from '@knyazevai/dsh-llm'
+import type { ContentBlock, Message, TokenUsage } from '@knyazevai/dsh-llm'
+import SessionStore, { Session, SessionId, SessionSeq, canonicalHeader } from '@knyazevai/dsh-session'
+import type { EpochHeader, SessionEvent, SessionSeq as SessionSeqType } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import TokenMeter from '@knyazevai/dsh-token-meter'
+import type { TokenMeasurement, TokenMeterConfig } from '@knyazevai/dsh-token-meter'
 
 function header(model: string, extras: Omit<EpochHeader, 'config'> = {}): EpochHeader {
   return canonicalHeader({ config: { provider: 'mock', model }, ...extras })
@@ -26,7 +26,7 @@ function appendHeader(session: Session, value: EpochHeader): void {
   session.append('request/header', { header: value, reason: 'initial' })
 }
 
-const SYSTEM_PLUGIN = '@deepseek-ai/dsh-system-prompt'
+const SYSTEM_PLUGIN = '@knyazevai/dsh-system-prompt'
 
 /** Append the rendered system prompt as surface node 0, the way the loop does. */
 function appendSystem(session: Session, text: string): SessionSeqType {

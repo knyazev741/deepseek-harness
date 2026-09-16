@@ -2,10 +2,10 @@
  * Model-facing diagnostics for guarded-mutation failures. Providers and
  * policies retain operation-specific causes, while this package owns the
  * stable message shown to the model.
- * @module @deepseek-ai/dsh-tool-fs/src/error
+ * @module @knyazevai/dsh-tool-fs/src/error
  */
 
-import { FsError } from '@deepseek-ai/dsh-fs'
+import { FsError } from '@knyazevai/dsh-fs'
 
 /**
  * Render the stable model-facing diagnostic for a guarded-mutation failure.

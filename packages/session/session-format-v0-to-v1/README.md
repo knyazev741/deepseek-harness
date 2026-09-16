@@ -3,7 +3,7 @@ description: "Frozen released-v0 Session header, event, and packed-row decoder w
 kind: "package-library"
 ---
 
-# @deepseek-ai/dsh-session-format-v0-to-v1
+# @knyazevai/dsh-session-format-v0-to-v1
 
 English | [中文](README.zh.md)
 

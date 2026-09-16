@@ -27,9 +27,9 @@ describe('parseDshArgs', () => {
       .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml', 'b.yml'], args: [] })
     expect(parse(['--profile', 'rescue', '--from-default-profile', 'web']))
       .toEqual({ mode: 'profile', profile: 'rescue', fromDefaultProfile: 'web', patches: [], args: [] })
-    expect(parse(['web'])).toEqual({ mode: 'profile', profile: 'web', patches: [], args: [] })
+    expect(parse(['web'])).toEqual({ mode: 'profile', profile: 'fork-web', patches: [], args: [] })
     expect(parse(['web', '--patch', 'web.yml']))
-      .toEqual({ mode: 'profile', profile: 'web', patches: ['web.yml'], args: [] })
+      .toEqual({ mode: 'profile', profile: 'fork-web', patches: ['web.yml'], args: [] })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {
@@ -39,7 +39,7 @@ describe('parseDshArgs', () => {
     expect(parse(['--profile', 'web', '-h']))
       .toEqual({ mode: 'profile', profile: 'web', patches: [], args: ['-h'] })
     expect(parse(['web', '--host', '127.0.0.1', '--port', '8080', '--no-open', '--future-web-flag']))
-      .toEqual({ mode: 'profile', profile: 'web', patches: [], args: ['--host', '127.0.0.1', '--port', '8080', '--no-open', '--future-web-flag'] })
+      .toEqual({ mode: 'profile', profile: 'fork-web', patches: [], args: ['--host', '127.0.0.1', '--port', '8080', '--no-open', '--future-web-flag'] })
     expect(parse(['--profile', 'headless', 'run', 'the', 'tests']))
       .toEqual({ mode: 'profile', profile: 'headless', patches: [], args: ['run', 'the', 'tests'] })
     // Launcher flags placed after that boundary belong to the app too.
@@ -53,7 +53,7 @@ describe('parseDshArgs', () => {
         args: ['--resume', 'abc', '--from-default-profile', 'web'],
       })
     expect(parse(['web', '--from-default-profile', 'web']))
-      .toEqual({ mode: 'profile', profile: 'web', patches: [], args: ['--from-default-profile', 'web'] })
+      .toEqual({ mode: 'profile', profile: 'fork-web', patches: [], args: ['--from-default-profile', 'web'] })
   })
 
   it('routes the plugin pnpm forwarder', () => {
@@ -84,9 +84,9 @@ describe('parseDshArgs', () => {
     expect(parse(['--profile', 'tui', '--dump-config', '--patch', 'x.yml']))
       .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: false, patches: ['x.yml'] })
     expect(parse(['web', '--dump-config']))
-      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: false, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'fork-web', defaultOnly: false, patches: [] })
     expect(parse(['web', '--dump-default-config']))
-      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'fork-web', defaultOnly: true, patches: [] })
   })
 
   it('rejects missing profile, removed flags, and contradictory inputs', () => {

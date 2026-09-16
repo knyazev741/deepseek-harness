@@ -6,7 +6,7 @@ import { MarkdownBody } from './MarkdownBody.tsx'
 import { en, zh } from './locales.ts'
 
 /** Implementation identity shared by metadata and the document slot. */
-export const MARKDOWN_BODY_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/markdown'
+export const MARKDOWN_BODY_ID = '@knyazevai/dsh-client-ui-sidebar-documentpreview/markdown'
 
 /**
  * Describe the Markdown implementation without taking ownership of loading.

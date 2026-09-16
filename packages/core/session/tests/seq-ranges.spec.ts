@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeSeqRanges, encodeSeqRanges, SessionSeq } from '@deepseek-ai/dsh-session'
+import { decodeSeqRanges, encodeSeqRanges, SessionSeq } from '@knyazevai/dsh-session'
 
 const seqs = (values: readonly number[]) => values.map(SessionSeq)
 

@@ -1,10 +1,10 @@
 /** Native fixture cleanup remains active after assertion failure and without a started client. */
 import { afterAll, describe, expect } from 'vitest'
-import { ok } from '@deepseek-ai/dsh-remote-mock'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { ok } from '@knyazevai/dsh-remote-mock'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import { createClientTest, webApp, type TestClient } from '../src/assembly/index.ts'
 
-const test = createClientTest({ roster: webApp.closure(['@deepseek-ai/dsh-api-gateway']) })
+const test = createClientTest({ roster: webApp.closure(['@knyazevai/dsh-api-gateway']) })
 const clients: TestClient[] = []
 const expired: (() => Promise<TestClient>)[] = []
 
@@ -56,7 +56,7 @@ describe('createClientTest', () => {
   })
 })
 
-const missingConnection = createClientTest({ roster: webApp.pick(['@deepseek-ai/dsh-typert-registry']) })
+const missingConnection = createClientTest({ roster: webApp.pick(['@knyazevai/dsh-typert-registry']) })
 missingConnection('keeps a rejected startup with its caller and releases its globals', async ({ start }) => {
   expired.push(start)
   await expect(start()).rejects.toThrow('provides no `connection` service')

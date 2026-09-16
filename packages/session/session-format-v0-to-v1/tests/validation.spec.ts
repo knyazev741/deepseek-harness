@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { SessionFormatEvent, SessionFormatJsonValue } from '@deepseek-ai/dsh-session-format'
-import { KNOWN_SESSION_EVENT_TYPES } from '@deepseek-ai/dsh-session'
+import type { SessionFormatEvent, SessionFormatJsonValue } from '@knyazevai/dsh-session-format'
+import { KNOWN_SESSION_EVENT_TYPES } from '@knyazevai/dsh-session'
 import {
   RELEASED_V0_EVENT_TYPES,
   RELEASED_V0_EVENT_DISPOSITIONS,

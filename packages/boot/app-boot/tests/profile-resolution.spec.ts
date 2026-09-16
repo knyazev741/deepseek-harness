@@ -1496,7 +1496,7 @@ describe('profile resolution generation', { concurrent: false }, () => {
   it('publishes and restores the generation inherited by owned Workers', async () => {
     const f = fixture()
     const generation = await generationOf(f)
-    const key = '@deepseek-ai/dsh-app-boot/profile-resolution'
+    const key = '@knyazevai/dsh-app-boot/profile-resolution'
     const previous = getEnvironmentData(key)
     const dispose = registerWorkerResolution(generation, 'verify')
     try {

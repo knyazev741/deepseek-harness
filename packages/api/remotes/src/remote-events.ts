@@ -6,9 +6,9 @@
  * type-only.
  */
 
-import type {} from '@deepseek-ai/dsh-api-session-controller/remote-events'
-import type {} from '@deepseek-ai/dsh-permission-presets/types'
-import type { TypertForwardableEventEntry } from '@deepseek-ai/dsh-typert-protocol'
+import type {} from '@knyazevai/dsh-api-session-controller/remote-events'
+import type {} from '@knyazevai/dsh-permission-presets/types'
+import type { TypertForwardableEventEntry } from '@knyazevai/dsh-typert-protocol'
 
 /**
  * Host events this application forwards without renaming. The explicit mode is

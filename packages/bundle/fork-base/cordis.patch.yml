@@ -1,0 +1,112 @@
+# The dsh-fork-base bundle is a fork-owned Host overlay applied after dsh-base.
+# It first inserts fork-owned rows, then replaces the complete config of
+# upstream rows whose defaults belong to this distribution. A profile or later
+# --patch layer can replace any targeted config by id.
+
+- insert:
+    # Session source identity is enabled by the deployment environment, not by a
+    # session-header field. The package records the marker only when this
+    # variable has the exact value `true`.
+    - id: fork-session-source
+      name: '@knyazevai/dsh-fork-session-source'
+      config:
+        enabledWhenEnv: GITHUB_ACTIONS
+
+    # Workspace membership is supplied by the Web Host layer. Keeping this
+    # row in the fork bundle lets that layer consume one stable Host overlay;
+    # Loader activation waits for the required workspaceRegistry service.
+    - id: fork-workspace-session-state
+      name: '@knyazevai/dsh-fork-workspace-session-state'
+
+    # Bound the idle time before the first LLM stream result and, when that
+    # deadline wins (FIRST_CHUNK_TIMEOUT), force one context compaction before
+    # retrying the request. The explicit values keep the deployment policy visible
+    # and patchable at this layer.
+    - id: fork-llm-first-chunk-timeout
+      name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'
+      config:
+        firstChunkIdleTimeoutMs: 120000
+        maxFirstChunkCompactionRetries: 100
+
+    # Keep a persistently failing request alive after dsh-llm-retry's bounded
+    # budget is exhausted: wait a long cooldown, then retry. The knyazev-ai
+    # route below retries fast 20 times per attempt; this escalation keeps
+    # re-claiming every later exhausted budget on an unstable upstream without
+    # ending the turn.
+    - id: fork-llm-rate-limit-cooldown
+      name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
+      config:
+        cooldownMs: 600000
+        retryableCodes:
+          - RATE_LIMIT
+          - QUOTA
+          - SERVER
+          - TIMEOUT
+          - FIRST_CHUNK_TIMEOUT
+          - TRANSPORT
+          - PI_AI_ERROR
+
+# The upstream adapter row is dormant without a settings section. The fork
+# composition supplies a portable route while keeping the credential external.
+- id: llm-pi-ai
+  config:
+    providers:
+      knyazev-ai:
+        apiKeyEnv: KNYAZEV_AI_API_KEY
+        api: openai-completions
+        baseURL: https://knyazevai.work/v1
+        streamIdleTimeoutMs: 900000
+        timeoutMs: 1800000
+        retryPolicy:
+          mode: normal
+          maxRetries: 20
+          retryableCodes:
+            - RATE_LIMIT
+            - QUOTA
+            - SERVER
+            - TIMEOUT
+            - FIRST_CHUNK_TIMEOUT
+            - TRANSPORT
+            - STREAM_CLOSED
+            - EMPTY_RESPONSE
+            - PI_AI_ERROR
+        compat:
+          thinkingFormat: qwen
+          supportsReasoningEffort: false
+        reasoning: high
+        models:
+          - id: deepseek-v4-flash
+            name: DeepSeek V4 Flash
+            contextWindow: 400000
+            maxTokens: 128000
+            reasoningEfforts:
+              off:
+              high: high
+              max: max
+          - id: glm-5.3-flash
+            name: GLM 5.3 Flash
+            contextWindow: 400000
+            maxTokens: 40000
+            reasoningEfforts:
+              off:
+              high: high
+              max: max
+          - id: kimi-2.6
+            name: Kimi 2.6
+            contextWindow: 262144
+            maxTokens: 40000
+            reasoningEfforts:
+              off:
+              high: high
+              max: max
+          - id: minimax-2.7
+            name: MiniMax 2.7
+            contextWindow: 204800
+
+# The upstream default-model service reads this composition entry when the
+# settings seam has no user override; its schema intentionally has no
+# reasoningEffort composition field.
+- id: agent-default-model
+  config:
+    provider: knyazev-ai
+    model: deepseek-v4-flash

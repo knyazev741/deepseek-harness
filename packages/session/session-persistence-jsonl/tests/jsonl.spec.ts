@@ -1,14 +1,14 @@
-import { MessageId, createMessage } from '@deepseek-ai/dsh-llm'
+import { MessageId, createMessage } from '@knyazevai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { appendFile, mkdtemp, mkdir, rm, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { scheduler } from 'node:timers/promises'
-import { SESSION_FORMAT_VERSION, SessionLogOffset, SessionSeq, SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
-import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { SESSION_FORMAT_VERSION, SessionLogOffset, SessionSeq, SessionId } from '@knyazevai/dsh-session'
+import type { SessionEvent, SessionHeader } from '@knyazevai/dsh-session'
+import type { SessionPersistence } from '@knyazevai/dsh-session-persistence'
+import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import {
   assertNoRetiredHeaderFields, encodeSegment, eventLines, generationLogFilename, generationLogPath,
   logPath, parseGenerationLogFilename, projectDir, projectKey, scanLog, sessionDir, SessionLogScanner,
@@ -20,7 +20,7 @@ import {
 import { runLiveWritePathContract } from '../../session-persistence/tests/live-write-contract.ts'
 import { LIVE_WRITE_BATCH_MAX_DELAY_MS, type JsonlSessionHandle } from '../src/storage.ts'
 import { JsonlGenerationSourceChangedError } from '../src/generation.ts'
-import SessionStore from '@deepseek-ai/dsh-session'
+import SessionStore from '@knyazevai/dsh-session'
 
 const statRace = vi.hoisted(() => ({
   path: undefined as string | undefined,
@@ -199,7 +199,7 @@ function withMigratedEmptyHead(log: readonly SessionEvent[]): readonly unknown[]
       type: 'system/message', seq: 2, time: log[1]!.time, surfaceOp: 'append',
       data: { turn: 1, step: 1, message: {
         id: expect.stringMatching(/^v2-to-v3-system-[0-9a-f]{64}$/) as unknown,
-        role: 'system', content: [], source: { kind: 'plugin', plugin: '@deepseek-ai/dsh-system-prompt' },
+        role: 'system', content: [], source: { kind: 'plugin', plugin: '@knyazevai/dsh-system-prompt' },
       } },
     },
     ...log.slice(2).map(event => ({ ...event, seq: SessionSeq(event.seq + 1) })),

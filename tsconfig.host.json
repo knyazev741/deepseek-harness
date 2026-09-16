@@ -144,6 +144,14 @@
     "scripts/client-bundle-purity.spec.ts"
   ],
   "references": [
+    { "path": "./packages/fork/session-source" },
+    { "path": "./packages/fork/external-session" },
+    { "path": "./packages/fork/llm-first-chunk-timeout" },
+    { "path": "./packages/fork/llm-rate-limit-cooldown" },
+    { "path": "./packages/fork/workspace-session-state/tsconfig.host.json" },
+    { "path": "./packages/bundle/fork-web" },
+    { "path": "./packages/bundle/fork-base" },
+
     { "path": "./packages/browser-use/browser-use" },
     { "path": "./packages/experimental/browser-use-runtime" },
     { "path": "./packages/experimental/browser-use-playwright-mcp" },

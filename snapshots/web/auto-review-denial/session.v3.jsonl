@@ -4,7 +4,7 @@
 {"type":"approval/policy","data":{"policy":"never"}}
 {"type":"turn/start","data":{"turn":1}}
 {"type":"step/start","data":{"turn":1,"step":1}}
-{"type":"system/message","data":{"turn":1,"step":1,"message":{"role":"system","content":[],"source":{"kind":"plugin","plugin":"@deepseek-ai/dsh-system-prompt"},"id":"{{message:1}}"}},"surfaceOp":"append"}
+{"type":"system/message","data":{"turn":1,"step":1,"message":{"role":"system","content":[],"source":{"kind":"plugin","plugin":"@knyazevai/dsh-system-prompt"},"id":"{{message:1}}"}},"surfaceOp":"append"}
 {"type":"user/message","data":{"content":[{"type":"text","text":"Inspect the protected operation, but do not run it unless authorized."}],"source":{"kind":"user"},"role":"user","id":"{{message:2}}"},"surfaceOp":"append"}
 {"type":"assistant/message","data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"tool-call","id":"auto-review-denied-call","name":"mystery","arguments":"{\"secret\":\"hidden-input\"}"}],"source":{"kind":"model","provider":"deepseek-official","model":"deepseek-v4-flash"},"id":"{{message:3}}"},"stream":[]},"surfaceOp":"append"}
 {"type":"tool/call","data":{"turn":1,"step":1,"callId":"auto-review-denied-call","name":"mystery","arguments":"{\"secret\":\"hidden-input\"}"}}

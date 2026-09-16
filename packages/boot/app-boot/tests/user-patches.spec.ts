@@ -23,6 +23,12 @@ import {
   watchUserPatches,
 } from '../src/index.ts'
 
+// The capture plugin under test writes its applied config to a well-known
+// global slot; the spec reads/writes/deletes it to observe re-applies.
+declare global {
+  var __capturedValue: string | undefined
+}
+
 const NAME = 'dsh-test-bin'
 
 const configWatch = vi.hoisted(() => ({
@@ -71,12 +77,12 @@ describe('loadOptionalPatches', () => {
     const dir = tmp()
     writeFileSync(join(dir, PROFILE_PATCH_FILENAME), [
       '- id: agent-loop',
-      "  name: '@deepseek-ai/dsh-agent-loop'",
+      "  name: '@knyazevai/dsh-agent-loop'",
       '  config:',
       '    model: !!js process.env.DSH_SPEC_MODEL',
       '- insert:',
       '    - id: llm',
-      "      name: '@deepseek-ai/dsh-llm-pi-ai'",
+      "      name: '@knyazevai/dsh-llm-pi-ai'",
       '',
     ].join('\n'))
     const patches = loadOptionalPatches(NAME, join(dir, PROFILE_PATCH_FILENAME))
@@ -102,7 +108,7 @@ describe('loadOptionalPatches', () => {
       { insert: [
         { id: 'absolute', name: pluginPath },
         { id: 'url', name: pluginUrl },
-        { id: 'bare', name: '@deepseek-ai/dsh-system-prompt' },
+        { id: 'bare', name: '@knyazevai/dsh-system-prompt' },
         { id: 'nested', name: 'cordis:group', group: true, config: [
           { id: 'child', name: pluginPath },
         ] },
@@ -111,7 +117,7 @@ describe('loadOptionalPatches', () => {
     const patches = load(NAME, patchPath)!
     expect(patches[0]?.name).toBe(pluginPath)
     expect(patches[1]?.insert?.map(entry => entry.name)).toEqual([
-      pluginUrl, pluginUrl, '@deepseek-ai/dsh-system-prompt', 'cordis:group',
+      pluginUrl, pluginUrl, '@knyazevai/dsh-system-prompt', 'cordis:group',
     ])
     expect((patches[1]?.insert?.[3]?.config as { name: string }[])[0]?.name).toBe(pluginUrl)
 
@@ -492,6 +498,51 @@ describe('boot with user patches', () => {
       }
     } finally {
       await dispose()
+    }
+  })
+
+  it('re-runs apply() with the replaced config through HMR', { timeout: 20_000 }, async () => {
+    const dir = tmp()
+    const userDir = tmp()
+    const filename = join(userDir, PROFILE_PATCH_FILENAME)
+    const previousFactory = configWatch.create
+    const previousCapture = Object.getOwnPropertyDescriptor(globalThis, '__capturedValue')
+    onTestFinished(() => {
+      configWatch.create = previousFactory
+      if (previousCapture === undefined) Reflect.deleteProperty(globalThis, '__capturedValue')
+      else Object.defineProperty(globalThis, '__capturedValue', previousCapture)
+    })
+    let watcher: FSWatcher | undefined
+    configWatch.create = (options) => {
+      const current = new FSWatcher(options)
+      watcher = current
+      queueMicrotask(() => { current.emit('ready') })
+      return current
+    }
+    writeFileSync(join(dir, 'capture.mjs'), [
+      'export const name = "capture"',
+      'export function apply(_ctx, config = {}) { globalThis.__capturedValue = config.value }',
+      '',
+    ].join('\n'))
+    writeFileSync(join(dir, 'cordis.yml'), '- id: capture\n  name: ./capture.mjs\n  config:\n    value: base\n')
+    const basePatches = [{ id: 'capture', config: { value: 'generated' } }]
+    const ctx = await boot(NAME, join(dir, 'cordis.yml'), basePatches)
+    await ctx.plugin(Timer)
+    await ctx.plugin(Hmr, { root: [], ignored: [], debounce: 0 })
+    const dispose = await watchUserPatches(ctx, {
+      binName: NAME,
+      filename,
+      compose: userPatches => [...basePatches, ...userPatches],
+    })
+    try {
+      expect(globalThis.__capturedValue).toBe('generated')
+      writeFileSync(filename, '- id: capture\n  config:\n    value: live\n')
+      watcher?.emit('add', filename)
+      await eventually(() => globalThis.__capturedValue === 'live', 'apply() was not re-run with the replaced config')
+    } finally {
+      await dispose()
+      await ctx.fiber.dispose()
+      globalThis.__capturedValue = undefined
     }
   })
 

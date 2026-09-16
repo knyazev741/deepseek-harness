@@ -548,6 +548,24 @@ export const IconPaperclipOutline16 = ({ size = 16, className }: IconProps) => (
   </svg>
 )
 
+/** ic_ds_pushpin_outline_16 */
+export const IconPushpinOutline16 = ({ size = 16, className }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    className={className}
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    data-icon="pushpin-outline"
+  >
+    <g transform="rotate(-45 8 8)" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5.25 1.5h5.5v1.75h1.5v3.75l1.5 1.5v.75h-5v3.75L8 14.5l-.75-1.5V9.25h-5V8.5l1.5-1.5V3.25h1.5V1.5Z" />
+      <path d="M4.25 9.25h7.5" />
+    </g>
+  </svg>
+)
+
 /** ic_ds_loading_outline_16 */
 export const IconLoadingOutline16 = ({ size = 16, className }: IconProps) => (
   <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

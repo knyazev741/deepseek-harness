@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-settings-plugins",
+  "name": "@knyazevai/dsh-client-ui-settings-plugins",
   "description": "Plugins settings section with feature-owned tabs and configurable host-plane plugin cards",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -28,9 +28,9 @@
   "dsh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-api-remotes"
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-settings",
+        "@knyazevai/dsh-api-remotes"
       ],
       "platform": "web"
     }
@@ -45,16 +45,16 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-api-remotes": "workspace:^",
-    "@deepseek-ai/dsh-client-locale": "workspace:^",
-    "@deepseek-ai/dsh-client-store": "workspace:^",
-    "@deepseek-ai/dsh-client-test-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-settings": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
+    "@knyazevai/dsh-api-remotes": "workspace:^",
+    "@knyazevai/dsh-client-locale": "workspace:^",
+    "@knyazevai/dsh-client-store": "workspace:^",
+    "@knyazevai/dsh-client-test-runtime": "workspace:^",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
+    "@knyazevai/dsh-client-ui-settings": "workspace:^",
+    "@knyazevai/dsh-client-ui-slots": "workspace:^",
     "@types/react": "~18.3.1",
     "react": "^18.2.0",
-    "@deepseek-ai/dsh-client-ui-renderer": "workspace:^",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
     "clsx": "^2.0.0"
   },
   "files": [

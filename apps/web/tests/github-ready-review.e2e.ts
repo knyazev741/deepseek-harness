@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed, onTestFinished, vi } from 'vitest'
-import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
-import { LlmAdapter } from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-webhook'
+import type { GenerateOptions, StreamChunk } from '@knyazevai/dsh-llm'
+import { LlmAdapter } from '@knyazevai/dsh-llm'
+import type {} from '@knyazevai/dsh-webhook'
 import {
   captureExpandedTurnProcessAria,
   captureStableAria,

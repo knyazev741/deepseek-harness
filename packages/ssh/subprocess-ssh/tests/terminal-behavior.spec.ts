@@ -2,7 +2,7 @@
 import { duplexPair } from 'node:stream'
 import { once } from 'node:events'
 import { Context } from '@deepseek-ai/cordis'
-import type { SubprocessTerminalSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessTerminalSpawnSpec } from '@knyazevai/dsh-subprocess'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { z } from 'zod'
 import { SshSubprocessRuntime } from '../src/index.ts'

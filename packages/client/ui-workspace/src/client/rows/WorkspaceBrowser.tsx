@@ -14,12 +14,13 @@ import clsx from 'clsx'
 import {
   Button, IconCloseFill14, IconPersonalizationOutline16,
   IconProjectAddOutline16, IconSearchOutline16, Menu, Modal, Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@knyazevai/dsh-client-ui-primitives'
 import type {
-  SessionListState, SessionSearchResultItem,
-} from '@deepseek-ai/dsh-api-session-controller/client'
-import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+  SessionListState, SessionSearchResultItem, SessionSummary,
+} from '@knyazevai/dsh-api-session-controller/client'
+import type { WorkspaceId, WorkspaceView } from '@knyazevai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext } from '../contract/contributions.ts'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { SessionNode, SessionOrderBy } from '../tree.ts'
 import {
@@ -42,6 +43,49 @@ const SEARCH_DEBOUNCE_MS = 250
 const SEARCH_QUERY_MAX_CODE_UNITS = 500
 /** Session rows visible per Workspace before the local overflow control. */
 const COLLAPSED_SESSION_LIMIT = 5
+const DEFAULT_VIEW_ID = 'workspace.default'
+
+function rowContext(session: SessionSummary, workspaces: readonly WorkspaceView[], selected: boolean): WorkspaceSessionRowContext {
+  const workspace = workspaces.find(candidate => candidate.sessionIds.includes(session.id))
+    ?? { workspaceId: '' as WorkspaceId, title: 'Ungrouped', path: session.cwd ?? '', sessionIds: [session.id],
+      createdAt: '', updatedAt: '' }
+  return { session, workspace, selected }
+}
+
+function orderSessionIds(ids: readonly SessionId[], list: SessionListState, workspaces: readonly WorkspaceView[],
+  policies: readonly WorkspaceListPolicy[]): SessionId[] {
+  if (policies.length === 0) return [...ids]
+  const candidates = ids.filter(id => list.byId[id] !== undefined)
+  const contexts = new Map(candidates.map(id => [id, rowContext(list.byId[id] as SessionSummary, workspaces,
+    list.current === id)] as const))
+  const ordered = [...candidates].sort((leftId, rightId) => {
+    const left = contexts.get(leftId) as WorkspaceSessionRowContext
+    const right = contexts.get(rightId) as WorkspaceSessionRowContext
+    return policies.reduce((result, policy) => result || policy.compare(left, right), 0)
+  })
+  let candidateIndex = 0
+  return ids.map(id => list.byId[id] === undefined ? id : ordered[candidateIndex++] as SessionId)
+}
+
+/** Resolve policy-promoted ids in the same stable order as the active session list. */
+function promotedSessionIds(ids: readonly SessionId[], list: SessionListState, workspaces: readonly WorkspaceView[],
+  policies: readonly WorkspaceListPolicy[]): SessionId[] {
+  const promoted = ids.filter((id) => {
+    const session = list.byId[id]
+    if (session === undefined) return false
+    const context = rowContext(session, workspaces, list.current === id)
+    return policies.some(policy => policy.promote?.(context) === true)
+  })
+  return orderSessionIds(promoted, list, workspaces, policies)
+}
+
+function filterSessionList(list: SessionListState, view: WorkspaceListView, workspaces: readonly WorkspaceView[]): SessionListState {
+  if (view.id === DEFAULT_VIEW_ID) return list
+  const ids = list.ids.filter(id => list.byId[id] !== undefined && view.include(rowContext(list.byId[id], workspaces, list.current === id)))
+  if (ids.length === list.ids.length) return list
+  return { ...list, ids, byId: Object.fromEntries(ids.map(id => [id, list.byId[id] as SessionSummary])) }
+}
+
 
 /** Fold one Workspace without charging its provisional New Session against the ordinary-row limit. */
 function collapsedSessionRows(sessions: readonly SessionNode[]): {
@@ -169,8 +213,9 @@ function workspaceGroupHalf(e: { clientY: number; currentTarget: HTMLElement }):
 type SessionTreeProps = Pick<
   WorkspaceBrowserProps,
   'useSessionPendingInteraction' | 'startSession' | 'open' | 'forkSession'
-  | 'insertWorkspaceBefore' | 't' | 'usePanelInfo'
+  | 'insertWorkspaceBefore' | 't' | 'usePanelInfo' | 'renderSlot'
 > & {
+  promotedIds?: readonly SessionId[]
   /** Always-mounted Session list snapshot. */
   list: SessionListState
   /** Host account home for POSIX hover-path abbreviation. */
@@ -211,7 +256,7 @@ function SessionTree({
   onRenameRequest, onDeleteRequest, onSessionRename, onSessionArchive,
   insertWorkspaceBefore,
   groupExpansion, setGroupExpanded,
-  setSessionOrder, home, t,
+  setSessionOrder, home, renderSlot, promotedIds, t,
   revealSessionId, onSessionRevealed,
 }: SessionTreeProps) {
   const panelActive = usePanelInfo(info => info.activePanelId !== null)
@@ -243,8 +288,9 @@ function SessionTree({
     () => deriveGroups(list, workspaces, archivedSessionIds, pendingInteractions, {
       expandedGroups,
       ungroupedOrder: ungroupedSessionIds,
+      ...(promotedIds === undefined ? {} : { promotedSessionIds: promotedIds }),
     }),
-    [list, workspaces, archivedSessionIds, pendingInteractions, expandedGroups, ungroupedSessionIds],
+    [list, workspaces, archivedSessionIds, pendingInteractions, expandedGroups, ungroupedSessionIds, promotedIds],
   )
   useEffect(() => {
     if (revealGroup === undefined || groupExpansion[revealGroup] === true) return
@@ -401,7 +447,7 @@ function SessionTree({
                   dropWorkspace(workspaceGroupHalf(e))
                 }}
             >
-              <ProjectRowItem
+              {!group.promoted && <ProjectRowItem
                 group={group}
                 home={home}
                 t={t}
@@ -430,7 +476,7 @@ function SessionTree({
                       if (group.workspaceId !== undefined) onDeleteRequest(group.workspaceId, group.label)
                     },
                   }}
-              />
+              />}
               {(sessionsExpanded
                 ? group.sessions
                 : collapsed.rows
@@ -467,6 +513,8 @@ function SessionTree({
                   <SessionNodeItem
                     key={node.id}
                     node={node}
+                    rowContext={rowContext(list.byId[node.id] as SessionSummary, workspaces, list.current === node.id)}
+                    renderSlot={renderSlot}
                     currentId={current}
                     now={now}
                     onOpen={open}
@@ -476,7 +524,7 @@ function SessionTree({
                     onReveal={node.id === revealSessionId && group.key === revealGroup
                       ? () => { onSessionRevealed(node.id) }
                       : undefined}
-                    drag={dragProps}
+                    drag={group.promoted ? undefined : dragProps}
                     t={t}
                   />
                 )
@@ -506,7 +554,7 @@ function SessionTree({
 function FlatList({
   list, sessionIds, useSessionPendingInteraction, open, forkSession, onSessionRename, onSessionArchive,
   usePanelInfo, setSessionOrder,
-  revealSessionId, onSessionRevealed, t,
+  revealSessionId, onSessionRevealed, workspaces, renderSlot, t,
 }: Pick<
   SessionTreeProps,
   | 'useSessionPendingInteraction'
@@ -518,6 +566,8 @@ function FlatList({
   | 'setSessionOrder'
   | 'revealSessionId'
   | 'onSessionRevealed'
+  | 'workspaces'
+  | 'renderSlot'
   | 't'
 > & {
   list: SessionListState
@@ -564,6 +614,8 @@ function FlatList({
             <SessionNodeItem
               key={node.id}
               node={node}
+              rowContext={rowContext(list.byId[node.id] as SessionSummary, workspaces, list.current === node.id)}
+              renderSlot={renderSlot}
               currentId={panelActive ? undefined : list.current}
               now={now}
               onOpen={open}
@@ -622,9 +674,10 @@ function SearchResults({
   query,
   remote,
   resultLimit,
+  renderSlot,
   usePanelInfo,
   t,
-}: Pick<WorkspaceBrowserProps, 'useSessions' | 'useSessionPendingInteraction' | 'open' | 't' | 'usePanelInfo'> & {
+}: Pick<WorkspaceBrowserProps, 'useSessions' | 'useSessionPendingInteraction' | 'open' | 't' | 'usePanelInfo' | 'renderSlot'> & {
   workspaces: readonly WorkspaceView[]
   archivedSessionIds: readonly SessionNode['id'][]
   query: string
@@ -660,6 +713,9 @@ function SearchResults({
             <SearchResultItem
               key={result.id}
               result={result}
+              rowContext={list.byId[result.id] === undefined
+                ? undefined : rowContext(list.byId[result.id] as SessionSummary, workspaces, list.current === result.id)}
+              renderSlot={renderSlot}
               currentId={panelActive ? undefined : list.current}
               onOpen={open}
               t={t}
@@ -715,6 +771,8 @@ export function WorkspaceBrowser({
   searchResultLimit,
   useDirectoryFlow,
   useHostInfo,
+  useViews,
+  usePolicies,
   renderSlot,
   t,
 }: WorkspaceBrowserProps) {
@@ -729,6 +787,20 @@ export function WorkspaceBrowser({
   // flow reads): a composition without a picking affordance can add nothing.
   const directoryFlowAvailable = useDirectoryFlow(occupied => occupied)
   const groupBy = useStore(s => s.groupBy)
+  const contributedViews = useViews?.(value => value) ?? []
+  const policies = usePolicies?.(value => value) ?? []
+  const views = useMemo<readonly [WorkspaceListView, ...WorkspaceListView[]]>(() => [{
+    id: DEFAULT_VIEW_ID, order: Number.NEGATIVE_INFINITY,
+    label: groupBy === 'flat' ? t('section.sessions') : t('section.workspaces'), include: () => true,
+  }, ...contributedViews], [contributedViews, groupBy, t])
+  const [activeViewId, setActiveViewId] = useState(DEFAULT_VIEW_ID)
+  const activeView = views.find(view => view.id === activeViewId) ?? views[0]
+  useEffect(() => { if (!views.some(view => view.id === activeViewId)) setActiveViewId(DEFAULT_VIEW_ID) }, [activeViewId, views])
+  const displayList = useMemo(() => filterSessionList(list, activeView, workspaces), [list, activeView, workspaces])
+  const promotedIds = useMemo(
+    () => promotedSessionIds(displayList.ids, displayList, workspaces, policies), [displayList, workspaces, policies],
+  )
+
   const orderBy = useStore(s => s.orderBy)
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
@@ -1044,7 +1116,13 @@ export function WorkspaceBrowser({
       <div className={css.sectionHeader}>
         {wide && (
           <span className={clsx(css.sectionLabel, css.wide, searchExpanded && css.sectionLabelHidden)}>
-            {groupBy === 'flat' ? t('section.sessions') : t('section.workspaces')}
+            {views.length === 1 ? activeView.label : (
+              <span className={css.viewTabs} role="tablist" aria-label={t('section.workspaces')}>
+                {views.map(view => <button key={view.id} type="button" role="tab" aria-selected={view.id === activeView.id}
+                  className={clsx(css.viewTab, view.id === activeView.id && css.viewTabActive)}
+                  onClick={() => { setActiveViewId(view.id) }}>{view.label}</button>)}
+              </span>
+            )}
           </span>
         )}
         {wide && (
@@ -1176,6 +1254,7 @@ export function WorkspaceBrowser({
         {wide && (normalizedQuery !== ''
           ? (
             <SearchResults
+              renderSlot={renderSlot}
               usePanelInfo={usePanelInfo}
               useSessions={useSessions}
               useSessionPendingInteraction={useSessionPendingInteraction}
@@ -1191,9 +1270,12 @@ export function WorkspaceBrowser({
           : groupBy === 'flat'
             ? (
               <FlatList
+                renderSlot={renderSlot}
+                workspaces={workspaces}
                 usePanelInfo={usePanelInfo}
-                list={list}
-                sessionIds={orderedFlatSessionIds}
+                list={displayList}
+                sessionIds={orderSessionIds(orderedFlatSessionIds, displayList, workspaces, policies)
+                  .filter(id => displayList.byId[id] !== undefined)}
                 useSessionPendingInteraction={useSessionPendingInteraction}
                 open={open} forkSession={forkSession}
                 onSessionRename={onSessionRename} onSessionArchive={onSessionArchive}
@@ -1205,14 +1287,18 @@ export function WorkspaceBrowser({
             )
             : (
               <SessionTree
+                renderSlot={renderSlot}
+                promotedIds={promotedIds}
                 usePanelInfo={usePanelInfo}
-                list={list}
+                list={displayList}
                 useSessionPendingInteraction={useSessionPendingInteraction}
                 onSessionRename={onSessionRename}
                 onSessionArchive={onSessionArchive}
                 forkSession={forkSession}
-                workspaces={orderedWorkspaces}
-                ungroupedSessionIds={orderedUngroupedSessionIds}
+                workspaces={orderedWorkspaces.map(workspace => ({
+                  ...workspace, sessionIds: orderSessionIds(workspace.sessionIds, displayList, workspaces, policies),
+                }))}
+                ungroupedSessionIds={orderSessionIds(orderedUngroupedSessionIds, displayList, workspaces, policies)}
                 workspaceReady={workspaceReady}
                 groupExpansion={groupExpansion}
                 setGroupExpanded={actions.setGroupExpanded}

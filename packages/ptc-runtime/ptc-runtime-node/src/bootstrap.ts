@@ -1,6 +1,6 @@
 /**
  * Program evaluation, output capture, and host binding proxies over the process channel.
- * @module @deepseek-ai/dsh-ptc-runtime-node/src/bootstrap
+ * @module @knyazevai/dsh-ptc-runtime-node/src/bootstrap
  */
 
 import { inspect } from 'node:util'

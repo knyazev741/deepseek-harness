@@ -1,38 +1,39 @@
-import { imageOffloadProjection } from '@deepseek-ai/dsh-compaction-image-offload/projection'
+import { imageOffloadProjection } from '@knyazevai/dsh-compaction-image-offload/projection'
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import { CommandId } from '@deepseek-ai/dsh-commands/brand'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
-import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
-import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
-import * as CompactionInvariant from '@deepseek-ai/dsh-compaction/invariant'
-import { BasicCompactionEngine } from '@deepseek-ai/dsh-compaction-basic'
-import { CompactionId, isCompactCheckpointSource, ManualCompactionError } from '@deepseek-ai/dsh-compaction'
-import type { CompactionResult } from '@deepseek-ai/dsh-compaction'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
+import InvariantRegistry from '@knyazevai/dsh-invariants'
+import { CommandId } from '@knyazevai/dsh-commands/brand'
+import * as SessionInvariant from '@knyazevai/dsh-session/invariant'
+import * as AgentInvariant from '@knyazevai/dsh-agent/invariant'
+import * as AgentLoopInvariant from '@knyazevai/dsh-agent-loop/invariant'
+import * as CompactionInvariant from '@knyazevai/dsh-compaction/invariant'
+import { BasicCompactionEngine } from '@knyazevai/dsh-compaction-basic'
+import type { BasicCompactionConfig } from '@knyazevai/dsh-compaction-basic'
+import { CompactionId, isCompactCheckpointSource, ManualCompactionError } from '@knyazevai/dsh-compaction'
+import type { CompactionResult } from '@knyazevai/dsh-compaction'
 import {
   createAssistantMessage,
   createUserMessage,
   LlmAdapter,
-} from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-llm'
 import type {
   ContentBlock,
   LlmResolvedModelInfo,
   Message,
   StreamChunk,
   TokenUsage,
-} from '@deepseek-ai/dsh-llm'
-import SessionStore, { Session, SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
-import TokenMeter from '@deepseek-ai/dsh-token-meter'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+} from '@knyazevai/dsh-llm'
+import SessionStore, { Session, SessionId, type SessionEvent } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import LlmRuntime from '@knyazevai/dsh-llm'
+import TokenMeter from '@knyazevai/dsh-token-meter'
+import type { Agent } from '@knyazevai/dsh-agent'
 import type {
   SummarizationInput,
   SummaryResult,
-} from '@deepseek-ai/dsh-compaction-basic/src/summarizer.ts'
+} from '@knyazevai/dsh-compaction-basic/src/summarizer.ts'
 
 const MODEL = 'mock'
 const SIGNAL = new AbortController().signal
@@ -219,7 +220,9 @@ function fakeAgent(
 }
 
 /** Service over a store-detached session for failure classification. */
-function detachedService(): { ctx: Context; compact: GatedCompactionEngine; flushes: () => number } {
+function detachedService(
+  config: BasicCompactionConfig = { auto: false },
+): { ctx: Context; compact: GatedCompactionEngine; flushes: () => number } {
   const ctx = new Context()
   void new LlmRuntime(ctx)
   void new SessionStore(ctx)
@@ -231,7 +234,7 @@ function detachedService(): { ctx: Context; compact: GatedCompactionEngine; flus
     flushes += 1
     return Promise.resolve(false)
   })
-  return { ctx, compact: new GatedCompactionEngine(ctx, { auto: false }), flushes: () => flushes }
+  return { ctx, compact: new GatedCompactionEngine(ctx, config), flushes: () => flushes }
 }
 
 function compactEvents(session: Session): SessionEvent[] {
@@ -443,6 +446,101 @@ describe('compactNow transaction and failure classification', () => {
     expect(summaryEvent?.data.sourceCommandId).toBe(commandId)
     expect(checkpoint?.data.source).toMatchObject(correlated)
     expect(end?.data).toEqual({ ...correlated, turn: null })
+  })
+
+  it('compacts a huge surface in bounded passes under one maintenance reservation', async () => {
+    const { compact, flushes } = detachedService({
+      auto: false,
+      maxSummarizationInputTokens: 600,
+    })
+    const session = closedConversation(8)
+    let maintenanceRuns = 0
+    const agent = fakeAgent(session, () => {
+      maintenanceRuns += 1
+      return () => undefined
+    })
+
+    const result = await compact.compactNow(agent, SIGNAL)
+
+    expect(result).not.toBeNull()
+    expect(maintenanceRuns).toBe(1)
+    // Sixteen ~368-token messages at a 600-token budget need several bounded
+    // passes; each pass flushes its own standalone bracket.
+    expect(flushes()).toBeGreaterThan(1)
+    expect(compact.calls.length).toBe(flushes())
+    for (const call of compact.calls) {
+      expect(call.messages.length).toBeGreaterThan(0)
+      expect(call.messages.length).toBeLessThan(6)
+    }
+    // Every pass wrote a complete compact checkpoint; the surface tail stays.
+    expect(session.snapshotEvents().filter(event => event.type === 'compaction/summary'))
+      .toHaveLength(flushes())
+    expect(session.surface.nodes.length).toBeLessThanOrEqual(2)
+    const markers = compactEvents(session)
+    expect(markers.filter(event => event.type === 'compaction/start')).toHaveLength(flushes())
+    expect(markers.filter(event => event.type === 'compaction/end')).toHaveLength(flushes())
+  })
+
+  it('stops at a prior checkpoint without another summarizer call or bracket', async () => {
+    const { compact, flushes } = detachedService({
+      auto: false,
+      maxSummarizationInputTokens: 1,
+    })
+    const session = closedConversation(3)
+    let maintenanceRuns = 0
+    const agent = fakeAgent(session, () => {
+      maintenanceRuns += 1
+      return () => undefined
+    })
+
+    const result = await compact.compactNow(agent, SIGNAL)
+
+    expect(result).not.toBeNull()
+    // The first bounded pass leaves its checkpoint at the head. The next
+    // selection is terminal prior-checkpoint content and must return without
+    // opening another transaction inside the same maintenance reservation.
+    expect(maintenanceRuns).toBe(1)
+    expect(compact.calls).toHaveLength(1)
+    expect(flushes()).toBe(1)
+    expect(compactEvents(session).map(event => event.type)).toEqual([
+      'compaction/start',
+      'compaction/summary',
+      'compaction/end',
+    ])
+  })
+
+  it('falls back to the service-wide policy when the agent has no target', async () => {
+    const { compact, flushes } = detachedService({
+      auto: false,
+      maxSummarizationInputTokens: 600,
+    })
+    // No request header and no provider/model options: compactNow must fall
+    // back to the service-wide policy instead of failing to resolve a target.
+    const session = Session.create(SessionId('headerless-manual'))
+    session.append('turn/start', { turn: 1 })
+    session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: PROMPT }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    session.append('step/start', { turn: 1, step: 1 })
+    session.append('assistant/message', {
+      stream: [],
+      turn: 1,
+      step: 1,
+      message: createAssistantMessage({
+        content: [{ type: 'text', text: 'answer' }],
+        source: { provider: MODEL, model: MODEL },
+      }),
+    }, { surfaceOp: 'append' })
+    session.append('step/end', { turn: 1, step: 1 })
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const agent = fakeAgent(session, () => () => undefined)
+    ;(agent as { options: Agent['options'] }).options = {}
+
+    const result = await compact.compactNow(agent, SIGNAL)
+
+    expect(result).not.toBeNull()
+    expect(flushes()).toBeGreaterThan(0)
   })
 
   it('reports a live unmatched bracket as busy without summarizing', async () => {

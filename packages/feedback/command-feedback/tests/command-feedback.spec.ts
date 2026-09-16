@@ -1,21 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
-import CommandRuntime from '@deepseek-ai/dsh-commands'
-import SessionStore, { foldSurface, Session, SessionId } from '@deepseek-ai/dsh-session'
-import * as commandFeedback from '@deepseek-ai/dsh-command-feedback'
-import type { FeedbackRecord } from '@deepseek-ai/dsh-command-feedback/types'
-import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
-import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import type { Agent, AgentStatus } from '@knyazevai/dsh-agent'
+import CommandRuntime from '@knyazevai/dsh-commands'
+import SessionStore, { foldSurface, Session, SessionId } from '@knyazevai/dsh-session'
+import * as commandFeedback from '@knyazevai/dsh-command-feedback'
+import type { FeedbackRecord } from '@knyazevai/dsh-command-feedback/types'
+import { remoteMethods } from '@knyazevai/dsh-typert-protocol'
+import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 
 const { USER_ID, getOrCreateAnonymousUserId } = vi.hoisted(() => {
   const USER_ID = '01234567-89ab-4cde-8f01-23456789abcd'
   return { USER_ID, getOrCreateAnonymousUserId: vi.fn(() => USER_ID) }
 })
 
-vi.mock('@deepseek-ai/dsh-anonymous-user-id', () => ({
+vi.mock('@knyazevai/dsh-anonymous-user-id', () => ({
   getOrCreateAnonymousUserId,
 }))
 
@@ -85,7 +85,7 @@ function feedbackTexts(session: Session): (string | undefined)[] {
   return feedbackRecords(session).map(record => record.text)
 }
 
-describe('@deepseek-ai/dsh-command-feedback registration', () => {
+describe('@knyazevai/dsh-command-feedback registration', () => {
   it('registers one global command with Loader-safe exports and disposes it', async () => {
     const test = await harness()
     expect(commandFeedback.name).toBe('command-feedback')
@@ -95,7 +95,7 @@ describe('@deepseek-ai/dsh-command-feedback registration', () => {
     expect(loader.unwrapExports(commandFeedback)).toBe(commandFeedback)
 
     expect(test.ctx.commands.list(test.agent)).toContainEqual({
-      definitionId: '@deepseek-ai/dsh-command-feedback',
+      definitionId: '@knyazevai/dsh-command-feedback',
       name: 'feedback',
       description: 'Record feedback about this session',
       input: { hint: '<text>' },

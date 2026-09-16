@@ -19,11 +19,11 @@
 
 - insert:
     - id: headless-startup
-      name: '@deepseek-ai/dsh-headless/startup'
+      name: '@knyazevai/dsh-headless/startup'
 
     # Reads its task and run options from the ordinary headlessStartup provider.
     - id: headless-runner
-      name: '@deepseek-ai/dsh-headless'
+      name: '@knyazevai/dsh-headless'
       inject: [headlessStartup]
       config:
         task: !!js ctx.headlessStartup.task

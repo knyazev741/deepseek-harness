@@ -20,18 +20,18 @@
  * registering into one already depends on it for the declaration. The types
  * therefore live with their declarer.
  */
-import type {} from '@deepseek-ai/dsh-client-ui-slots'
-import type { RightbarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@knyazevai/dsh-client-ui-slots'
+import type { RightbarOwnerProps } from '@knyazevai/dsh-client-ui-layout/client'
 // The locale plugin's own merge carries the shared `common` vocabulary that the
 // lookup chain consults after this namespace misses.
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { PaneId, TabRecord } from '@deepseek-ai/dsh-client-ui-dockkit'
-import type { SlotHookFactory } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@knyazevai/dsh-client-locale/client'
+import type { PaneId, TabRecord } from '@knyazevai/dsh-client-ui-dockkit'
+import type { SlotHookFactory } from '@knyazevai/dsh-client-ui-slots'
 import type { TabHookContext } from '../tab-info.ts'
 import type { SidebarRightKey } from '../locales.ts'
 import type { SidebarRightNavigationParams, SidebarRightResourceParams, SidebarRightTabParamsFor } from './params.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@knyazevai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Right-Sidebar chrome, docking-kit vocabulary, and guide copy. */
     sidebarRight: SidebarRightKey

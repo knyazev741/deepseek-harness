@@ -15,7 +15,7 @@ import {
   collectRuntimeSourceSpecifiers,
 } from './verify-client-packages.ts'
 
-const EXPERIMENTAL_PREFIX = '@deepseek-ai/dsh-experimental-'
+const EXPERIMENTAL_PREFIX = '@knyazevai/dsh-experimental-'
 const PROFILE_SOURCE = 'packages/boot/app-boot/src/profile.ts'
 const PRESET_PATTERN = 'packages/preset/agent-presets/presets/*/agent.cordis.yml'
 const RUNTIME_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const
@@ -68,8 +68,8 @@ export function verifyDefaultProductIsolation(root: string): ProductIsolationRes
   for (const path of ['apps/cli/package.json', 'apps/web/package.json', 'python/sdk-runtime/package.json']) {
     if (!existsSync(resolve(root, path))) failures.push(`missing default product root ${path}`)
   }
-  if (directories.get(resolve(root, 'apps/cli'))?.manifest.name !== '@deepseek-ai/dsh') {
-    failures.push('apps/cli/package.json must identify @deepseek-ai/dsh')
+  if (directories.get(resolve(root, 'apps/cli'))?.manifest.name !== '@knyazevai/dsh') {
+    failures.push('apps/cli/package.json must identify @knyazevai/dsh')
   }
 
   const queue: Package[] = []

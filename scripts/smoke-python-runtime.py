@@ -275,9 +275,9 @@ def write_advanced_profile_patch(root: Path, name: str, sessions: Path) -> Path:
             },
         },
         {"insert": [
-            {"id": "ptc-runtime", "name": "@deepseek-ai/dsh-ptc-runtime-node"},
-            {"id": "cordis-host-runner", "name": "@deepseek-ai/dsh-cordis-host-runner"},
-            {"id": "cordis-tool", "name": "@deepseek-ai/dsh-tool-cordis"},
+            {"id": "ptc-runtime", "name": "@knyazevai/dsh-ptc-runtime-node"},
+            {"id": "cordis-host-runner", "name": "@knyazevai/dsh-cordis-host-runner"},
+            {"id": "cordis-tool", "name": "@knyazevai/dsh-tool-cordis"},
         ]},
     ])
 
@@ -287,7 +287,7 @@ def write_mcp_patch(root: Path, sessions: Path, server_script: Path) -> Path:
     return write_profile_patch(root, "mcp.patch.yml", sessions, [{
         "insert": [{
             "id": "mcp-fixture",
-            "name": "@deepseek-ai/dsh-mcp-client",
+            "name": "@knyazevai/dsh-mcp-client",
             "config": {
                 "serverName": "fixture",
                 "transport": "stdio",
@@ -1338,7 +1338,7 @@ def smoke_sdk_snapshot(base_url: str, executable: Path, update_snapshots: bool) 
             ).as_uri(), "config": {
                 "parentSessionId": SNAPSHOT_SESSION_ID, "prompt": SNAPSHOT_WORKFLOW_CHILD_PROMPT,
             }},
-            {"id": "snapshot-message-feedback", "name": "@deepseek-ai/dsh-message-feedback",
+            {"id": "snapshot-message-feedback", "name": "@knyazevai/dsh-message-feedback",
              "config": {"maxNoteBytes": 1024}},
             {"id": "snapshot-feedback-producer", "name": (
                 Path(__file__).resolve().parent.parent / "snapshots/sdk/text-turn/feedback-producer.mjs"

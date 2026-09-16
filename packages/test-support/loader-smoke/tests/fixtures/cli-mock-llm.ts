@@ -6,7 +6,7 @@ import {
   type GenerateOptions,
   type LlmResolvedModelInfo,
   type StreamChunk,
-} from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-llm'
 
 const HIGH = ReasoningEffortId('high')
 const OFF = ReasoningEffortId('off')

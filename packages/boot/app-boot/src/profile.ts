@@ -20,7 +20,7 @@
  * dependency closure through Node's ordinary parent-walk. Plain Node uses
  * symlinks for that shared fallback; packaged executables use ESM proxies so
  * external plugins retain the installation's module instances.
- * @module @deepseek-ai/dsh-app-boot/profile
+ * @module @knyazevai/dsh-app-boot/profile
  */
 
 import { createRequire } from 'node:module'
@@ -30,11 +30,11 @@ import {
 } from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { withFileLock } from '@deepseek-ai/dsh-atomic-write'
+import { withFileLock } from '@knyazevai/dsh-atomic-write'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 import { applyEntryPatches, type PatchOptions } from '@deepseek-ai/cordis-plugin-include'
-import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import type { DshPackageManifest, ProfilePatchReload } from '@deepseek-ai/dsh-package-manifest'
+import { resolveDshHome } from '@knyazevai/dsh-home-paths'
+import type { DshPackageManifest, ProfilePatchReload } from '@knyazevai/dsh-package-manifest'
 import { resolve as resolvePackage, type Package as ResolvePackageManifest } from 'resolve.exports'
 import { loadOverlayPatches } from './index.ts'
 import {
@@ -137,35 +137,43 @@ export function resolveProfileDir(name: string, home: string = resolveDshHome())
 
 /** The shipped profile templates auto-initialized on first use, by name. */
 export const PROFILE_TEMPLATES: Record<string, ProfileTemplate> = {
+  'fork-web': {
+    bundles: ['@knyazevai/dsh-base', '@knyazevai/dsh-web-app', '@knyazevai/dsh-fork-base', '@knyazevai/dsh-fork-web'],
+    patchReload: 'live',
+  },
+  'fork-headless': {
+    bundles: ['@knyazevai/dsh-base', '@knyazevai/dsh-headless', '@knyazevai/dsh-fork-base'],
+    patchReload: 'startup',
+  },
   acp: {
-    bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-acp-app'],
+    bundles: ['@knyazevai/dsh-base', '@knyazevai/dsh-acp-app'],
     patchReload: 'startup',
   },
   web: {
-    bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'],
+    bundles: ['@knyazevai/dsh-base', '@knyazevai/dsh-web-app'],
     patchReload: 'live',
   },
   headless: {
-    bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'],
+    bundles: ['@knyazevai/dsh-base', '@knyazevai/dsh-headless'],
     patchReload: 'startup',
   },
   sdk: {
-    bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-sdk-app'],
+    bundles: ['@knyazevai/dsh-base', '@knyazevai/dsh-sdk-app'],
     patchReload: 'startup',
   },
   'sdk-minimal': {
-    bundles: ['@deepseek-ai/dsh-sdk-minimal'],
+    bundles: ['@knyazevai/dsh-sdk-minimal'],
     patchReload: 'startup',
   },
 }
 
 /** Installation-owned bundle tuples normalized to the shipped template. */
 const INSTALLATION_OWNED_PROFILE_TUPLES: Record<string, readonly string[]> = {
-  headless: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless'],
+  headless: ['@knyazevai/dsh-base', '@knyazevai/dsh-web-app', '@knyazevai/dsh-headless'],
 }
 
 /** The bundle list a `dsh plugin` init uses for a name with no shipped template. */
-export const DEFAULT_PROFILE_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base']
+export const DEFAULT_PROFILE_BUNDLES: readonly string[] = ['@knyazevai/dsh-base']
 
 /** Custom profiles retain the historical live patch-file behavior. */
 export const DEFAULT_PROFILE_PATCH_RELOAD: ProfilePatchReload = 'live'
@@ -826,7 +834,7 @@ function packageDirFromAnchor(
 /**
  * Resolve one bundle package's directory: installation anchor first, then the
  * profile directory. The installation-first order is the contract that
- * `@deepseek-ai/dsh-base` (and every other in-box bundle) always comes from
+ * `@knyazevai/dsh-base` (and every other in-box bundle) always comes from
  * the same installation as the running dsh, never from a profile-local copy.
  * Resolution does not require the package to export `./package.json`.
  * @param binName - the diagnostic prefix on the thrown error.

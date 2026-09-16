@@ -6,7 +6,7 @@
  * registers; the only declaration is whether an endpoint is unary or a
  * stream. Browser-safe: no DOM, React, or Node imports, no runtime import
  * from another harness package.
- * @module @deepseek-ai/dsh-remote-mock
+ * @module @knyazevai/dsh-remote-mock
  */
 export { RemoteMock, ok } from './remote-mock.ts'
 export type { OpenStreams, RemoteMockOptions, RemoteTable, StreamFilter, UnaryRuleFn } from './remote-mock.ts'

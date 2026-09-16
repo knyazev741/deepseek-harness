@@ -16,7 +16,7 @@ profile 启动从磁盘 module fallback 使用的同一套依赖遍历生成一�
 
 ### 唯一选包算法
 
-包遍历继续放在 `@deepseek-ai/dsh-app-boot` 的 profile 加载代码旁。磁盘 materializer 和运行时解析器消费同一个纯计划；两者都不持有另一份优先级算法。普通 Node 调用方可以选择 link、dual 或 runtime 模式，省略模式时使用 link。打包可执行文件与 Electron Host 会选择 runtime，因为其依赖树可能位于虚拟文件系统；dual 保留为内部对比路径。
+包遍历继续放在 `@knyazevai/dsh-app-boot` 的 profile 加载代码旁。磁盘 materializer 和运行时解析器消费同一个纯计划；两者都不持有另一份优先级算法。普通 Node 调用方可以选择 link、dual 或 runtime 模式，省略模式时使用 link。打包可执行文件与 Electron Host 会选择 runtime，因为其依赖树可能位于虚拟文件系统；dual 保留为内部对比路径。
 
 安装 manifest 是第一个根。它按 BFS 依次遍历 `dependencies` 和 `peerDependencies`，每条边从声明它的 manifest 解析，同名包由第一次找到的已安装包占有。所选 bundle 随后按 profile 顺序逐根遍历；每个较早根的完整依赖图优先于所有较晚根。安装闭包中的名称被保留，bundle 包根本身不成为插件 fallback。与旧行为相同，已声明但未安装的包会被跳过。
 
@@ -48,7 +48,7 @@ resolution generation 列出可用 fallback 包；Loader entries 组成活动插
 
 解析器不提供 `imported(entry)`，不观察 ModuleJob，不包装 Entry 方法，不把 fiber 与 import 调用关联，也不替换 registry、tree 或 HMR 方法。重复查询读取同一个 generation，因此不会偏离 import 使用的路线。需要包元数据的非 Node importer 必须显式实现同一个确定性 resolver 接口，不能把调用来源推断重新引入 Node 主路径。
 
-实现集中在 `app-boot/src/profile-resolution/`。`service.ts` 提供长期存在的 `ctx.pluginPackages`，并拥有主线程 resolver 与 Worker generation 的生命周期；`resolver.ts` 实现 generation 查询和 Node Internal 适配器；`worker-bootstrap.ts` 在线程内安装继承的 generation。旧 profile 选包和磁盘 materialize 逻辑留在 `profile.ts`。Worker 只通过 `@deepseek-ai/dsh-app-boot/worker/profile-resolution-bootstrap` 公开入口引用 bootstrap。
+实现集中在 `app-boot/src/profile-resolution/`。`service.ts` 提供长期存在的 `ctx.pluginPackages`，并拥有主线程 resolver 与 Worker generation 的生命周期；`resolver.ts` 实现 generation 查询和 Node Internal 适配器；`worker-bootstrap.ts` 在线程内安装继承的 generation。旧 profile 选包和磁盘 materialize 逻辑留在 `profile.ts`。Worker 只通过 `@knyazevai/dsh-app-boot/worker/profile-resolution-bootstrap` 公开入口引用 bootstrap。
 
 服务定义与提供方继续放在 `app-boot`，因为 profile boot 拥有 resolver 生命周期。出现与 launcher 无关的提供方或需要独立演进的消费方时，再抽出单独的能力 seam。
 

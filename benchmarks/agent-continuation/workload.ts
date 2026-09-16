@@ -1,10 +1,10 @@
 /** Reviewed synthetic tool history shared by continuation and child-catalog measurements. */
 
-import { AssistantStreamAccumulator } from '@deepseek-ai/dsh-llm/assistant-stream'
-import { MessageId, ToolCallId } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, StreamChunk } from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { AssistantStreamAccumulator } from '@knyazevai/dsh-llm/assistant-stream'
+import { MessageId, ToolCallId } from '@knyazevai/dsh-llm'
+import type { ContentBlock, StreamChunk } from '@knyazevai/dsh-llm'
+import { Session, SessionId } from '@knyazevai/dsh-session'
+import type { SessionEvent } from '@knyazevai/dsh-session'
 
 /** Workload dimensions, independent of environment and recorded user material. */
 export const WORKLOAD = {
@@ -69,7 +69,7 @@ export function syntheticHistory(turns: number): SessionEvent[] {
     session.append('turn/start', { turn })
     session.append('step/start', { turn, step: 1 })
     if (turn === 1) session.append('system/message', {
-      turn, step: 1, message: { id: MessageId('system-head'), role: 'system', content: [], source: { kind: 'plugin', plugin: '@deepseek-ai/dsh-system-prompt' } },
+      turn, step: 1, message: { id: MessageId('system-head'), role: 'system', content: [], source: { kind: 'plugin', plugin: '@knyazevai/dsh-system-prompt' } },
     }, { surfaceOp: 'append' })
     session.append('user/message', {
       id: MessageId('prompt-' + String(turn)), role: 'user',

@@ -1,7 +1,7 @@
-import type { StreamChunk } from '@deepseek-ai/dsh-llm/types'
+import type { StreamChunk } from '@knyazevai/dsh-llm/types'
 import type {
   AssistantBlock, PartialAssistant,
-} from '@deepseek-ai/dsh-client-ui-conversation/client'
+} from '@knyazevai/dsh-client-ui-conversation/client'
 import { emptyAssistantBlock, toAssistantBlock } from './event-projection.ts'
 
 /**

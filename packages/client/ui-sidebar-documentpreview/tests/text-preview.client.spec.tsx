@@ -11,9 +11,9 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
-import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
-import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
-import type { OwnerOf } from '@deepseek-ai/dsh-client-ui-slots'
+import { RemoteError } from '@knyazevai/dsh-client-test-runtime'
+import type { TabId } from '@knyazevai/dsh-client-ui-dockkit'
+import type { OwnerOf } from '@knyazevai/dsh-client-ui-slots'
 import { TextPreview } from '../src/client/TextPreview.tsx'
 import type { TextPreviewProps } from '../src/client/TextPreview.tsx'
 import { CodeBody } from '../src/client/code/CodeBody.tsx'

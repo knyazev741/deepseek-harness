@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import { existsSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { PassThrough } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessSpawnSpec } from '@knyazevai/dsh-subprocess'
 import {
   launchLinuxScope,
   prepareLinuxTerminalScope,

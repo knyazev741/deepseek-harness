@@ -3,7 +3,7 @@ description: "The shipped shell backend for persistent terminal sessions: intera
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-terminal-bash
+# @knyazevai/dsh-terminal-bash
 
 English | [中文](README.zh.md)
 
@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this backend when a composition needs persistent shell sessions — state such as cwd, exported variables, functions, or running interactive children must survive across tool calls. It is the default `shell` type: a composition that mounts `@deepseek-ai/dsh-terminal` without it has no sessions to open.
+Mount this backend when a composition needs persistent shell sessions — state such as cwd, exported variables, functions, or running interactive children must survive across tool calls. It is the default `shell` type: a composition that mounts `@knyazevai/dsh-terminal` without it has no sessions to open.
 
 ### When to choose it
 
@@ -36,12 +36,12 @@ Choose this backend when work needs an interactive shell or REPL whose state per
 Mount the terminal service, a subprocess provider, the sandbox and policy services, this backend, and a tool package:
 
 ```yaml
-- name: '@deepseek-ai/dsh-terminal'
-- name: '@deepseek-ai/dsh-subprocess-local'
-- name: '@deepseek-ai/dsh-sandbox-local'
-- name: '@deepseek-ai/dsh-sandbox-policy'
-- name: '@deepseek-ai/dsh-terminal-bash'
-- name: '@deepseek-ai/dsh-tool-terminal'
+- name: '@knyazevai/dsh-terminal'
+- name: '@knyazevai/dsh-subprocess-local'
+- name: '@knyazevai/dsh-sandbox-local'
+- name: '@knyazevai/dsh-sandbox-policy'
+- name: '@knyazevai/dsh-terminal-bash'
+- name: '@knyazevai/dsh-tool-terminal'
 ```
 
 `danger-full-access` starts the shell directly. Confined modes require a same-world `ctx.sandbox` provider: without one, the spawn fails before the shell starts. Confinement preparation receives the opening signal; cancellation prevents terminal allocation even if the provider returns later.
@@ -57,7 +57,7 @@ Mount the terminal service, a subprocess provider, the sandbox and policy servic
 | `timeoutMs` | `30000` | Absolute bound on one send wait |
 | `disposeGraceMs` | `3000` | Grace before teardown escalates to `SIGKILL` |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-terminal-bash) is the exhaustive source for every field, including the readiness timings (`pollIntervalMs`, `exactProbeAfterMs`, `idleSilenceMs`, `handoffGraceMs`), terminal size (`rows`, `cols`), and scrollback bounds (`scrollbackLines`, `scrollbackMaxBytes`).
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-terminal-bash) is the exhaustive source for every field, including the readiness timings (`pollIntervalMs`, `exactProbeAfterMs`, `idleSilenceMs`, `handoffGraceMs`), terminal size (`rows`, `cols`), and scrollback bounds (`scrollbackLines`, `scrollbackMaxBytes`).
 
 ### Shell dialects and readiness
 
@@ -133,7 +133,7 @@ Read these pages when the package-level contract is not enough. They move from t
 
 #### What the model sees
 
-This package registers no prompt or tool. Through `@deepseek-ai/dsh-tool-terminal` or another PTY consumer, the model may receive bounded startup output, send deltas, scrollback pages, readiness reasons, and cleanup errors.
+This package registers no prompt or tool. Through `@knyazevai/dsh-tool-terminal` or another PTY consumer, the model may receive bounded startup output, send deltas, scrollback pages, readiness reasons, and cleanup errors.
 
 #### Token effect
 

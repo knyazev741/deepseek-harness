@@ -9,15 +9,15 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
-import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
+import { ToolCallId } from '@knyazevai/dsh-llm'
+import { Session, SessionId } from '@knyazevai/dsh-session'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import type { Agent } from '@knyazevai/dsh-agent'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import * as ToolTodo from '@knyazevai/dsh-tool-todo'
+import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 
 let root: string | undefined
 let context: Context | undefined
@@ -57,11 +57,11 @@ async function boot(configLines: readonly string[]): Promise<Context> {
   root = await mkdtemp(join(tmpdir(), 'dsh-todo-loader-'))
   const configPath = join(root, 'cordis.yml')
   await writeFile(configPath, [
-    "- name: '@deepseek-ai/dsh-agent'",
-    "- name: '@deepseek-ai/dsh-system-prompt'",
-    "- name: '@deepseek-ai/dsh-tools'",
-    "- name: '@deepseek-ai/dsh-session-projection'",
-    "- name: '@deepseek-ai/dsh-tool-todo'",
+    "- name: '@knyazevai/dsh-agent'",
+    "- name: '@knyazevai/dsh-system-prompt'",
+    "- name: '@knyazevai/dsh-tools'",
+    "- name: '@knyazevai/dsh-session-projection'",
+    "- name: '@knyazevai/dsh-tool-todo'",
     ...configLines.length > 0 ? ['  config:', ...configLines] : [],
     '',
   ].join('\n'))
@@ -72,11 +72,11 @@ async function boot(configLines: readonly string[]): Promise<Context> {
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
   const modules = new Map<string, unknown>([
-    ['@deepseek-ai/dsh-agent', AgentRegistry],
-    ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
-    ['@deepseek-ai/dsh-tools', ToolRuntime],
-    ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
-    ['@deepseek-ai/dsh-tool-todo', ToolTodo],
+    ['@knyazevai/dsh-agent', AgentRegistry],
+    ['@knyazevai/dsh-system-prompt', SystemPrompt],
+    ['@knyazevai/dsh-tools', ToolRuntime],
+    ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+    ['@knyazevai/dsh-tool-todo', ToolTodo],
   ])
   ctx.loader.internal = {
     version: 'v2',

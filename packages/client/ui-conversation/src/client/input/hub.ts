@@ -10,9 +10,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   ISessions, SessionBinding, SessionFace,
-} from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
+} from '@knyazevai/dsh-api-session-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { TranslateNS } from '@knyazevai/dsh-client-locale/client'
 import { queueReadFaceOf } from './queue-store.ts'
 import type {
   DraftAttachmentId, DraftAttachmentSerializationResult, InputTriggerController,

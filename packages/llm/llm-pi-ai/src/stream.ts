@@ -8,9 +8,9 @@
  * @module dsh-llm-pi-ai/stream
  */
 
-import { brandString } from '@deepseek-ai/dsh-brand'
-import { CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, isContextWindowExceededError, isQuotaExceededError, LlmError, QUOTA_EXCEEDED_CODE } from '@deepseek-ai/dsh-llm'
-import type { FinishReason, StreamChunk, TokenUsage, ToolCallId } from '@deepseek-ai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, isContextWindowExceededError, isQuotaExceededError, LlmError, QUOTA_EXCEEDED_CODE } from '@knyazevai/dsh-llm'
+import type { FinishReason, StreamChunk, TokenUsage, ToolCallId } from '@knyazevai/dsh-llm'
 import { isContextOverflow } from '@earendil-works/pi-ai'
 import type { AssistantMessage, AssistantMessageEvent, Usage as PiUsage } from '@earendil-works/pi-ai'
 import { toPiReplayState } from './replay.ts'
@@ -39,8 +39,25 @@ export function mapUsage(usage: PiUsage): TokenUsage {
 // wrapper a bare `terminated`, so we are left pattern-matching terse words here.
 // If pi-ai ever forwards the original Error (or a fetch/dispatcher hook that lets
 // us capture the cause ourselves), classify on `code`/`cause` instead of text.
+function piAiHttpStatus(message: string): number | undefined {
+  const direct = /^(?:HTTP\s+)?([1-5]\d{2})\b/.exec(message)?.[1]
+  const wrapped = /^[^(]*\(([1-5]\d{2})\)\s*:/.exec(message)?.[1]
+  const value = direct ?? wrapped
+  return value === undefined ? undefined : Number(value)
+}
+
 function classifyPiAiError(message: string): string {
-  if (/\b(?:401|403)\b/.test(message)) return 'AUTH'
+  // Gateways may wrap an upstream status in the response text, for example
+  // `502: {"message":"Upstream returned HTTP 400."}`. The outer status is
+  // the status pi-ai actually received and must win over nested text; otherwise
+  // a transient gateway failure becomes a terminal INVALID_REQUEST.
+  const status = piAiHttpStatus(message)
+  if (status === 401 || status === 403) return 'AUTH'
+  if (status === 429) return isQuotaExceededError(message) ? QUOTA_EXCEEDED_CODE : 'RATE_LIMIT'
+  if (status === 413) return 'INVALID_REQUEST'
+  if (status === 400) return isQuotaExceededError(message) ? QUOTA_EXCEEDED_CODE : 'INVALID_REQUEST'
+  if (status !== undefined && status >= 500) return 'SERVER'
+
   if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE
   if (/\b429\b|rate.?limit/i.test(message)) return 'RATE_LIMIT'
   // A rejected request body (gateway or provider size cap): resending the

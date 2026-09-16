@@ -164,7 +164,7 @@ describe('profile package metadata service', () => {
       join(profilesDir, 'node_modules', 'metadata-lib'),
       process.platform === 'win32' ? 'junction' : 'dir',
     )
-    const key = '@deepseek-ai/dsh-app-boot/profile-resolution'
+    const key = '@knyazevai/dsh-app-boot/profile-resolution'
     const previous = getEnvironmentData(key)
     const ctx = new Context()
     contexts.push(ctx)

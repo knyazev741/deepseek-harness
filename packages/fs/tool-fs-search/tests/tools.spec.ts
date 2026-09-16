@@ -12,18 +12,18 @@
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
+import { createScope, type Scope } from '@knyazevai/dsh-scope'
 import { join, sep } from 'node:path'
-import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH, type ToolExecution, type ToolExecutionToken } from '@deepseek-ai/dsh-tools'
-import { SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
-import type { SubprocessCollectedOutputs, SubprocessHandle, SubprocessOutcome, SubprocessOutputRead, SubprocessOutputReader, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { createUserMessage, ToolCallId } from '@knyazevai/dsh-llm'
+import SystemPrompt, { renderPrompt } from '@knyazevai/dsh-system-prompt'
+import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH, type ToolExecution, type ToolExecutionToken } from '@knyazevai/dsh-tools'
+import { SubprocessRuntime } from '@knyazevai/dsh-subprocess'
+import type { SubprocessCollectedOutputs, SubprocessHandle, SubprocessOutcome, SubprocessOutputRead, SubprocessOutputReader, SubprocessSpawnSpec } from '@knyazevai/dsh-subprocess'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import { rgPath } from '@vscode/ripgrep'
-import { SpillLocator, SpillStore } from '@deepseek-ai/dsh-spill'
-import type { SaveTextSpill, SpillRef } from '@deepseek-ai/dsh-spill'
-import * as ToolFsSearch from '@deepseek-ai/dsh-tool-fs-search'
+import { SpillLocator, SpillStore } from '@knyazevai/dsh-spill'
+import type { SaveTextSpill, SpillRef } from '@knyazevai/dsh-spill'
+import * as ToolFsSearch from '@knyazevai/dsh-tool-fs-search'
 import {
   buildGlobCommand,
   buildGrepCommand,
@@ -38,7 +38,7 @@ import {
   runRipgrep,
   sampleAcrossTopLevel,
   toWorkdirRelative,
-} from '@deepseek-ai/dsh-tool-fs-search'
+} from '@knyazevai/dsh-tool-fs-search'
 
 const testToolSignal = new AbortController().signal
 

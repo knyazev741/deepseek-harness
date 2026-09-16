@@ -21,24 +21,24 @@ Review the [safety notice](SAFETY.md) before running the project.
 Install `Node.js`, then run:
 
 ```sh
-npx @deepseek-ai/dsh web
+npx @knyazevai/dsh web
 ```
 
-The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
+The command starts the Web UI at `http://127.0.0.1:3080` by default. Pass `--open` to open the browser automatically. See [Web UI guide](docs/user/guide/index.md).
 
 ### Run from source
 
 To run from a repository checkout:
 
 ```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
+git clone https://github.com/knyazev741/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
 pnpm dsh web
 ```
 
-`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
+`pnpm run build` prepares the repository artifacts. `pnpm dsh web` starts `fork-web` with the Knyazev AI provider and our workspace plugins. Set `KNYAZEV_AI_API_KEY` to your key from [knyazevai.work](https://knyazevai.work). DeepSeek V4 Flash and GLM 5.3 Flash both have a 400,000-token context, up to 20 transient-error retries, and compaction at 50% pressure with at most 131,072 input tokens per summary in the standard, ptc, and cordis presets. Use `--profile web` for the original composition. Historical `code` preset selections migrate to `ptc`.
 
 ## Community and support
 

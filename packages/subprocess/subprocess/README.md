@@ -3,7 +3,7 @@ description: "The subprocess service (ctx.subprocess) for composition authors an
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-subprocess
+# @knyazevai/dsh-subprocess
 
 English | [中文](README.zh.md)
 
@@ -32,8 +32,8 @@ Mount a subprocess provider in any composition that must run child processes, an
 One provider registers `ctx.subprocess` per composition; load it beside the consumers that spawn through it — the bash executors, the LSP host, the PTY shell backend, or an out-of-process subagent backend. Loading a second provider fails loudly (one service per context, Cordis standard).
 
 ```yaml
-- name: '@deepseek-ai/dsh-subprocess-local'
-- name: '@deepseek-ai/dsh-bash-local'
+- name: '@knyazevai/dsh-subprocess-local'
+- name: '@knyazevai/dsh-bash-local'
 ```
 
 ### Starting a managed process
@@ -63,7 +63,7 @@ Reads are offset-based and non-consuming: a background reader and a final batch 
 <a id="using-a-control-pipe"></a>
 ### Using a control pipe
 
-Set `stdio.control: 'pipe'` to receive a separate raw `Duplex` in `handle.control`. The Node child opens fd 7 with `openInheritedControlChannel()` from `@deepseek-ai/dsh-subprocess/control`; this helper consumes the provider-owned `DSH_SUBPROCESS_CONTROL=pipe` marker. Callers cannot supply that marker through `env`. Control bytes never enter stdout/stderr collectors. The consumer owns framing, validation, backpressure, and closing its endpoint; provider disposal destroys any endpoint remaining after process teardown. Omitting the request returns `control: undefined`. This channel is available only for ordinary processes, and carries no authority to bypass tool approval.
+Set `stdio.control: 'pipe'` to receive a separate raw `Duplex` in `handle.control`. The Node child opens fd 7 with `openInheritedControlChannel()` from `@knyazevai/dsh-subprocess/control`; this helper consumes the provider-owned `DSH_SUBPROCESS_CONTROL=pipe` marker. Callers cannot supply that marker through `env`. Control bytes never enter stdout/stderr collectors. The consumer owns framing, validation, backpressure, and closing its endpoint; provider disposal destroys any endpoint remaining after process teardown. Omitting the request returns `control: undefined`. This channel is available only for ordinary processes, and carries no authority to bypass tool approval.
 
 ### Managing process lifetime
 

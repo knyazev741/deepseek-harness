@@ -3,7 +3,7 @@ description: "Browser-use provider registration for deployments that enable one 
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-browser-use
+# @knyazevai/dsh-browser-use
 
 English | [中文](README.zh.md)
 
@@ -28,10 +28,10 @@ A deployment can enable one browser-use provider at a time. Loading another prov
 Mount the service once beside the chosen provider in a Cordis composition:
 
 ```yaml
-- name: '@deepseek-ai/dsh-browser-use'
+- name: '@knyazevai/dsh-browser-use'
 ```
 
-The service has no configuration. Provider plugins inject `browserUse` and call `ctx.browserUse.register(BrowserUseProviderName(name))`; the brand is exported from `@deepseek-ai/dsh-browser-use/brand`. The returned effect disposer releases that registration.
+The service has no configuration. Provider plugins inject `browserUse` and call `ctx.browserUse.register(BrowserUseProviderName(name))`; the brand is exported from `@knyazevai/dsh-browser-use/brand`. The returned effect disposer releases that registration.
 
 Providers stop admitting tool calls, close their resources, and await owned work before releasing the registration. `ctx.browserUse.providerName` reports the registered name until release.
 

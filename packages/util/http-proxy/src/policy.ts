@@ -5,7 +5,7 @@
  *
  * Nothing here imports `undici`, so the module stays loadable in the browser-worker runtime that
  * evaluates `dsh-web-fetch-http` without a Node transport.
- * @module @deepseek-ai/dsh-http-proxy/policy
+ * @module @knyazevai/dsh-http-proxy/policy
  */
 
 /**

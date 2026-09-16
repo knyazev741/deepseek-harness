@@ -3,7 +3,7 @@ description: "The tool-result spill policy: how deployments keep oversized plain
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-spill-policy
+# @knyazevai/dsh-spill-policy
 
 English | [中文](README.zh.md)
 
@@ -32,8 +32,8 @@ Mount the policy alongside a spill backend to cap how much of a tool's plain-tex
 Load the policy with a `maxInlineBytes` budget, in UTF-8 bytes, and a spill backend:
 
 ```yaml
-- name: '@deepseek-ai/dsh-spill-local'
-- name: '@deepseek-ai/dsh-spill-policy'
+- name: '@knyazevai/dsh-spill-local'
+- name: '@knyazevai/dsh-spill-policy'
   config:
     maxInlineBytes: 50000
 ```
@@ -42,7 +42,7 @@ Load the policy with a `maxInlineBytes` budget, in UTF-8 bytes, and a spill back
 |---|---|---|
 | `maxInlineBytes` | omitted | Model-facing context cap for a plain-text result, in UTF-8 bytes; omitted disables the policy entirely |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-spill-policy) is the exhaustive source for every accepted field. A negative or fractional cap fails plugin load rather than corrupting per-call behavior.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-spill-policy) is the exhaustive source for every accepted field. A negative or fractional cap fails plugin load rather than corrupting per-call behavior.
 
 ### What the model sees
 
@@ -89,7 +89,7 @@ A `tools/post-execute` waterfall listener (registered with `prepend`, delegating
 <a id="shared-notice-ownership"></a>
 ### Shared notice ownership
 
-The browser-safe `@deepseek-ai/dsh-spill-policy/notice` entry owns both `formatSpillNotice(omitted, ref)`, used by the producer, and `hasSpillNotice(text)`, used by presentation consumers. Formatting and recognition share the notice delimiters; omission validation uses the existing `describeOmitted` formatter rather than a second copy of its prose. Recognition accepts a complete final notice after a preview or by itself and preserves the persisted notice spelling. It reads recorded text without rewriting it.
+The browser-safe `@knyazevai/dsh-spill-policy/notice` entry owns both `formatSpillNotice(omitted, ref)`, used by the producer, and `hasSpillNotice(text)`, used by presentation consumers. Formatting and recognition share the notice delimiters; omission validation uses the existing `describeOmitted` formatter rather than a second copy of its prose. Recognition accepts a complete final notice after a preview or by itself and preserves the persisted notice spelling. It reads recorded text without rewriting it.
 
 ### Source map
 

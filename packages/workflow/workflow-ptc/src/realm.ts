@@ -2,7 +2,7 @@
  * Materializes script VM values as plain JSON and renders thrown values.
  * Getters and proxy traps may execute inside the confined Node process;
  * process isolation and cancellation belong to PTC, not the VM.
- * @module @deepseek-ai/dsh-workflow-ptc/realm
+ * @module @knyazevai/dsh-workflow-ptc/realm
  */
 
 /** Thrown by {@link materializeFromRealm}; the caller wraps it into the right `WorkflowError` code. */

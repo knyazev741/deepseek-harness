@@ -9,7 +9,7 @@
  * This package owns no concrete domain value and keeps no runtime identity or mutable
  * state, so independently installed copies produce interchangeable values.
  *
- * @module @deepseek-ai/dsh-brand
+ * @module @knyazevai/dsh-brand
  */
 
 declare const BRAND: unique symbol

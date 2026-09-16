@@ -1,6 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
-import { LocalSubprocessRuntime } from '@deepseek-ai/dsh-subprocess-local'
-import { SUBPROCESS_CONTROL_ENV } from '@deepseek-ai/dsh-subprocess/control'
+import { LocalSubprocessRuntime } from '@knyazevai/dsh-subprocess-local'
+import { SUBPROCESS_CONTROL_ENV } from '@knyazevai/dsh-subprocess/control'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -23,7 +23,7 @@ describe.skipIf(process.platform !== 'win32')('managed Windows ACL control pipe'
     ctx = new Context()
     await ctx.plugin(LocalSubprocessRuntime)
     const runner = fileURLToPath(new URL('../src/runner.ts', import.meta.url))
-    const helper = import.meta.resolve('@deepseek-ai/dsh-subprocess/src/control.ts')
+    const helper = import.meta.resolve('@knyazevai/dsh-subprocess/src/control.ts')
     const program = `
       const { openInheritedControlChannel } = await import(process.argv[1]);
       const { writeFileSync } = await import('node:fs');

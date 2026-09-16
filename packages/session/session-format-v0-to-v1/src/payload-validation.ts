@@ -1,9 +1,9 @@
-import { SessionFormatError, sessionFormatCount, sessionFormatSafeInteger } from '@deepseek-ai/dsh-session-format'
-import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
+import { SessionFormatError, sessionFormatCount, sessionFormatSafeInteger } from '@knyazevai/dsh-session-format'
+import { deepEqualJson } from '@knyazevai/dsh-util-values'
 import type {
   SessionFormatEvent,
   SessionFormatJsonValue,
-} from '@deepseek-ai/dsh-session-format'
+} from '@knyazevai/dsh-session-format'
 import { assertReleasedV0Keys, releasedV0Record } from './validation-helpers.ts'
 
 type JsonRecord = Record<string, SessionFormatJsonValue>
@@ -17,6 +17,10 @@ export function assertReleasedPayloadSemantics(event: SessionFormatEvent, versio
   const data = releasedV0Record(event.data, `${event.type} ${event.seq} data`)
   const label = `${event.type} ${event.seq}`
   switch (event.type) {
+    case 'fork/session-source':
+      literalValue(data['source'], ['github-actions'], `${label} source`)
+      if (event['ignorable'] !== true) throw new SessionFormatError('fork/session-source requires ignorable true')
+      return
     case 'agent-preset/selected':
       stringValue(data['agentPreset'], `${label} agentPreset`)
       return

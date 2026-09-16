@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-sandbox-local",
+  "name": "@knyazevai/dsh-sandbox-local",
   "description": "Local process-sandbox backends for the DeepSeek Harness sandbox seam: bwrap, the npm-distributed landlock-run launcher, macOS Seatbelt, or the Windows ACL restricted-token runner — functionally probed, fail-closed",
   "version": "0.1.6-alpha.1",
   "publishConfig": {
@@ -28,20 +28,20 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^"
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-sandbox": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-sandbox-windows-acl": "workspace:^",
-    "@deepseek-ai/dsh-util-values": "workspace:^",
+    "@knyazevai/dsh-sandbox-windows-acl": "workspace:^",
+    "@knyazevai/dsh-util-values": "workspace:^",
     "@deepseek-ai/node-addon-system": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^"
+    "@knyazevai/dsh-llm": "workspace:^",
+    "@knyazevai/dsh-sandbox": "workspace:^",
+    "@knyazevai/dsh-session": "workspace:^"
   }
 }

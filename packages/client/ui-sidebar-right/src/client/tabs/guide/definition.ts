@@ -1,12 +1,12 @@
 /**
  * Stage one of the guide type's registration: what it IS.
  */
-import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
+import type { TranslateNS } from '@knyazevai/dsh-client-locale/client'
 import type { SidebarRightTabDefinition } from '../../tab-registry.ts'
 import { GUIDE_KIND } from '../../contract/seed.ts'
 
 /** The shipped guide implementation's identity: the key its body registers under. */
-export const GUIDE_ID = '@deepseek-ai/dsh-client-ui-sidebar-right/guide'
+export const GUIDE_ID = '@knyazevai/dsh-client-ui-sidebar-right/guide'
 
 /**
  * The guide type's registry definition.

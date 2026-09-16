@@ -3,7 +3,7 @@ description: "The Windows write-restriction sandbox backend for users and mainta
 kind: "package-library"
 ---
 
-# @deepseek-ai/dsh-sandbox-windows-acl
+# @knyazevai/dsh-sandbox-windows-acl
 
 English | [中文](README.zh.md)
 
@@ -39,7 +39,7 @@ Choose it for Windows compositions that confine subprocess file effects under `r
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AclSandbox, tempWriteSid, workspaceWriteSid } from '@deepseek-ai/dsh-sandbox-windows-acl'
+import { AclSandbox, tempWriteSid, workspaceWriteSid } from '@knyazevai/dsh-sandbox-windows-acl'
 
 const workspaceRoot = process.cwd()
 const tempDir = mkdtempSync(join(tmpdir(), 'dsh-'))
@@ -123,7 +123,7 @@ When launched with the subprocess control marker, the runner forwards fd 7 throu
 
 ### Header verification and source map
 
-The sandbox-owned SID, ACL, token, file, and lock declarations are checked against Windows headers by [`verify/abi-probe.cpp`](verify/abi-probe.cpp). The shared process, stdio, and Job ABI is owned and verified by [`@deepseek-ai/dsh-win32-process`](../../subprocess/win32-process/README.md#header-verification).
+The sandbox-owned SID, ACL, token, file, and lock declarations are checked against Windows headers by [`verify/abi-probe.cpp`](verify/abi-probe.cpp). The shared process, stdio, and Job ABI is owned and verified by [`@knyazevai/dsh-win32-process`](../../subprocess/win32-process/README.md#header-verification).
 
 | File | Role |
 |---|---|

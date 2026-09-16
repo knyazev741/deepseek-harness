@@ -14,23 +14,23 @@ import type {
   InboxTarget,
   PreStepDecision,
   RequestErrorAction,
-} from '@deepseek-ai/dsh-agent'
-import { agentEvents, assembleContextFor } from '@deepseek-ai/dsh-agent'
-import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@deepseek-ai/dsh-llm'
+} from '@knyazevai/dsh-agent'
+import { agentEvents, assembleContextFor } from '@knyazevai/dsh-agent'
+import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@knyazevai/dsh-llm'
 import {
   LlmError,
   createAssistantMessage,
   errorChain,
   markAgentLoopRequest,
-} from '@deepseek-ai/dsh-llm'
-import { deepFreeze } from '@deepseek-ai/dsh-util-values'
-import type { Scope } from '@deepseek-ai/dsh-scope'
-import { createScope } from '@deepseek-ai/dsh-scope'
-import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
-import { canonicalHeader, headerEquals } from '@deepseek-ai/dsh-session'
-import { joinContextSections, renderContextSections, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
-import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
-import type {} from '@deepseek-ai/dsh-session-projection'
+} from '@knyazevai/dsh-llm'
+import { deepFreeze } from '@knyazevai/dsh-util-values'
+import type { Scope } from '@knyazevai/dsh-scope'
+import { createScope } from '@knyazevai/dsh-scope'
+import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@knyazevai/dsh-session'
+import { canonicalHeader, headerEquals } from '@knyazevai/dsh-session'
+import { joinContextSections, renderContextSections, renderPrompt } from '@knyazevai/dsh-system-prompt'
+import type { PromptAssembly } from '@knyazevai/dsh-system-prompt'
+import type {} from '@knyazevai/dsh-session-projection'
 import type { Context } from '@deepseek-ai/cordis'
 import { ReactLoopInbox } from './inbox.ts'
 import { RuntimeContextProjection } from './runtime-context.ts'

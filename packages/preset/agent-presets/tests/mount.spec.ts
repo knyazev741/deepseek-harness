@@ -6,21 +6,21 @@ import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Group from '@deepseek-ai/cordis-plugin-group'
-import { PluginPackages } from '@deepseek-ai/dsh-app-boot'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import AgentRegistry, { assembleContextFor, type Agent } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import { PluginPackages } from '@knyazevai/dsh-app-boot'
+import LlmRuntime from '@knyazevai/dsh-llm'
+import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import AgentRegistry, { assembleContextFor, type Agent } from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AgentPresets, {
   COMPOSITION_FILE, inactiveRows, leakedServices, livePresetMounts, mountPreset, serviceForAgent,
-} from '@deepseek-ai/dsh-agent-presets'
-import type { Config } from '@deepseek-ai/dsh-agent-presets'
-import type {} from '@deepseek-ai/dsh-agent-presets/types'
-import { bindScopeParent, createScope, scopeOf } from '@deepseek-ai/dsh-scope'
+} from '@knyazevai/dsh-agent-presets'
+import type { Config } from '@knyazevai/dsh-agent-presets'
+import type {} from '@knyazevai/dsh-agent-presets/types'
+import { bindScopeParent, createScope, scopeOf } from '@knyazevai/dsh-scope'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -100,6 +100,30 @@ beforeEach(async () => {
 })
 
 describe('composing an agent from a preset', () => {
+  it('applies Include patches supplied by a standing mount', async () => {
+    const preset = await ctx.agentPresets.resolve('standard')
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('sess-mounted-patch'),
+      setup: async (agentCtx: Context) => {
+        await mountPreset(agentCtx, preset, [{ id: 'alpha', config: { tool: 'mounted-patch' } }])
+      },
+    })
+
+    expect(toolNames(ctx, handle.agent)).toEqual(['mounted-patch'])
+  })
+
+  it('accepts a scoped mount without patches', async () => {
+    const preset = await ctx.agentPresets.resolve('standard')
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('sess-unpatched-mount'),
+      setup: async (agentCtx: Context) => {
+        await mountPreset(agentCtx, preset)
+      },
+    })
+
+    expect(toolNames(ctx, handle.agent)).toEqual(['alpha'])
+  })
+
   it('hands an absolute plugin path to Node as a file URL', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-preset-absolute-plugin-'))
     roots.push(root)

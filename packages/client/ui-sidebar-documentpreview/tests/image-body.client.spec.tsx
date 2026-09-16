@@ -2,7 +2,7 @@
 /** Image Blob ownership, media types, pane-contained rendering, and failure states. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import { ImageBody, imageMediaType, type ImageBodyProps } from '../src/client/image/ImageBody.tsx'
 import { en } from '../src/client/image/locales.ts'
 

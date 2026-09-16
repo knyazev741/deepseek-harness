@@ -3,13 +3,13 @@
 import { hostname } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { errorChain } from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-client-file-upload'
-import { canOpenNativePath, nativeFileManager, openNativePath, revealNativePath } from '@deepseek-ai/dsh-native-command'
-import type { SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
-import type { SessionObservation } from '@deepseek-ai/dsh-session-query'
-import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { errorChain } from '@knyazevai/dsh-llm'
+import type {} from '@knyazevai/dsh-client-file-upload'
+import { canOpenNativePath, nativeFileManager, openNativePath, revealNativePath } from '@knyazevai/dsh-native-command'
+import type { SessionId } from '@knyazevai/dsh-session'
+import type { SessionInspection } from '@knyazevai/dsh-session-persistence'
+import type { SessionObservation } from '@knyazevai/dsh-session-query'
+import { Remote, RemoteError, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
 import {
   ApiSessionAgentController,
   inspectApiSession,

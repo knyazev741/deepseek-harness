@@ -1,9 +1,9 @@
 /** One PTY, a bounded terminal emulator and its detachable browser followers. */
-import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
+import { RemoteError } from '@knyazevai/dsh-typert-protocol'
 import type { Terminal as HeadlessTerminal } from '@xterm/headless'
 import type { SerializeAddon as Serializer } from '@xterm/addon-serialize'
-import type { SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
-import { createLazyRequire } from '@deepseek-ai/dsh-lazy-require'
+import type { SubprocessTerminalHandle } from '@knyazevai/dsh-subprocess'
+import { createLazyRequire } from '@knyazevai/dsh-lazy-require'
 import { TerminalFollower } from './stream.ts'
 import type { TerminalAttachmentId, TerminalFrame, WebTerminalInfo } from './types.ts'
 

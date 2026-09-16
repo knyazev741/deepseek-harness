@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { WorkspaceSnapshot, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionListState, SessionSummary } from '@knyazevai/dsh-api-session-controller/client'
+import type { WorkspaceSnapshot, WorkspaceView } from '@knyazevai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import { ArchivedSessionsSection } from '../src/client/ArchivedSessionsSection.tsx'
 import type { ArchivedSessionsSectionProps } from '../src/client/ArchivedSessionsSection.tsx'
 import { en, type ArchivedSessionsLocaleKey } from '../src/client/locales.ts'

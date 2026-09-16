@@ -1,10 +1,10 @@
 /** Session Controller adapter for Agent-scoped file-reference discovery. */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-file-reference'
-import type { FileReferenceCandidate } from '@deepseek-ai/dsh-file-reference/types'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import type { Agent } from '@knyazevai/dsh-agent'
+import type {} from '@knyazevai/dsh-file-reference'
+import type { FileReferenceCandidate } from '@knyazevai/dsh-file-reference/types'
+import { Remote, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

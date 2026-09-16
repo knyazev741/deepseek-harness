@@ -3,7 +3,7 @@ description: "Run TypeScript programs in fresh Node processes with the session f
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-ptc-runtime-node
+# @knyazevai/dsh-ptc-runtime-node
 
 English | [中文](README.zh.md)
 
@@ -32,7 +32,7 @@ Mount this provider in a composition that supplies `fs`, `subprocess`, `sandbox`
 Configure the provider row after its required services are available:
 
 ```yaml
-- name: '@deepseek-ai/dsh-ptc-runtime-node'
+- name: '@knyazevai/dsh-ptc-runtime-node'
   config:
     timeoutMs: 120000
     maxTimeoutMs: 600000
@@ -55,7 +55,7 @@ Configure the provider row after its required services are available:
 | `nodeExecutable` | Current Node executable | Executable resolved in the subprocess execution world |
 | `bootstrapPath` | Package bootstrap | Optional absolute path to a preinstalled built bootstrap in that world |
 
-The [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-ptc-runtime-node) defines accepted config fields. `resolve(request)` supplies cwd, the numeric or null deadline choice and the execution policy; `run(spec)` accepts those resolved inputs and does not fill missing values.
+The [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-ptc-runtime-node) defines accepted config fields. `resolve(request)` supplies cwd, the numeric or null deadline choice and the execution policy; `run(spec)` accepts those resolved inputs and does not fill missing values.
 
 ### Execution and results
 

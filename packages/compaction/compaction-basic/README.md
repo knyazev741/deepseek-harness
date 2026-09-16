@@ -3,7 +3,7 @@ description: "Automatic conversation condensation for deployments choosing, tuni
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-compaction-basic
+# @knyazevai/dsh-compaction-basic
 
 English | [中文](README.zh.md)
 
@@ -36,17 +36,17 @@ With the default settings you get four behaviors: automatic condensation as the 
 Mount session storage, token measurement, the optional pruner, this backend, and optionally the on-demand command:
 
 ```yaml
-- name: '@deepseek-ai/dsh-session'
-- name: '@deepseek-ai/dsh-token-meter'
-- name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
-- name: '@deepseek-ai/dsh-compaction-basic'
-- name: '@deepseek-ai/dsh-command-compact'
+- name: '@knyazevai/dsh-session'
+- name: '@knyazevai/dsh-token-meter'
+- name: '@knyazevai/dsh-compaction-tool-result-pruner'
+- name: '@knyazevai/dsh-compaction-basic'
+- name: '@knyazevai/dsh-command-compact'
 ```
 
 You can verify success by watching the conversation continue past the point where it would otherwise overflow, and by running `/compact` for an immediate condensation. If the composition lacks an LLM, session storage, or token measurement, the plugin fails to load. One backend can serve models with different context sizes; give each route its own threshold and retention with a per-model override:
 
 ```yaml
-- name: '@deepseek-ai/dsh-compaction-basic'
+- name: '@knyazevai/dsh-compaction-basic'
   config:
     thresholdRatio: 0.8
     retainRatio: 0.16
@@ -59,16 +59,18 @@ You can verify success by watching the conversation continue past the point wher
 
 ### Tuning when condensation starts
 
-All settings are optional. The defaults start condensing at 80% of the routed model's context window and keep the newest 16% verbatim; the table below is the complete policy surface, and the generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-compaction-basic) is the exhaustive source.
+All settings are optional. The defaults start condensing at 50% of the routed model's context window and keep the newest 16% verbatim; the table below is the complete policy surface, and the generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-compaction-basic) is the exhaustive source.
 
 | Field | Default | Meaning |
 |---|---|---|
-| `thresholdRatio` | `0.8` | Start condensing at `floor(routedContextWindow × ratio)`. |
+| `thresholdRatio` | `0.5` | Start condensing at `floor(routedContextWindow × ratio)`. |
 | `retainRatio` | `0.16` | Recent conversation kept verbatim as a fraction of the routed context window; mutually exclusive with `retainTokens`. |
 | `retainTokens` | — | Absolute recent-conversation budget kept verbatim; mutually exclusive with `retainRatio` and must be below the resolved threshold. |
 | `summarizationProvider` | `''` | Set together with `summarizationModel`; an empty pair uses the latest routed request target, then the `AgentOptions` pair. |
 | `summarizationModel` | `''` | Set together with `summarizationProvider`; an empty pair uses the latest routed request target, then the `AgentOptions` pair. |
 | `maxTokens` | `8192` | Output cap for the summarization request; may include reasoning tokens. |
+| `maxSummarizationInputTokens` | `131072` | Maximum estimated input per summary; `0` disables this bound. Oversized history is condensed in balanced passes. |
+| `summarizerCooldownMs` | `600000` | Cooldown after the summary provider exhausts its transient retry budget. |
 | `compactionRetries` | `1` | Extra condensation attempts after the first when pressure remains above threshold. |
 | `maxOverflowRetries` | `1` | Maximum retries after a confirmed context-window overflow; `0` disables recovery only. |
 | `modelPolicies` | `[]` | Exact `{ provider, model, ...partialPolicy }` overrides for individual model routes. |
@@ -152,7 +154,7 @@ Read these pages when the package-level contract is not enough; they move from t
 - [Tool-result pruner](../compaction-tool-result-pruner/README.md) — the optional companion that trims oversized tool outputs first.
 - [Human /compact command](../command-compact/README.md) — on-demand condensation without waiting for pressure.
 - [Token meter](../../llm/token-meter/README.md) — the measurement service that decides when to condense.
-- [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-compaction-basic) — every accepted config field and its source declaration.
+- [Generated configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-compaction-basic) — every accepted config field and its source declaration.
 
 -----
 
@@ -253,7 +255,7 @@ These limits define when automatic condensation is a poor fit or needs special c
 
 This Dev Note is working context for maintainers and is explicitly non-authoritative; shipped behavior lives in the sections above, the package code, and the linked Agent Notes.
 
-- **Default ratios, undecided** — `thresholdRatio: 0.8` and `retainRatio: 0.16` are fixed defaults; per-model tuning via `modelPolicies` exists, but no corpus-backed guidance on ideal values is recorded.
+- **Default ratios, undecided** — `thresholdRatio: 0.5` and `retainRatio: 0.16` are fixed defaults; per-model tuning via `modelPolicies` exists, but no corpus-backed guidance on ideal values is recorded.
 - **Tokenizer-accurate measurement, deferred** — the token meter's four-characters-per-token heuristic underprices CJK text and JSON Schema documents; exact tokenization remains an open direction for the measurement service.
 - **Overflow recovery beyond canonical errors, undecided** — recovery triggers on `CONTEXT_WINDOW_EXCEEDED` only; other provider-side context failures are not classified.
 

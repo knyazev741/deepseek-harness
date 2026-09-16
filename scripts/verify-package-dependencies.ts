@@ -216,7 +216,7 @@ export function collectRuntimeSourceExportUses(path: string, source: string): Ru
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement)
       || !ts.isStringLiteralLike(statement.moduleSpecifier)
-      || statement.moduleSpecifier.text !== '@deepseek-ai/dsh-lazy-require') continue
+      || statement.moduleSpecifier.text !== '@knyazevai/dsh-lazy-require') continue
     const bindings = statement.importClause?.namedBindings
     if (bindings !== undefined && ts.isNamespaceImport(bindings)) {
       lazyRequireNamespaces.add(bindings.name.text)

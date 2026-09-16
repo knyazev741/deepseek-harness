@@ -59,7 +59,7 @@ Status: implemented
 
 ## 测试
 
-- `packages/client/runtime` 钉住形态投影，包括必须降级为 opaque 的未知值、空值、类型不符与缺失。
+- `packages/api/session-controller` 钉住形态投影，包括必须降级为 opaque 的未知值、空值、类型不符与缺失。
 - `packages/client/ui-conversation` 逐个钉住内容区：opaque 的换行留存与来源字段、instructions 的文件列表与原样包装、catalog 的条目列表，以及条目不可用的 catalog 回落到 opaque。
 - `packages/skill/tool-skill` 钉住首次发布与替换时的新来源、由持久条目驱动的重新发布行为，以及畸形持久目录不打断步骤观察。
 - 无密钥的组装 Web seeded-history 场景在 Chromium 中展开一条真实的 `instructions` 上下文，断言其文件列表、原样包装与未改动的展开项几何。`catalog` 没有组装态覆盖：隔离脚手架不发布任何 skill，因此没有目录能进入浏览器场景。

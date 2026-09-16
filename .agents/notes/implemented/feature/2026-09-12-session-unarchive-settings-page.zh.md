@@ -14,7 +14,7 @@ Status: implemented
 
 取消归档不做会话存在性探测。归档会校验会话处于实时或已持久化状态，因为它加入的引用必须可解析；取消归档只是移除一个 id，因此不可能引入未知引用，会话已不存在的条目也仍然能恢复。`WorkspaceController` 上的 `@Remote('unarchiveSession')` 返回完整的 `WorkspaceArchiveValue`，与 `archiveSession` 一致，而 `IWorkspaces.unarchiveSession` 与 `UiWorkspace.unarchiveSession` 把该动词带到浏览器。两个动词都返回完整集合，因此 `ClientWorkspaceModel` 只在该应答仍是最新归档集合请求时安装它：更晚的请求或 follow 流推送的集合都会取代在途应答，让投影停留在更新的状态上。
 
-新的 Web 设置页 `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` 拥有该界面。它注册一个 id 为 `archived-sessions`、导航顺序为 25 的本地化 `settings.section` 贡献，把来自 `useWorkspaces` 的归档集合与来自 `useSessions` 的已加载 Session 摘要合并，按归档时间由新到旧列出，并显示为其记账的 Workspace 标题或未分组标签，以及相对最近活动时间；它按标题或 Workspace 名称过滤，并为每行提供一个取消归档操作。写入被拒绝时会记录一条 console 诊断，并保留该行以便再次尝试。缺失 Session 摘要的归档条目不产生行，因此该页面绝不会渲染无法恢复任何东西的操作。
+新的 Web 设置页 `@knyazevai/dsh-client-ui-settings-unarchive-sessions` 拥有该界面。它注册一个 id 为 `archived-sessions`、导航顺序为 25 的本地化 `settings.section` 贡献，把来自 `useWorkspaces` 的归档集合与来自 `useSessions` 的已加载 Session 摘要合并，按归档时间由新到旧列出，并显示为其记账的 Workspace 标题或未分组标签，以及相对最近活动时间；它按标题或 Workspace 名称过滤，并为每行提供一个取消归档操作。写入被拒绝时会记录一条 console 诊断，并保留该行以便再次尝试。缺失 Session 摘要的归档条目不产生行，因此该页面绝不会渲染无法恢复任何东西的操作。
 
 恢复操作所在的页面以已归档会话为主题，而已归档会话本身从每一个分组界面中隐藏，因此没有任何 Session 行能承载该操作。「已归档会话」页在设置导航中与「通用」「模型」「插件」并列，而该导航轨道本就带有本页在 `SettingsRoot` 中声明的归档字形。
 

@@ -8,7 +8,7 @@ export const evaluate = new Function('ctx', 'expr', `
   }
 `) as ((ctx: object, expr: string) => any)
 
-/** Recursively replace YAML `!!js` expression nodes with evaluated values. */
+/** Recursively replace YAML `!js` expression nodes with evaluated values. */
 export function interpolate(ctx: object, value: any) {
   if (isJsExpr(value)) {
     return evaluate(ctx, value.__jsExpr)
@@ -21,9 +21,11 @@ export function interpolate(ctx: object, value: any) {
   }
 }
 
-/** Return true when a value is a serialized loader JavaScript expression. */
-export function isJsExpr(value: any): value is JsExpr {
-  return value instanceof Object && '__jsExpr' in value
+/** Return true when a value is an own, data-backed serialized loader expression. */
+export function isJsExpr(value: unknown): value is JsExpr {
+  if (value === null || typeof value !== 'object' || !Object.hasOwn(value, '__jsExpr')) return false
+  const descriptor = Object.getOwnPropertyDescriptor(value, '__jsExpr')
+  return descriptor !== undefined && 'value' in descriptor && typeof descriptor.value === 'string'
 }
 
 /** Serialized JavaScript expression produced by the include YAML tag. */

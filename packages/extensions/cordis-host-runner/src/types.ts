@@ -1,11 +1,11 @@
 /**
  * Client-safe wire vocabulary of the dynamic Cordis plugin runner.
- * @module @deepseek-ai/dsh-cordis-host-runner/types
+ * @module @knyazevai/dsh-cordis-host-runner/types
  */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import type { Branded } from '@knyazevai/dsh-brand'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { JsonValue } from '@knyazevai/dsh-util-values'
 
 /** Stable identity of one dynamic plugin instance. */
 export type CordisDynamicPluginId = Branded<'CordisDynamicPluginId'>

@@ -1,4 +1,4 @@
-import { brandNumber, brandString, type Branded, type BrandedNumber } from '@deepseek-ai/dsh-brand'
+import { brandNumber, brandString, type Branded, type BrandedNumber } from '@knyazevai/dsh-brand'
 import type {
   AssistantMessage,
   AssistantStreamRecord,
@@ -12,8 +12,8 @@ import type {
   ToolResultMessage,
   ToolSchema,
   UserMessage,
-} from '@deepseek-ai/dsh-llm'
-import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+} from '@knyazevai/dsh-llm'
+import type { JsonValue } from '@knyazevai/dsh-util-values'
 
 /** Identifies one session in the store (and its persistence artifacts). */
 export type SessionId = Branded<'SessionId'>
@@ -454,6 +454,12 @@ export type SurfaceIntent<T extends SurfaceEventType = SurfaceEventType> = {
   sourceEventSeqs?: SessionSeq[]
 })
 
+/** Optional append intent for a log-only event that older readers may skip. */
+export interface LogIntent {
+  /** Mark the committed event as safe for an older reader to ignore. */
+  ignorable?: true
+}
+
 /**
  * One immutable entry in the session log.
  *
@@ -492,7 +498,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
   })
 }[T]
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@knyazevai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** The named Session does not exist; produced by every layer that resolves a SessionId. */
     'session/not-found': { readonly sessionId: SessionId }

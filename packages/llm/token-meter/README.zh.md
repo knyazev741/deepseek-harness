@@ -3,7 +3,7 @@ description: "面向用户与维护者的具备回放感知的 token 与上下�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-token-meter
+# @knyazevai/dsh-token-meter
 
 [English](README.md) | 中文
 
@@ -57,8 +57,8 @@ const price = ctx.tokenMeter.estimateMessage(message)
 ### 组合
 
 ```yaml
-- name: '@deepseek-ai/dsh-token-meter'
-- name: '@deepseek-ai/dsh-compaction-basic'
+- name: '@knyazevai/dsh-token-meter'
+- name: '@knyazevai/dsh-compaction-basic'
 ```
 
 两个插件都有可用默认值。meter 只消费可选的 `llm` 服务，且仅用于解析路由声明的请求图片定价；压缩保持可选。部署会在 LLM（大语言模型）适配器上配置容量与图片定价，并在 `dsh-compaction-basic` 上配置压缩策略。

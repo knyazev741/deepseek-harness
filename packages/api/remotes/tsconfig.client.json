@@ -88,6 +88,9 @@
     },
     {
       "path": "../terminal-controller/tsconfig.client.json"
+    },
+    {
+      "path": "../../fork/workspace-session-state/tsconfig.client.json"
     }
   ]
 }

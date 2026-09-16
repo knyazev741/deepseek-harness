@@ -5,8 +5,8 @@ import z from '@deepseek-ai/schemastery'
 import {
   registerSessionTitleLlmProvider,
   SessionTitleLlmConfigFields,
-} from '@deepseek-ai/dsh-session-title-llm'
-import type { SessionTitleLlmConfig } from '@deepseek-ai/dsh-session-title-llm'
+} from '@knyazevai/dsh-session-title-llm'
+import type { SessionTitleLlmConfig } from '@knyazevai/dsh-session-title-llm'
 
 export const name = 'session-title-first-prompt-llm'
 export const inject = ['sessionTitle', 'llm', 'sessions']

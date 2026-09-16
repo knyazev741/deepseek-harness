@@ -13,13 +13,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { Context } from '@deepseek-ai/cordis'
-import { getOrCreateAnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+import { getOrCreateAnonymousUserId } from '@knyazevai/dsh-anonymous-user-id'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { recordFeedback } from '@deepseek-ai/dsh-command-feedback'
-import { createAssistantMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SESSION_FORMAT_VERSION, Session, SessionId, SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
-import MessageFeedbackService from '@deepseek-ai/dsh-message-feedback'
-import JsonlPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { recordFeedback } from '@knyazevai/dsh-command-feedback'
+import { createAssistantMessage } from '@knyazevai/dsh-llm'
+import SessionStore, { SESSION_FORMAT_VERSION, Session, SessionId, SessionLogOffset, SessionSeq } from '@knyazevai/dsh-session'
+import MessageFeedbackService from '@knyazevai/dsh-message-feedback'
+import JsonlPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import OpenTelemetrySessionBackend, { Config, DEFAULT_TELEMETRY_MODE, SessionTelemetryMode } from '../src/index.ts'
 
 interface Capture {
@@ -169,8 +169,8 @@ describe('OpenTelemetrySessionBackend wire', () => {
     expect(resource).toContainEqual({ key: 'user.id', value: { stringValue: getOrCreateAnonymousUserId() } })
 
     const records = allRecords(captures)
-    const ledger = records.filter(r => r.scope === '@deepseek-ai/dsh-session-telemetry-otel')
-    const ops = records.filter(r => r.scope === '@deepseek-ai/dsh-session-telemetry-otel/ops')
+    const ledger = records.filter(r => r.scope === '@knyazevai/dsh-session-telemetry-otel')
+    const ops = records.filter(r => r.scope === '@knyazevai/dsh-session-telemetry-otel/ops')
 
     const start = ledger.find(r => r.record.attributes?.some(a => a.key === 'event.type' && a.value.stringValue === 'turn/start'))
     expect(start).toBeDefined()

@@ -17,14 +17,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { SESSION_FORMAT_VERSION, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
-import type { SessionHeader } from '@deepseek-ai/dsh-session'
+import { SESSION_FORMAT_VERSION, SessionId, SessionSeq } from '@knyazevai/dsh-session'
+import type { SessionHeader } from '@knyazevai/dsh-session'
 import {
   SessionAlreadyExistsError,
   SessionAlreadyOwnedError,
   SessionPersistenceNotFoundError,
-} from '@deepseek-ai/dsh-session-persistence'
-import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
+} from '@knyazevai/dsh-session-persistence'
+import type { SessionPersistence } from '@knyazevai/dsh-session-persistence'
 import JsonlSessionPersistence from '../src/index.ts'
 import { LEASE_FILENAME, SessionWriteLease } from '../src/lease.ts'
 import type { JsonlSessionHandle } from '../src/storage.ts'

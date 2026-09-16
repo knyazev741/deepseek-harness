@@ -8,7 +8,7 @@
  * App flags are not the launcher's business: the invocation's inner arguments
  * are provided to the tree through `ctx.cmdlineArgs`, where any injected app
  * plugin may read the same immutable snapshot.
- * @module @deepseek-ai/dsh/profile-boot
+ * @module @knyazevai/dsh/profile-boot
  */
 
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -35,11 +35,11 @@ import {
   type Profile,
   type ProfileResolutionGeneration,
   type ProfileResolutionMode,
-} from '@deepseek-ai/dsh-app-boot'
-import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
-import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
-import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
+} from '@knyazevai/dsh-app-boot'
+import { resolveDshHome } from '@knyazevai/dsh-home-paths'
+import { installProxyFromEnvironment } from '@knyazevai/dsh-http-proxy'
+import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@knyazevai/dsh-launch-environment'
+import { provideCmdline, type AppReady } from '@knyazevai/dsh-cmdline'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
 
 const NAME = 'dsh'

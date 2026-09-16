@@ -4,7 +4,7 @@ import { getEventListeners } from 'node:events'
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { z } from 'zod'
-import type { SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+import type { SubprocessSpawnSpec } from '@knyazevai/dsh-subprocess'
 import { SshSubprocessRuntime } from '../src/index.ts'
 
 type Stage = 'prepare' | 'connect' | 'start' | 'wait' | 'terminate'

@@ -3,7 +3,7 @@ description: "Open, recover and control interactive shell tabs in the Web right 
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-sidebar-terminal
+# @knyazevai/dsh-client-ui-sidebar-terminal
 
 English | [中文](README.zh.md)
 

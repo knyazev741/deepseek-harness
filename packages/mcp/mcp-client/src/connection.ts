@@ -17,9 +17,9 @@
 
 import { Client, type Transport } from '@modelcontextprotocol/client'
 import type { Context } from '@deepseek-ai/cordis'
-import { assertNever, type JsonValue } from '@deepseek-ai/dsh-util-values'
+import { assertNever, type JsonValue } from '@knyazevai/dsh-util-values'
 import type { ServerContext } from './server-context.ts'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import { createTransport } from './transport.ts'
 import { syncTools } from './tools.ts'
 import type { ToolBridgeOptions, ToolDisposers } from './tools.ts'

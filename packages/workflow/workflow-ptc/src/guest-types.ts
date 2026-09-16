@@ -1,6 +1,6 @@
 /** JSON callbacks between one workflow guest and its owning host run. */
 
-import type { WorkflowAgentEndInfo, WorkflowAgentInfo } from '@deepseek-ai/dsh-workflow'
+import type { WorkflowAgentEndInfo, WorkflowAgentInfo } from '@knyazevai/dsh-workflow'
 import type { ChildResult, ChildStartRequest, WorkerInit } from './types.ts'
 
 /** The host-allocated reference to one published child. */

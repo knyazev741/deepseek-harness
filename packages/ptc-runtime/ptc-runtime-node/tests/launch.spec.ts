@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import type { FileSystem } from '@deepseek-ai/dsh-fs'
+import type { FileSystem } from '@knyazevai/dsh-fs'
 import { bootstrapArgs } from '../src/launch.ts'
 
 it('uses an explicit installed bootstrap without pretending it maps the host file', () => {

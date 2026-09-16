@@ -3,12 +3,12 @@
  * per-namespace sections; plugins register a namespace schema and read the
  * resolved value, which layers schema defaults, the registrant's composition
  * `base`, and the user document section, in that order.
- * @module @deepseek-ai/dsh-settings
+ * @module @knyazevai/dsh-settings
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type z from '@deepseek-ai/schemastery'
-import { deepEqualJson, deepFreeze } from '@deepseek-ai/dsh-util-values'
+import { deepEqualJson, deepFreeze } from '@knyazevai/dsh-util-values'
 import { redactSecrets } from './redact.ts'
 import type { RedactedSecret } from './redact.ts'
 import type { SettingsNamespace, SettingsUpdateSource } from './types.ts'
@@ -113,6 +113,8 @@ export interface SettingsDescribeOptions {
 
 /** Owner-facing handle for one registered namespace. */
 export interface SettingsScope<T> {
+  /** Exact Cordis disposer, used when nesting this namespace in an ordered composite effect. */
+  rawDispose: () => Promise<void> | void
   /** Current resolved value: schema defaults, then `base`, then the user layer. */
   get(): T
   /**
@@ -406,10 +408,11 @@ export abstract class SettingsProvider extends Service {
   protected abstract persist(ns: SettingsNamespace, section: Record<string, unknown>): Promise<void>
 
   /**
-   * Register a namespace schema and receive its owner scope. The registration
-   * is an effect on the calling plugin's fiber: disposing that fiber removes
-   * the namespace and its observers. An invalid stored section fails the
-   * registration itself — the earliest point where the schema can judge it.
+   * Register a namespace schema and receive its owner scope. The scope exposes
+   * the exact Cordis disposer for nesting the registration in an ordered
+   * composite effect; otherwise the calling plugin's fiber removes the
+   * namespace and its observers on dispose. An invalid stored section fails
+   * the registration itself — the earliest point where the schema can judge it.
    * @param ns - unique namespace; duplicate registration fails loud.
    * @param schema - schemastery schema resolving this namespace's value.
    * @param options - composition `base` layer and effect timing.
@@ -437,13 +440,14 @@ export abstract class SettingsProvider extends Service {
       revision: 0,
       watchers: new Set(),
     }
-    this.ctx.effect(() => {
+    const rawDispose = this.ctx.effect(() => {
       this.registrations.set(parsedNs, registration)
       // TODO(settings-registration-quiescence): Deactivate every watcher and await
       // its tail on disposal so callbacks cannot outlive the registrant fiber.
       return () => this.registrations.delete(parsedNs)
     }, `settings.register(${JSON.stringify(String(parsedNs))})`)
     return {
+      rawDispose,
       get: () => registration.resolved as T,
       watch: (callback) => {
         const watcher: SettingsWatcher = { callback: callback, tail: Promise.resolve(), active: true }

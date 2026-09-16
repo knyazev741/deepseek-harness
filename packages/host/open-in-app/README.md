@@ -3,7 +3,7 @@ description: "Host half of open-in-app: resolving installed editors, Git GUIs, t
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-host-open-in-app
+# @knyazevai/dsh-host-open-in-app
 
 English | [中文](README.zh.md)
 
@@ -34,7 +34,7 @@ Choose it for a Web deployment whose users work beside a local editor, Git GUI, 
 ### Minimal configuration
 
 ```yaml
-- name: '@deepseek-ai/dsh-host-open-in-app'
+- name: '@knyazevai/dsh-host-open-in-app'
   config:
     probeTimeoutMs: 10000
     iconTimeoutMs: 10000
@@ -47,7 +47,7 @@ Choose it for a Web deployment whose users work beside a local editor, Git GUI, 
 | `iconTimeoutMs` | required | Per-command deadline in milliseconds for icon-extraction host commands (`plutil`/`sips` on macOS, the PowerShell extraction on Windows). |
 | `launchWatchMs` | required | Early-failure watch window per launch: a launcher still running when the window closes counts as launched and keeps running, so this bounds how long the open route holds a successful launch. |
 
-The three deadlines are independent so tuning one operation never changes another's response time; timeouts are failure bounds, not latency budgets, so the conservative resolution/icon values cost nothing when commands are healthy. The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-host-open-in-app) is the exhaustive source for every accepted field.
+The three deadlines are independent so tuning one operation never changes another's response time; timeouts are failure bounds, not latency budgets, so the conservative resolution/icon values cost nothing when commands are healthy. The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-host-open-in-app) is the exhaustive source for every accepted field.
 
 ### The catalog and how it resolves
 
@@ -77,7 +77,7 @@ The route paths and wire payload types are published as the browser-safe `./shar
 
 The package splits into a data table and three roles. [`src/catalog.ts`](src/catalog.ts) is the compile-time table: each entry's per-platform locator chain (`fixed`, `app`, `xcode`, `cli`, `file`, `scan`, `app-paths`, `install-record`, `github-desktop`, `desktop`) plus, on Linux, the desktop-entry id owning its icon. [`src/resolver.ts`](src/resolver.ts) resolves the table against this host: one pass yields a map of catalog id to verified launch (primary and optional fallback argv plus the icon source), sharing one batched Windows-registry read; argv launches spawn detached with a credential-scrubbed environment (`scrubbedParentEnv`) plus explicit adapter entries, and keep Windows GUI processes visible unless the adapter hides a CLI process that launches the GUI separately. `shell-open` launches (the file managers) run the OS shell's open verb through `dsh-native-command`'s path opener under the same watch window, and a spawn `ENOENT` is classified as `missing` so the routes can refresh a stale entry. [`src/icons.ts`](src/icons.ts) extracts icons per platform: `plutil`/`sips` over the resolved bundle on macOS, a generated PowerShell `ExtractAssociatedIcon` script over the resolved executable on Windows (positional `-File` args keep paths out of command-line parsing), and desktop-entry/hicolor/pixmaps filesystem lookup on Linux.
 
-[`src/index.ts`](src/index.ts) registers the three routes on `ctx.webServer`: `GET /open-in-app/apps` (the resolution map's keys), `GET /open-in-app/icon/<id>` (the extracted icon, cached in memory per process), and `POST /open-in-app/open` (launches the map's verified launcher directly — never a re-detection). Every route asks the composition's `connection` service for a rejection first; the complete trust story — the Host/Origin fence and browser authentication — has one home in the [`src/index.ts`](src/index.ts) module comment. On top of that fence the open route validates its body at the wire: an `application/json` media type, a 64 KiB ceiling, a resolved-available catalog id, and an absolute path naming an existing directory. Resolution and icon commands run through [`@deepseek-ai/dsh-native-command`](../../util/native-command/README.md) (argv, never a shell) under their respective deadlines; PATH names go through `ctx.subprocess.resolveExecutable()` in-process.
+[`src/index.ts`](src/index.ts) registers the three routes on `ctx.webServer`: `GET /open-in-app/apps` (the resolution map's keys), `GET /open-in-app/icon/<id>` (the extracted icon, cached in memory per process), and `POST /open-in-app/open` (launches the map's verified launcher directly — never a re-detection). Every route asks the composition's `connection` service for a rejection first; the complete trust story — the Host/Origin fence and browser authentication — has one home in the [`src/index.ts`](src/index.ts) module comment. On top of that fence the open route validates its body at the wire: an `application/json` media type, a 64 KiB ceiling, a resolved-available catalog id, and an absolute path naming an existing directory. Resolution and icon commands run through [`@knyazevai/dsh-native-command`](../../util/native-command/README.md) (argv, never a shell) under their respective deadlines; PATH names go through `ctx.subprocess.resolveExecutable()` in-process.
 
 </details>
 

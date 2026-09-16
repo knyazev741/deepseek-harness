@@ -2,15 +2,15 @@
 
 Status: implemented
 
-The CPython PTC runtime lives at `packages/experimental/ptc-runtime-python` and publishes as `@deepseek-ai/dsh-experimental-ptc-runtime-python`; the [publication decision](../process/2026-09-12-publish-all-experimental-packages.md) preserves its experimental status.
+The CPython PTC runtime lives at `packages/experimental/ptc-runtime-python` and publishes as `@knyazevai/dsh-experimental-ptc-runtime-python`; the [publication decision](../process/2026-09-12-publish-all-experimental-packages.md) preserves its experimental status.
 
 English | [中文](2026-07-31-ptc-runtime-python-fd3-protocol.zh.md)
 
 ## Problem
 
-`@deepseek-ai/dsh-experimental-ptc-runtime-python` owns the wire protocol intended for a CPython ptc-runtime provider. Such a provider runs each model program in a fresh `python3 -I` subprocess and bridges binding calls and completion values over the child's fd 3. The host cannot trust that channel: model code has full access to fd 3 and can forge any frame, so every inbound frame is hostile input that the host must validate and rebuild before reading. The protocol also has to carry lossless JSON without the depth limit `JSON.stringify` and `json.dumps` impose, because the seam's `PtcJsonValue` is depth-unbounded.
+`@knyazevai/dsh-experimental-ptc-runtime-python` owns the wire protocol intended for a CPython ptc-runtime provider. Such a provider runs each model program in a fresh `python3 -I` subprocess and bridges binding calls and completion values over the child's fd 3. The host cannot trust that channel: model code has full access to fd 3 and can forge any frame, so every inbound frame is hostile input that the host must validate and rebuild before reading. The protocol also has to carry lossless JSON without the depth limit `JSON.stringify` and `json.dumps` impose, because the seam's `PtcJsonValue` is depth-unbounded.
 
-The experimental package contains both the protocol and runtime implementation: `PythonPtcRuntime` (the plugin's default export), the `python3 -I` subprocess path, and the Python-side JSON codec all live in `@deepseek-ai/dsh-experimental-ptc-runtime-python`. The protocol builds on the [portable identifier seam](../../archived/architecture/2026-07-31-code-runtime-portable-identifier-seam.md).
+The experimental package contains both the protocol and runtime implementation: `PythonPtcRuntime` (the plugin's default export), the `python3 -I` subprocess path, and the Python-side JSON codec all live in `@knyazevai/dsh-experimental-ptc-runtime-python`. The protocol builds on the [portable identifier seam](../../archived/architecture/2026-07-31-code-runtime-portable-identifier-seam.md).
 
 ## Decision
 

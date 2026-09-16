@@ -3,7 +3,7 @@ description: "抽象 PTC 执行 seam（`ctx.ptcRuntime`），供用户与维护�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-ptc-runtime
+# @knyazevai/dsh-ptc-runtime
 
 [English](README.md) | 中文
 

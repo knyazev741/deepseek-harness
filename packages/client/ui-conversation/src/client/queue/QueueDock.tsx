@@ -1,13 +1,13 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { useEffect, useId, useMemo, useState } from 'react'
-import type { FileAttachmentRef, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { FileAttachmentRef, ImageAttachmentRef } from '@knyazevai/dsh-attachment'
+import type { PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import {
   IconCheckOutline16, IconChevronDownOutline14, IconChevronUpOutline14, IconCloseOutline16,
   FileTypeIcon, fileSizeText, IconEditOutline16, IconQueueOutline14, IconSendOutline14,
   IconTrashOutline16, projectUserText, Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@knyazevai/dsh-client-ui-primitives'
 import type { QueueAction, QueueItemId, QueueRow } from '../contract/queue.ts'
 import { NS } from '../locales.ts'
 import css from './QueueDock.module.css'

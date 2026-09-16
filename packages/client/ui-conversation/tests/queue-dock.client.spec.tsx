@@ -3,21 +3,21 @@
  * QueueDock rendering and operations: authoritative rows, inline editing,
  * collapse state, removal, QueueDock Steer, failure notices, and live retirement.
  */
-import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
+import type { GlobalStandardProps } from '@knyazevai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
 import type {
   QueuedMessage, SessionListState, SessionSnapshot,
-} from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+} from '@knyazevai/dsh-api-session-controller/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { SnapshotSelectorHook } from '@knyazevai/dsh-client-ui-slots'
+import { createSnapshotStore } from '@knyazevai/dsh-client-store'
 import {
   bindSnapshotSelector, conversationSnapshot, makeTranslate,
-} from '@deepseek-ai/dsh-client-test-runtime'
-import type { SessionPendingInteractionSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+} from '@knyazevai/dsh-client-test-runtime'
+import type { SessionPendingInteractionSnapshot } from '@knyazevai/dsh-client-ui-session/client'
+import { zh as commonZh } from '@knyazevai/dsh-client-locale/src/locales/zh.ts'
 import type { QueueItemId } from '../src/client/contract/queue.ts'
 import type { InputState } from '../src/client/contract/input.ts'
 import { zh } from '../src/client/locales.ts'

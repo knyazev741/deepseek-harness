@@ -1,6 +1,6 @@
 /** Executes one workflow VM inside the mounted PTC runtime's Node process. */
 
-import type { WorkflowResult } from '@deepseek-ai/dsh-workflow'
+import type { WorkflowResult } from '@knyazevai/dsh-workflow'
 import type { WorkflowGuestHost, WorkflowProgress } from './guest-types.ts'
 import { renderThrown } from './realm.ts'
 import { WorkflowExecution } from './runtime.ts'

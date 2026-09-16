@@ -3,7 +3,7 @@ description: "Log-backed session titles for users and maintainers choosing a tit
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-session-title
+# @knyazevai/dsh-session-title
 
 English | [中文](README.zh.md)
 
@@ -36,8 +36,8 @@ Titles come from three sources, newest wins. The built-in fallback derives from 
 All limits are required; the library supplies no defaults. Mount the service with the three bounds:
 
 ```yaml
-- name: '@deepseek-ai/dsh-session'
-- name: '@deepseek-ai/dsh-session-title'
+- name: '@knyazevai/dsh-session'
+- name: '@knyazevai/dsh-session-title'
   config:
     fallbackMaxWords: 8
     fallbackMaxBytes: 96
@@ -50,7 +50,7 @@ All limits are required; the library supplies no defaults. Mount the service wit
 | `fallbackMaxBytes` | required | Maximum UTF-8 bytes in the fallback; must not exceed `maxTitleBytes` |
 | `maxTitleBytes` | required | Maximum UTF-8 bytes accepted from any source |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-session-title) is the exhaustive source for every accepted field and its JSDoc.
+The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-session-title) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Adding a provider
 

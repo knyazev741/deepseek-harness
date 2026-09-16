@@ -3,7 +3,7 @@ description: "面向部署场景的自动会话压缩（compaction）：用于�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-compaction-basic
+# @knyazevai/dsh-compaction-basic
 
 [English](README.md) | 中文
 
@@ -36,17 +36,17 @@ kind: "package-reference"
 挂载会话存储、token 测量、可选修剪器、本后端，以及可选的按需命令：
 
 ```yaml
-- name: '@deepseek-ai/dsh-session'
-- name: '@deepseek-ai/dsh-token-meter'
-- name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
-- name: '@deepseek-ai/dsh-compaction-basic'
-- name: '@deepseek-ai/dsh-command-compact'
+- name: '@knyazevai/dsh-session'
+- name: '@knyazevai/dsh-token-meter'
+- name: '@knyazevai/dsh-compaction-tool-result-pruner'
+- name: '@knyazevai/dsh-compaction-basic'
+- name: '@knyazevai/dsh-command-compact'
 ```
 
 你可以通过观察会话越过本来会溢出的位置继续工作、以及运行 `/compact` 立即压缩一次来确认成功。如果组合缺少 LLM、会话存储或 token 测量，插件会加载失败。同一个后端可以服务上下文大小不同的模型；用按模型覆盖为每条路由设置各自的阈值与保留：
 
 ```yaml
-- name: '@deepseek-ai/dsh-compaction-basic'
+- name: '@knyazevai/dsh-compaction-basic'
   config:
     thresholdRatio: 0.8
     retainRatio: 0.16
@@ -59,16 +59,18 @@ kind: "package-reference"
 
 ### 调整压缩开始的时机
 
-所有设置都可选。默认在已路由模型上下文窗口的 80% 处开始压缩，并逐字保留最新的 16%；下表是完整的策略面，生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-compaction-basic)是穷尽式真源。
+所有设置都可选。默认在已路由模型上下文窗口的 50% 处开始压缩，并逐字保留最新的 16%；下表是完整的策略面，生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-compaction-basic)是穷尽式真源。
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
-| `thresholdRatio` | `0.8` | 在 `floor(routedContextWindow × ratio)` 处开始压缩。 |
+| `thresholdRatio` | `0.5` | 在 `floor(routedContextWindow × ratio)` 处开始压缩。 |
 | `retainRatio` | `0.16` | 以已路由上下文窗口的一部分表示逐字保留的近期对话；与 `retainTokens` 互斥。 |
 | `retainTokens` | — | 逐字保留的近期对话绝对预算；与 `retainRatio` 互斥，并且必须低于已解析阈值。 |
 | `summarizationProvider` | `''` | 与 `summarizationModel` 一起设置；空对使用最新已路由请求目标，再回退到 `AgentOptions` 对。 |
 | `summarizationModel` | `''` | 与 `summarizationProvider` 一起设置；空对使用最新已路由请求目标，再回退到 `AgentOptions` 对。 |
 | `maxTokens` | `8192` | 摘要请求的输出上限；可包含推理 token。 |
+| `maxSummarizationInputTokens` | `131072` | 每次摘要的估算输入上限；`0` 禁用此上限。过长历史会按平衡范围分轮压缩。 |
+| `summarizerCooldownMs` | `600000` | 摘要提供方耗尽瞬态重试预算后的冷却时间。 |
 | `compactionRetries` | `1` | 压力仍高于阈值时，在首次压缩后进行的额外尝试次数。 |
 | `maxOverflowRetries` | `1` | 已确认上下文窗口溢出后的最大重试次数；`0` 只禁用恢复。 |
 | `modelPolicies` | `[]` | 针对个别模型路由的精确 `{ provider, model, ...partialPolicy }` 覆盖。 |
@@ -152,7 +154,7 @@ kind: "package-reference"
 - [工具结果修剪器](../compaction-tool-result-pruner/README.zh.md)——先修剪超大工具输出的可选配套工具。
 - [人类 /compact 命令](../command-compact/README.zh.md)——无需等待压力的按需压缩。
 - [Token meter](../../llm/token-meter/README.zh.md)——决定何时压缩的测量服务。
-- [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-compaction-basic)——每个受支持配置字段及其源声明。
+- [生成配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-compaction-basic)——每个受支持配置字段及其源声明。
 
 -----
 
@@ -253,7 +255,7 @@ Rules:
 
 本开发备注是维护者的工作上下文，明确不具权威性；已交付行为以上文、包代码与所链接的 Agent Note 为准。
 
-- **默认比例，尚未决定**——`thresholdRatio: 0.8` 与 `retainRatio: 0.16` 是固定默认值；存在通过 `modelPolicies` 进行的按模型调优，但没有基于语料的理想值指引记录。
+- **默认比例，尚未决定**——`thresholdRatio: 0.5` 与 `retainRatio: 0.16` 是固定默认值；存在通过 `modelPolicies` 进行的按模型调优，但没有基于语料的理想值指引记录。
 - **tokenizer 精确测量，暂缓**——token meter 每 token 四字符的启发式对 CJK 文本与 JSON Schema 定价偏低；精确 token 化仍是测量服务的开放方向。
 - **规范错误之外的溢出恢复，尚未决定**——恢复仅针对 `CONTEXT_WINDOW_EXCEEDED` 触发；其他提供方侧上下文失败不参与分类。
 

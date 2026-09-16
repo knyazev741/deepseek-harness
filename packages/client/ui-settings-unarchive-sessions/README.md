@@ -3,7 +3,7 @@ description: "Archived-session Settings page for the dsh web client: the registr
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-client-ui-settings-unarchive-sessions
+# @knyazevai/dsh-client-ui-settings-unarchive-sessions
 
 English | [中文](README.zh.md)
 
@@ -25,7 +25,7 @@ The **Archived sessions** Settings page is the restore point for sessions hidden
 <a id="use-this-package"></a>
 ## Use this package
 
-Open Settings and select **Archived sessions** to see the sessions currently hidden from every grouping surface. Mount `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` in a Web composition that already provides the settings shell, the Workspace service, and the Session list; the page registers its own navigation entry and needs no configuration.
+Open Settings and select **Archived sessions** to see the sessions currently hidden from every grouping surface. Mount `@knyazevai/dsh-client-ui-settings-unarchive-sessions` in a Web composition that already provides the settings shell, the Workspace service, and the Session list; the page registers its own navigation entry and needs no configuration.
 
 ### Reading a row
 

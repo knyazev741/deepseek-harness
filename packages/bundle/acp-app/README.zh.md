@@ -3,7 +3,7 @@ description: "面向启动持久 harness agent（智能体）的用户与维护�
 kind: "package-bundle"
 ---
 
-# `@deepseek-ai/dsh-acp-app`
+# `@knyazevai/dsh-acp-app`
 
 [English](README.md) | 中文
 

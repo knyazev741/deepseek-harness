@@ -14,7 +14,7 @@ import {
   loadProfile,
   PluginPackages,
   type ProfileLayer,
-} from '@deepseek-ai/dsh-app-boot'
+} from '@knyazevai/dsh-app-boot'
 
 const installAnchor = fileURLToPath(new URL('../../../../../apps/cli/package.json', import.meta.url))
 

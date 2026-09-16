@@ -4,25 +4,25 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { ToolCallId, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
-import { assembleContextFor, type Agent } from '@deepseek-ai/dsh-agent'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import SubagentRuntime from '@deepseek-ai/dsh-subagent'
-import type { SubagentStartRequest } from '@deepseek-ai/dsh-subagent'
-import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
-import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
-import * as ToolJobs from '@deepseek-ai/dsh-tool-jobs'
+import { ToolCallId, ReasoningEffortId } from '@knyazevai/dsh-llm'
+import SystemPrompt from '@knyazevai/dsh-system-prompt'
+import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH } from '@knyazevai/dsh-tools'
+import { assembleContextFor, type Agent } from '@knyazevai/dsh-agent'
+import AgentRegistry from '@knyazevai/dsh-agent'
+import AgentLoop from '@knyazevai/dsh-agent-loop'
+import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
+import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import SubagentRuntime from '@knyazevai/dsh-subagent'
+import type { SubagentStartRequest } from '@knyazevai/dsh-subagent'
+import LocalJobRegistry from '@knyazevai/dsh-jobs-local'
+import * as SubagentSpawn from '@knyazevai/dsh-subagent-spawn-in-process'
+import * as ToolJobs from '@knyazevai/dsh-tool-jobs'
 import { MockAdapter, textResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import { loadStoredSession } from '../../subagent/tests/persistence-helpers.ts'
 import * as mock from './scripted-provider.ts'
 import * as tool from '../src/index.ts'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import { Session, SessionId } from '@knyazevai/dsh-session'
 import {
   callSubagent,
   disposeSetupProvider,
@@ -79,7 +79,7 @@ describe('dsh-tool-subagent', () => {
       prompt: 'go research X',
       run_in_background: false,
     })
-    expect(result.isError).toBe(false)
+    expect(result.isError, text(result)).toBe(false)
     if (result.isError) throw new Error('expected subagent success')
     expect(result.value).toEqual({
       kind: 'foreground',
@@ -156,7 +156,7 @@ describe('dsh-tool-subagent', () => {
       callSubagent(ctx, { description: 'second', prompt: 'p2' }),
     ])
     expect(started.sort()).toEqual(['first', 'second'])
-    for (const result of results) expect(result.isError).toBe(false)
+    for (const result of results) expect(result.isError, text(result)).toBe(false)
   })
 
   it.each([
@@ -294,7 +294,7 @@ describe('dsh-tool-subagent', () => {
     }, { agent: parent })
 
     if (result.isError) throw new Error(text(result))
-    expect(result.isError).toBe(false)
+    expect(result.isError, text(result)).toBe(false)
     expect(seen?.agentOptions).toEqual({ provider: 'alpha', model: 'child-model' })
   })
 
@@ -928,7 +928,7 @@ describe('dsh-tool-subagent background mode', () => {
     const ctx = await setup({ provider: 'mock' })
     const result = await callSubagent(ctx, { description: 'd', prompt: 'p', run_in_background: true })
     expect(result.isError).toBe(true)
-    expect(text(result)).toContain('background jobs unavailable: load @deepseek-ai/dsh-jobs')
+    expect(text(result)).toContain('background jobs unavailable: load @knyazevai/dsh-jobs')
   })
 
   it('skips background startup when the tool signal is already aborted', async () => {
@@ -1235,7 +1235,7 @@ describe('dsh-tool-subagent continuable background mode', () => {
       { description: 'continuable work', prompt: 'dig in' },
       { agent: parent },
     )
-    expect(started.isError).toBe(false)
+    expect(started.isError, text(started)).toBe(false)
     const match = /^started subagent (\S+)$/.exec(text(started))
     expect(match).not.toBeNull()
     const [, childId] = match!
@@ -1267,7 +1267,7 @@ describe('dsh-tool-subagent continuable background mode', () => {
       { description: 'blocking work', prompt: 'dig in', run_in_background: false },
       { agent: parent },
     )
-    expect(result.isError).toBe(false)
+    expect(result.isError, text(result)).toBe(false)
     if (result.isError) throw new Error('expected foreground subagent success')
     expect(result.value).toMatchObject({ kind: 'foreground' })
     expect(text(result)).toBe('continuable answer')
@@ -1319,7 +1319,7 @@ describe('dsh-tool-subagent continuable background mode', () => {
     const [failed, succeeded] = await Promise.all([cancelledResult, survivingResult])
     expect(preparationCount).toBe(2)
     expect(failed.isError).toBe(true)
-    expect(succeeded.isError).toBe(false)
+    expect(succeeded.isError, text(succeeded)).toBe(false)
     expect(cancelledChildId).toBeDefined()
     expect(survivingChildId).toBeDefined()
     expect(ctx.agents.get(cancelledChildId!)).toBeUndefined()

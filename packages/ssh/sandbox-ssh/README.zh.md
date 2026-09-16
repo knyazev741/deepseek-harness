@@ -3,7 +3,7 @@ description: "面向使用 SSH 文件系统和子进程提供方的组合，说�
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-sandbox-ssh
+# @knyazevai/dsh-sandbox-ssh
 
 [English](README.md) | 中文
 

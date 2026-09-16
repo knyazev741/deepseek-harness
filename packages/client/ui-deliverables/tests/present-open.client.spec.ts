@@ -1,6 +1,6 @@
 /** Delivery gestures share pending state, report failures, and cancel with the plugin. */
 import { afterEach, expect, it, vi } from 'vitest'
-import { SessionId } from '@deepseek-ai/dsh-session/types'
+import { SessionId } from '@knyazevai/dsh-session/types'
 import { PresentedOpenController } from '../src/client/present-open.ts'
 
 afterEach(() => { vi.unstubAllGlobals() })

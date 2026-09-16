@@ -3,7 +3,7 @@ description: "供持久化读取方使用的构建期静态第一方 Session 格
 kind: "package-library"
 ---
 
-# @deepseek-ai/dsh-session-format-catalog
+# @knyazevai/dsh-session-format-catalog
 
 [English](README.md) | 中文
 

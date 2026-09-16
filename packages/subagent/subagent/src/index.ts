@@ -8,8 +8,8 @@
  * select one by name.
  *
  * This package owns the Service Definition role of the capability seam. Service Providers
- * (`@deepseek-ai/dsh-subagent-spawn-in-process`, `-fork`, `-acp`) and the model-facing
- * consumer (`@deepseek-ai/dsh-tool-subagent`) are separate packages.
+ * (`@knyazevai/dsh-subagent-spawn-in-process`, `-fork`, `-acp`) and the model-facing
+ * consumer (`@knyazevai/dsh-tool-subagent`) are separate packages.
  *
  * Public operations express caller intent: `start` returns one published owned
  * one-shot run, `startContinuable` establishes a durable continuable child, and
@@ -26,19 +26,19 @@
  * serialization and hostile-input validation belong at real process, worker,
  * persistence, and model boundaries.
  *
- * @module @deepseek-ai/dsh-subagent
+ * @module @knyazevai/dsh-subagent
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-attachment'
-import { scopeTarget } from '@deepseek-ai/dsh-scope'
-import type { Scoped } from '@deepseek-ai/dsh-scope'
-import { assertObjectJsonSchema } from '@deepseek-ai/dsh-tools'
-import type { ContentBlock, MessageId, MessageSource } from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { SessionId } from '@deepseek-ai/dsh-session'
-import { canonicalClientTimeZone } from '@deepseek-ai/dsh-util-time'
-import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import type {} from '@knyazevai/dsh-attachment'
+import { scopeTarget } from '@knyazevai/dsh-scope'
+import type { Scoped } from '@knyazevai/dsh-scope'
+import { assertObjectJsonSchema } from '@knyazevai/dsh-tools'
+import type { ContentBlock, MessageId, MessageSource } from '@knyazevai/dsh-llm'
+import type { Agent } from '@knyazevai/dsh-agent'
+import type { SessionId } from '@knyazevai/dsh-session'
+import { canonicalClientTimeZone } from '@knyazevai/dsh-util-time'
+import { Remote, RemoteError, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
 import {
   catalogView, rejectCatalogRead, rejectPrompt, validateControlRequest,
 } from './control.ts'

@@ -42,6 +42,8 @@
     "packages/client/*/tests/**/*.host.spec.ts"
   ],
   "references": [
+    { "path": "./packages/fork/ui-workspace-overlay" },
+
     { "path": "./packages/client/ui-sidebar-terminal" },
     { "path": "./packages/api/terminal-controller/tsconfig.client.json" },
     // Producer-to-UI spill tests use the ptc-runtime contract with the real tool registry.

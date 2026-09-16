@@ -3,7 +3,7 @@ description: "进程本地后台任务注册表，供组合、容量评估或排
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-jobs-local
+# @knyazevai/dsh-jobs-local
 
 [English](README.md) | 中文
 
@@ -36,14 +36,14 @@ kind: "package-reference"
 加载插件即注册 `ctx.jobs`；`maxConcurrentJobsPerOwner` 可选，默认为 `10`。
 
 ```yaml
-- name: '@deepseek-ai/dsh-jobs-local'
+- name: '@knyazevai/dsh-jobs-local'
 ```
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `maxConcurrentJobsPerOwner` | `10` | 每个精确所有者，或共享的无主桶中，`running` 加 `stopping` 任务的最大数量 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-jobs-local)是每个受支持字段的穷尽式真源。
+生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-jobs-local)是每个受支持字段的穷尽式真源。
 
 ### 每个所有者得到什么
 
@@ -80,7 +80,7 @@ kind: "package-reference"
 | 文件 | 职责 |
 |---|---|
 | [`src/index.ts`](src/index.ts) | 插件入口：`Config` schema、`LocalJobRegistry`、准入、生命周期、销毁 |
-| — | 不发布运行时不变式伴生入口；快照的标识、状态、时间戳与所有者检查位于 `@deepseek-ai/dsh-jobs/invariant`。此提供方的准入决策使用私有配置，并且必须在后端启动器运行前失败；当前生产方由 `LocalJobRegistry.start()` 同步执行该决策。发布后再重复聚合只会向 companion 暴露私有配置，也无法验证失败发生在启动前。 |
+| — | 不发布运行时不变式伴生入口；快照的标识、状态、时间戳与所有者检查位于 `@knyazevai/dsh-jobs/invariant`。此提供方的准入决策使用私有配置，并且必须在后端启动器运行前失败；当前生产方由 `LocalJobRegistry.start()` 同步执行该决策。发布后再重复聚合只会向 companion 暴露私有配置，也无法验证失败发生在启动前。 |
 
 ### scope 分层
 

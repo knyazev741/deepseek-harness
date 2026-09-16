@@ -4,16 +4,16 @@
  */
 
 import { describe, expect, vi } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import { SessionSeq } from '@deepseek-ai/dsh-session/types'
-import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
-import type { SessionControlFrame } from '@deepseek-ai/dsh-api-session-controller/types'
-import type { SubagentAddress } from '@deepseek-ai/dsh-subagent/client'
-import { ok, type RemoteMock } from '@deepseek-ai/dsh-remote-mock'
+import type { SessionId } from '@knyazevai/dsh-api-remotes/client'
+import { SessionSeq } from '@knyazevai/dsh-session/types'
+import { RemoteError } from '@knyazevai/dsh-typert-protocol'
+import type { SessionControlFrame } from '@knyazevai/dsh-api-session-controller/types'
+import type { SubagentAddress } from '@knyazevai/dsh-subagent/client'
+import { ok, type RemoteMock } from '@knyazevai/dsh-remote-mock'
 import {
   createClientTest, type ClientTestFixtures, webApp,
-} from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
-import type {} from '@deepseek-ai/dsh-session-title/client'
+} from '@knyazevai/dsh-client-test-runtime/src/assembly/index.ts'
+import type {} from '@knyazevai/dsh-session-title/client'
 import { SessionManager } from '../src/client/sessions/manager.ts'
 import type { SessionRemotes } from '../src/client/sessions/remotes.ts'
 import { entries, plainTurn } from './event-script.client.ts'
@@ -22,7 +22,7 @@ import { FOLLOW, err, followScript, sessionWorld } from './remote/session.client
 const S1 = 'fk-m1' as SessionId
 const S2 = 'fk-m2' as SessionId
 /** Gateway Client cone used by the subagent-catalog and connected-generation cases. */
-const API_ROSTER = webApp.closure(['@deepseek-ai/dsh-api-gateway'])
+const API_ROSTER = webApp.closure(['@knyazevai/dsh-api-gateway'])
 const it = createClientTest({ roster: API_ROSTER })
 /** The first client boot pays the cold module transform of the api cone. */
 const COLD_BOOT_TIMEOUT_MS = 60_000
@@ -180,6 +180,8 @@ describe('list lifecycle', () => {
     expect(items.find(item => item.sessionId === S1)?.title).toBe('Cold cached')
     // The stale list block (seq 5) cannot overwrite the newer push frame (seq 9).
     expect(items.find(item => item.sessionId === S2)?.title).toBe('Pushed')
+    expect(items.find(item => item.sessionId === S2)?.projectionAsOfSeq).toBe(9)
+    expect(items.find(item => item.sessionId === S2)?.updatedAt).toBe(200)
   })
 
   it('drops a projection row beyond the subscription baseline before accepting its durable replay', async ({ mock, remote }) => {

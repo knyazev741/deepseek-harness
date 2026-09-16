@@ -59,7 +59,7 @@ The tool presentation contract pairs its vocabulary with `presentCall(args)`, a 
 
 ## Testing
 
-- `packages/client/runtime` pins the form projection, including the unknown, empty, wrongly-typed, and absent values that must degrade to opaque.
+- `packages/api/session-controller` pins the form projection, including the unknown, empty, wrongly-typed, and absent values that must degrade to opaque.
 - `packages/client/ui-conversation` pins each body: the opaque body's preserved line breaks and source fields, the instructions body's file list and verbatim framing, the catalog body's entry list, and a catalog with unusable entries falling back to opaque.
 - `packages/skill/tool-skill` pins the new source on first publication and replacement, republish behavior driven by the durable entries, and a malformed durable catalog leaving step observation intact.
 - The keyless assembled-Web seeded-history scenario expands a real `instructions` context in Chromium and asserts its file list, verbatim framing, and the unchanged disclosure geometry. `catalog` has no assembled coverage: the hermetic scaffold publishes no skills, so no catalog reaches a browser scenario.

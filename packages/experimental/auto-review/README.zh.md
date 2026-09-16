@@ -3,7 +3,7 @@ description: "为 Web profile 添加实验性逐调用 Auto review，在工具�
 kind: "package-bundle"
 ---
 
-# @deepseek-ai/dsh-experimental-auto-review
+# @knyazevai/dsh-experimental-auto-review
 
 [English](README.md) | 中文
 
@@ -38,7 +38,7 @@ CLI 会在需要时初始化 profile，并将本包声明的 patch 追加到 bas
 通过同一 CLI 移除此层：
 
 ```sh
-pnpm dsh plugin --profile web remove @deepseek-ai/dsh-experimental-auto-review
+pnpm dsh plugin --profile web remove @knyazevai/dsh-experimental-auto-review
 ```
 
 ### 获得的能力

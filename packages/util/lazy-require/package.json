@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-lazy-require",
+  "name": "@knyazevai/dsh-lazy-require",
   "description": "Caller-relative, success-cached lazy loading for CommonJS-compatible Host dependencies",
   "version": "0.1.6-alpha.1",
   "publishConfig": {

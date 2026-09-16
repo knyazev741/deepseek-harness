@@ -10,7 +10,7 @@ import { imports as resolvePackageImports, type Package as ResolvePackageManifes
 import { isProfileModuleFallbackLink } from './legacy-links.ts'
 import type { ProfileResolutionEntry, ProfileResolutionGeneration } from '../profile.ts'
 
-const WORKER_RESOLUTION_KEY = '@deepseek-ai/dsh-app-boot/profile-resolution'
+const WORKER_RESOLUTION_KEY = '@knyazevai/dsh-app-boot/profile-resolution'
 const EMPTY_ATTRIBUTES: ImportAttributes = Object.freeze({})
 
 interface CommonJsParent {

@@ -37,6 +37,7 @@ The [format references](persistence-changes/historical-formats/README.md) cover 
 | `event:feedback/message-delete` | event | `3ee93b06f3a125850337602bcdf155d2538c43a5c944ec55b1b3c365152d6796` | [`event:feedback/message-delete`](#persistence-type-eventfeedbackmessage-delete) |
 | `event:feedback/message-put` | event | `b5086d249e8502e9ead1d39156bb8d559bde7951cac0f14ce150345b4e42a2bf` | [`event:feedback/message-put`](#persistence-type-eventfeedbackmessage-put) |
 | `event:feedback/record` | event | `b54940ff095c17e874c5be03815f4c2145a256cf3a1d34dae4ab2f7769dfffe8` | [`event:feedback/record`](#persistence-type-eventfeedbackrecord) |
+| `event:fork/session-source` | event | `a0c62a56072e68f47eab94ede3cd898c4dfb75f3c0b239791728eac1c9441f3e` | [`event:fork/session-source`](#persistence-type-eventforksession-source) |
 | `event:goal/change` | event | `763c8a20af487263a0080548274f7437ef4a86e0ba8769127d1ced10a72c664d` | [`event:goal/change`](#persistence-type-eventgoalchange) |
 | `event:hook/invoked` | event | `8a6e1ec9e8db346b0e02f027db73c07a94f067a26d40c1aef1abd09c47ce7ba0` | [`event:hook/invoked`](#persistence-type-eventhookinvoked) |
 | `event:hook/result` | event | `e75916628f3f10c2d50658bd143052a46285fbf1a9a700ba54947614603d26b4` | [`event:hook/result`](#persistence-type-eventhookresult) |
@@ -152,7 +153,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }[T]
 ```
 
-Sources: [`packages/core/session/src/types.ts:409`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:417`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:439`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:470`](../packages/core/session/src/types.ts)
+Sources: [`packages/core/session/src/types.ts:409`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:417`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:439`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:476`](../packages/core/session/src/types.ts)
 
 ## Events
 
@@ -328,7 +329,7 @@ Source: [`packages/core/session/src/types.ts:321`](../packages/core/session/src/
   commandId: CommandId
   kind: 'success' | 'error'
   text?: string
-  sourceEventSeq?: import('@deepseek-ai/dsh-session/types').SessionSeq
+  sourceEventSeq?: import('@knyazevai/dsh-session/types').SessionSeq
 }
 ```
 
@@ -517,6 +518,19 @@ Source: [`packages/feedback/message-feedback/src/types.ts:56`](../packages/feedb
 ```
 
 Source: [`packages/feedback/command-feedback/src/types.ts:40`](../packages/feedback/command-feedback/src/types.ts)
+
+### `fork/*`
+
+<a id="forksession-source--log-only"></a>
+
+#### `fork/session-source` — log-only
+
+```ts persistence-catalog
+/** Log-only marker identifying a session created in GitHub Actions. */
+'fork/session-source': { source: 'github-actions' }
+```
+
+Source: [`packages/fork/session-source/src/types.ts:9`](../packages/fork/session-source/src/types.ts)
 
 ### `goal/*`
 
@@ -828,11 +842,11 @@ Source: [`packages/session/session-title-llm/src/index.ts:45`](../packages/sessi
 /** Records that the configured endpoint accepted one delivery through `throughSeq`. */
 'session-log-deepseek/delivery-accepted': {
   /** Session identity the accepted delivery carried; inherited fork markers retain the parent's id. */
-  sessionId: import('@deepseek-ai/dsh-session/types').SessionId
+  sessionId: import('@knyazevai/dsh-session/types').SessionId
   /** Accepted Session format generation; absence identifies version 0. */
   sessionFormatVersion?: number
   /** Last canonical event included in the accepted request. */
-  throughSeq: import('@deepseek-ai/dsh-session/types').SessionSeq
+  throughSeq: import('@knyazevai/dsh-session/types').SessionSeq
 }
 ```
 
@@ -2098,7 +2112,7 @@ Sources: [`packages/llm/llm/src/assistant-stream.ts:21`](../packages/llm/llm/src
 
 | Property | Presence | Type |
 |---|---|---|
-| `dt` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `dt` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `index` | required | `number` |
 | `texts` | required | [`event:assistant/attempt.data.stream[0][0].texts`](#persistence-type-eventassistantattemptdatastream00texts) |
 | `time0` | required | `number` |
@@ -2122,7 +2136,7 @@ Sources: [`packages/llm/llm/src/assistant-stream.ts:28`](../packages/llm/llm/src
 
 | Property | Presence | Type |
 |---|---|---|
-| `dt` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `dt` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `index` | required | `number` |
 | `texts` | required | [`event:assistant/attempt.data.stream[0][0].texts`](#persistence-type-eventassistantattemptdatastream00texts) |
 | `time0` | required | `number` |
@@ -2139,7 +2153,7 @@ Sources: [`packages/llm/llm/src/assistant-stream.ts:35`](../packages/llm/llm/src
 | Property | Presence | Type |
 |---|---|---|
 | `args` | required | [`event:assistant/attempt.data.stream[0][0].texts`](#persistence-type-eventassistantattemptdatastream00texts) |
-| `dt` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `dt` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `id` | required | `string` |
 | `index` | required | `number` |
 | `name` | optional | `string` |
@@ -2497,7 +2511,7 @@ Sources: [`packages/compaction/compaction/src/types.ts:82`](../packages/compacti
 | Property | Presence | Type |
 |---|---|---|
 | `shadowedRange` | required | [`event:compaction/prune.data.shadowedRange`](#persistence-type-eventcompactionprunedatashadowedrange) |
-| `shadowedSeqs` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `shadowedSeqs` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `shadowedTokenCount` | required | `number` |
 
 <a id="persistence-type-eventcompactionprunedatashadowedrange"></a>
@@ -2581,7 +2595,7 @@ SHA-256: `9ff2ad8dddb836f75e8f6197fff2371323dfc396c3c6fb667e6e0b42fda79a5c`
 | `provider` | required | `string` |
 | `rawOutput` | required | [`event:agent/inbox/spliced.data.inserted[0].content`](#persistence-type-eventagentinboxspliceddatainserted0content) |
 | `shadowedRange` | required | [`event:compaction/prune.data.shadowedRange`](#persistence-type-eventcompactionprunedatashadowedrange) |
-| `shadowedSeqs` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `shadowedSeqs` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `shadowedTokenCount` | required | `number` |
 | `sourceCommandId` | optional | `string` |
 | `summary` | required | [`event:agent/inbox/spliced.data.inserted[0].content`](#persistence-type-eventagentinboxspliceddatainserted0content) |
@@ -2601,7 +2615,7 @@ SHA-256: `3aa261c8516b5c955ed12080e6257a56cbe513f6c9f0ac9274c12e96c196ebca`
 | `provider` | required | `string` |
 | `rawOutput` | optional | [`event:agent/inbox/spliced.data.inserted[0].content`](#persistence-type-eventagentinboxspliceddatainserted0content) |
 | `shadowedRange` | required | [`event:compaction/prune.data.shadowedRange`](#persistence-type-eventcompactionprunedatashadowedrange) |
-| `shadowedSeqs` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `shadowedSeqs` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `shadowedTokenCount` | required | `number` |
 | `sourceCommandId` | optional | `string` |
 | `summary` | required | [`event:agent/inbox/spliced.data.inserted[0].content`](#persistence-type-eventagentinboxspliceddatainserted0content) |
@@ -2700,6 +2714,32 @@ SHA-256: `b54940ff095c17e874c5be03815f4c2145a256cf3a1d34dae4ab2f7769dfffe8`
 | `seq` | required | `number` |
 | `time` | required | `number` |
 | `type` | required | `"feedback/record"` |
+
+<a id="persistence-type-eventforksession-source"></a>
+
+### `event:fork/session-source`
+
+SHA-256: `a0c62a56072e68f47eab94ede3cd898c4dfb75f3c0b239791728eac1c9441f3e`
+
+| Property | Presence | Type |
+|---|---|---|
+| `data` | required | [`event:fork/session-source.data`](#persistence-type-eventforksession-sourcedata) |
+| `ignorable` | optional | `true` |
+| `seq` | required | `number` |
+| `time` | required | `number` |
+| `type` | required | `"fork/session-source"` |
+
+<a id="persistence-type-eventforksession-sourcedata"></a>
+
+### `event:fork/session-source.data`
+
+SHA-256: `c51ef71616f7fe38858698e12eaf802040150c76f6a9e476d961b921a1cd9d18`
+
+Sources: [`packages/fork/session-source/src/types.ts:9`](../packages/fork/session-source/src/types.ts)
+
+| Property | Presence | Type |
+|---|---|---|
+| `source` | required | `"github-actions"` |
 
 <a id="persistence-type-eventgoalchange"></a>
 
@@ -3332,7 +3372,7 @@ SHA-256: `69becfb6b2d3fd5da91518089454cae8ef33f1835637ec44dde35dd077fd4bae`
 | `data` | required | [`event:system/message.data`](#persistence-type-eventsystemmessagedata) |
 | `ignorable` | optional | `true` |
 | `seq` | required | `number` |
-| `sourceEventSeqs` | optional | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `sourceEventSeqs` | optional | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `surfaceOp` | required | [`packages/core/session/src/types.ts#SurfaceOp`](#persistence-type-packagescoresessionsrctypestssurfaceop) |
 | `time` | required | `number` |
 | `type` | required | `"system/message"` |
@@ -3676,7 +3716,7 @@ SHA-256: `29af48b840d0cd9e48b6f50bf3b354f8f6340607c5b99220a48e74f60beac9e2`
 | `data` | required | [`event:tool/result.data`](#persistence-type-eventtoolresultdata) |
 | `ignorable` | optional | `true` |
 | `seq` | required | `number` |
-| `sourceEventSeqs` | optional | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `sourceEventSeqs` | optional | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `surfaceOp` | required | [`packages/core/session/src/types.ts#SurfaceOp`](#persistence-type-packagescoresessionsrctypestssurfaceop) |
 | `time` | required | `number` |
 | `type` | required | `"tool/result"` |
@@ -3919,7 +3959,7 @@ SHA-256: `314765bdff29c7862fb6ce820f1773563ba3094a680d163ea21180a2591b8578`
 | `data` | required | [`packages/llm/llm/src/message.ts#UserMessage`](#persistence-type-packagesllmllmsrcmessagetsusermessage) |
 | `ignorable` | optional | `true` |
 | `seq` | required | `number` |
-| `sourceEventSeqs` | optional | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `sourceEventSeqs` | optional | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `surfaceOp` | required | [`packages/core/session/src/types.ts#SurfaceOp`](#persistence-type-packagescoresessionsrctypestssurfaceop) |
 | `time` | required | `number` |
 | `type` | required | `"user/message"` |
@@ -4103,6 +4143,14 @@ SHA-256: `2da725e554cd89301d829ed9dc45a572c3cd1b93b5e91d0d71f007976d8a0863`
 
 `"fork"`
 
+<a id="persistence-type-forksession-source"></a>
+
+### `"fork/session-source"`
+
+SHA-256: `c2fb61c42b98c56b8370c7b170180fb2f5ed22c3a0af3b64296646ed12f96a4a`
+
+`"fork/session-source"`
+
 <a id="persistence-type-fresh"></a>
 
 ### `"fresh"`
@@ -4110,6 +4158,14 @@ SHA-256: `2da725e554cd89301d829ed9dc45a572c3cd1b93b5e91d0d71f007976d8a0863`
 SHA-256: `dd2780e7e07684332f7a9ab047237798d260e7eaffb1321cb38eca695d184c3d`
 
 `"fresh"`
+
+<a id="persistence-type-github-actions"></a>
+
+### `"github-actions"`
+
+SHA-256: `68ddfcc3a73b098ff519332483bfe0ec78d988f60f0ba3c5fea9e67a01573444`
+
+`"github-actions"`
 
 <a id="persistence-type-goal"></a>
 
@@ -4450,7 +4506,7 @@ Sources: [`packages/compaction/compaction-image-offload/src/projection.ts:9`](..
 
 | Property | Presence | Type |
 |---|---|---|
-| `imageIndexes` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `imageIndexes` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `seq` | required | `number` |
 
 <a id="persistence-type-packagescontextagent-instructionssrcrendertsagentinstructionchange"></a>
@@ -5610,7 +5666,7 @@ Sources: [`packages/session/session-title-llm/src/index.ts:27`](../packages/sess
 | Property | Presence | Type |
 |---|---|---|
 | `maxTokens` | required | `number` |
-| `messageSeqs` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `messageSeqs` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `messages` | required | [`event:session/title-llm-request.data.messages`](#persistence-type-eventsessiontitle-llm-requestdatamessages) |
 | `route` | required | [`packages/session/session-title/src/types.ts#SessionTitleModelIdentity`](#persistence-type-packagessessionsession-titlesrctypestssessiontitlemodelidentity) |
 | `system` | required | `string` |
@@ -5626,7 +5682,7 @@ Sources: [`packages/session/session-title/src/types.ts:41`](../packages/session/
 
 | Property | Presence | Type |
 |---|---|---|
-| `messageSeqs` | required | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `messageSeqs` | required | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `source` | required | [`packages/session/session-title/src/types.ts#SessionTitleSource`](#persistence-type-packagessessionsession-titlesrctypestssessiontitlesource) |
 | `title` | required | `string` |
 
@@ -6159,7 +6215,7 @@ SHA-256: `5776e5553ff2dfe3f5bc202dbb1e7c9f93e35a531aebb7764c23b2b6153b2ccc`
 
 One of:
 
-- [`SessionEventEnvelope[39]`](#persistence-type-sessioneventenvelope39)
+- [`SessionEventEnvelope[40]`](#persistence-type-sessioneventenvelope40)
 - [`SessionEventEnvelope[6]`](#persistence-type-sessioneventenvelope6)
 - [`SessionEventEnvelope[0]`](#persistence-type-sessioneventenvelope0)
 
@@ -6176,9 +6232,9 @@ SHA-256: `e3e77b26f0148755a505f5b8ea843a3be117827d4703bb5754d9dc8ddbef521f`
 | `time` | required | `number` |
 | `type` | required | `string` |
 
-<a id="persistence-type-sessioneventenvelope39"></a>
+<a id="persistence-type-sessioneventenvelope40"></a>
 
-### `SessionEventEnvelope[39]`
+### `SessionEventEnvelope[40]`
 
 SHA-256: `998f22585a5d73ec005365e203f07fc3b3a029e82323fdda3fd7f13b0a9639d0`
 
@@ -6186,14 +6242,14 @@ SHA-256: `998f22585a5d73ec005365e203f07fc3b3a029e82323fdda3fd7f13b0a9639d0`
 |---|---|---|
 | `ignorable` | optional | `true` |
 | `seq` | required | `number` |
-| `sourceEventSeqs` | optional | [`SessionEventEnvelope[39].sourceEventSeqs`](#persistence-type-sessioneventenvelope39sourceeventseqs) |
+| `sourceEventSeqs` | optional | [`SessionEventEnvelope[40].sourceEventSeqs`](#persistence-type-sessioneventenvelope40sourceeventseqs) |
 | `surfaceOp` | required | [`packages/core/session/src/types.ts#SurfaceOp`](#persistence-type-packagescoresessionsrctypestssurfaceop) |
 | `time` | required | `number` |
 | `type` | required | `string` |
 
-<a id="persistence-type-sessioneventenvelope39sourceeventseqs"></a>
+<a id="persistence-type-sessioneventenvelope40sourceeventseqs"></a>
 
-### `SessionEventEnvelope[39].sourceEventSeqs`
+### `SessionEventEnvelope[40].sourceEventSeqs`
 
 SHA-256: `5d03ba38734809bcbd2a55221bd938b3b3fc34b49bb686c6113e9e4931e3aa78`
 

@@ -3,7 +3,7 @@ description: "面向 Bash、LSP 及 Node 运行时消费方，说明托管 SSH �
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-subprocess-ssh
+# @knyazevai/dsh-subprocess-ssh
 
 [English](README.md) | 中文
 

@@ -15,17 +15,17 @@
  * survives frozen (read-only view) until the stage moves on.
  */
 import type { Context, Fiber } from '@deepseek-ai/cordis'
-import type { SubagentAddress } from '@deepseek-ai/dsh-subagent/client'
-import { SessionSeq, type SessionId } from '@deepseek-ai/dsh-session/types'
-import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
-import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+import type { SubagentAddress } from '@knyazevai/dsh-subagent/client'
+import { SessionSeq, type SessionId } from '@knyazevai/dsh-session/types'
+import { workspaceTitleOf } from '@knyazevai/dsh-util-workspace-path'
+import type { WorkspaceId } from '@knyazevai/dsh-workspace/types'
 import { SESSION_SEARCH_RESULT_LIMIT } from '../../types.ts'
 import type { SessionJob as JobView } from '../../types.ts'
-import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
+import type { SessionProjectionMap } from '@knyazevai/dsh-session-projection/types'
 import {
   createSnapshotStore, type SnapshotStore,
-} from '@deepseek-ai/dsh-client-store'
-import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+} from '@knyazevai/dsh-client-store'
+import type { RemoteFailure, RemoteResult } from '@knyazevai/dsh-typert-protocol'
 import type { SessionEventSource } from '../contract/events.ts'
 import type { SessionFace } from '../contract/session.ts'
 import type { AgentContext, ISessions } from '../contract/sessions.ts'
@@ -59,6 +59,8 @@ export interface SessionSummary {
   updatedAt: number
   /** Current host-computed projection values retained by the object layer. */
   projectionValues?: Readonly<Partial<SessionProjectionMap>>
+  /** Highest host projection sequence observed for this row; absent when no cut is available. */
+  projectionAsOfSeq?: number
 }
 
 /**
@@ -592,6 +594,9 @@ export class ClientSessions implements ISessions {
         ...(entry.projectionValues === undefined
           ? {}
           : { projectionValues: entry.projectionValues }),
+        ...(entry.projectionAsOfSeq === undefined
+          ? {}
+          : { projectionAsOfSeq: entry.projectionAsOfSeq }),
         ...(entry.title !== undefined ? { title: entry.title } : {}),
         ...(entry.cwd !== undefined ? { cwd: entry.cwd } : {}),
         ...(entry.parentSessionId !== undefined ? { parentId: entry.parentSessionId } : {}),

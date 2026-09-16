@@ -2,9 +2,9 @@
 // dispatch entry + list state, constructed and held by ClientSessions (one per browser client).
 // List data never enters zustand; React connects via subscribe/getListSnapshot.
 
-import type { SubagentAddress, SubagentCatalog } from '@deepseek-ai/dsh-subagent/client'
-import { SessionSeq, type SessionId, type SessionSeqCursor } from '@deepseek-ai/dsh-session/types'
-import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
+import type { SubagentAddress, SubagentCatalog } from '@knyazevai/dsh-subagent/client'
+import { SessionSeq, type SessionId, type SessionSeqCursor } from '@knyazevai/dsh-session/types'
+import type { WorkspaceId } from '@knyazevai/dsh-workspace/types'
 import type {
   SessionControlBaseline,
   SessionControlFrame,
@@ -13,14 +13,14 @@ import type {
   SessionJob as JobView,
 } from '../../types.ts'
 import { mergeOrderedBaseline } from '../ordered-baseline.ts'
-import { isRemoteFailure } from '@deepseek-ai/dsh-api-gateway/client'
-import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import { isRemoteFailure } from '@knyazevai/dsh-api-gateway/client'
+import type { RemoteFailure, RemoteResult } from '@knyazevai/dsh-typert-protocol'
 import type { SessionListEntry, TitledSessionSummary } from './lineage.ts'
 import { flattenLineage } from './lineage.ts'
 // Type-only merge edge: the title domain's client-namespace outlet declares
 // the 'title' projection key this manager projects into list rows (and any
 // useProjection('title') consumer reads). Zero value imports by construction.
-import type {} from '@deepseek-ai/dsh-session-title/client'
+import type {} from '@knyazevai/dsh-session-title/client'
 import { Notifier } from './notifier.ts'
 import { ProjectionValueStore } from './projection-store.ts'
 import { Session } from './session.ts'
@@ -501,6 +501,7 @@ export class SessionManager {
             const block = s.projections
             if (block === undefined) continue
             const store = this.projectionStore(s.sessionId)
+            store.advanceWatermark(block.asOfSeq)
             const values = block.values as Record<string, unknown>
             for (const key of Object.keys(values)) store.apply(key, values[key], sessionSeqCursor(block.asOfSeq))
           }
@@ -914,10 +915,12 @@ export class SessionManager {
       const projectionStore = this.projectionStores.get(summary.sessionId)
       const title = projectionStore?.get('title')
       const projectionValues = projectionStore?.values()
+      const projectionAsOfSeq = projectionStore?.latestSeq() ?? summary.projections?.asOfSeq
       return {
         ...summary,
         ...(typeof title === 'string' && title !== '' ? { title } : {}),
         ...(projectionValues === undefined ? {} : { projectionValues }),
+        ...(projectionAsOfSeq === undefined || projectionAsOfSeq < 0 ? {} : { projectionAsOfSeq }),
       }
     })
     const fresh = flattenLineage(merged, this.completedNotifications)
@@ -929,6 +932,7 @@ export class SessionManager {
         && prev.parentSessionId === entry.parentSessionId && prev.cwd === entry.cwd
         && prev.origin === entry.origin && prev.title === entry.title && prev.depth === entry.depth
         && prev.projectionValues === entry.projectionValues
+        && prev.projectionAsOfSeq === entry.projectionAsOfSeq
         && prev.completed === entry.completed
       ) return prev
       this.entryCache.set(entry.sessionId, entry)
