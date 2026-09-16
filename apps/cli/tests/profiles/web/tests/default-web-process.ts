@@ -26,8 +26,9 @@ interface DefaultWeb {
  * Boot the built Web profile under plain Node and dispose it to quiescence after an assertion callback.
  * @param test - owning Vitest case, including its timeout, cancellation, and cleanup hooks.
  * @param inspect - assertions against the running process and its ephemeral loopback URL.
+ * @param profile - shipped Web composition to launch.
  */
-export async function withDefaultWeb(test: TestContext, inspect: (app: DefaultWeb) => Promise<void>): Promise<void> {
+export async function withDefaultWeb(test: TestContext, inspect: (app: DefaultWeb) => Promise<void>, profile: 'web' | 'fork-web' = 'web'): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), 'dsh-web-default-isolation-'))
   let removal: Promise<void> | undefined
   const removeRoot = (): Promise<void> => removal ??= rm(root, { recursive: true, force: true })
@@ -53,7 +54,7 @@ export async function withDefaultWeb(test: TestContext, inspect: (app: DefaultWe
     const launch = resolveExampleLaunch({
       srcBin: join(repoRoot, 'apps/cli/src/bin.ts'),
       mode: 'lib',
-      configArgs: ['--profile', 'web', '--patch', patch, '--host', '127.0.0.1', '--port', '0', '--no-open'],
+      configArgs: ['--profile', profile, '--patch', patch, '--host', '127.0.0.1', '--port', '0', '--no-open'],
       env: {
         NODE_OPTIONS: undefined,
         NODE_PATH: undefined,

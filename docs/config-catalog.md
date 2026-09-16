@@ -3232,6 +3232,8 @@ export interface Config {
    * Session and inherit that decision in its child Sessions.
    */
   modelSelectionSettings?: boolean
+  /** Own the shared discovery tool (default true); exactly one selectable instance per scope owns it. */
+  modelSelectionDiscovery?: boolean
   /**
    * Expose `run_in_background` (default true). Disabled instances omit the
    * parameter and reject forced background calls.

@@ -209,6 +209,37 @@ describe('SubagentModelSelectionConfig', () => {
     await ctx.fiber.dispose()
   })
 
+  it('creates sessions with two model-selectable delegation tools and one discovery owner', async () => {
+    const ctx = await boot()
+    try {
+      await ctx.settings.update(SUBAGENT_MODEL_SELECTION_SETTINGS_NAMESPACE, {
+        enabled: true,
+        allowedModels: ALLOWED_MODELS,
+      })
+      const preset = modelSelectionPresets.get(ctx)!
+      await preset.ctx.plugin(tool, {
+        provider: 'spawn',
+        toolName: 'subagent_fork',
+        modelSelectionSettings: true,
+        modelSelectionDiscovery: false,
+        backgroundMode: 'continuable',
+      })
+      for (const id of ['first-paired-session', 'second-paired-session']) {
+        const agent = await createAgent(ctx, id)
+        const schemas = ctx.tools.schemas(agent)
+        expect(schemas.filter(schema => schema.name === 'list_subagent_models')).toHaveLength(1)
+        for (const name of ['subagent', 'subagent_fork']) {
+          expect(schemas.find(schema => schema.name === name)?.parameters).toMatchObject({
+            properties: { provider: { type: 'string' }, model: { type: 'string' } },
+          })
+        }
+        expect(subagentModelSelectionPolicy(ctx.sessionProjections, agent.session)).toEqual(ALLOWED_MODELS)
+      }
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('installs one tool when recording the Session policy triggers a registry refresh', async () => {
     const ctx = await boot()
     try {

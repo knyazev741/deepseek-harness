@@ -215,6 +215,7 @@
         provider: fork
         toolName: subagent_fork
         modelSelectionSettings: true
+        modelSelectionDiscovery: false
         backgroundMode: continuable
 
     # Production dsh does not install these optional providers. Install the
