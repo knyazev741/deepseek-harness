@@ -14,7 +14,7 @@ Status: implemented
 
 保留首块超时、压缩恢复、重试预算耗尽后的冷却、会话来源、固定状态持久化和工作区 UI 包。新的 Session Controller 为未读状态提供投影序号水位，并在排队消息持久化时移除队列条目。工作区扩展接入当前行插槽，保留上游导航、待处理交互指示和拖动排序。此前暂缓的 Background 标签仍不启用；扩展注册表支持贡献视图。
 
-DeepSeek V4 Flash 和 GLM 5.3 Flash 使用随包配置的 400,000 token 上下文、20 次瞬态重试、50% 压缩压力和 131,072 token 摘要输入预算。standard、ptc 和 cordis 预设保留两次压缩和溢出重试。原生模型选择服务为 spawn 和 fork 委派提供允许的 Gonka 路由。现有用户设置仍覆盖部署默认值。
+DeepSeek V4 Flash 和 GLM 5.3 Flash 使用随包配置的 400,000 token 上下文、20 次瞬态重试、50% 压缩压力和 131,072 token 摘要输入预算。standard、ptc 和 cordis 预设保留两次压缩和溢出重试。原生模型选择服务为 spawn 和 fork 委派提供允许的 Gonka 路由。现有用户设置仍覆盖部署默认值。GLM 仅提供 `low`、`high` 和 `max`，并使用模型级 OpenAI effort 格式，避免共享的 Qwen 开关配置丢弃所选深度。已保存的模型条目需要相同元数据；文件设置监视器可应用此修正，无需重启活动 Session。
 
 仓库启动器明确调用当前 CLI 导出的入口。`dsh web` 选择 `fork-web`；显式 `--profile web` 保留原始组合。通过 `--open` 可选择自动打开浏览器。npm 包仍是完整 CLI，与旧版仅提供模型的插件区分。
 

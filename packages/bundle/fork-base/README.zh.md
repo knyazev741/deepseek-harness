@@ -24,6 +24,8 @@ kind: "package-bundle"
 
 该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state`、`fork-llm-first-chunk-timeout` 和 `fork-llm-rate-limit-cooldown`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000` 和 `maxFirstChunkCompactionRetries: 100`；冷却行携带 `cooldownMs: 600000`，并在有界 retry 预算耗尽后显式处理 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT` 和 `PI_AI_ERROR`。模型行配置 `knyazev-ai`，使用 `api: openai-completions` 和 `https://knyazevai.work/v1`，并设置 `streamIdleTimeoutMs: 900000`、`timeoutMs: 1800000`、`compat.thinkingFormat: qwen`、`compat.supportsReasoningEffort: false`、`reasoning: high`，以及 `retryPolicy.mode: normal`、`maxRetries: 20`；可重试代码严格按 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT`、`STREAM_CLOSED`、`EMPTY_RESPONSE` 排序。其模型为 `deepseek-v4-flash`（context window `400000`、max tokens `128000`）、`glm-5.3-flash`（`400000`、`40000`）、`kimi-2.6`（`262144`、`40000`）和 `minimax-2.7`（`204800`，不覆盖 max-token）。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段。
 
+GLM 5.3 Flash 使用模型级 `thinkingFormat: openai` 和 `supportsReasoningEffort: true` 覆盖路由兼容设置，将所选的 `low`、`high` 或 `max` 作为 `reasoning_effort` 发送。它不提供 Off。已保存的提供方模型列表覆盖 bundle 列表；已有 GLM 条目需要相同的模型级推理与兼容字段。
+
 路由只保存凭据引用 `apiKeyEnv: KNYAZEV_AI_API_KEY`；密钥值保留在外部凭据或环境层，绝不进入 Git。用户 settings 文档位于该 composition base 之上，因此不完整的 `llm-pi-ai` 或 `agent-default-model` 设置会覆盖对应字段，省略字段则继承可移植默认值。profile、home 或 `--patch` 行仍会按 id 整体替换目标插件的 config。该组合包不挂载 provider-neutral external-session registry，也不挂载 Codex provider。
 
 会话状态行等待 Host 表层提供 `workspaceRegistry`。这样 fork 组合包可以在不同 Host 组合中复用，同时保持 Loader 的依赖顺序。

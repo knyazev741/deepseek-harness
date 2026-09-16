@@ -176,7 +176,8 @@ describe('dsh-fork-base bundle', () => {
               name: 'GLM 5.3 Flash',
               contextWindow: 400000,
               maxTokens: 40000,
-              reasoningEfforts: { off: null, high: 'high', max: 'max' },
+              reasoningEfforts: { low: 'low', high: 'high', max: 'max' },
+              compat: { thinkingFormat: 'openai', supportsReasoningEffort: true },
             },
             {
               id: 'kimi-2.6',

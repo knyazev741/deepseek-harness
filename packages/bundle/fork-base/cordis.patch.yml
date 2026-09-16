@@ -88,9 +88,12 @@
             contextWindow: 400000
             maxTokens: 40000
             reasoningEfforts:
-              off:
+              low: low
               high: high
               max: max
+            compat:
+              thinkingFormat: openai
+              supportsReasoningEffort: true
           - id: kimi-2.6
             name: Kimi 2.6
             contextWindow: 262144
