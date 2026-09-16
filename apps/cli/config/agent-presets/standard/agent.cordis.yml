@@ -143,6 +143,20 @@
   config:
     - id: compaction-basic
       name: '@knyazevai/dsh-compaction-basic'
+      config:
+        modelPolicies:
+          - provider: knyazev-ai
+            model: deepseek-v4-flash
+            thresholdRatio: 0.5
+            maxSummarizationInputTokens: 131072
+            compactionRetries: 2
+            maxOverflowRetries: 2
+          - provider: knyazev-ai
+            model: glm-5.3-flash
+            thresholdRatio: 0.5
+            maxSummarizationInputTokens: 131072
+            compactionRetries: 2
+            maxOverflowRetries: 2
 
     - id: command-compact
       name: '@knyazevai/dsh-command-compact'

@@ -172,6 +172,13 @@ describe('dsh-fork-base bundle', () => {
               },
             },
             {
+              id: 'glm-5.3-flash',
+              name: 'GLM 5.3 Flash',
+              contextWindow: 400000,
+              maxTokens: 40000,
+              reasoningEfforts: { off: null, high: 'high', max: 'max' },
+            },
+            {
               id: 'kimi-2.6',
               name: 'Kimi 2.6',
               contextWindow: 262144,
@@ -328,6 +335,7 @@ describe('dsh-fork-base bundle', () => {
       })
       await expect(ctx.llm.listModels('knyazev-ai')).resolves.toMatchObject([
         { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'knyazev-ai' },
+        { id: 'glm-5.3-flash', name: 'GLM 5.3 Flash', provider: 'knyazev-ai' },
         { id: 'kimi-2.6', name: 'Kimi 2.6', provider: 'knyazev-ai' },
         { id: 'minimax-2.7', name: 'MiniMax 2.7', provider: 'knyazev-ai' },
       ])
@@ -341,6 +349,7 @@ describe('dsh-fork-base bundle', () => {
               timeoutMs: 1800000,
               models: [
                 { id: 'deepseek-v4-flash', contextWindow: 400000, maxTokens: 128000 },
+                { id: 'glm-5.3-flash', contextWindow: 400000, maxTokens: 40000 },
                 { id: 'kimi-2.6', contextWindow: 262144, maxTokens: 40000 },
                 { id: 'minimax-2.7', contextWindow: 204800 },
               ],
@@ -359,5 +368,20 @@ describe('dsh-fork-base bundle', () => {
     const basePath = resolve(root, '../base/cordis.patch.yml')
     const digest = execFileSync('git', ['hash-object', basePath], { encoding: 'utf8' }).trim()
     expect(digest).toBe('cc3b3b56dfefdf833a5afd03b6472a246ba98b24')
+  })
+})
+
+
+describe('Flash compaction parity in shipped agent presets', () => {
+  it.each(['standard', 'code', 'cordis'])('keeps GLM and DeepSeek policies equal in %s', (preset) => {
+    const rows = readPatch(`../../../apps/cli/config/agent-presets/${preset}/agent.cordis.yml`)
+    const group = rows.find(row => row.id === 'compaction')
+    const children = group?.config as unknown as Row[]
+    const compact = children.find(row => row.id === 'compaction-basic')
+    const policies = compact?.config?.modelPolicies as Record<string, unknown>[]
+    const flash = policies.find(policy => policy.model === 'deepseek-v4-flash')
+    const glm = policies.find(policy => policy.model === 'glm-5.3-flash')
+    expect(glm).toEqual({ ...flash, model: 'glm-5.3-flash' })
+    expect(glm).toMatchObject({ provider: 'knyazev-ai', thresholdRatio: 0.5, maxSummarizationInputTokens: 131072, compactionRetries: 2, maxOverflowRetries: 2 })
   })
 })

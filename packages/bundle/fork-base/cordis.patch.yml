@@ -83,6 +83,14 @@
               off:
               high: high
               max: max
+          - id: glm-5.3-flash
+            name: GLM 5.3 Flash
+            contextWindow: 400000
+            maxTokens: 40000
+            reasoningEfforts:
+              off:
+              high: high
+              max: max
           - id: kimi-2.6
             name: Kimi 2.6
             contextWindow: 262144

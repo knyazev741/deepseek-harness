@@ -31,17 +31,10 @@ git clone https://github.com/knyazev741/deepseek-harness.git
 cd deepseek-harness
 pnpm install
 pnpm run build
-pnpm dsh plugin --profile fork-web add -w @knyazevai/dsh@0.1.4
 pnpm dsh web
 ```
 
-In this repository checkout, `pnpm dsh web` starts the complete `fork-web`
-composition. The `@knyazevai/dsh` plugin aligns its provider, model, subagent,
-and compaction policy with the Knyazev AI deployment. Together they include a
-400k context window for DeepSeek V4 Flash, bounded compaction, transient-error
-retries, and long-cooldown recovery. Set `KNYAZEV_AI_API_KEY` to a key from
-[knyazevai.work](https://knyazevai.work) before starting. Use
-`pnpm dsh --profile web` to run the upstream-only composition explicitly.
+In this repository checkout, `pnpm dsh web` starts the complete `fork-web` composition with the built-in Knyazev AI provider. DeepSeek V4 Flash and GLM 5.3 Flash have a 400,000-token context window, up to 20 transient-error retries, and bounded compaction at 50% pressure in chunks of at most 131,072 tokens. The standard, code, and cordis presets allow two compaction and overflow retries for both models. Set `KNYAZEV_AI_API_KEY` to a key from [knyazevai.work](https://knyazevai.work) before starting. Use `pnpm dsh --profile web` to run the upstream-only composition explicitly.
 
 ## Community and support
 
