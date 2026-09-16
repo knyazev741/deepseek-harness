@@ -6,6 +6,7 @@
  * standard kit — never through the internal context objects (BindingContext
  * does not leave the package).
  */
+import type * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { act, render } from '@testing-library/react'

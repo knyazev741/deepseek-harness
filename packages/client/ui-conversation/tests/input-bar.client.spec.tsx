@@ -4,6 +4,7 @@
 // semantics (input stays free; continuable children keep Send beside Stop), the machine pending lock,
 // decoration backdrop, error banners, status strips, and the focus-keeping mousedown.
 
+import type * as React from 'react'
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'

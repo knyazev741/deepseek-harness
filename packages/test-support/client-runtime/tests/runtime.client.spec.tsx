@@ -6,6 +6,7 @@
  * idempotence. All through the production SlotRegistry + createSlotRenderer
  * stack — this suite is the fixture the migrated feature specs rely on.
  */
+import type * as React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { stubSettingsScope } from '../src/settings-scope.ts'
 import { cleanup } from '@testing-library/react'

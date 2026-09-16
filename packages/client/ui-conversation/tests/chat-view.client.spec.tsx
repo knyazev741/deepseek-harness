@@ -3,6 +3,7 @@
 // Tool seat ownership and selection handoff — driven through a scripted
 // ObservableSnapshot fake, no wire or Tool presentation plugin.
 
+import type * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useEffect } from 'react'
