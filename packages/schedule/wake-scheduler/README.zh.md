@@ -86,7 +86,7 @@ profile 可以为尚无计划的会话预置同类计划，让新会话一开就
 
 ### 作用域与组合
 
-插件声明 `inject = ['agents', 'storageDomain', 'tools']`，是带有 `name` / `inject` / `Config` / `apply` 的函数插件。它只观察加载之后发布的 `agent/created` 事件，并在每个匹配根 agent 的专属 scope 中注册这三个工具，因此工具调用是通过 scope 而不是参数来确定自己的会话。subagent 永远不会被调度，加载时已经存活的 agent 也不会被接管。
+插件声明 `inject = ['agents', 'storageDomain', 'tools']`，是带有 `name` / `inject` / `Config` / `apply` 的函数插件。它在每个活跃根 agent 的专属 scope 中安装这三个工具，因此工具调用是通过 scope 而不是参数来确定自己的会话：加载时已经存活的根 agent 会被接管，`agent/created` 观察在持久存储打开之前就已注册，而在这段打开期间发布的会话会在打开完成后立即被接管。安装对每个 agent 都是幂等的，因此重复事件不会重复注册工具或定时器。subagent 永远不会被调度。注册与定时器设置都会以 `info` 记录——`registered wake tools for session …`、`armed wake for session …`，以及一行记录已接管会话数的 `ready`——运维人员据此可以区分"插件根本没有加载"和"会话没有拿到工具"。
 
 ### 回合从何而来
 
@@ -169,7 +169,7 @@ No invariant companion is published because 本包不读取任何可能与它所
 - **没有投递回执** — 持久记录只表明 follow-up 已排队，不代表模型已回答或人已阅读。
 - **宿主侧状态** — 计划保存在唤醒域而不是会话日志中，因此读取冷历史不会暴露它，它也不会随 fork 一起带走。
 - **狭窄的重启重复窗口** — 在 follow-up 已排队但推进后的记录尚未持久化之间发生崩溃，重启后可能重复那一次唤醒。
-- **加载顺序边界** — 插件不会接管加载时已经存活的 agent。
+- **仅限根会话** — 工具安装在根 agent scope 中；subagent 会话永远不会获得它们。
 
 <a id="dev-note"></a>
 ### 开发备注

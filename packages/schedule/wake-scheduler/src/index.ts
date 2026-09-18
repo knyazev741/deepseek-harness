@@ -14,6 +14,7 @@ import { resolveIntervalMs } from './scheduling.ts'
 import type { WakeSchedule } from './scheduling.ts'
 import { wakeDomainSpec } from './persistence.ts'
 import { WakeScheduler } from './runtime.ts'
+import type { WakeStore } from './runtime.ts'
 import { registerWakeTools } from './tools.ts'
 
 /** Cordis function-plugin name used by loader diagnostics. */
@@ -54,6 +55,9 @@ interface Fallback {
   readonly startDelayMinutes: number
 }
 
+/** One agent-scoped teardown, which may await its owned work. */
+type Cleanup = () => void | Promise<void>
+
 /**
  * Resolve the profile fallback, failing loud on a configuration it cannot run.
  * Runs before any storage is opened, so a misconfiguration has no side effect.
@@ -75,26 +79,25 @@ function resolveFallback(config: Config): Fallback | undefined {
 }
 
 /**
- * Install the wake scheduler and its three tools for root agents published
- * after load. The profile fallback seeds a schedule only for a session that
- * has no durable record yet, so a tool-set or cancelled record always wins.
+ * Install the wake scheduler and its three tools. Every live root agent is
+ * adopted, whether it was published before this plugin loaded or after it,
+ * and a session published while the durable store is still opening is adopted
+ * as soon as that open resolves. Installation is idempotent per agent.
  * @param ctx - Host context carrying the Agent registry, durable storage, and the tool registry.
  * @param config - Validated plugin configuration.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
   const fallback = resolveFallback(config)
-  const domain = await ctx.storageDomain.open(wakeDomainSpec)
-  const store = domain.table('schedules')
-  const scheduler = new WakeScheduler<Agent>({
-    store,
-    logger: ctx.logger,
-    isLive: target => ctx.agents.get(target.id) === target && ctx.agents.roots().includes(target),
-  })
+  const installed = new Map<Agent, Cleanup>()
+  const pending = new Set<Agent>()
+  // Holds the services that only exist after the durable store opens; `install`
+  // reads through it, so an event during that open is queued instead of missed.
+  const ready: { store?: WakeStore; scheduler?: WakeScheduler<Agent> } = {}
 
   /** Seed the profile fallback once for a session without a durable record, then arm. */
-  const armAgent = async (agent: Agent): Promise<void> => {
-    if (store.get(agent.id) !== undefined) {
-      scheduler.apply(agent)
+  async function seedAndArm(agent: Agent, activeStore: WakeStore, owner: WakeScheduler<Agent>): Promise<void> {
+    if (activeStore.get(agent.id) !== undefined) {
+      owner.apply(agent)
       return
     }
     if (fallback === undefined) return
@@ -113,35 +116,80 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
       updatedAt: now,
     }
     try {
-      await store.put(agent.id, record)
+      await activeStore.put(agent.id, record)
     } catch (error: unknown) {
       ctx.logger.warn(
         `wake-scheduler: fallback schedule write failed for session "${agent.id}": ${error instanceof Error ? error.message : String(error)}`,
       )
       return
     }
-    scheduler.apply(agent)
+    owner.apply(agent)
   }
 
-  ctx.effect(() => {
-    const stopCreated = ctx.on('agent/created', ({ agent }) => {
-      if (!ctx.agents.roots().includes(agent)) return
-      agent.ctx.effect(() => {
-        const disposeTools = registerWakeTools(agent.ctx, agent, {
-          store,
-          onScheduleChanged: () => { scheduler.apply(agent) },
-        })
-        void armAgent(agent)
-        return () => {
-          disposeTools()
-          scheduler.disarm(agent.id)
-        }
-      }, 'wake-scheduler.agent()')
-    })
-    return () => {
-      stopCreated()
-      scheduler.dispose()
-      void domain.close()
+  /** Install the tools and the initial timer exactly once for one live root agent. */
+  const install = (agent: Agent): void => {
+    const activeStore = ready.store
+    const owner = ready.scheduler
+    if (activeStore === undefined || owner === undefined) {
+      pending.add(agent)
+      return
     }
+    if (installed.has(agent)) return
+    if (!ctx.agents.roots().includes(agent)) return
+    const cleanup: Cleanup = agent.ctx.effect(() => {
+      const disposeTools = registerWakeTools(agent.ctx, agent, {
+        store: activeStore,
+        onScheduleChanged: () => { owner.apply(agent) },
+      })
+      ctx.logger.info(`wake-scheduler: registered wake tools for session "${agent.id}"`)
+      void seedAndArm(agent, activeStore, owner)
+      return () => {
+        installed.delete(agent)
+        disposeTools()
+        owner.disarm(agent.id)
+      }
+    }, 'wake-scheduler.agent()')
+    installed.set(agent, cleanup)
+  }
+
+  // The observation is registered before the first await, so a session published
+  // while the durable store opens is adopted instead of missed.
+  const stopObserving = ctx.effect(() => ctx.on('agent/created', ({ agent }) => {
+    install(agent)
+  }), 'wake-scheduler.observation()')
+
+  let domain
+  try {
+    domain = await ctx.storageDomain.open(wakeDomainSpec)
+  } catch (error: unknown) {
+    ctx.logger.warn(
+      `wake-scheduler: durable store open failed, so the wake tools are unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    void stopObserving()
+    throw error
+  }
+  ready.store = domain.table('schedules')
+  ready.scheduler = new WakeScheduler<Agent>({
+    store: ready.store,
+    logger: ctx.logger,
+    isLive: target => ctx.agents.get(target.id) === target && ctx.agents.roots().includes(target),
+  })
+  const scheduler = ready.scheduler
+
+  for (const agent of ctx.agents.roots()) pending.add(agent)
+  for (const agent of [...pending]) {
+    pending.delete(agent)
+    install(agent)
+  }
+  ctx.logger.info(
+    `wake-scheduler: ready; ${installed.size} live root session(s) adopted; profile fallback ${fallback === undefined ? 'disabled' : 'enabled'}`,
+  )
+
+  ctx.effect(() => () => {
+    void stopObserving()
+    scheduler.dispose()
+    for (const cleanup of [...installed.values()]) void cleanup()
+    installed.clear()
+    void domain.close()
   }, 'wake-scheduler.lifecycle()')
 }

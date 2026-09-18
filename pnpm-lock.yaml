@@ -8788,6 +8788,9 @@ importers:
       '@knyazevai/dsh-agent':
         specifier: workspace:^
         version: link:../../core/agent
+      '@knyazevai/dsh-agent-loop-testkit':
+        specifier: workspace:^
+        version: link:../../test-support/agent-loop-testkit
       '@knyazevai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm

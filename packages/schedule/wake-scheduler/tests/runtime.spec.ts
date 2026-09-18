@@ -140,7 +140,7 @@ describe('WakeScheduler', () => {
       skippedIntervals: 6,
       nextRunAt: T0 + INTERVAL,
     })
-    expect(h.infos[0]).toContain('after skipping 6 interval(s)')
+    expect(h.infos.some(line => line.includes('after skipping 6 interval(s)'))).toBe(true)
 
     await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.messages).toHaveLength(2)
@@ -151,6 +151,30 @@ describe('WakeScheduler', () => {
     h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(INTERVAL * 3)
+    expect(h.messages).toHaveLength(0)
+  })
+
+  it('logs the armed target and stays silent without a schedule', async () => {
+    const h = harness()
+    h.scheduler.apply(h.target)
+    expect(h.infos).toHaveLength(1)
+    expect(h.infos[0]).toContain('armed wake for session')
+    expect(h.infos[0]).toContain(new Date(T0 + INTERVAL).toISOString())
+
+    const quiet = harness()
+    quiet.store.map.delete(SESSION)
+    quiet.scheduler.apply(quiet.target)
+    expect(quiet.infos).toHaveLength(0)
+  })
+
+  it('logs a disarm when an armed target loses its schedule', async () => {
+    const h = harness()
+    h.scheduler.apply(h.target)
+    h.store.map.set(SESSION, schedule({ status: 'cancelled', nextRunAt: null }))
+    h.scheduler.apply(h.target)
+
+    expect(h.infos.some(line => line.includes('disarmed wake for session'))).toBe(true)
+    await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.messages).toHaveLength(0)
   })
 

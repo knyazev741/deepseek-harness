@@ -74,11 +74,18 @@ export class WakeScheduler<Target extends WakeTarget = WakeTarget> {
     if (this.disposed) return
     const schedule = this.options.store.get(target.id)
     if (schedule === undefined || schedule.status !== 'active') {
-      this.disarm(target.id)
+      if (this.timers.has(target.id)) {
+        this.disarm(target.id)
+        this.options.logger.info(`wake-scheduler: disarmed wake for session "${target.id}"`)
+      }
       return
     }
     const now = this.now()
-    this.scheduleAt(target, planDueAt(schedule, now), now)
+    const due = planDueAt(schedule, now)
+    this.scheduleAt(target, due, now)
+    this.options.logger.info(
+      `wake-scheduler: armed wake for session "${target.id}" at ${new Date(due).toISOString()}`,
+    )
   }
 
   /**

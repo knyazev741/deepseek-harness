@@ -21,6 +21,8 @@ Status: implemented
 - 持久计划存放在新的 `wake_scheduler` 存储域（表 `schedules`）中，而不是会话日志中，因此不新增会话事件类型，`SESSION_FORMAT_VERSION` 也不变。
 - 由 `Config` 预置的 profile 回退是可选的，且默认关闭；agent 设置或取消的记录始终优先于它。
 
+每个活跃根 agent 都会被接管，无论它是在插件加载之前还是之后发布的：`agent/created` 观察在持久存储打开之前就已注册，在这段打开期间发布的会话会在打开完成后立即被接管，而安装对每个 agent 都是幂等的。注册、定时器设置，以及一行记录已接管会话数的 `ready` 都会以 `info` 记录，运维人员据此可以区分"插件根本没有加载"和"会话没有拿到工具"。
+
 补发只取最近一次，并且可见。已存储的未来目标会被精确遵守；已经过去的目标——进程曾经停止，或会话曾经是冷的——只产生一次立即补发回合，并记录被合并的间隔数；`wake_schedule_status` 会以 `skippedIntervals` 与 `overdue` 报告它。失败的 follow-up 不写入任何内容，并在一个间隔后重试，因此损坏的目标不会空转。
 
 ## 备选方案
@@ -41,4 +43,4 @@ agent 现在自己掌握节奏：只要挂载了 overlay，并且该会话在运
 
 已接受的代价：宿主侧记录不会随 fork 一起带走，也不会出现在冷历史中；在 follow-up 与推进后的持久记录之间发生崩溃可能重复一次唤醒；而一个再也不会被加载的会话永远不会收到补发回合，因为不存在外部通道。
 
-覆盖情况：`tests/scheduling.spec.ts` 固定运算与状态视图，`tests/runtime.spec.ts` 针对模拟的会话层固定"每个间隔一个回合"、补发、隔离与处置，`tests/tools.spec.ts` 固定 set/status/cancel 的校验与持久变更，`tests/plugin.spec.ts` 固定回退预置、工具优先于配置、取消以及重启补发。五个源码文件都达到逐文件 100% 的语句、分支、函数与行覆盖。把这些 schema 采集进生成的工具目录，以及子进程真实组合测试，仍然缺失。
+覆盖情况：`tests/scheduling.spec.ts` 固定运算与状态视图，`tests/runtime.spec.ts` 针对模拟的会话层固定"每个间隔一个回合"、补发、隔离、定时器设置诊断与处置，`tests/tools.spec.ts` 固定 set/status/cancel 的校验与持久变更，`tests/plugin.spec.ts` 固定对已存在根会话的接管、对存储打开期间发布会话的接管、对较晚 resume 会话的接管、重复安装的幂等性、回退预置、工具优先于配置、取消以及重启补发。五个源码文件都达到逐文件 100% 的语句、分支、函数与行覆盖。`tests/composition.spec.ts` 在 agent-loop testkit 服务之上用真实的 Cordis `Context` 挂载本插件，并固定注入的两个方向：所有被注入的服务都存在时它会激活并打开存储，而在服务缺失时保持惰性。把这些 schema 采集进生成的工具目录，以及子进程 profile 启动测试，仍然缺失。

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-profile-wake-scheduler.md
-2026-09-18-profile-wake-scheduler.md: 20bde2ba037f29d3f04728c9af8ea3471902cdf2
-2026-09-18-profile-wake-scheduler.zh.md: d3e4f28daca528fd48fdc827f440c794425bb646
+2026-09-18-profile-wake-scheduler.md: 5191514b7e1882cd6cc2fc144133fa27939117fd
+2026-09-18-profile-wake-scheduler.zh.md: e3f1628d3ae121b6d28faaf4cc7c2fa62a4d18ad
