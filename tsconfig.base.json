@@ -509,6 +509,7 @@
       "@knyazevai/dsh-user-approval": ["./packages/interaction/user-approval/src"],
       "@knyazevai/dsh-user-approval/invariant": ["./packages/interaction/user-approval/src/invariant.ts"],
       "@knyazevai/dsh-user-questions": ["./packages/interaction/user-questions/src"],
+      "@knyazevai/dsh-wake-scheduler": ["./packages/schedule/wake-scheduler/src"],
       "@knyazevai/dsh-web": ["./packages/web/web/src"],
       "@knyazevai/dsh-web-app": ["./packages/bundle/web-app/src"],
       "@knyazevai/dsh-web-fetch-http": ["./packages/web/web-fetch-http/src"],

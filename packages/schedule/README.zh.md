@@ -25,6 +25,7 @@ schedule 组让 agent（智能体）为当前会话创建、列出和取消提�
 | 包 | 职责 | ctx 键 |
 |---|---|---|
 | [`schedule/`](schedule/README.zh.md) | 会话本地提醒：安排、列出并取消活动记录；发布供 header 目录与列表行标识读取的可选只读 projection；把到期提醒作为会话消息交付 | —（工具只注册在精确的 agent scope 中） |
+| [`wake-scheduler/`](wake-scheduler/README.zh.md) | 可选启用的 profile 配置间隔：在无人写入时，按间隔在匹配的活跃根会话中发起一个回合；自身没有工具、没有会话事件，也没有模型可见的界面 | —（仅驱动 agent） |
 
 -----
 

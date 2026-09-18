@@ -92,6 +92,7 @@
     "@knyazevai/dsh-tool-todo": "workspace:^",
     "@knyazevai/dsh-tool-web": "workspace:^",
     "@knyazevai/dsh-tool-workflow": "workspace:^",
+    "@knyazevai/dsh-wake-scheduler": "workspace:^",
     "@knyazevai/dsh-web-app": "workspace:^",
     "@knyazevai/dsh-webhook": "workspace:^",
     "@knyazevai/dsh-webhook-github": "workspace:^",

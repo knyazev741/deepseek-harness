@@ -25,6 +25,7 @@ The schedule group lets an agent create, list, and cancel reminders for the curr
 | Package | Role | ctx key |
 |---|---|---|
 | [`schedule/`](schedule/README.md) | Session-local reminders: schedule, list, and cancel active records; publish an optional read-only projection for the header catalog and list-row marker; deliver due reminders as conversation messages | — (tools only, in the exact agent scope) |
+| [`wake-scheduler/`](wake-scheduler/README.md) | Opt-in profile-configured interval that initiates a turn in matching live root sessions while nobody writes to them; no tools, no session events, and no model-visible surface of its own | — (drives agents only) |
 
 -----
 
