@@ -34,13 +34,15 @@
     "@deepseek-ai/cordis": "workspace:^",
     "@knyazevai/dsh-agent": "workspace:^",
     "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-storage-domain": "workspace:^"
+    "@knyazevai/dsh-storage-domain": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@knyazevai/dsh-agent": "workspace:^",
     "@knyazevai/dsh-llm": "workspace:^",
     "@knyazevai/dsh-storage": "workspace:^",
-    "@knyazevai/dsh-storage-domain": "workspace:^"
+    "@knyazevai/dsh-storage-domain": "workspace:^",
+    "@knyazevai/dsh-tools": "workspace:^"
   }
 }

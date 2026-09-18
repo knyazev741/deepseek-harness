@@ -1,5 +1,5 @@
 ---
-description: "Opt-in profile-configured wake scheduler: an interval and prompt that initiate a turn in matching live root sessions without a user message, for owners who need unattended periodic work."
+description: "Agent-set durable wake-up schedules: wake_schedule_set, wake_schedule_status, and wake_schedule_cancel start a periodic turn in the calling session, with an optional profile-configured fallback."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Wake Scheduler initiates an ordinary turn in a matching live root session on a profile-configured interval, using the same follow-up path a human message takes, so no background job and no notification delivery are involved. It exists because background-job completion notices queue while a session is idle and only surface on the next human activity, which makes "check every 30 minutes" fail whenever nobody writes to the conversation. The scheduler is disabled by default, has no tools and no model-visible surface of its own, and never leaves the session: no email, SMS, push, or browser notification.
+Wake Scheduler lets the agent put its own conversation on a timer: it calls `wake_schedule_set` in that session, the harness starts one ordinary turn per interval with the agent's prompt even while nobody writes, and `wake_schedule_status` or `wake_schedule_cancel` inspects or stops it. It exists because background-job completion notices never wake an idle session — they queue and arrive with the next human message — so a promised periodic check fails whenever the conversation is quiet. A profile may seed a fallback, but an agent-set schedule wins and survives restarts.
 
 ## Table of Contents
 
@@ -25,11 +25,11 @@ Wake Scheduler initiates an ordinary turn in a matching live root session on a p
 <a id="use-this-package"></a>
 ## Use this package
 
-Choose Wake Scheduler when a conversation must keep working on its own — a periodic check-in, a long watch, a scheduled review — and the session stays live in a running `dsh` process. Avoid it when the work must reach you outside the session, when the process may be down at the target time, or when you need calendar or Cron rules: the interval is fixed and whole-minute.
+Choose Wake Scheduler when a conversation must keep working on its own — a periodic check-in, a long watch, a scheduled review — and the session stays live in a running `dsh` process. Avoid it when the work must reach you outside the session, or when you need calendar or Cron rules: the interval is fixed and whole-minute.
 
-### Enable Wake Scheduler
+### Install the overlay
 
-Mount the overlay and set the profile configuration; the scheduler is inert until `enabled` is `true`:
+The scheduler is inert until a profile mounts it; the agent-facing tools then exist in every root session created after load:
 
 ```sh
 dsh web --patch apps/cli/config/examples/wake-scheduler/cordis.yml
@@ -40,30 +40,41 @@ dsh web --patch apps/cli/config/examples/wake-scheduler/cordis.yml
     - id: wake-scheduler
       name: '@knyazevai/dsh-wake-scheduler'
       config:
+        enabled: false
+```
+
+With `enabled: false` — the shipped default — the agent can still set its own schedule, but the profile seeds none.
+
+### Let the agent set the schedule
+
+Ask the agent to wake itself, and it calls `wake_schedule_set` in the current session; no session id is ever passed, because the tool acts on the session of the agent scope that owns it. A successful call returns the stored schedule, including its next due instant:
+
+```json
+{"scheduled":true,"status":"active","source":"tool","prompt":"check the build","intervalMinutes":30,"nextRunAt":"2026-09-18T00:30:00.000Z","lastRunAt":null,"runs":0,"overdue":false,"skippedIntervals":0}
+```
+
+The three tools are the complete interface: `wake_schedule_set` takes `interval_minutes` (required, whole minutes), an optional `prompt`, and an optional `start_delay_minutes` (defaults to the interval; `0` fires the first wake immediately). `wake_schedule_status` takes no arguments and reports the schedule, its next and last wake instants, how many wakes fired, whether one catch-up wake is currently queued, and how many intervals the last catch-up collapsed. `wake_schedule_cancel` takes no arguments, stops the session's schedule, and suppresses any profile fallback until a later set. Setting a schedule again replaces the previous one.
+
+### Enable the profile fallback
+
+A profile may seed the same kind of schedule for a session that has none yet, so a fresh conversation starts already periodic:
+
+```yaml
+- insert:
+    - id: wake-scheduler
+      name: '@knyazevai/dsh-wake-scheduler'
+      config:
         enabled: true
         intervalMinutes: 30
         prompt: 'Scheduled check-in: continue the plan and report anything that needs my decision.'
-        # sessionId: session-...   # omit to schedule every root session
-        # startDelayMinutes: 30    # first wake delay; defaults to intervalMinutes
+        sessionId: session-...
 ```
 
-Success looks like one new user turn in the target conversation every 30 minutes, each tagged by the plugin source, plus an `info` log line naming the session and the run number. A disabled configuration — the default — loads the plugin as a no-op, opens no storage, and changes nothing.
+An enabled fallback with a missing interval or blank prompt fails at plugin load. A record the agent set or cancelled always takes priority over the fallback, and the fallback never rewrites it.
 
-### Configuration
+### What happens across restarts and cold sessions
 
-| Field | Required | Meaning |
-|---|---|---|
-| `enabled` | no (default `false`) | Runs the scheduler. Every other field is ignored while false. |
-| `intervalMinutes` | yes when enabled | Whole minutes between wakes, at least 1. |
-| `prompt` | yes when enabled | Non-empty text of the turn the scheduler initiates. |
-| `sessionId` | no | Binds the schedule to one conversation. Omitted, every root agent created while the plugin is loaded is scheduled. |
-| `startDelayMinutes` | no | Whole minutes from load to the first wake when no cursor is stored. Defaults to `intervalMinutes`. |
-
-An enabled run with a missing interval or blank prompt fails at plugin load instead of silently doing nothing.
-
-### What happens across restarts
-
-The last and next wake instants are stored in the `wake_scheduler` storage domain, not in the session log. After a restart the scheduler reads the cursor back: a still-future target is honored exactly, and a target already in the past produces one catch-up wake. Missed intervals are never replayed as a backlog, and one interval never produces more than one turn.
+Every schedule is stored durably per session id, so it survives a harness restart and a session that was closed. If the target instant passed while the session was not open, the next load dispatches exactly one catch-up turn — never a backlog — and records how many intervals it collapsed, which `wake_schedule_status` reports as `skippedIntervals` with `overdue: true` until that turn runs. The schedule keeps its cadence from the moment of the catch-up.
 
 -----
 
@@ -75,31 +86,33 @@ The last and next wake instants are stored in the `wake_scheduler` storage domai
 
 ### Scope and composition
 
-The plugin declares `inject = ['agents', 'storageDomain']` and is a function plugin with `name` / `inject` / `Config` / `apply`. It observes only `agent/created` events published after it loads, arms a timer for each matching root agent, and unwinds every timer through the agent's own scoped effect on disposal. Agents already live at load time are not adopted, and subagents are never scheduled.
+The plugin declares `inject = ['agents', 'storageDomain', 'tools']` and is a function plugin with `name` / `inject` / `Config` / `apply`. It observes only `agent/created` events published after it loads, and registers the three tools in each matching root agent's exclusive scope, so a tool call identifies its session through the scope rather than an argument. Subagents are never scheduled, and agents already live at load time are not adopted.
 
 ### Where the turn comes from
 
-A due wake calls `agent.followup(createUserMessage({ content, source: { kind: 'plugin', plugin: 'wake-scheduler' } }))`. This is the loop's ordinary follow-up boundary: it queues a normal user turn and wakes the driver, and it never steers or interrupts work already running. Nothing in this package creates a background job, appends a private session event type, or touches the job notification path.
+A due wake calls `agent.followup(createUserMessage({ content, source: { kind: 'plugin', plugin: 'wake-scheduler' } }))`, the loop's ordinary follow-up boundary: it queues a normal user turn and wakes the driver, and it never steers or interrupts work already running. Nothing here creates a background job, appends a private session event type, or touches the job notification path.
 
 ### Source map
 
 | File | Role |
 |---|---|
-| [`src/index.ts`](src/index.ts) | Plugin entry: configuration, `agent/created` observation, cursor domain, per-agent arming |
-| [`src/runtime.ts`](src/runtime.ts) | Live timer owner: arm/disarm/dispose, one-turn dispatch, diagnostics |
-| [`src/scheduling.ts`](src/scheduling.ts) | Pure cadence arithmetic: validation, next-due resolution, catch-up, timer segments |
+| [`src/index.ts`](src/index.ts) | Plugin entry: configuration, `agent/created` observation, fallback seeding, per-agent tool installation |
+| [`src/tools.ts`](src/tools.ts) | The three agent-facing tools, their schemas, validation, and durable mutations |
+| [`src/runtime.ts`](src/runtime.ts) | Live timer owner: arm from the stored schedule, one-turn dispatch, containment, disposal |
+| [`src/scheduling.ts`](src/scheduling.ts) | Pure arithmetic and the canonical model-facing status view |
+| [`src/persistence.ts`](src/persistence.ts) | The durable `wake_scheduler` domain and its strict record schema |
 
 ### Durable state
 
-The `wake_scheduler` domain (version 1, table `cursors`) holds one `{ lastRunAt, nextRunAt, runs }` record per session id. A dispatched wake persists the new cursor before re-arming, and the timer is armed from the computed target rather than from a re-read, so a failed cursor write cannot produce a second immediate wake. Writes resolve only after the backend is durable, so a restart reads back either the previous interval or the advanced one, never a torn value.
+The `wake_scheduler` domain (version 1, table `schedules`) holds one record per session id with its status, source, prompt, interval, start delay, last and next wake instants, run count, skip count, and write time. This is host-side operational state, not session history: no session event type is added and `SESSION_FORMAT_VERSION` is unchanged, so a build without this plugin still reads the log. A set or cancel returns only after the backend is durable.
 
 ### Failure containment
 
-A follow-up that throws is contained: the run advances no cursor, logs a `warn`, and the next attempt is one full interval later, which prevents a hot loop. A cursor write failure is contained the same way; the delivered turn stands and the next interval continues. A target that is no longer the registry's live root for that session is skipped. The scheduler's `dispose` clears every armed timer without deleting durable cursors.
+A follow-up that throws is contained: the run advances nothing, logs a `warn`, and retries one full interval later, so a broken target cannot spin. A schedule write failure is contained the same way; the delivered turn stands and the next interval continues. A target that is no longer that session's live root is skipped and its record is left overdue for the next load. Disposal clears every armed timer without deleting durable schedules.
 
 ### Why there is no `./invariant` companion
 
-No invariant companion is published because the package reads no second observation that could diverge from the one it owns. Every write path is one synchronous `followup` followed by one durable `put` on the same value, so there is no independent observation to assert, and the companion and its wiring are omitted rather than shipped empty.
+No invariant companion is published because the package reads no second observation that could diverge from the one it owns. Every mutation is one durable write on the domain table followed by one timer re-arm from that stored record, so there is no independent observation to assert, and the companion and its wiring are omitted rather than shipped empty.
 
 </details>
 
@@ -118,11 +131,25 @@ No invariant companion is published because the package reads no second observat
 <a id="model-experience"></a>
 ## Model Experience
 
+### Wake-schedule tools
+
+#### What the model sees
+
+The model sees three schemas in every live root agent created after this plugin loads. `wake_schedule_set` takes `interval_minutes` (required whole minutes, at least 1), `prompt` (optional; a generic check-in is used when omitted), and `start_delay_minutes` (optional whole minutes, `0` fires immediately). `wake_schedule_status` and `wake_schedule_cancel` take no arguments. Every result is the canonical JSON status object or a closed error with code `invalid_interval`, `invalid_prompt`, `persistence_uncertain`, or `internal_error`.
+
+#### Token effect
+
+The three scoped schemas add a fixed request prefix while the plugin is installed. Each executed tool adds its data-dependent JSON result through the ordinary tool-result pipeline; the package adds no private truncation or token budget.
+
+#### KV Cache effect
+
+The schemas remain prefix-stable while their definitions and scope stay unchanged. Tool calls and results append to later history and preserve an already reusable prefix.
+
 ### Scheduled wake turn
 
 #### What the model sees
 
-Each fired interval queues one ordinary user-role message whose text is the configured `prompt` verbatim, tagged with `source: { kind: 'plugin', plugin: 'wake-scheduler' }`. The package adds no tool schema, no system-prompt section, and no other model-visible input.
+Each fired interval queues one ordinary user-role message whose text is the schedule's prompt verbatim, tagged with `source: { kind: 'plugin', plugin: 'wake-scheduler' }`. The package adds no system-prompt section and no other model-visible input.
 
 #### Token effect
 
@@ -130,18 +157,18 @@ Each wake adds one data-dependent user message that remains in session history a
 
 #### KV Cache effect
 
-The wake appends after existing history and preserves an already reusable prefix; only the appended message depends on the configured prompt.
+The wake appends after existing history and preserves an already reusable prefix; only the appended message depends on the stored prompt.
 
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **Live process only** — a wake fires only while the scheduled session is a live root agent of a running `dsh` process. A cold or unloaded session receives nothing, and no external channel exists.
-- **Fixed interval, not calendar rules** — `intervalMinutes` is whole minutes and creation-anchored; Cron and weekday rules are not supported.
-- **Broadcast default** — omitting `sessionId` schedules every root agent created after load, which is deliberate for a single-conversation profile and surprising for a multi-conversation one.
-- **No delivery receipt** — a persisted cursor records that the follow-up was queued, not that the model answered or the person read it.
-- **Host-side cursor** — the next-run state lives in storage, not in the session log, so reading cold history does not reveal the schedule and the cursor does not travel with a fork.
-- **Narrow restart duplicate window** — a crash after the follow-up is queued but before the cursor is durable can repeat that one wake after restart.
+- **Live process only** — a wake fires only while the scheduled session is a live root agent of a running `dsh` process; a cold session gets its one catch-up turn only when it is loaded again. No external channel exists.
+- **Fixed interval, not calendar rules** — `interval_minutes` is whole minutes and anchored when the schedule is set; Cron and weekday rules are not supported.
+- **Tool catalog not harvested** — `pnpm run gen-tool-catalog` does not yet mount this package, so the generated catalog does not list these three schemas; the package README carries them.
+- **No delivery receipt** — a persisted record shows that the follow-up was queued, not that the model answered or the person read it.
+- **Host-side state** — the schedule lives in the wake domain, not in the session log, so reading cold history does not reveal it and it does not travel with a fork.
+- **Narrow restart duplicate window** — a crash after the follow-up is queued but before the advanced record is durable can repeat that one wake after restart.
 - **Load-order boundary** — the plugin does not adopt agents that were already live when it loaded.
 
 <a id="dev-note"></a>
@@ -150,6 +177,6 @@ The wake appends after existing history and preserves an already reusable prefix
 <details>
 <summary>Working context for maintainers — click to expand</summary>
 
-This Dev Note is working context for maintainers: open directions that are not decided. Waking a cold persisted session through `ctx.agents.resume` is the obvious next step for "schedule even when unloaded", but it needs an ownership and disposal answer for a scheduler-created agent that the Web host may later resume itself. No schedule or design owner yet.
+This Dev Note is working context for maintainers: open directions that are not decided. Waking a cold persisted session through `ctx.agents.resume` is the obvious next step for "fire even when unloaded", but it needs an ownership and disposal answer for a scheduler-created agent that the Web host may later resume itself. Harvesting these schemas into the generated tool catalog is pending. Neither direction has a schedule or design owner.
 
 </details>

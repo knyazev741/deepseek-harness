@@ -1,108 +1,141 @@
 /**
- * Opt-in wake scheduler: a profile-configured interval and prompt that
- * initiate a turn in matching live root sessions on their own, without a
- * user message and without a background job. Disabled unless the profile
- * enables it, and mounted through an ordinary patch overlay.
+ * Opt-in wake scheduler. A profile configuration seeds a fallback interval,
+ * and the agent itself sets, inspects, or cancels a durable per-session
+ * schedule through `wake_schedule_set`, `wake_schedule_status`, and
+ * `wake_schedule_cancel`. A due schedule initiates an ordinary turn in that
+ * live session, without a user message and without a background job.
  * @module @knyazevai/dsh-wake-scheduler
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { z as zod } from 'zod'
 import type { Agent } from '@knyazevai/dsh-agent'
-import { defineDomain, domainTable } from '@knyazevai/dsh-storage-domain'
-import { MIN_INTERVAL_MINUTES, resolveIntervalMs } from './scheduling.ts'
+import { resolveIntervalMs } from './scheduling.ts'
+import type { WakeSchedule } from './scheduling.ts'
+import { wakeDomainSpec } from './persistence.ts'
 import { WakeScheduler } from './runtime.ts'
+import { registerWakeTools } from './tools.ts'
 
 /** Cordis function-plugin name used by loader diagnostics. */
 export const name = 'wake-scheduler'
-/** The agent registry and the durable cursor form must exist before a wake can be armed. */
-export const inject = ['agents', 'storageDomain']
+/** Agent registry, durable schedule form, and the tool registry the tools register into. */
+export const inject = ['agents', 'storageDomain', 'tools']
 
 /** Profile configuration for the wake scheduler. Invalid values fail plugin load. */
 export interface Config {
-  /** Whether the scheduler runs at all. Defaults to false; every other field is ignored while disabled. */
+  /** Whether the profile fallback schedule runs. Defaults to false; tool-set schedules work either way. */
   enabled?: boolean
-  /** Whole minutes between wakes; required when enabled. */
+  /** Fallback interval in whole minutes; required when enabled. */
   intervalMinutes?: number
-  /** Text of the turn this scheduler initiates; required and non-empty when enabled. */
+  /** Fallback turn text; required and non-empty when enabled. */
   prompt?: string
-  /** Session to schedule. Omit to schedule every root agent created while the scheduler is loaded. */
+  /** Session the fallback applies to. Omit to seed every root session created while the plugin is loaded. */
   sessionId?: string
-  /** Whole minutes from load to the first wake when no cursor is stored. Defaults to `intervalMinutes`. */
+  /** Fallback whole minutes from load to the first wake. Defaults to `intervalMinutes`. */
   startDelayMinutes?: number
 }
 
 /** Schemastery validation for {@link Config}. */
 export const Config: z<Config> = z.object({
   enabled: z.boolean().default(false),
-  intervalMinutes: z.number().step(1).min(MIN_INTERVAL_MINUTES),
+  intervalMinutes: z.number().step(1).min(1),
   prompt: z.string(),
   sessionId: z.string(),
-  startDelayMinutes: z.number().step(1).min(MIN_INTERVAL_MINUTES),
+  startDelayMinutes: z.number().step(1).min(1),
 })
 
-const cursorSchema = zod.object({
-  /** Epoch milliseconds of the last dispatched wake. */
-  lastRunAt: zod.number(),
-  /** Epoch milliseconds at which the next wake is due. */
-  nextRunAt: zod.number(),
-  /** Wakes dispatched since the cursor was created. */
-  runs: zod.number(),
-})
-
-/** Durable per-session cursor. The scheduler's only restart state. */
-const wakeDomainSpec = defineDomain({
-  name: 'wake_scheduler',
-  version: 1,
-  tables: { cursors: domainTable(cursorSchema) },
-})
-
-/**
- * Resolve the configured cadence, failing loud on a configuration the
- * scheduler cannot run. Only called when the scheduler is enabled.
- * @param config - Validated plugin configuration.
- * @returns the resolved interval and first-wake offset.
- */
-function resolveCadence(config: Config): { intervalMs: number; startDelayMs: number } {
-  if (config.intervalMinutes === undefined) {
-    throw new Error('wake-scheduler: intervalMinutes is required when enabled')
-  }
-  const intervalMs = resolveIntervalMs(config.intervalMinutes)
-  const startDelayMs = config.startDelayMinutes === undefined
-    ? intervalMs
-    : resolveIntervalMs(config.startDelayMinutes)
-  return { intervalMs, startDelayMs }
+/** Resolved profile fallback schedule. */
+interface Fallback {
+  /** Turn text the fallback presents. */
+  readonly prompt: string
+  /** Whole minutes between wakes. */
+  readonly intervalMinutes: number
+  /** Whole minutes from seeding to the first wake. */
+  readonly startDelayMinutes: number
 }
 
 /**
- * Install the wake scheduler for matching root agents published after load.
- * A disabled configuration is a no-op and opens no storage.
- * @param ctx - Host context carrying the Agent registry and durable storage.
+ * Resolve the profile fallback, failing loud on a configuration it cannot run.
+ * Runs before any storage is opened, so a misconfiguration has no side effect.
+ * @param config - Validated plugin configuration.
+ * @returns the resolved fallback, or undefined when the fallback is disabled.
+ */
+function resolveFallback(config: Config): Fallback | undefined {
+  if (config.enabled !== true) return undefined
+  if (config.intervalMinutes === undefined) {
+    throw new Error('wake-scheduler: intervalMinutes is required when enabled')
+  }
+  const intervalMinutes = config.intervalMinutes
+  resolveIntervalMs(intervalMinutes)
+  const startDelayMinutes = config.startDelayMinutes ?? intervalMinutes
+  resolveIntervalMs(startDelayMinutes)
+  const prompt = (config.prompt ?? '').trim()
+  if (prompt === '') throw new Error('wake-scheduler: prompt must be non-empty when enabled')
+  return { prompt, intervalMinutes, startDelayMinutes }
+}
+
+/**
+ * Install the wake scheduler and its three tools for root agents published
+ * after load. The profile fallback seeds a schedule only for a session that
+ * has no durable record yet, so a tool-set or cancelled record always wins.
+ * @param ctx - Host context carrying the Agent registry, durable storage, and the tool registry.
  * @param config - Validated plugin configuration.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
-  if (config.enabled !== true) return
-  const cadence = resolveCadence(config)
-  const prompt = (config.prompt ?? '').trim()
-  if (prompt === '') throw new Error('wake-scheduler: prompt must be non-empty when enabled')
-
+  const fallback = resolveFallback(config)
   const domain = await ctx.storageDomain.open(wakeDomainSpec)
+  const store = domain.table('schedules')
   const scheduler = new WakeScheduler<Agent>({
-    cadence,
-    prompt,
-    table: domain.table('cursors'),
+    store,
     logger: ctx.logger,
     isLive: target => ctx.agents.get(target.id) === target && ctx.agents.roots().includes(target),
   })
 
+  /** Seed the profile fallback once for a session without a durable record, then arm. */
+  const armAgent = async (agent: Agent): Promise<void> => {
+    if (store.get(agent.id) !== undefined) {
+      scheduler.apply(agent)
+      return
+    }
+    if (fallback === undefined) return
+    if (config.sessionId !== undefined && config.sessionId !== agent.id) return
+    const now = Date.now()
+    const record: WakeSchedule = {
+      status: 'active',
+      source: 'config',
+      prompt: fallback.prompt,
+      intervalMinutes: fallback.intervalMinutes,
+      startDelayMinutes: fallback.startDelayMinutes,
+      lastRunAt: null,
+      nextRunAt: now + fallback.startDelayMinutes * 60_000,
+      runs: 0,
+      skippedIntervals: 0,
+      updatedAt: now,
+    }
+    try {
+      await store.put(agent.id, record)
+    } catch (error: unknown) {
+      ctx.logger.warn(
+        `wake-scheduler: fallback schedule write failed for session "${agent.id}": ${error instanceof Error ? error.message : String(error)}`,
+      )
+      return
+    }
+    scheduler.apply(agent)
+  }
+
   ctx.effect(() => {
     const stopCreated = ctx.on('agent/created', ({ agent }) => {
-      if (config.sessionId !== undefined && agent.id !== config.sessionId) return
       if (!ctx.agents.roots().includes(agent)) return
       agent.ctx.effect(() => {
-        scheduler.arm(agent)
-        return () => { scheduler.disarm(agent.id) }
+        const disposeTools = registerWakeTools(agent.ctx, agent, {
+          store,
+          onScheduleChanged: () => { scheduler.apply(agent) },
+        })
+        void armAgent(agent)
+        return () => {
+          disposeTools()
+          scheduler.disarm(agent.id)
+        }
       }, 'wake-scheduler.agent()')
     })
     return () => {

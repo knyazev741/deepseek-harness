@@ -8797,6 +8797,9 @@ importers:
       '@knyazevai/dsh-storage-domain':
         specifier: workspace:^
         version: link:../../storage/storage-domain
+      '@knyazevai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
 
   packages/sdk/client:
     dependencies:
