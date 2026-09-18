@@ -1,0 +1,21 @@
+# Opt-in Wake Scheduler patch over any dsh profile. The shipped composition
+# stays unchanged; nothing is scheduled until this overlay adds the row and
+# its config sets `enabled: true`.
+#
+#   dsh web --patch apps/cli/config/examples/wake-scheduler/cordis.yml
+#
+# Matching live root sessions then receive one ordinary follow-up turn per
+# interval, with the configured prompt, even while nobody writes to them.
+
+- insert:
+    - id: wake-scheduler
+      name: '@knyazevai/dsh-wake-scheduler'
+      config:
+        enabled: true
+        intervalMinutes: 30
+        prompt: 'Scheduled check-in: continue the plan and report anything that needs my decision.'
+        # Bind one conversation by session id, or omit the line to schedule
+        # every root session created while the plugin is loaded.
+        # sessionId: session-00000000-0000-0000-0000-000000000000
+        # First wake delay in whole minutes; defaults to intervalMinutes.
+        # startDelayMinutes: 30
