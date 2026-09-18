@@ -15,7 +15,7 @@ interface FakeAgent {
   readonly messages: UserMessage[]
   followup(message: UserMessage): void
   readonly ctx: {
-    effect: (setup: () => () => void, label: string) => void
+    effect: (setup: () => () => void, label: string) => () => void
     readonly tools: { register: (definition: ToolDefinition) => () => void }
   }
 }
@@ -24,10 +24,13 @@ interface FakeContext {
   readonly ctx: Context
   readonly emitted: (agent: FakeAgent) => void
   readonly emittedChild: (agent: FakeAgent) => void
+  /** Registers a live root without announcing `agent/created`, modelling a session the harness restored before this plugin loaded. */
+  readonly preexisting: (agent: FakeAgent) => void
   readonly drop: (agent: FakeAgent) => void
   readonly dispose: () => void
   readonly disposeAgent: (agent: FakeAgent) => void
   readonly agent: (id: string) => FakeAgent
+  readonly toolCount: (agent: FakeAgent) => number
   readonly callTool: (agent: FakeAgent, name: string, args: unknown) => Promise<unknown>
   readonly stored: Map<string, WakeSchedule>
   readonly opens: unknown[]
@@ -36,6 +39,10 @@ interface FakeContext {
   readonly warns: string[]
   /** Non-undefined value the next durable write throws, modelling an unavailable medium. */
   failPutThrown: unknown
+  /** Non-undefined value the next storage open rejects with. */
+  failOpenThrown: unknown
+  /** Non-undefined gate the next storage open awaits, modelling a slow backend. */
+  openGate: PromiseWithResolvers<undefined> | undefined
 }
 
 /** One active schedule with overridable fields. */
@@ -66,7 +73,12 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
   const agentDisposers = new Map<string, Array<() => void>>()
   const lifecycles: Array<() => void> = []
   const toolsByAgent = new Map<string, Map<string, ToolDefinition>>()
-  const state = { closes: 0, failPutThrown: undefined as unknown }
+  const state = {
+    closes: 0,
+    failPutThrown: undefined as unknown,
+    failOpenThrown: undefined as unknown,
+    openGate: undefined as PromiseWithResolvers<undefined> | undefined,
+  }
 
   const makeAgent = (id: string): FakeAgent => {
     const messages: UserMessage[] = []
@@ -77,11 +89,12 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
       messages,
       followup: (message: UserMessage): void => { messages.push(message) },
       ctx: {
-        effect: (setup: () => () => void): void => {
+        effect: (setup: () => () => void): (() => void) => {
           const disposer = setup()
           const list = agentDisposers.get(id) ?? []
           list.push(disposer)
           agentDisposers.set(id, list)
+          return disposer
         },
         tools: {
           register: (definition: ToolDefinition): (() => void) => {
@@ -119,6 +132,8 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
     storageDomain: {
       open: async (spec: unknown) => {
         opens.push(spec)
+        if (state.failOpenThrown !== undefined) throw state.failOpenThrown
+        await state.openGate?.promise
         return { table: () => table, close: async () => { state.closes += 1 } }
       },
     },
@@ -138,6 +153,10 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
     ctx: ctx as unknown as Context,
     emitted: (agent: FakeAgent) => { register(agent, true) },
     emittedChild: (agent: FakeAgent) => { register(agent, false) },
+    preexisting: (agent: FakeAgent) => {
+      agents.set(agent.id, agent)
+      roots.push(agent)
+    },
     drop: (agent: FakeAgent) => {
       agents.delete(agent.id)
       roots.splice(roots.indexOf(agent), 1)
@@ -145,6 +164,7 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
     dispose: () => { for (const disposer of [...lifecycles]) disposer() },
     disposeAgent: (agent: FakeAgent) => { for (const disposer of agentDisposers.get(agent.id) ?? []) disposer() },
     agent: (id: string) => agents.get(id) ?? makeAgent(id),
+    toolCount: (agent: FakeAgent) => toolsByAgent.get(agent.id)?.size ?? 0,
     callTool: async (agent: FakeAgent, toolName: string, args: unknown) => {
       const definition = toolsByAgent.get(agent.id)?.get(toolName)
       if (definition === undefined) throw new Error(`agent ${agent.id} has no tool ${toolName}`)
@@ -155,6 +175,10 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
     get closes() { return state.closes },
     get failPutThrown() { return state.failPutThrown },
     set failPutThrown(value: unknown) { state.failPutThrown = value },
+    get failOpenThrown() { return state.failOpenThrown },
+    set failOpenThrown(value: unknown) { state.failOpenThrown = value },
+    get openGate() { return state.openGate },
+    set openGate(value: PromiseWithResolvers<undefined> | undefined) { state.openGate = value },
     infos,
     warns,
   }
@@ -191,6 +215,108 @@ describe('wake-scheduler plugin shape', () => {
 })
 
 describe('wake-scheduler apply', () => {
+  it('adopts a root agent that already existed before apply', async () => {
+    const h = fakeContext([['session-restored', schedule()]])
+    const restored = h.agent('session-restored')
+    h.preexisting(restored)
+
+    await apply(h.ctx, Config({}))
+
+    expect(h.toolCount(restored)).toBe(3)
+    expect(h.infos.some(line => line.includes('registered wake tools for session "session-restored"'))).toBe(true)
+    expect(h.infos.some(line => line.includes('1 live root session(s) adopted'))).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(INTERVAL)
+    expect(restored.messages).toHaveLength(1)
+  })
+
+  it('adopts a root agent published while the durable store is still opening', async () => {
+    const h = fakeContext([['session-racing', schedule()]])
+    h.openGate = Promise.withResolvers<undefined>()
+
+    const applying = apply(h.ctx, Config({}))
+    const racing = h.agent('session-racing')
+    h.emitted(racing)
+    await settle()
+
+    // The store is not open yet, so the event was queued rather than dropped.
+    expect(h.toolCount(racing)).toBe(0)
+
+    h.openGate.resolve(undefined)
+    await applying
+    await settle()
+
+    expect(h.toolCount(racing)).toBe(3)
+    await vi.advanceTimersByTimeAsync(INTERVAL)
+    expect(racing.messages).toHaveLength(1)
+  })
+
+  it('drops a pending session that stopped being a root before the store opened', async () => {
+    const h = fakeContext([['session-gone', schedule()]])
+    h.openGate = Promise.withResolvers<undefined>()
+
+    const applying = apply(h.ctx, Config({}))
+    const gone = h.agent('session-gone')
+    h.emitted(gone)
+    h.drop(gone)
+    await settle()
+
+    h.openGate.resolve(undefined)
+    await applying
+    await settle()
+
+    expect(h.toolCount(gone)).toBe(0)
+    await vi.advanceTimersByTimeAsync(INTERVAL * 2)
+    expect(gone.messages).toHaveLength(0)
+  })
+
+  it('installs tools and the timer exactly once for a repeated event', async () => {
+    const h = fakeContext([['session-once', schedule()]])
+    await apply(h.ctx, Config({}))
+
+    const agent = h.agent('session-once')
+    h.emitted(agent)
+    h.emitted(agent)
+    await settle()
+
+    expect(h.toolCount(agent)).toBe(3)
+    await vi.advanceTimersByTimeAsync(INTERVAL)
+    expect(agent.messages).toHaveLength(1)
+  })
+
+  it('adopts a session that is resumed after the plugin loaded', async () => {
+    const h = fakeContext()
+    await apply(h.ctx, Config({}))
+
+    const resumed = h.agent('session-resumed')
+    h.emitted(resumed)
+    await settle()
+
+    expect(h.toolCount(resumed)).toBe(3)
+    expect(await h.callTool(resumed, 'wake_schedule_status', {})).toMatchObject({ status: 'none' })
+  })
+
+  it('removes its observation and fails loud when the store cannot open', async () => {
+    const h = fakeContext()
+    h.failOpenThrown = new Error('storage unavailable')
+    await expect(apply(h.ctx, Config({}))).rejects.toThrow('storage unavailable')
+
+    const agent = h.agent('session-after-failure')
+    h.emitted(agent)
+    await settle()
+
+    expect(h.toolCount(agent)).toBe(0)
+    expect(h.infos).toHaveLength(0)
+    expect(h.warns[0]).toContain('durable store open failed')
+  })
+
+  it('renders a non-Error store-open failure in its diagnostic', async () => {
+    const h = fakeContext()
+    h.failOpenThrown = 'storage offline'
+    await expect(apply(h.ctx, Config({}))).rejects.toBe('storage offline')
+    expect(h.warns[0]).toContain('storage offline')
+  })
+
   it('registers the tools without seeding any schedule while the fallback is disabled', async () => {
     const h = fakeContext()
     await apply(h.ctx, Config({}))

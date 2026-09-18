@@ -86,7 +86,7 @@ Every schedule is stored durably per session id, so it survives a harness restar
 
 ### Scope and composition
 
-The plugin declares `inject = ['agents', 'storageDomain', 'tools']` and is a function plugin with `name` / `inject` / `Config` / `apply`. It observes only `agent/created` events published after it loads, and registers the three tools in each matching root agent's exclusive scope, so a tool call identifies its session through the scope rather than an argument. Subagents are never scheduled, and agents already live at load time are not adopted.
+The plugin declares `inject = ['agents', 'storageDomain', 'tools']` and is a function plugin with `name` / `inject` / `Config` / `apply`. It installs the three tools in every live root agent's exclusive scope, so a tool call identifies its session through the scope rather than an argument: roots already live when it loads are adopted, the `agent/created` observation is registered before the durable store opens, and a session published while that open is pending is adopted as soon as it resolves. Installation is idempotent per agent, so a repeated event cannot duplicate tools or timers. Subagents are never scheduled. Registration and arming are logged at `info` — `registered wake tools for session …`, `armed wake for session …`, and one `ready` line naming the adopted session count — so an operator can tell a plugin that never loaded from a session that never received tools.
 
 ### Where the turn comes from
 
@@ -169,7 +169,7 @@ The wake appends after existing history and preserves an already reusable prefix
 - **No delivery receipt** — a persisted record shows that the follow-up was queued, not that the model answered or the person read it.
 - **Host-side state** — the schedule lives in the wake domain, not in the session log, so reading cold history does not reveal it and it does not travel with a fork.
 - **Narrow restart duplicate window** — a crash after the follow-up is queued but before the advanced record is durable can repeat that one wake after restart.
-- **Load-order boundary** — the plugin does not adopt agents that were already live when it loaded.
+- **Root sessions only** — the tools are installed in root agent scopes; a subagent session never receives them.
 
 <a id="dev-note"></a>
 ### Dev Note
