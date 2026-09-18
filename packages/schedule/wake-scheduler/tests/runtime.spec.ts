@@ -1,29 +1,46 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserMessage } from '@knyazevai/dsh-llm'
 import { WakeScheduler } from '../src/runtime.ts'
-import type { WakeCursorTable } from '../src/runtime.ts'
-import type { WakeCursor } from '../src/scheduling.ts'
+import type { WakeStore } from '../src/runtime.ts'
+import type { WakeSchedule } from '../src/scheduling.ts'
 
 const T0 = Date.parse('2026-09-18T00:00:00.000Z')
 const INTERVAL = 30 * 60_000
-const PROMPT = 'проверь фоновые задачи'
+const PROMPT = 'check the build'
 const SESSION = 'session-wake-spec'
 
-/** In-memory cursor table; `failPut` models an unavailable durable medium. */
-class MemoryCursors implements WakeCursorTable {
-  readonly map = new Map<string, WakeCursor>()
+/** In-memory schedule store; `failPut` models an unavailable durable medium. */
+class MemoryStore implements WakeStore {
+  readonly map = new Map<string, WakeSchedule>()
   failPut = false
   /** Resolves the next `put`, so a test can dispose the scheduler mid-write. */
   gate: PromiseWithResolvers<undefined> | undefined
 
-  get(key: string): WakeCursor | undefined {
-    return this.map.get(key)
+  get(sessionId: string): WakeSchedule | undefined {
+    return this.map.get(sessionId)
   }
 
-  async put(key: string, value: WakeCursor): Promise<void> {
-    if (this.failPut) throw new Error('cursor backend unavailable')
+  async put(sessionId: string, schedule: WakeSchedule): Promise<void> {
+    if (this.failPut) throw new Error('schedule backend unavailable')
     await this.gate?.promise
-    this.map.set(key, value)
+    this.map.set(sessionId, schedule)
+  }
+}
+
+/** One active schedule with overridable fields. */
+function schedule(overrides: Partial<WakeSchedule> = {}): WakeSchedule {
+  return {
+    status: 'active',
+    source: 'tool',
+    prompt: PROMPT,
+    intervalMinutes: 30,
+    startDelayMinutes: 30,
+    lastRunAt: null,
+    nextRunAt: T0 + INTERVAL,
+    runs: 0,
+    skippedIntervals: 0,
+    updatedAt: T0,
+    ...overrides,
   }
 }
 
@@ -33,23 +50,24 @@ interface Target {
 }
 
 interface Harness {
-  readonly scheduler: WakeScheduler<Target>
-  readonly table: MemoryCursors
+  readonly store: MemoryStore
   readonly messages: UserMessage[]
   readonly infos: string[]
   readonly warns: string[]
   readonly target: Target
+  scheduler: WakeScheduler<Target>
   live: boolean
   failFollowup: unknown
 }
 
-function harness(): Harness {
-  const table = new MemoryCursors()
+function harness(seed: WakeSchedule | undefined = schedule()): Harness {
+  const store = new MemoryStore()
+  if (seed !== undefined) store.map.set(SESSION, seed)
   const messages: UserMessage[] = []
   const infos: string[] = []
   const warns: string[] = []
   const state: Harness = {
-    table,
+    store,
     messages,
     infos,
     warns,
@@ -65,9 +83,7 @@ function harness(): Harness {
     scheduler: undefined as unknown as WakeScheduler<Target>,
   }
   state.scheduler = new WakeScheduler<Target>({
-    cadence: { intervalMs: INTERVAL, startDelayMs: INTERVAL },
-    prompt: PROMPT,
-    table,
+    store,
     logger: { info: (message) => { infos.push(message) }, warn: (message) => { warns.push(message) } },
     isLive: () => state.live,
     now: () => Date.now(),
@@ -92,84 +108,98 @@ afterEach(() => {
 describe('WakeScheduler', () => {
   it('initiates exactly one turn per elapsed interval', async () => {
     const h = harness()
-    h.scheduler.arm(h.target)
+    h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(INTERVAL - 1)
     expect(h.messages).toHaveLength(0)
 
     await vi.advanceTimersByTimeAsync(1)
     expect(h.messages).toHaveLength(1)
+    expect(textOf(h.messages[0]!)).toBe(PROMPT)
+    expect(h.messages[0]!.source).toMatchObject({ kind: 'plugin', plugin: 'wake-scheduler' })
+    expect(h.store.get(SESSION)).toMatchObject({
+      lastRunAt: T0 + INTERVAL,
+      nextRunAt: T0 + INTERVAL * 2,
+      runs: 1,
+      skippedIntervals: 0,
+    })
 
     await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.messages).toHaveLength(2)
+    expect(h.store.get(SESSION)?.runs).toBe(2)
   })
 
-  it('queues the configured prompt as a plugin-sourced user turn', async () => {
-    const h = harness()
-    h.scheduler.arm(h.target)
-    await vi.advanceTimersByTimeAsync(INTERVAL)
-
-    const message = h.messages[0]!
-    expect(textOf(message)).toBe(PROMPT)
-    expect(message.source.kind).toBe('plugin')
-    expect(message.source).toMatchObject({ plugin: 'wake-scheduler' })
-  })
-
-  it('logs each activation with its session and run number', async () => {
-    const h = harness()
-    h.scheduler.arm(h.target)
-    await vi.advanceTimersByTimeAsync(INTERVAL * 2)
-
-    expect(h.infos).toHaveLength(2)
-    expect(h.infos[0]).toContain(SESSION)
-    expect(h.infos[1]).toContain('turn 2')
-    expect(h.table.get(SESSION)).toEqual({ lastRunAt: T0 + INTERVAL * 2, nextRunAt: T0 + INTERVAL * 3, runs: 2 })
-  })
-
-  it('honors a persisted future cursor instead of restarting the interval', async () => {
-    const h = harness()
-    h.table.map.set(SESSION, { lastRunAt: T0 - INTERVAL, nextRunAt: T0 + 60_000, runs: 7 })
-    h.scheduler.arm(h.target)
-
-    await vi.advanceTimersByTimeAsync(59_999)
-    expect(h.messages).toHaveLength(0)
-
-    await vi.advanceTimersByTimeAsync(1)
-    expect(h.messages).toHaveLength(1)
-    expect(h.table.get(SESSION)?.runs).toBe(8)
-  })
-
-  it('collapses missed intervals into one catch-up wake', async () => {
-    const h = harness()
-    h.table.map.set(SESSION, { lastRunAt: T0 - INTERVAL * 8, nextRunAt: T0 - INTERVAL * 6, runs: 2 })
-    h.scheduler.arm(h.target)
+  it('collapses a missed backlog into exactly one catch-up wake', async () => {
+    const h = harness(schedule({ nextRunAt: T0 - INTERVAL * 6, runs: 2 }))
+    h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(0)
     expect(h.messages).toHaveLength(1)
+    expect(h.store.get(SESSION)).toMatchObject({
+      runs: 3,
+      skippedIntervals: 6,
+      nextRunAt: T0 + INTERVAL,
+    })
+    expect(h.infos[0]).toContain('after skipping 6 interval(s)')
 
     await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.messages).toHaveLength(2)
+  })
+
+  it('never arms a cancelled schedule', async () => {
+    const h = harness(schedule({ status: 'cancelled', nextRunAt: null }))
+    h.scheduler.apply(h.target)
+
+    await vi.advanceTimersByTimeAsync(INTERVAL * 3)
+    expect(h.messages).toHaveLength(0)
+  })
+
+  it('does nothing for a session with no schedule', async () => {
+    const h = harness()
+    h.store.map.delete(SESSION)
+    h.scheduler.apply(h.target)
+
+    await vi.advanceTimersByTimeAsync(INTERVAL * 3)
+    expect(h.messages).toHaveLength(0)
   })
 
   it('skips a target that is no longer live', async () => {
     const h = harness()
     h.live = false
-    h.scheduler.arm(h.target)
+    h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(INTERVAL * 3)
     expect(h.messages).toHaveLength(0)
-    expect(h.table.get(SESSION)).toBeUndefined()
+    expect(h.store.get(SESSION)?.runs).toBe(0)
+  })
+
+  it('skips a schedule cancelled between arming and firing', async () => {
+    const h = harness()
+    h.scheduler.apply(h.target)
+    h.store.map.set(SESSION, schedule({ status: 'cancelled', nextRunAt: null }))
+
+    await vi.advanceTimersByTimeAsync(INTERVAL)
+    expect(h.messages).toHaveLength(0)
+  })
+
+  it('skips a schedule removed between arming and firing', async () => {
+    const h = harness()
+    h.scheduler.apply(h.target)
+    h.store.map.delete(SESSION)
+
+    await vi.advanceTimersByTimeAsync(INTERVAL)
+    expect(h.messages).toHaveLength(0)
   })
 
   it('contains a follow-up failure and retries on the next interval', async () => {
     const h = harness()
     h.failFollowup = new Error('driver disposed')
-    h.scheduler.arm(h.target)
+    h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.messages).toHaveLength(0)
     expect(h.warns[0]).toContain('driver disposed')
-    expect(h.table.get(SESSION)).toBeUndefined()
+    expect(h.store.get(SESSION)?.runs).toBe(0)
 
     h.failFollowup = undefined
     await vi.advanceTimersByTimeAsync(INTERVAL)
@@ -179,10 +209,47 @@ describe('WakeScheduler', () => {
   it('renders a non-Error follow-up failure in its diagnostic', async () => {
     const h = harness()
     h.failFollowup = 'plain refusal'
-    h.scheduler.arm(h.target)
+    h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.warns[0]).toContain('plain refusal')
+  })
+
+  it('warns when the advanced schedule cannot be written', async () => {
+    const h = harness()
+    h.store.failPut = true
+    h.scheduler.apply(h.target)
+
+    await vi.advanceTimersByTimeAsync(INTERVAL)
+    expect(h.messages).toHaveLength(1)
+    expect(h.warns[0]).toContain('schedule write failed')
+  })
+
+  it('disarms one target without touching another session', async () => {
+    const h = harness()
+    const otherStoreEntry = schedule({ prompt: 'other' })
+    h.store.map.set('session-other', otherStoreEntry)
+    const otherMessages: UserMessage[] = []
+    h.scheduler.apply(h.target)
+    h.scheduler.apply({ id: 'session-other', followup: (message) => { otherMessages.push(message) } })
+
+    h.scheduler.disarm(SESSION)
+    h.scheduler.disarm('session-absent')
+    await vi.advanceTimersByTimeAsync(INTERVAL)
+
+    expect(h.messages).toHaveLength(0)
+    expect(otherMessages).toHaveLength(1)
+  })
+
+  it('stops every armed wake on dispose and refuses later arming', async () => {
+    const h = harness()
+    h.scheduler.apply(h.target)
+    h.scheduler.dispose()
+    h.scheduler.apply(h.target)
+    h.scheduler.disarm(SESSION)
+
+    await vi.advanceTimersByTimeAsync(INTERVAL * 2)
+    expect(h.messages).toHaveLength(0)
   })
 
   it('does not re-arm when the scheduler is disposed during a failed follow-up', async () => {
@@ -191,7 +258,7 @@ describe('WakeScheduler', () => {
       h.scheduler.dispose()
       throw new Error('disposed mid-fire')
     }
-    h.scheduler.arm(h.target)
+    h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.warns).toHaveLength(1)
@@ -201,51 +268,15 @@ describe('WakeScheduler', () => {
     expect(h.messages).toHaveLength(0)
   })
 
-  it('warns when the durable cursor cannot be written', async () => {
+  it('does not re-arm a wake that was disposed while its schedule was written', async () => {
     const h = harness()
-    h.table.failPut = true
-    h.scheduler.arm(h.target)
-
-    await vi.advanceTimersByTimeAsync(INTERVAL)
-    expect(h.messages).toHaveLength(1)
-    expect(h.warns[0]).toContain('cursor write failed')
-  })
-
-  it('disarms one target without touching another session', async () => {
-    const h = harness()
-    const other: Target = { id: 'session-other', followup: (message) => { h.messages.push(message) } }
-    h.scheduler.arm(h.target)
-    h.scheduler.arm(other)
-
-    h.scheduler.disarm(SESSION)
-    h.scheduler.disarm('session-absent')
-    await vi.advanceTimersByTimeAsync(INTERVAL)
-
-    expect(h.messages).toHaveLength(1)
-    expect(h.messages[0]!.source).toMatchObject({ kind: 'plugin' })
-  })
-
-  it('stops every armed wake on dispose and refuses later arming', async () => {
-    const h = harness()
-    h.scheduler.arm(h.target)
-    h.scheduler.arm({ id: 'session-other', followup: (message) => { h.messages.push(message) } })
-    h.scheduler.dispose()
-    h.scheduler.arm(h.target)
-    h.scheduler.disarm(SESSION)
-
-    await vi.advanceTimersByTimeAsync(INTERVAL * 2)
-    expect(h.messages).toHaveLength(0)
-  })
-
-  it('does not re-arm a wake that was disposed while its cursor was written', async () => {
-    const h = harness()
-    h.table.gate = Promise.withResolvers<undefined>()
-    h.scheduler.arm(h.target)
+    h.store.gate = Promise.withResolvers<undefined>()
+    h.scheduler.apply(h.target)
 
     await vi.advanceTimersByTimeAsync(INTERVAL)
     expect(h.messages).toHaveLength(1)
     h.scheduler.dispose()
-    h.table.gate.resolve(undefined)
+    h.store.gate.resolve(undefined)
 
     await vi.advanceTimersByTimeAsync(INTERVAL * 3)
     expect(h.messages).toHaveLength(1)

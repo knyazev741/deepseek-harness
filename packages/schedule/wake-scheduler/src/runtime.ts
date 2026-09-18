@@ -1,29 +1,29 @@
 /**
- * Live timer owner for configured wake targets. The scheduler keeps one
- * disposable timer per live root agent; the durable cursor in the wake
+ * Live timer owner for scheduled wake targets. The scheduler keeps one
+ * disposable timer per live root agent; the durable schedule in the wake
  * domain is the only state a restart reads back.
  * @module @knyazevai/dsh-wake-scheduler/runtime
  */
 
 import { createUserMessage } from '@knyazevai/dsh-llm'
 import type { UserMessage } from '@knyazevai/dsh-llm'
-import { advanceCursor, nextWakeAt, timerSegmentMs } from './scheduling.ts'
-import type { WakeCadence, WakeCursor } from './scheduling.ts'
+import { advanceSchedule, intervalMsOf, planDueAt, timerSegmentMs } from './scheduling.ts'
+import type { WakeSchedule } from './scheduling.ts'
 
 /** Minimal agent surface the scheduler drives; a live root Agent satisfies it. */
 export interface WakeTarget {
-  /** Session identity that also keys the durable cursor. */
+  /** Session identity that also keys the durable schedule. */
   readonly id: string
   /** Queue an ordinary follow-up turn and wake the driver. */
   followup(message: UserMessage): void
 }
 
-/** Durable cursor storage; the wake domain table satisfies it. */
-export interface WakeCursorTable {
-  /** @param key - Session identity. @returns the stored cursor, or undefined. */
-  get(key: string): WakeCursor | undefined
-  /** @param key - Session identity. @param value - Cursor to store durably. @returns resolution after durability. */
-  put(key: string, value: WakeCursor): Promise<void>
+/** Durable per-session schedule storage; the wake domain table satisfies it. */
+export interface WakeStore {
+  /** @param sessionId - Session identity. @returns the stored schedule, or undefined. */
+  get(sessionId: string): WakeSchedule | undefined
+  /** @param sessionId - Session identity. @param schedule - Schedule to store durably. @returns resolution after durability. */
+  put(sessionId: string, schedule: WakeSchedule): Promise<void>
 }
 
 /** Diagnostics surface; the Cordis logger satisfies it. */
@@ -36,12 +36,8 @@ export interface WakeLogger {
 
 /** Construction options for one {@link WakeScheduler}. */
 export interface WakeSchedulerOptions<Target extends WakeTarget> {
-  /** Resolved interval and first-wake offset. */
-  readonly cadence: WakeCadence
-  /** Text of the turn this scheduler initiates. */
-  readonly prompt: string
-  /** Durable cursor storage. */
-  readonly table: WakeCursorTable
+  /** Durable schedule storage. */
+  readonly store: WakeStore
   /** Diagnostics sink. */
   readonly logger: WakeLogger
   /** Whether an armed target still owns its session; a disposed target is skipped. */
@@ -64,21 +60,25 @@ export class WakeScheduler<Target extends WakeTarget = WakeTarget> {
   private readonly now: () => number
   private disposed = false
 
-  /** @param options - Cadence, prompt, storage, liveness, and diagnostics. */
+  /** @param options - Store, liveness, and diagnostics. */
   constructor(private readonly options: WakeSchedulerOptions<Target>) {
     this.now = options.now ?? Date.now
   }
 
   /**
-   * Arm or re-arm the next wake for one target from its durable cursor.
-   * Repeated calls for the same target replace the previous timer.
+   * Arm or re-arm the next wake for one target from its durable schedule.
+   * A missing or cancelled schedule cancels any armed timer instead.
    * @param target - Live target to schedule.
    */
-  arm(target: Target): void {
+  apply(target: Target): void {
     if (this.disposed) return
+    const schedule = this.options.store.get(target.id)
+    if (schedule === undefined || schedule.status !== 'active') {
+      this.disarm(target.id)
+      return
+    }
     const now = this.now()
-    const due = nextWakeAt(this.options.table.get(target.id), this.options.cadence, now)
-    this.scheduleAt(target, due, now)
+    this.scheduleAt(target, planDueAt(schedule, now), now)
   }
 
   /**
@@ -92,7 +92,7 @@ export class WakeScheduler<Target extends WakeTarget = WakeTarget> {
     this.timers.delete(id)
   }
 
-  /** Cancel every armed wake. The durable cursors are left untouched. */
+  /** Cancel every armed wake. The durable schedules are left untouched. */
   dispose(): void {
     this.disposed = true
     for (const timer of this.timers.values()) clearTimeout(timer)
@@ -110,36 +110,42 @@ export class WakeScheduler<Target extends WakeTarget = WakeTarget> {
   }
 
   /**
-   * Initiate exactly one turn for one target, record the cursor, and arm the
-   * next wake. A wrapped failure writes no cursor and starts no private retry:
-   * the next attempt is the following interval, so a broken target cannot spin.
+   * Initiate exactly one turn for one target, record the advanced schedule,
+   * and arm the next wake. A wrapped failure writes no schedule and starts no
+   * private retry: the next attempt is one interval later, so a broken target
+   * cannot spin.
    */
   private async fire(target: Target): Promise<void> {
     /* v8 ignore next -- dispose clears armed timers synchronously, so an entry that sees `disposed` is unreachable */
     if (this.disposed || !this.options.isLive(target)) return
+    const schedule = this.options.store.get(target.id)
+    if (schedule === undefined || schedule.status !== 'active') return
     const now = this.now()
-    const cursor = advanceCursor(this.options.table.get(target.id), this.options.cadence, now)
+    const next = advanceSchedule(schedule, now)
     try {
       target.followup(createUserMessage({
-        content: [{ type: 'text', text: this.options.prompt }],
+        content: [{ type: 'text', text: schedule.prompt }],
         source: { kind: 'plugin', plugin: 'wake-scheduler' },
       }))
     } catch (error: unknown) {
       this.options.logger.warn(
         `wake-scheduler: follow-up failed for session "${target.id}": ${renderThrown(error)}; next attempt in one interval`,
       )
-      this.scheduleAt(target, cursor.nextRunAt, now)
+      this.scheduleAt(target, now + intervalMsOf(schedule), now)
       return
     }
     this.options.logger.info(
-      `wake-scheduler: initiated turn ${cursor.runs} for session "${target.id}"`,
+      `wake-scheduler: initiated wake ${next.runs} for session "${target.id}"`
+      + (next.skippedIntervals === 0
+        ? ''
+        : ` after skipping ${next.skippedIntervals} interval(s)`),
     )
-    this.scheduleAt(target, cursor.nextRunAt, now)
+    this.scheduleAt(target, next.nextRunAt, now)
     try {
-      await this.options.table.put(target.id, cursor)
+      await this.options.store.put(target.id, next)
     } catch (error: unknown) {
       this.options.logger.warn(
-        `wake-scheduler: cursor write failed for session "${target.id}": ${renderThrown(error)}`,
+        `wake-scheduler: schedule write failed for session "${target.id}": ${renderThrown(error)}`,
       )
     }
   }

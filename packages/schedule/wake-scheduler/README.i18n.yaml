@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/schedule/wake-scheduler/README.md
-README.md: 41b8d9002072d407f74f77cf2bee84d737870d82
-README.zh.md: de4e91578726723c7e61eecbe2154c03702a4172
+README.md: f0d98d106f448d9d9f60f6d042b37e87483e03e2
+README.zh.md: c4b0b2ec340a7512dab08f1294a807eb526a8f82

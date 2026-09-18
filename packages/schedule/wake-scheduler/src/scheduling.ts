@@ -1,5 +1,5 @@
 /**
- * Pure cadence arithmetic for the wake scheduler. Every decision is a
+ * Pure schedule arithmetic and model-facing views. Every decision is a
  * function of explicit arguments so restart behaviour is reproducible
  * without a clock, a timer, or a live agent.
  * @module @knyazevai/dsh-wake-scheduler/scheduling
@@ -11,22 +11,41 @@ export const MIN_INTERVAL_MINUTES = 1
 /** Largest delay a Node timer represents before Node clamps it to one millisecond. */
 export const MAX_TIMER_DELAY_MS = 2_147_483_647
 
-/** One durable per-session cursor: the last wake and the next one. */
-export interface WakeCursor {
-  /** Epoch milliseconds of the last dispatched wake. */
-  readonly lastRunAt: number
-  /** Epoch milliseconds at which the next wake is due. */
-  readonly nextRunAt: number
-  /** Number of wakes dispatched for this session since the cursor was created. */
+/** Prompt used when a set call supplies no text. */
+export const DEFAULT_WAKE_PROMPT =
+  'Scheduled wake-up. Continue the plan and report anything that needs my decision.'
+
+/** One durable per-session schedule, whether set by the agent or seeded from profile config. */
+export interface WakeSchedule {
+  /** An active schedule fires; a cancelled one only suppresses the profile fallback. */
+  readonly status: 'active' | 'cancelled'
+  /** Whether the agent set this schedule through a tool or the profile seeded it. */
+  readonly source: 'tool' | 'config'
+  /** Text of the turn this schedule initiates. */
+  readonly prompt: string
+  /** Whole minutes between wakes. */
+  readonly intervalMinutes: number
+  /** Whole minutes from creation to the first wake. */
+  readonly startDelayMinutes: number
+  /** Epoch milliseconds of the last dispatched wake, or null before the first. */
+  readonly lastRunAt: number | null
+  /** Epoch milliseconds at which the next wake is due, or null once cancelled. */
+  readonly nextRunAt: number | null
+  /** Wakes dispatched since this schedule was set. */
   readonly runs: number
+  /** Intervals collapsed by the most recent catch-up decision; 0 for an on-time wake. */
+  readonly skippedIntervals: number
+  /** Epoch milliseconds of the last durable write. */
+  readonly updatedAt: number
 }
 
-/** Resolved interval and first-wake offset for one scheduler instance. */
-export interface WakeCadence {
-  /** Whole milliseconds between wakes. */
-  readonly intervalMs: number
-  /** Whole milliseconds from arming to the first wake when no cursor is stored. */
-  readonly startDelayMs: number
+/**
+ * Resolve the stored interval in whole milliseconds.
+ * @param schedule - Durable schedule carrying the minute count.
+ * @returns the interval in whole milliseconds.
+ */
+export function intervalMsOf(schedule: WakeSchedule): number {
+  return schedule.intervalMinutes * 60_000
 }
 
 /**
@@ -45,36 +64,39 @@ export function resolveIntervalMs(intervalMinutes: number): number {
 }
 
 /**
- * Resolve the instant the next wake is due.
- * A stored future target is honored as-is. A target at or before `now` — the
- * process was down, or the session was cold — fires once immediately: missed
- * intervals are collapsed into a single catch-up wake, never replayed.
- * @param cursor - Durable cursor, or undefined before the first wake.
- * @param cadence - Resolved interval and first-wake offset.
+ * Resolve the instant an active schedule is next due.
+ * A stored target is honored as-is; the start delay applies only to a record
+ * written without one.
+ * @param schedule - Active durable schedule.
  * @param now - Current epoch milliseconds.
  * @returns the epoch milliseconds at which the next wake is due.
  */
-export function nextWakeAt(cursor: WakeCursor | undefined, cadence: WakeCadence, now: number): number {
-  if (cursor === undefined) return now + cadence.startDelayMs
-  return cursor.nextRunAt > now ? cursor.nextRunAt : now
+export function planDueAt(schedule: WakeSchedule, now: number): number {
+  return schedule.nextRunAt ?? now + schedule.startDelayMinutes * 60_000
 }
 
+/** A schedule that has fired: its next target is always present. */
+export type AdvancedSchedule = WakeSchedule & { readonly nextRunAt: number }
+
 /**
- * Derive the cursor to persist after one dispatched wake.
- * @param previous - Cursor before this wake, or undefined for the first wake.
- * @param cadence - Resolved interval.
+ * Derive the schedule to persist after one dispatched wake.
+ * A due target at or before `now` — the process was down, or the session was
+ * cold — is one catch-up wake: missed intervals collapse into
+ * {@link WakeSchedule.skippedIntervals} and are never replayed.
+ * @param schedule - Schedule that fired.
  * @param now - Decision time of this wake.
- * @returns the cursor recording this wake and the following target.
+ * @returns the advanced schedule recording this wake and the following target.
  */
-export function advanceCursor(
-  previous: WakeCursor | undefined,
-  cadence: WakeCadence,
-  now: number,
-): WakeCursor {
+export function advanceSchedule(schedule: WakeSchedule, now: number): AdvancedSchedule {
+  const due = planDueAt(schedule, now)
+  const skipped = due < now ? Math.max(0, Math.floor((now - due) / intervalMsOf(schedule))) : 0
   return {
+    ...schedule,
     lastRunAt: now,
-    nextRunAt: now + cadence.intervalMs,
-    runs: (previous?.runs ?? 0) + 1,
+    nextRunAt: now + intervalMsOf(schedule),
+    runs: schedule.runs + 1,
+    skippedIntervals: skipped,
+    updatedAt: now,
   }
 }
 
@@ -86,4 +108,75 @@ export function advanceCursor(
  */
 export function timerSegmentMs(target: number, now: number): number {
   return Math.max(0, Math.min(target - now, MAX_TIMER_DELAY_MS))
+}
+
+/** Canonical model-facing status value for one session. */
+export interface WakeStatusView {
+  /** Whether an active schedule will fire. */
+  readonly scheduled: boolean
+  /** Stored status, or `none` when this session has no durable schedule. */
+  readonly status: 'active' | 'cancelled' | 'none'
+  /** Who owns the schedule, or null when none exists. */
+  readonly source: 'tool' | 'config' | null
+  /** Prompt the schedule would present, or null when none exists. */
+  readonly prompt: string | null
+  /** Whole minutes between wakes, or null when none exists. */
+  readonly intervalMinutes: number | null
+  /** UTC RFC 3339 instant of the next wake, or null. */
+  readonly nextRunAt: string | null
+  /** UTC RFC 3339 instant of the last wake, or null. */
+  readonly lastRunAt: string | null
+  /** Wakes dispatched since the schedule was set. */
+  readonly runs: number
+  /** Whether an active schedule is already due, so one catch-up wake is queued. */
+  readonly overdue: boolean
+  /** Intervals collapsed by the most recent catch-up decision. */
+  readonly skippedIntervals: number
+}
+
+/** ISO instant for a stored epoch value. */
+function iso(at: number | null): string | null {
+  return at === null ? null : new Date(at).toISOString()
+}
+
+/**
+ * Project one durable schedule into the model-facing status value.
+ * @param schedule - Durable schedule.
+ * @param now - Current epoch milliseconds.
+ * @returns the canonical status value.
+ */
+export function statusView(schedule: WakeSchedule, now: number): WakeStatusView {
+  return {
+    scheduled: schedule.status === 'active',
+    status: schedule.status,
+    source: schedule.source,
+    prompt: schedule.prompt,
+    intervalMinutes: schedule.intervalMinutes,
+    nextRunAt: iso(schedule.nextRunAt),
+    lastRunAt: iso(schedule.lastRunAt),
+    runs: schedule.runs,
+    overdue: schedule.status === 'active'
+      && schedule.nextRunAt !== null
+      && schedule.nextRunAt <= now,
+    skippedIntervals: schedule.skippedIntervals,
+  }
+}
+
+/**
+ * Status value for a session with no durable schedule.
+ * @returns the canonical empty status value.
+ */
+export function emptyStatusView(): WakeStatusView {
+  return {
+    scheduled: false,
+    status: 'none',
+    source: null,
+    prompt: null,
+    intervalMinutes: null,
+    nextRunAt: null,
+    lastRunAt: null,
+    runs: 0,
+    overdue: false,
+    skippedIntervals: 0,
+  }
 }
