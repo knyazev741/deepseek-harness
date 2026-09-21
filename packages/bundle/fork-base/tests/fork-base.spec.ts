@@ -166,7 +166,7 @@ describe('dsh-fork-base bundle', () => {
               contextWindow: 400000,
               maxTokens: 40000,
               reasoningEfforts: {
-                off: null,
+                off: 'off',
                 high: 'high',
                 max: 'max',
               },

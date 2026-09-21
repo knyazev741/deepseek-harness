@@ -70,6 +70,7 @@ interface ListingTopProvider {
 
 /** Reasoning metadata exposed by OpenAI-compatible model catalogs. */
 interface ListingReasoning {
+  default?: unknown
   efforts?: unknown
 }
 
@@ -125,7 +126,11 @@ function discoveredReasoningEfforts(
   if (levels.length === 0) return undefined
   const nonOff = levels.filter(level => level !== 'off')
   if (nonOff.length === 0 && levels.includes('off')) return false
-  return Object.fromEntries(levels.map(level => [level, level === 'off' ? null : level]))
+  const defaultLevel = typeof reasoning?.default === 'string' ? reasoning.default : undefined
+  return Object.fromEntries(levels.map(level => [
+    level,
+    level === 'off' ? (defaultLevel === undefined || defaultLevel === 'off' ? null : 'off') : level,
+  ]))
 }
 
 /**

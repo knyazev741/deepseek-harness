@@ -12,7 +12,7 @@ The KnyazevAI bundle also carried catalog facts that no longer matched the live 
 
 ## Decision
 
-`LlmDiscoveredModel` carries optional `reasoningEfforts`. The pi-ai discovery parser reads `reasoning.efforts` from OpenAI-compatible listings. An off-only list becomes `false`; otherwise each published level is retained and `off` maps to the absent wire value.
+`LlmDiscoveredModel` carries optional `reasoningEfforts`. The pi-ai discovery parser reads `reasoning.efforts` from OpenAI-compatible listings. An off-only list becomes `false`; otherwise each published level is retained. If the listing declares a thinking level as the default, Off maps to the explicit `off` wire value so omission cannot leave default thinking enabled; otherwise Off maps to the absent wire value.
 
 The Models editor adopts this hidden capability metadata with the visible model row. An existing row starts selected when endpoint discovery can repair its reasoning metadata. Adoption updates only that metadata for an existing model, preserving names and capacities the user already tuned.
 

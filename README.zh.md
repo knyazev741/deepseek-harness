@@ -44,6 +44,8 @@ pnpm dsh web
 
 `pnpm run build` 准备仓库产物。`pnpm dsh web` 启动包含 KnyazevAI API 提供方和工作区插件的 `fork-web`。将 `KNYAZEV_AI_API_KEY` 设为你在 [knyazevai.work](https://knyazevai.work) 获取的密钥。提供方目录与线上 API 一致：DeepSeek V4 Flash 与 GLM 5.3 Flash 的上下文窗口为 400,000 token，MiniMax 2.7 为 204,800，Kimi 2.6 已退役。DeepSeek 与 GLM 均最多重试 20 次瞬态错误；standard、ptc 和 cordis 预设在 50% 压力时触发压缩，每次摘要最多输入 131,072 token。使用 `--profile web` 可运行原始组合。历史 `code` 预设选择会迁移为 `ptc`。
 
+已有 profile 可能仍在 `settings.yaml` 中拥有 `providers.knyazev-ai.models`；这个用户数组会替换 bundle 目录，因此 `git pull` 不会主动改写它。更新后打开 **Settings → Models → KnyazevAI API**，选择 **Fetch available models**，保留系统建议修复的勾选项，再选择 **Adopt** 和 **Apply**。这样会恢复 reasoning 元数据，同时保留用户调整过的容量。若保存列表中仍有 `kimi-2.6`，请手工删除，因为线上 API 已不再发布它。
+
 ## 社区与支持
 
 - 通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。

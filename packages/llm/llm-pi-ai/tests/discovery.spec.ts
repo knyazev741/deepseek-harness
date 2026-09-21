@@ -148,6 +148,14 @@ describe('draft-provider model discovery', () => {
             reasoning: { default: 'off', efforts: ['off'] },
           },
           {
+            id: 'default-off-reasoner',
+            reasoning: { default: 'off', efforts: ['off', 'high'] },
+          },
+          {
+            id: 'unspecified-default-reasoner',
+            reasoning: { efforts: ['off', 'high'] },
+          },
+          {
             id: 'unknown-reasoning',
             reasoning: { default: 'high', efforts: [] },
           },
@@ -160,12 +168,22 @@ describe('draft-provider model discovery', () => {
       {
         id: 'reasoning-model',
         name: 'reasoning-model',
-        reasoningEfforts: { off: null, high: 'high', max: 'max' },
+        reasoningEfforts: { off: 'off', high: 'high', max: 'max' },
       },
       {
         id: 'always-off',
         name: 'always-off',
         reasoningEfforts: false,
+      },
+      {
+        id: 'default-off-reasoner',
+        name: 'default-off-reasoner',
+        reasoningEfforts: { off: null, high: 'high' },
+      },
+      {
+        id: 'unspecified-default-reasoner',
+        name: 'unspecified-default-reasoner',
+        reasoningEfforts: { off: null, high: 'high' },
       },
       {
         id: 'unknown-reasoning',

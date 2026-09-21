@@ -12,7 +12,7 @@ KnyazevAI bundle 还包含了与线上 API 不一致的目录信息：Kimi 2.6 �
 
 ## Decision
 
-`LlmDiscoveredModel` 增加可选的 `reasoningEfforts`。pi-ai 发现解析器从 OpenAI 兼容目录读取 `reasoning.efforts`。只有 off 的列表转换为 `false`；其他发布等级全部保留，其中 `off` 映射为不发送 wire 值。
+`LlmDiscoveredModel` 增加可选的 `reasoningEfforts`。pi-ai 发现解析器从 OpenAI 兼容目录读取 `reasoning.efforts`。只有 off 的列表转换为 `false`；其他发布等级全部保留。若目录声明默认值是某个 thinking 等级，Off 会映射为显式的 `off` wire 值，避免省略参数后仍保留默认 thinking；否则 Off 映射为不发送 wire 值。
 
 Models 编辑器会与可见模型行一起采纳这项隐藏能力元数据。当端点发现可以修复已有模型的 reasoning 元数据时，该模型行默认被选中。对已有模型的采纳只更新 reasoning 元数据，保留用户已经调整的名称与容量。
 

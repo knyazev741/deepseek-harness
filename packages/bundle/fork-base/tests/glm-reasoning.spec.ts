@@ -41,3 +41,26 @@ it('sends low, high and max instead of an on/off flag and rejects off for GLM', 
     provider: 'knyazev-ai', model: 'glm-5.3-flash', reasoningEffort: ReasoningEffortId('off'), messages: [],
   })).resolves.toMatchObject({ finish: { kind: 'error', failure: { code: 'UNSUPPORTED_REASONING_EFFORT' } } })
 })
+
+it('sends an explicit off value for DeepSeek because the API defaults to thinking', async () => {
+  const rows = yaml.load(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8')) as { id?: string; config?: Config }[]
+  const config = rows.find(row => row.id === 'llm-pi-ai')!.config!
+  const server = await mockServer([{ events: textEvents }])
+  vi.stubEnv('KNYAZEV_AI_API_KEY', 'keyless-deepseek-wire-test')
+  config.providers!['knyazev-ai']!.baseURL = `${server.url}/v1`
+  const ctx = new Context()
+  context = ctx
+  await ctx.plugin(LlmRuntime)
+  await ctx.plugin(LlmPiAi, config)
+
+  const result = await assemble(ctx, {
+    provider: 'knyazev-ai', model: 'deepseek-v4-flash',
+    reasoningEffort: ReasoningEffortId('off'), messages: [],
+  })
+
+  expect(result.finish.kind).toBe('stop')
+  expect(server.requests.at(-1)).toMatchObject({
+    model: 'deepseek-v4-flash',
+    reasoning_effort: 'off',
+  })
+})
