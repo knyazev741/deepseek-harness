@@ -704,6 +704,11 @@ interface LlmDiscoveredModel {
   contextWindow?: number
   /** Maximum output tokens, when disclosed. */
   maxTokens?: number
+  /**
+   * Selectable reasoning levels when the endpoint publishes them. `false`
+   * means the endpoint explicitly reports this model as non-reasoning.
+   */
+  reasoningEfforts?: false | Readonly<Record<string, string | null>>
 }
 ```
 

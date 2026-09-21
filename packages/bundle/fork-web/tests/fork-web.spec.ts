@@ -74,7 +74,6 @@ describe('dsh-fork-web bundle', () => {
       config: { enabled: true, allowedModels: [
         { provider: 'knyazev-ai', model: 'deepseek-v4-flash' },
         { provider: 'knyazev-ai', model: 'glm-5.3-flash' },
-        { provider: 'knyazev-ai', model: 'kimi-2.6' },
         { provider: 'knyazev-ai', model: 'minimax-2.7' },
       ] },
     })

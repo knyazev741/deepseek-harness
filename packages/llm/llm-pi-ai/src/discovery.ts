@@ -68,6 +68,12 @@ interface ListingTopProvider {
   max_completion_tokens?: unknown
 }
 
+/** Reasoning metadata exposed by OpenAI-compatible model catalogs. */
+interface ListingReasoning {
+  default?: unknown
+  efforts?: unknown
+}
+
 /** One entry of a supported `GET /models` reply. */
 interface ListingEntry {
   id?: unknown
@@ -85,6 +91,7 @@ interface ListingEntry {
   maxTokens?: unknown
   limit?: ListingLimit | null
   top_provider?: ListingTopProvider | null
+  reasoning?: ListingReasoning | null
 }
 
 /** A positive integer field of a listing entry, or `undefined` when absent or unusable. */
@@ -101,6 +108,29 @@ function label(...candidates: readonly unknown[]): string | undefined {
     if (typeof candidate === 'string' && candidate.length > 0) return candidate
   }
   return undefined
+}
+
+/**
+ * Convert a provider's advertised reasoning levels into the profile spelling
+ * used by model configuration. An explicit off-only catalog row is a
+ * non-reasoning model; mixed rows keep `off` as the null wire value and pass
+ * every other level through unchanged.
+ */
+function discoveredReasoningEfforts(
+  reasoning: ListingReasoning | null | undefined,
+): false | Record<string, string | null> | undefined {
+  if (!Array.isArray(reasoning?.efforts)) return undefined
+  const levels = [...new Set(
+    reasoning.efforts.filter((value): value is string => typeof value === 'string' && value.length > 0),
+  )]
+  if (levels.length === 0) return undefined
+  const nonOff = levels.filter(level => level !== 'off')
+  if (nonOff.length === 0 && levels.includes('off')) return false
+  const defaultLevel = typeof reasoning?.default === 'string' ? reasoning.default : undefined
+  return Object.fromEntries(levels.map(level => [
+    level,
+    level === 'off' ? (defaultLevel === undefined || defaultLevel === 'off' ? null : 'off') : level,
+  ]))
 }
 
 /**
@@ -219,11 +249,13 @@ function readListing(body: unknown): LlmDiscoveredModel[] {
       entry?.limit?.output,
       entry?.top_provider?.max_completion_tokens,
     )
+    const reasoningEfforts = discoveredReasoningEfforts(entry?.reasoning)
     models.push({
       id,
       name,
       ...contextWindow === undefined ? {} : { contextWindow },
       ...maxTokens === undefined ? {} : { maxTokens },
+      ...reasoningEfforts === undefined ? {} : { reasoningEfforts },
     })
   }
   return models
