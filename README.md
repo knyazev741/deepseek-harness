@@ -38,7 +38,7 @@ pnpm run build
 pnpm dsh web
 ```
 
-`pnpm run build` prepares the repository artifacts. `pnpm dsh web` starts `fork-web` with the Knyazev AI provider and our workspace plugins. Set `KNYAZEV_AI_API_KEY` to your key from [knyazevai.work](https://knyazevai.work). DeepSeek V4 Flash and GLM 5.3 Flash both have a 400,000-token context, up to 20 transient-error retries, and compaction at 50% pressure with at most 131,072 input tokens per summary in the standard, ptc, and cordis presets. Use `--profile web` for the original composition. Historical `code` preset selections migrate to `ptc`.
+`pnpm run build` prepares the repository artifacts. `pnpm dsh web` starts `fork-web` with the KnyazevAI API provider and our workspace plugins. Set `KNYAZEV_AI_API_KEY` to your key from [knyazevai.work](https://knyazevai.work). The provider catalog mirrors the live API: DeepSeek V4 Flash and GLM 5.3 Flash have 400,000-token context windows, MiniMax 2.7 has 204,800, and Kimi 2.6 is retired. DeepSeek and GLM both have up to 20 transient-error retries and compaction at 50% pressure with at most 131,072 input tokens per summary in the standard, ptc, and cordis presets. Use `--profile web` for the original composition. Historical `code` preset selections migrate to `ptc`.
 
 ## Community and support
 

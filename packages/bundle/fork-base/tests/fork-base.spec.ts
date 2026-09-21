@@ -134,6 +134,7 @@ describe('dsh-fork-base bundle', () => {
     expect(llm?.config).toEqual({
       providers: {
         'knyazev-ai': {
+          displayName: 'KnyazevAI API',
           apiKeyEnv: 'KNYAZEV_AI_API_KEY',
           api: 'openai-completions',
           baseURL: 'https://knyazevai.work/v1',
@@ -155,16 +156,15 @@ describe('dsh-fork-base bundle', () => {
             ],
           },
           compat: {
-            thinkingFormat: 'qwen',
-            supportsReasoningEffort: false,
+            thinkingFormat: 'openai',
+            supportsReasoningEffort: true,
           },
-          reasoning: 'high',
           models: [
             {
               id: 'deepseek-v4-flash',
               name: 'DeepSeek V4 Flash',
               contextWindow: 400000,
-              maxTokens: 128000,
+              maxTokens: 40000,
               reasoningEfforts: {
                 off: null,
                 high: 'high',
@@ -177,23 +177,13 @@ describe('dsh-fork-base bundle', () => {
               contextWindow: 400000,
               maxTokens: 40000,
               reasoningEfforts: { low: 'low', high: 'high', max: 'max' },
-              compat: { thinkingFormat: 'openai', supportsReasoningEffort: true },
-            },
-            {
-              id: 'kimi-2.6',
-              name: 'Kimi 2.6',
-              contextWindow: 262144,
-              maxTokens: 40000,
-              reasoningEfforts: {
-                off: null,
-                high: 'high',
-                max: 'max',
-              },
             },
             {
               id: 'minimax-2.7',
               name: 'MiniMax 2.7',
               contextWindow: 204800,
+              maxTokens: 40000,
+              reasoningEfforts: false,
             },
           ],
         },
@@ -337,7 +327,6 @@ describe('dsh-fork-base bundle', () => {
       await expect(ctx.llm.listModels('knyazev-ai')).resolves.toMatchObject([
         { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'knyazev-ai' },
         { id: 'glm-5.3-flash', name: 'GLM 5.3 Flash', provider: 'knyazev-ai' },
-        { id: 'kimi-2.6', name: 'Kimi 2.6', provider: 'knyazev-ai' },
         { id: 'minimax-2.7', name: 'MiniMax 2.7', provider: 'knyazev-ai' },
       ])
       expect(ctx.settings.describe().find(entry => entry.ns === 'llm-pi-ai')?.value)
@@ -349,10 +338,9 @@ describe('dsh-fork-base bundle', () => {
               streamIdleTimeoutMs: 900000,
               timeoutMs: 1800000,
               models: [
-                { id: 'deepseek-v4-flash', contextWindow: 400000, maxTokens: 128000 },
+                { id: 'deepseek-v4-flash', contextWindow: 400000, maxTokens: 40000 },
                 { id: 'glm-5.3-flash', contextWindow: 400000, maxTokens: 40000 },
-                { id: 'kimi-2.6', contextWindow: 262144, maxTokens: 40000 },
-                { id: 'minimax-2.7', contextWindow: 204800 },
+                { id: 'minimax-2.7', contextWindow: 204800, maxTokens: 40000 },
               ],
             },
           },

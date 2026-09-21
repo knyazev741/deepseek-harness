@@ -52,6 +52,7 @@
   config:
     providers:
       knyazev-ai:
+        displayName: KnyazevAI API
         apiKeyEnv: KNYAZEV_AI_API_KEY
         api: openai-completions
         baseURL: https://knyazevai.work/v1
@@ -71,14 +72,13 @@
             - EMPTY_RESPONSE
             - PI_AI_ERROR
         compat:
-          thinkingFormat: qwen
-          supportsReasoningEffort: false
-        reasoning: high
+          thinkingFormat: openai
+          supportsReasoningEffort: true
         models:
           - id: deepseek-v4-flash
             name: DeepSeek V4 Flash
             contextWindow: 400000
-            maxTokens: 128000
+            maxTokens: 40000
             reasoningEfforts:
               off:
               high: high
@@ -91,20 +91,11 @@
               low: low
               high: high
               max: max
-            compat:
-              thinkingFormat: openai
-              supportsReasoningEffort: true
-          - id: kimi-2.6
-            name: Kimi 2.6
-            contextWindow: 262144
-            maxTokens: 40000
-            reasoningEfforts:
-              off:
-              high: high
-              max: max
           - id: minimax-2.7
             name: MiniMax 2.7
             contextWindow: 204800
+            maxTokens: 40000
+            reasoningEfforts: false
 
 # The upstream default-model service reads this composition entry when the
 # settings seam has no user override; its schema intentionally has no

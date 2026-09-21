@@ -559,6 +559,45 @@ describe('endpoint interrogation', () => {
     ])
   })
 
+  it('repairs hidden reasoning metadata on a picked existing row without rewriting tuned capacities', async () => {
+    const discover = vi.fn(() => Promise.resolve(ok([
+      {
+        id: 'glm-5.3-flash',
+        name: 'GLM 5.3 Flash',
+        contextWindow: 400_000,
+        maxTokens: 40_000,
+        reasoningEfforts: { low: 'low', high: 'high', max: 'max' },
+      },
+    ])))
+    const { mutate } = await mountSection({
+      discover,
+      providers: {
+        openai: {
+          baseURL: 'https://proxy.example/v1',
+          models: [{ id: 'glm-5.3-flash', contextWindow: 123_456, maxTokens: 12_345 }],
+        },
+      },
+    })
+    openEditor('openai')
+
+    fireEvent.click(screen.getByText(en.fetchModels))
+    await screen.findByText(en.fetchTitle)
+    const box = document.querySelector<HTMLInputElement>('input[type="checkbox"]')
+    expect(box?.checked).toBe(true)
+    fireEvent.click(screen.getByText(en.fetchAdopt))
+    fireEvent.click(screen.getByText(en.apply))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalled() })
+    expect(firstMutate(mutate).ops[0]?.value).toEqual([
+      {
+        id: 'glm-5.3-flash',
+        contextWindow: 123_456,
+        maxTokens: 12_345,
+        reasoningEfforts: { low: 'low', high: 'high', max: 'max' },
+      },
+    ])
+  })
+
   it('keeps the rows editable when the provider cannot be interrogated', async () => {
     const discover = vi.fn(() => Promise.resolve(
       fail('https://proxy.example/v1/models answered 401; check the API key', 'llm/model-discovery-rejected'),

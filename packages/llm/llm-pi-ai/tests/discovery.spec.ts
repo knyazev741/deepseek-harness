@@ -135,6 +135,45 @@ describe('draft-provider model discovery', () => {
     expect(server.headers[0]?.['user-agent']).toBe(userAgent())
   })
 
+  it('keeps reasoning levels disclosed by an OpenAI-compatible model listing', async () => {
+    const server = await listingServer({
+      body: JSON.stringify({
+        data: [
+          {
+            id: 'reasoning-model',
+            reasoning: { default: 'high', efforts: ['off', 'high', 'max'] },
+          },
+          {
+            id: 'always-off',
+            reasoning: { default: 'off', efforts: ['off'] },
+          },
+          {
+            id: 'unknown-reasoning',
+            reasoning: { default: 'high', efforts: [] },
+          },
+        ],
+      }),
+    })
+    const ctx = await harness()
+
+    await expect(ctx.llm.discoverModels('llm-pi-ai', { baseURL: server.url })).resolves.toEqual([
+      {
+        id: 'reasoning-model',
+        name: 'reasoning-model',
+        reasoningEfforts: { off: null, high: 'high', max: 'max' },
+      },
+      {
+        id: 'always-off',
+        name: 'always-off',
+        reasoningEfforts: false,
+      },
+      {
+        id: 'unknown-reasoning',
+        name: 'unknown-reasoning',
+      },
+    ])
+  })
+
   it('reads an enriched models map using route ids and nested capacities', async () => {
     const server = await listingServer({
       body: JSON.stringify({
