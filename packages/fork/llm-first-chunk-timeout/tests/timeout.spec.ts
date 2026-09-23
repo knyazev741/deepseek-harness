@@ -972,7 +972,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(result).toBe('delegated')
   })
 
-  it('gives up after maxFirstChunkCompactionRetries and vetoes the chain', async () => {
+  it('delegates to retries after maxFirstChunkCompactionRetries', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
@@ -987,7 +987,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
       outcomes.push(await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, delegated))
       emitAgentStatus(ctx, agent, 'idle')
     }
-    expect(outcomes).toEqual([undefined, undefined, undefined])
+    expect(outcomes).toEqual([undefined, undefined, 'delegated'])
     expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
     expect(agent.followup).toHaveBeenCalledTimes(2)
   })

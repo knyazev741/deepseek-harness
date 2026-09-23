@@ -71,7 +71,7 @@ All settings are optional. The defaults start condensing at 50% of the routed mo
 | `maxTokens` | `8192` | Output cap for the summarization request; may include reasoning tokens. |
 | `maxSummarizationInputTokens` | `131072` | Maximum estimated input per summary; `0` disables this bound. Oversized history is condensed in balanced passes. |
 | `summarizerCooldownMs` | `600000` | Cooldown after the summary provider exhausts its transient retry budget. |
-| `compactionRetries` | `1` | Extra condensation attempts after the first when pressure remains above threshold. |
+| `compactionRetries` | `1` | Accepted for existing configurations; automatic condensation permits only one pass before a new assistant response. |
 | `maxOverflowRetries` | `1` | Maximum retries after a confirmed context-window overflow; `0` disables recovery only. |
 | `modelPolicies` | `[]` | Exact `{ provider, model, ...partialPolicy }` overrides for individual model routes. |
 | `auto` | `true` | Enable automatic condensation and overflow recovery; set `false` for manual-only operation. |
@@ -114,6 +114,8 @@ The backend is built on four commitments:
 With `auto: true`, a serial `agent/pre-step` listener checks pressure before request derivation: it prices the latest durable routed request envelope through `ctx.tokenMeter`, and when pressure crosses the routed model's threshold it prunes, then summarizes the oldest balanced span while keeping a priced recent tail. Every selected range starts at the first surface node that is not a `system/message`, so a system prompt at surface node 0 is never shadowed; a later `system/message` appended by an in-history prompt update is ordinary history that the range may shadow, and the agent loop's projection then replaces node 0 with the current prompt when their text differs ([decision rule](../../core/agent-loop/README.md#understand-the-implementation)). The `agent/request-error` listener reacts to a provider-confirmed `CONTEXT_WINDOW_EXCEEDED`: it bypasses the normal threshold and retention policy, attempts one maximal balanced head reduction, and authorizes a retry only after the surface replacement generation advances. Cancellation stays authoritative throughout.
 
 Pressure policy resolves capacity from the adapter that owns the durable route. An adapter that returns no capacity for a valid dynamic route makes the manual pressure path throw a target-specific configuration error; the automatic listener warns once for that exact target and continues with full history.
+
+Automatic condensation requires a new committed `assistant/message` after the previous `compaction/start`, including a failed or cancelled attempt. User messages, continuations, turn changes, and session restores do not reset this durable guard. `compactIfNeeded()` returns `null` while blocked; direct automatic `compactRegion()` calls reject before another opening marker. Each pressure check runs at most one pass even if pressure remains high. Explicit `/compact` maintenance retains its bounded multi-pass behavior. See the [decision](../../../.agents/notes/implemented/bug-fix/2026-09-23-no-consecutive-auto-compaction.md).
 
 ### Summarization mechanics
 
@@ -228,7 +230,7 @@ Rules:
 
 #### Token effect
 
-This is a separate model call: the replayed conversation prefix plus the fixed instruction as input, with `maxTokens`-capped output. Convergence retries can pay this cost more than once.
+This is a separate model call: the replayed conversation prefix plus the fixed instruction as input, with `maxTokens`-capped output. Provider retries and explicit manual passes can pay this cost more than once.
 
 #### KV Cache effect
 

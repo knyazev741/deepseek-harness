@@ -68,6 +68,7 @@ interface CompactionEntryState {
   readonly openTurn: number | null
   readonly unmatchedCompactionStart: SessionEvent<'compaction/start'> | undefined
   readonly latestEndSeedSeq: SessionSeq | undefined
+  readonly automaticCompactionBlocked: boolean
 }
 
 /**
@@ -226,6 +227,9 @@ export async function compactSurfaceRegion(
   } else {
     if (entryState.openTurn === null) {
       throw new Error('compactRegion: no open turn — automatic compaction events must be enclosed in a turn')
+    }
+    if (entryState.automaticCompactionBlocked) {
+      throw new Error('automatic compaction requires a new assistant response after the previous compaction')
     }
     owner = entryState.openTurn
   }
@@ -591,19 +595,34 @@ function buildSummarizationInput(
   }
 }
 
-/** Inspect open-turn, unmatched-compaction, and latest seed-boundary state independently. */
+/**
+ * Whether a compaction has started since the last committed assistant response.
+ * Failed attempts, continuation messages, and session reloads do not reset it.
+ * @param session - session whose durable compaction and assistant events are inspected.
+ * @returns true when another automatic compaction must wait for model progress.
+ */
+export function automaticCompactionBlocked(session: Session): boolean {
+  return inspectCompactionEntryState(session).automaticCompactionBlocked
+}
+
+/** Inspect open-turn, compaction, model-progress, and seed-boundary state independently. */
 function inspectCompactionEntryState(session: Session): CompactionEntryState {
   let openTurn: number | null = null
   let openTurnStateKnown = false
   let unmatchedCompactionStart: SessionEvent<'compaction/start'> | undefined
   let compactionEntryStateKnown = false
   let latestEndSeedSeq: SessionSeq | undefined
+  let automaticCompactionBlocked: boolean | undefined
   for (let seq = session.seq - 1; seq >= 0; seq -= 1) {
     // Existing Session history read; migration deferred.
     // oxlint-disable-next-line typescript/no-non-null-assertion, typescript/no-deprecated
     const event = session.eventAt(SessionSeq(seq))!
     if (latestEndSeedSeq === undefined && event.type === 'session/end-seed') {
       latestEndSeedSeq = event.seq
+    }
+    if (automaticCompactionBlocked === undefined) {
+      if (event.type === 'compaction/start') automaticCompactionBlocked = true
+      else if (event.type === 'assistant/message') automaticCompactionBlocked = false
     }
     if (!compactionEntryStateKnown) {
       if (event.type === 'compaction/start') {
@@ -623,7 +642,8 @@ function inspectCompactionEntryState(session: Session): CompactionEntryState {
     }
     if (openTurnStateKnown
       && compactionEntryStateKnown
+      && automaticCompactionBlocked !== undefined
       && latestEndSeedSeq !== undefined) break
   }
-  return { openTurn, unmatchedCompactionStart, latestEndSeedSeq }
+  return { openTurn, unmatchedCompactionStart, latestEndSeedSeq, automaticCompactionBlocked: automaticCompactionBlocked ?? false }
 }

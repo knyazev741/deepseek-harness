@@ -833,7 +833,7 @@ describe('pressure measurement and retention', () => {
     expect(measure).toHaveBeenCalledTimes(1)
   })
 
-  it('bounds retries when a shrinking checkpoint remains above threshold', async () => {
+  it('returns one checkpoint even when pressure remains above threshold', async () => {
     const compact = service({
       auto: false,
       compactionRetries: 0,
@@ -845,8 +845,10 @@ describe('pressure measurement and retention', () => {
       text: `summary ${index}`,
     }))
 
-    await expect(compactIfNeeded(compact, conversation(4)))
-      .rejects.toThrow(/still above threshold after 1 compaction attempts/)
+    const session = conversation(4)
+    await expect(compactIfNeeded(compact, session)).resolves.not.toBeNull()
+    await expect(compactIfNeeded(compact, session)).resolves.toBeNull()
+    expect(compact.calls).toHaveLength(1)
   })
 
   it('rounds a retention cut head-ward to preserve tool-call/result pairing', async () => {
@@ -973,7 +975,7 @@ describe('bounded summarization input', () => {
     expect(unbounded.end).toBeGreaterThan(nodes[3]!)
   })
 
-  it('converges a huge pressure session over bounded summarization passes', async () => {
+  it('limits huge pressure sessions to one bounded pass before model progress', async () => {
     const ctx = createContext(2_000)
     const compact = service({
       auto: false,
@@ -987,9 +989,8 @@ describe('bounded summarization input', () => {
     const result = await compactIfNeeded(compact, session)
 
     expect(result).not.toBeNull()
-    // 40 fixture messages at 88 tokens each need several passes at a 400-token
-    // budget; every call replayed only a bounded prefix, never the whole span.
-    expect(compact.calls.length).toBeGreaterThan(1)
+    expect(compact.calls).toHaveLength(1)
+    expect(await compactIfNeeded(compact, session)).toBeNull()
     for (const call of compact.calls) {
       expect(call.input.messages.length).toBeGreaterThan(0)
       expect(call.input.messages.length).toBeLessThan(10)
@@ -1023,6 +1024,93 @@ describe('bounded summarization input', () => {
     expect(summarizedText(input)).toContain('fixture user 19')
     expect(summarizedText(input)).toContain('fixture assistant 19')
     expect(summarizedText(input)).toContain('fixture user 20')
+  })
+})
+
+describe('automatic compaction requires assistant progress', () => {
+  it.each(['pressure', 'context-overflow'] as const)('blocks another %s compaction after a checkpoint', async (trigger) => {
+    const compact = service({ auto: false, thresholdRatio: 0.1, retainTokens: 0 })
+    const session = conversation(20)
+    await compactIfNeeded(compact, session, 'context-overflow')
+    const before = session.seq
+
+    expect(await compactIfNeeded(compact, session, trigger)).toBeNull()
+    expect(compact.calls).toHaveLength(1)
+    expect(session.seq).toBe(before)
+  })
+
+  it('does not let continue, a new turn, or a failed attempt unlock another compaction', async () => {
+    const compact = service({ auto: false })
+    const session = conversation(20)
+    await compactIfNeeded(compact, session, 'context-overflow')
+    session.append('turn/end', { turn: 21, reason: { kind: 'completed' } })
+    session.append('turn/start', { turn: 22 })
+    session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'continue' }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    session.append('step/start', { turn: 22, step: 1 })
+    session.append('assistant/attempt', { turn: 22, step: 1, stream: [] })
+
+    expect(await compactIfNeeded(compact, session, 'context-overflow')).toBeNull()
+    expect(compact.calls).toHaveLength(1)
+  })
+
+  it('unlocks automatic compaction only after a committed assistant response', async () => {
+    const compact = service({ auto: false })
+    const session = conversation(20)
+    await compactIfNeeded(compact, session, 'context-overflow')
+    session.append('step/start', { turn: 21, step: 1 })
+    session.append('assistant/message', {
+      turn: 21,
+      step: 1,
+      stream: [],
+      message: createMessage({
+        role: 'assistant',
+        content: [{ type: 'text', text: 'New completed work. '.repeat(100) }],
+        source: { kind: 'model', provider: MODEL, model: MODEL },
+      }),
+    }, { surfaceOp: 'append' })
+    session.append('step/end', { turn: 21, step: 1 })
+
+    expect(await compactIfNeeded(compact, session, 'context-overflow')).not.toBeNull()
+    expect(compact.calls).toHaveLength(2)
+  })
+
+  it('enforces the guard through direct automatic region calls', async () => {
+    const compact = service({ auto: false })
+    const session = conversation(20)
+    await compactIfNeeded(compact, session, 'context-overflow')
+    const nodes = session.surface.nodes
+
+    await expect(compact.compactRegion(nodes[0]!, nodes.at(-1)!, agent(session), SIGNAL))
+      .rejects.toThrow('automatic compaction requires a new assistant response')
+    expect(compact.calls).toHaveLength(1)
+  })
+
+  it('keeps the guard when a session is restored into a new engine', async () => {
+    const compact = service({ auto: false })
+    const session = conversation(20)
+    await compactIfNeeded(compact, session, 'context-overflow')
+    const restored = Session.create(session.id, session.snapshotEvents(), session.header)
+    const replacement = service({ auto: false })
+
+    expect(await compactIfNeeded(replacement, restored, 'context-overflow')).toBeNull()
+    expect(replacement.calls).toHaveLength(0)
+  })
+
+  it('blocks another compaction after a failed summarization attempt', async () => {
+    const compact = service({ auto: false })
+    const session = conversation(20)
+    const stop = new Error('summary failed')
+    vi.spyOn(compact, 'compactRegion').mockRejectedValueOnce(stop)
+    // The failed provider attempt is durable even when no summary was committed.
+    const compactionId = CompactionId('failed-summary')
+    session.append('compaction/start', { compactionId, turn: 21 })
+    session.append('compaction/end', { compactionId, turn: 21, error: stop.message })
+
+    expect(await compactIfNeeded(compact, session, 'context-overflow')).toBeNull()
+    expect(compact.calls).toHaveLength(0)
   })
 })
 
@@ -2104,7 +2192,7 @@ describe('automatic listener and loader composition', () => {
     expect(session.surface.nodes).toContain(retainedSeq)
   })
 
-  it('bounds repeated provider-overflow recovery without mutating the durable tail', async () => {
+  it('declines consecutive provider-overflow compaction without mutating the durable tail', async () => {
     const ctx = createContext(10_000)
     const compact = new TestCompactionEngine(ctx, {
       maxSummarizationInputTokens: 400,
@@ -2114,16 +2202,15 @@ describe('automatic listener and loader composition', () => {
     const durableEventCount = owner.session.snapshotEvents().length
 
     expect(await recover(ctx, owner, overflow())).toBe(true)
-    expect(await recover(ctx, owner, overflow())).toBe(true)
+    expect(await recover(ctx, owner, overflow())).toBe(false)
 
-    expect(compact.calls).toHaveLength(2)
+    expect(compact.calls).toHaveLength(1)
     for (const call of compact.calls) {
       expect(call.input.messages.length).toBeGreaterThan(0)
       expect(call.input.messages.length).toBeLessThan(10)
     }
     expect(summarizedText(compact.calls[0]!.input)).toContain('fixture user 1')
     expect(summarizedText(compact.calls[0]!.input)).not.toContain('fixture user 20')
-    expect(summarizedText(compact.calls[1]!.input)).not.toContain('fixture user 20')
     expect(owner.session.snapshotEvents().length).toBeGreaterThan(durableEventCount)
     expect(owner.session.snapshotEvents().filter(event =>
       event.type === 'user/message' && event.data.source.kind === 'user',

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fork/llm-first-chunk-timeout/README.md
-README.md: fa8f5593cb2c3b873881eae3124e7cf84666a35e
-README.zh.md: b38050c60be331332e2425c88899c40fb2945db8
+README.md: 593f5e3a8c18a51405c5783f4d41e9a48a4142c9
+README.zh.md: 94d3a3ff7fa366cdc2e27c1c1619c170ba4e88e5

@@ -93,9 +93,9 @@ export function createRecovery(ctx: Context, maxRetries: number): RecoveryHandle
     const count = counters.get(agent) ?? 0
     if (count >= maxRetries) {
       ctx.logger.warn(
-        `first-chunk idle timeout persisted after ${maxRetries} compactions; ending the turn`,
+        `first-chunk idle timeout persisted after ${maxRetries} compactions; delegating downstream recovery`,
       )
-      return undefined
+      return next()
     }
     const generation = agent.session.surface.replaceGeneration
     try {

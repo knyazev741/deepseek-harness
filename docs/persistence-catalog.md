@@ -2180,7 +2180,7 @@ Sources: [`packages/llm/llm/src/assistant-stream.ts:44`](../packages/llm/llm/src
 
 SHA-256: `647cb2e3aeb58e27d1d4d60011f208bb66dce257e8654193c533b47c4c22c253`
 
-Sources: [`packages/llm/llm/src/types.ts:425`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:430`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -2194,7 +2194,7 @@ Sources: [`packages/llm/llm/src/types.ts:425`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `95080295115fbd83544520ba247b68a03790131f6a2eac323d388758cb542f65`
 
-Sources: [`packages/llm/llm/src/types.ts:426`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:431`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -2208,7 +2208,7 @@ Sources: [`packages/llm/llm/src/types.ts:426`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `2abb711460e6238d851c30f3e4bdd87a2aa1887ee70575b3d3b7b25610673095`
 
-Sources: [`packages/llm/llm/src/types.ts:427`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:432`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -2222,7 +2222,7 @@ Sources: [`packages/llm/llm/src/types.ts:427`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `88a610b831be6d92612a464be5c7d0b88ec24d97bd299837bf74bf7672183c9a`
 
-Sources: [`packages/llm/llm/src/types.ts:428`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:433`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -2238,7 +2238,7 @@ Sources: [`packages/llm/llm/src/types.ts:428`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `90c811b8c2668898515e69a24e82caffeb08517f9c7aa193867ff0380f3b535d`
 
-Sources: [`packages/llm/llm/src/types.ts:429`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:434`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -2252,7 +2252,7 @@ Sources: [`packages/llm/llm/src/types.ts:429`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `f1a96afe7503ac1817de769cd0ba13d9b80111c7034c50106b3344ecc14cc515`
 
-Sources: [`packages/llm/llm/src/types.ts:430`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:435`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -2265,7 +2265,7 @@ Sources: [`packages/llm/llm/src/types.ts:430`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `a2b49331716ba0a7078b026d145306a70eae64b7313c3e6204bd931e75ec3bb1`
 
-Sources: [`packages/llm/llm/src/types.ts:431`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:436`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -4261,7 +4261,7 @@ SHA-256: `ebb768d85ec87fb68e42fc14fd7d8535b5ac11791b14d04c6770180f0a719bf8`
 
 SHA-256: `f311671e07bc7fa645a0b6597de9966b97147956565296ba76a36543801b66c5`
 
-Sources: [`packages/llm/llm/src/types.ts:381`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:386`](../packages/llm/llm/src/types.ts)
 
 `"in-history"`
 
@@ -5401,7 +5401,7 @@ Sources: [`packages/llm/llm/src/types.ts:67`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `0acd94fe8794574c9ae72c7855ee16d29c546096d4af760d16d1225385764555`
 
-Sources: [`packages/llm/llm/src/types.ts:402`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:407`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -5414,7 +5414,7 @@ Sources: [`packages/llm/llm/src/types.ts:402`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `071d92b9dac661fcc826c678cf64d188f26fb93aab79c627b11a03acdd34dfca`
 
-Sources: [`packages/llm/llm/src/types.ts:424`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:429`](../packages/llm/llm/src/types.ts)
 
 One of:
 
@@ -5479,7 +5479,7 @@ Sources: [`packages/llm/llm/src/types.ts:114`](../packages/llm/llm/src/types.ts)
 
 SHA-256: `7f5f2a8618c2ece530a18b1358b890fb57fb8c35705e47b66bff2296f8c6e889`
 
-Sources: [`packages/llm/llm/src/types.ts:445`](../packages/llm/llm/src/types.ts)
+Sources: [`packages/llm/llm/src/types.ts:450`](../packages/llm/llm/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|

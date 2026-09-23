@@ -478,7 +478,7 @@ export interface CompactionPolicyConfig {
   maxSummarizationInputTokens?: number
   /** Cooldown before retrying a transient summarizer failure after its provider retry budget. Defaults to `600000`. */
   summarizerCooldownMs?: number
-  /** Extra attempts after the first compaction when pressure remains above threshold. Defaults to `1`. */
+  /** Legacy pressure-pass setting. Automatic compaction requires a new assistant response between passes. */
   compactionRetries?: number
   /** Maximum retries after canonical context overflow; `0` disables recovery. Defaults to `1`. */
   maxOverflowRetries?: number

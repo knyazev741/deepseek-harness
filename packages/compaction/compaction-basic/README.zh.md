@@ -71,7 +71,7 @@ kind: "package-reference"
 | `maxTokens` | `8192` | 摘要请求的输出上限；可包含推理 token。 |
 | `maxSummarizationInputTokens` | `131072` | 每次摘要的估算输入上限；`0` 禁用此上限。过长历史会按平衡范围分轮压缩。 |
 | `summarizerCooldownMs` | `600000` | 摘要提供方耗尽瞬态重试预算后的冷却时间。 |
-| `compactionRetries` | `1` | 压力仍高于阈值时，在首次压缩后进行的额外尝试次数。 |
+| `compactionRetries` | `1` | 为现有配置保留；自动压缩在新的 assistant 响应之前只允许执行一次。 |
 | `maxOverflowRetries` | `1` | 已确认上下文窗口溢出后的最大重试次数；`0` 只禁用恢复。 |
 | `modelPolicies` | `[]` | 针对个别模型路由的精确 `{ provider, model, ...partialPolicy }` 覆盖。 |
 | `auto` | `true` | 启用自动压缩与溢出恢复；设为 `false` 则仅手动执行。 |
@@ -114,6 +114,8 @@ kind: "package-reference"
 当 `auto: true` 时，串行 `agent/pre-step` listener 会在请求派生前检查压力：它通过 `ctx.tokenMeter` 为最新持久路由请求 envelope 定价，当压力越过路由模型的阈值时，先剪枝，再在保留已定价近期尾部的同时摘要最旧的平衡范围。每个选定范围都从第一个不是 `system/message` 的 surface 节点开始，因此位于 surface 节点 0 的系统提示词永不会被遮蔽；由历史内提示词更新追加的后续 `system/message` 是普通历史，范围可以遮蔽它，agent loop（智能体循环）的投影随后会在二者文本不同时用当前提示词替换节点 0（[决策规则](../../core/agent-loop/README.zh.md#understand-the-implementation)）。`agent/request-error` listener 响应提供方确认的 `CONTEXT_WINDOW_EXCEEDED`：它绕过常规阈值与保留策略，尝试一次最大平衡头部缩减，并且只在表层替换 generation 前进后才授权重试。取消全程保持最终决定权。
 
 压力策略从拥有持久路由的适配器解析容量。适配器无法为有效动态路由返回容量时，手动压力路径会抛出目标特定配置错误；自动 listener 会对该精确目标警告一次，并携带完整历史继续。
+
+自动压缩要求在前一次 `compaction/start` 之后出现新的已提交 `assistant/message`，包括前一次失败或取消的尝试。用户消息、继续消息、轮次变化和会话恢复都不会重置此持久保护。受限时 `compactIfNeeded()` 返回 `null`；直接调用自动 `compactRegion()` 会在写入新的开始标记前拒绝。即使压力仍高，每次压力检查也最多执行一次。显式 `/compact` 维护保留其有界多次处理行为。参见[决策](../../../.agents/notes/implemented/bug-fix/2026-09-23-no-consecutive-auto-compaction.zh.md)。
 
 ### 摘要机制
 
@@ -228,7 +230,7 @@ Rules:
 
 #### Token 影响
 
-这是一次独立模型调用：输入是已回放会话前缀加固定指令，输出受 `maxTokens` 限制。收敛重试可能多次支付这项成本。
+这是一次独立模型调用：输入是已回放会话前缀加固定指令，输出受 `maxTokens` 限制。提供方重试和显式手动多次处理可能重复产生这项成本。
 
 #### KV Cache 影响
 

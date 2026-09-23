@@ -29,6 +29,7 @@ import {
 } from './config.ts'
 import {
   assertNoActiveCompaction,
+  automaticCompactionBlocked,
   compactSurfaceRegion,
   selectCompactableRange,
 } from './region.ts'
@@ -288,7 +289,8 @@ export class BasicCompactionEngine extends CompactionEngine {
    * Compact for replayed step-boundary pressure or one provider-confirmed context
    * overflow. Both triggers price the latest durable routed request envelope;
    * overflow bypasses the normal threshold and retained-tail policy so it can
-   * force one useful balanced reduction.
+   * force one useful balanced reduction. A prior compaction attempt blocks both
+   * triggers until the session records a new committed assistant response.
    * @param agent - agent whose latest durable routed request is measured.
    * @param trigger - normal step-boundary pressure or context-overflow recovery.
    * @param signal - live turn cancellation signal forwarded to summarization.
@@ -301,6 +303,8 @@ export class BasicCompactionEngine extends CompactionEngine {
   ): Promise<CompactionResult | null> {
     const target = routedTarget(agent.session)
     if (target === undefined) return null
+    assertNoActiveCompaction(agent.session, 'automatic compaction')
+    if (automaticCompactionBlocked(agent.session)) return null
     const policy = resolveTargetPolicy(this.config, target)
     const meter = this.ctx.tokenMeter
     let measurement = meter.measure(agent.session)
@@ -355,34 +359,20 @@ export class BasicCompactionEngine extends CompactionEngine {
     }
     if (measurement.totalTokens < spec.thresholdTokens) return null
 
-    let result: CompactionResult | null = null
-    for (let attempt = 0; attempt <= spec.compactionRetries; attempt += 1) {
-      const range = selectCompactableRange(
-        agent.session,
-        measurement,
-        spec.retainTokens,
-        spec.maxSummarizationInputTokens,
-      )
-      if (range === null) {
-        /* v8 ignore else -- concrete replacement preserves a compactable checkpoint; subclass hooks cannot mutate it. */
-        if (result === null) return null
-        /* v8 ignore next -- paired with the defensive post-success branch above. */
-        break
-      }
-      result = await this.compactRegion(range.start, range.end, agent, signal)
-      measurement = meter.measure(agent.session)
-      if (measurement.totalTokens < spec.thresholdTokens) return result
-    }
-
-    throw new Error(
-      `compaction still above threshold after ${spec.compactionRetries + 1} compaction attempts `
-      + `(${measurement.totalTokens} estimated tokens >= threshold ${spec.thresholdTokens})`,
+    const range = selectCompactableRange(
+      agent.session,
+      measurement,
+      spec.retainTokens,
+      spec.maxSummarizationInputTokens,
     )
+    if (range === null) return null
+    return this.compactRegion(range.start, range.end, agent, signal)
   }
 
   /**
    * Compact one inclusive positional range from the agent-owned surface using
-   * the effective token meter for all retention and shrink pricing.
+   * the effective token meter for all retention and shrink pricing. Rejects a
+   * repeated automatic compaction without a newer committed assistant response.
    * @param start - inclusive first surface-node seq.
    * @param end - inclusive last surface-node seq.
    * @param agent - owner of the target session, used by the summarizer.
