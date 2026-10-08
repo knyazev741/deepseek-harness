@@ -148,7 +148,14 @@ function adopt(candidate: LlmDiscoveredModel): ModelDraft {
     ...candidate.name === undefined ? {} : { name: candidate.name },
     ...candidate.contextWindow === undefined ? {} : { contextWindow: candidate.contextWindow },
     ...candidate.maxTokens === undefined ? {} : { maxTokens: candidate.maxTokens },
+    ...candidate.reasoningEfforts === undefined ? {} : { reasoningEfforts: candidate.reasoningEfforts },
   }
+}
+
+/** Whether endpoint discovery can restore capability metadata missing from a saved row. */
+function needsCapabilityRefresh(current: ModelDraft, candidate: LlmDiscoveredModel): boolean {
+  if (candidate.reasoningEfforts === undefined) return false
+  return JSON.stringify(current['reasoningEfforts']) !== JSON.stringify(candidate.reasoningEfforts)
 }
 
 /**
@@ -247,10 +254,15 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
       }
       // Everything already configured starts unchecked, so adopting a
       // selection never silently rewrites a capacity the user corrected.
-      const known = new Set(models.map(model => textOf(model, 'id')))
+      const known = new Map(models.map(model => [textOf(model, 'id'), model]))
       setCandidateQuery('')
       setCandidates(found)
-      setPicked(new Set(found.filter(model => !known.has(model.id)).map(model => model.id)))
+      setPicked(new Set(found
+        .filter((model) => {
+          const current = known.get(model.id)
+          return current === undefined || needsCapabilityRefresh(current, model)
+        })
+        .map(model => model.id)))
     } finally {
       setBusy(false)
     }
@@ -272,7 +284,14 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
       // Keyed by id, so a half-typed row whose id is still empty is not a
       // match and the candidate joins as its own row — correct, since a row
       // without an id is not yet a model and the create/apply gates refuse it.
-      byId.set(candidate.id, byId.get(candidate.id) ?? adopt(candidate))
+      const current = byId.get(candidate.id)
+      if (current === undefined) {
+        byId.set(candidate.id, adopt(candidate))
+        continue
+      }
+      if (candidate.reasoningEfforts !== undefined) {
+        byId.set(candidate.id, { ...current, reasoningEfforts: candidate.reasoningEfforts })
+      }
     }
     onChange([...byId.values()])
     closePicker()
