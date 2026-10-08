@@ -844,20 +844,21 @@ function SearchResults({
     <div className={clsx(css.treeBody, css.wide)}>
       <div className={css.list}>
         <div className={css.searchTree} role="tree" aria-label={t('search.results.aria')}>
-          {results.items.map(result => (
-            <SearchResultItem
-              key={result.id}
-              result={result}
-              currentId={currentId}
-              rowContext={list.byId[result.id] === undefined
-                ? undefined
-                : rowContext(list.byId[result.id], workspaces, currentId === result.id)}
-              renderSlot={renderSlot}
-              onOpen={open}
-              onUnarchive={onUnarchive}
-              t={t}
-            />
-          ))}
+          {results.items.map((result) => {
+            const row = list.byId[result.id]
+            return (
+              <SearchResultItem
+                key={result.id}
+                result={result}
+                currentId={currentId}
+                rowContext={row === undefined ? undefined : rowContext(row, workspaces, currentId === result.id)}
+                renderSlot={renderSlot}
+                onOpen={open}
+                onUnarchive={onUnarchive}
+                t={t}
+              />
+            )
+          })}
         </div>
         {pending && (
           /* Two skeleton rows on an empty list, one when local matches already
