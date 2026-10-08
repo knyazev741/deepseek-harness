@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-fork-base",
   "description": "The opt-in Host fork overlay bundle: fork capabilities plus portable Knyazev AI and default-model configuration over dsh-base",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },

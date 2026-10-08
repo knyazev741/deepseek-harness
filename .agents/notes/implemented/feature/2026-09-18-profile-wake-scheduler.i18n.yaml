@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-profile-wake-scheduler.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-profile-wake-scheduler.md
-2026-09-18-profile-wake-scheduler.md: 5191514b7e1882cd6cc2fc144133fa27939117fd
-2026-09-18-profile-wake-scheduler.zh.md: e3f1628d3ae121b6d28faaf4cc7c2fa62a4d18ad
+/agent-note-agent-set-wake-schedules:
+  en: 97c684c96d5b9de7
+  zh: 5ed45f22dd9f26be
+/agent-note-agent-set-wake-schedules/problem:
+  en: 85cd25e440acdbd5
+  zh: deeb6add8f0af4fa
+/agent-note-agent-set-wake-schedules/decision:
+  en: 1cf196e6630d6ce2
+  zh: 755c9a87c533dcb7
+/agent-note-agent-set-wake-schedules/alternatives-considered:
+  en: 58b7a29ed289d5a7
+  zh: 5736541e83cdd5c2
+/agent-note-agent-set-wake-schedules/consequences:
+  en: 6bef2e82d018846e
+  zh: a4432f050b3be18b

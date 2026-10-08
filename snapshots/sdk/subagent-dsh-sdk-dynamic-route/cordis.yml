@@ -2,7 +2,7 @@
 # a separate SDK child runtime. Both runtimes persist their request headers.
 
 - id: llm-deepseek
-  name: '@knyazevai/dsh-llm-deepseek'
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
   disabled: true
 
 - id: tool-subagent

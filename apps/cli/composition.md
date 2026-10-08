@@ -8,9 +8,13 @@ The dsh-base bundle patch shared by the web, headless, sdk, and acp profiles; th
 ```mermaid
 flowchart LR
   cfg["packages/bundle/base/cordis.patch.yml<br/>cordis.yml"]
+  plugin_dsh_base_tool_plugin_manager["tool-plugin-manager<br/>@knyazevai/dsh-plugin-manager/tools"]
+  cfg --> plugin_dsh_base_tool_plugin_manager
+  plugin_dsh_base_plugin_manager["plugin-manager<br/>@knyazevai/dsh-plugin-manager"]
+  cfg --> plugin_dsh_base_plugin_manager
   plugin_dsh_base_timer["timer<br/>@deepseek-ai/cordis-plugin-timer"]
   cfg --> plugin_dsh_base_timer
-  plugin_dsh_base_hmr["hmr<br/>@deepseek-ai/cordis-plugin-hmr"]
+  plugin_dsh_base_hmr["hmr<br/>@knyazevai/dsh-hmr"]
   cfg --> plugin_dsh_base_hmr
   plugin_dsh_base_llm["llm<br/>@knyazevai/dsh-llm"]
   cfg --> plugin_dsh_base_llm
@@ -42,8 +46,14 @@ flowchart LR
   cfg --> plugin_dsh_base_jobs
   plugin_dsh_base_llm_retry["llm-retry<br/>@knyazevai/dsh-llm-retry"]
   cfg --> plugin_dsh_base_llm_retry
-  plugin_dsh_base_settings["settings<br/>@knyazevai/dsh-settings-file"]
+  plugin_dsh_base_config_editor["config-editor<br/>@knyazevai/dsh-config-editor"]
+  cfg --> plugin_dsh_base_config_editor
+  plugin_dsh_base_settings["settings<br/>@knyazevai/dsh-settings"]
   cfg --> plugin_dsh_base_settings
+  plugin_dsh_base_authorization["authorization<br/>@knyazevai/dsh-authorization"]
+  cfg --> plugin_dsh_base_authorization
+  plugin_dsh_base_deepseek_account["deepseek-account<br/>@knyazevai/dsh-deepseek-account-platform"]
+  cfg --> plugin_dsh_base_deepseek_account
   plugin_dsh_base_credentials["credentials<br/>@knyazevai/dsh-credentials-local"]
   cfg --> plugin_dsh_base_credentials
   plugin_dsh_base_llm_pi_ai["llm-pi-ai<br/>@knyazevai/dsh-llm-pi-ai"]
@@ -64,6 +74,8 @@ flowchart LR
   cfg --> plugin_dsh_base_storage_domain
   plugin_dsh_base_session_projection_cache["session-projection-cache<br/>@knyazevai/dsh-session-projection-cache"]
   cfg --> plugin_dsh_base_session_projection_cache
+  plugin_dsh_base_otel["otel<br/>@knyazevai/dsh-otel"]
+  cfg --> plugin_dsh_base_otel
   plugin_dsh_base_session_telemetry_otel["session-telemetry-otel<br/>@knyazevai/dsh-session-telemetry-otel"]
   cfg --> plugin_dsh_base_session_telemetry_otel
   plugin_dsh_base_subprocess["subprocess<br/>@knyazevai/dsh-subprocess-local"]
@@ -180,14 +192,18 @@ flowchart LR
   cfg --> plugin_dsh_base_agent_loop
   plugin_dsh_base_fs_sandbox["fs-sandbox<br/>@knyazevai/dsh-fs-sandbox"]
   cfg --> plugin_dsh_base_fs_sandbox
-  plugin_dsh_base_llm_deepseek["llm-deepseek<br/>@knyazevai/dsh-llm-deepseek"]
+  plugin_dsh_base_llm_deepseek["llm-deepseek<br/>@knyazevai/dsh-llm-deepseek-api-key"]
   cfg --> plugin_dsh_base_llm_deepseek
+  plugin_dsh_base_llm_deepseek_account["llm-deepseek-account<br/>@knyazevai/dsh-llm-deepseek-account"]
+  cfg --> plugin_dsh_base_llm_deepseek_account
 ```
 
 | Plugin id | Package / module |
 | --- | --- |
+| `tool-plugin-manager` | `@knyazevai/dsh-plugin-manager/tools` |
+| `plugin-manager` | `@knyazevai/dsh-plugin-manager` |
 | `timer` | `@deepseek-ai/cordis-plugin-timer` |
-| `hmr` | `@deepseek-ai/cordis-plugin-hmr` |
+| `hmr` | `@knyazevai/dsh-hmr` |
 | `llm` | `@knyazevai/dsh-llm` |
 | `deepseek-llm-api-extensions` | `@knyazevai/dsh-deepseek-llm-api-extensions` |
 | `session` | `@knyazevai/dsh-session` |
@@ -203,7 +219,10 @@ flowchart LR
 | `agent-default-model` | `@knyazevai/dsh-agent-default-model` |
 | `jobs` | `@knyazevai/dsh-jobs-local` |
 | `llm-retry` | `@knyazevai/dsh-llm-retry` |
-| `settings` | `@knyazevai/dsh-settings-file` |
+| `config-editor` | `@knyazevai/dsh-config-editor` |
+| `settings` | `@knyazevai/dsh-settings` |
+| `authorization` | `@knyazevai/dsh-authorization` |
+| `deepseek-account` | `@knyazevai/dsh-deepseek-account-platform` |
 | `credentials` | `@knyazevai/dsh-credentials-local` |
 | `llm-pi-ai` | `@knyazevai/dsh-llm-pi-ai` |
 | `session-persistence-jsonl` | `@knyazevai/dsh-session-persistence-jsonl` |
@@ -214,6 +233,7 @@ flowchart LR
 | `storage-json` | `@knyazevai/dsh-storage-json` |
 | `storage-domain` | `@knyazevai/dsh-storage-domain` |
 | `session-projection-cache` | `@knyazevai/dsh-session-projection-cache` |
+| `otel` | `@knyazevai/dsh-otel` |
 | `session-telemetry-otel` | `@knyazevai/dsh-session-telemetry-otel` |
 | `subprocess` | `@knyazevai/dsh-subprocess-local` |
 | `sandbox` | `@knyazevai/dsh-sandbox-local` |
@@ -272,7 +292,8 @@ flowchart LR
 | `system-prompt` | `@knyazevai/dsh-system-prompt` |
 | `agent-loop` | `@knyazevai/dsh-agent-loop` |
 | `fs-sandbox` | `@knyazevai/dsh-fs-sandbox` |
-| `llm-deepseek` | `@knyazevai/dsh-llm-deepseek` |
+| `llm-deepseek` | `@knyazevai/dsh-llm-deepseek-api-key` |
+| `llm-deepseek-account` | `@knyazevai/dsh-llm-deepseek-account` |
 
 Source config: [`packages/bundle/base/cordis.patch.yml`](../../packages/bundle/base/cordis.patch.yml).
 

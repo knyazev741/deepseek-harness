@@ -35,7 +35,7 @@ function evaluate(expression: string, context: Record<string, string | boolean>)
   const source = expression.trim().replace(/^\$\{\{|\}\}$/g, '')
     .replace(/\b(?:github|vars|runner)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)+/g,
       key => JSON.stringify(context[key] ?? ''))
-  return runInNewContext(source, { fromJSON: JSON.parse }, { timeout: 1000 }) as unknown
+  return runInNewContext(source, { fromJSON: JSON.parse }, { timeout: 1000 })
 }
 
 function assertSharedPersistentStore(run: string | undefined): void {
@@ -161,6 +161,6 @@ for (const [file, jobIds] of [['release.yml', ['dependencies', 'pack']], ['relea
 
 it.each(['release-publish.yml', 'release-vendor-publish.yml'])('keeps %s manual and entirely hosted', (file) => {
   const publish = workflow(file)
-  expect(publish.on).toEqual({ workflow_dispatch: null })
+  expect(Object.keys(publish.on)).toEqual(['workflow_dispatch'])
   for (const job of Object.values(publish.jobs)) expect(job['runs-on']).toBe(hosted)
 })

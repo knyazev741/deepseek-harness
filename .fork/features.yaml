@@ -53,7 +53,7 @@ features:
       - packages/fork/workspace-session-state/tests/service.spec.ts
       - packages/fork/ui-workspace-overlay/tests/workspace-overlay.client.spec.tsx
     disposition: adapted
-    replacement: Fork-owned settings-backed Host service, Typert Remote, and UI contribution.
+    replacement: Native Workspace pin persistence and actions, with an importer for the former fork settings and a retained Remote adapter.
   - id: github-actions-session-source
     sourceCommits:
       - 842170d111

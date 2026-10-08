@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fork/external-session/README.md
-README.md: df15e53286d9c1f0fdaaa6b1f4854148fe2ddadb
-README.zh.md: 375aaf87c70c37e1de65112b81d0a9b79f6bfb3e
+/:
+  en: 7cb2c55511ae2bc9
+  zh: 61b558d5016f68e5
+/knyazevai-dsh-fork-external-session:
+  en: 166384f63fa493d9
+  zh: 1ea7ecc928f7b63b
+/knyazevai-dsh-fork-external-session/summary:
+  en: d7f3c43177d6f785
+  zh: 6494d05fe4e15200
+/knyazevai-dsh-fork-external-session/table-of-contents:
+  en: 45af292f7ea432c5
+  zh: 38c11773cdc32c19
+/knyazevai-dsh-fork-external-session/composition:
+  en: 700753d134929ddc
+  zh: decb206072285921
+/knyazevai-dsh-fork-external-session/deliberate-scope:
+  en: 236dfc419a20f41a
+  zh: 2c1fe915d5bed88d
+/knyazevai-dsh-fork-external-session/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-fork-external-session/model-experience/host-registry:
+  en: 13eba80c16f9a27e
+  zh: ac5ee213df645492
+/knyazevai-dsh-fork-external-session/model-experience/host-registry/what-the-model-sees:
+  en: dba020facc416064
+  zh: faa9013c5899b0a9
+/knyazevai-dsh-fork-external-session/model-experience/host-registry/token-effect:
+  en: d6264802f4cedd0d
+  zh: 84ffaeb9cd129f5f
+/knyazevai-dsh-fork-external-session/model-experience/host-registry/kv-cache-effect:
+  en: 30210317a82018c4
+  zh: 6a81b642cfe5fe5d
+/knyazevai-dsh-fork-external-session/known-limitations-and-deferred-work:
+  en: c02e14a091265f1f
+  zh: 2329d9ca61651a47
+/knyazevai-dsh-fork-external-session/known-limitations-and-deferred-work/dev-note:
+  en: cfae41f999886513
+  zh: ae541efe7ad4df99

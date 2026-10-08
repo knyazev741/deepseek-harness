@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-message-feedback",
   "description": "Canonical Session-log ratings and notes for finalized assistant messages",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -44,28 +44,28 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-persistence": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-command-feedback": "workspace:^"
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-command-feedback": "workspace:*"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:~",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis-plugin-include": "workspace:^",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-persistence": "workspace:^",
-    "@knyazevai/dsh-session-persistence-jsonl": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-command-feedback": "workspace:^"
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-command-feedback": "workspace:*"
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-session-query-sqlite",
   "description": "Concrete ctx.sessionQuery backend with SQLite FTS5 search",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,10 +27,10 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-persistence": "workspace:^",
-    "@knyazevai/dsh-session-query": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "peerDependenciesMeta": {
     "@knyazevai/dsh-session-persistence": {
@@ -38,15 +38,15 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-persistence": "workspace:^",
-    "@knyazevai/dsh-session-persistence-jsonl": "workspace:^",
-    "@knyazevai/dsh-session-query": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^"
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-session-projection": "workspace:*"
   }
 }

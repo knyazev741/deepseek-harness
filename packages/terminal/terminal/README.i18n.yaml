@@ -1,6 +1,79 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/terminal/terminal/README.md
-README.md: 85861bc885f451e7e7deffc5051be439fd7c29b7
-README.zh.md: 012e511c4e08592108730df5ce1017ed0948f30e
+/:
+  en: 3d90ab1819787962
+  zh: d5279e899341168a
+/knyazevai-dsh-terminal:
+  en: da885b299de3651b
+  zh: cd20fce45d9f9b30
+/knyazevai-dsh-terminal/summary:
+  en: b275cca5aa0ccbd6
+  zh: 0452420c4b45c7db
+/knyazevai-dsh-terminal/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-terminal/use-this-package:
+  en: 65bace9f8a4ad4a8
+  zh: 29fb77631e03098e
+/knyazevai-dsh-terminal/use-this-package/when-to-choose-it:
+  en: c4244a1757ca3584
+  zh: b6fb10e30146b347
+/knyazevai-dsh-terminal/use-this-package/composition:
+  en: c6562461d8c66517
+  zh: 8bab392367901144
+/knyazevai-dsh-terminal/use-this-package/what-sessions-give-you:
+  en: 6527302f4ad84cbb
+  zh: 8edc988f1d0a3cee
+/knyazevai-dsh-terminal/use-this-package/ownership-and-isolation:
+  en: 47820d85ea37cb36
+  zh: 857686d08af67fcb
+/knyazevai-dsh-terminal/use-this-package/observable-outcomes-and-failures:
+  en: 4fcedb18b5e8d5f2
+  zh: d72bb1a45e45cfff
+/knyazevai-dsh-terminal/understand-the-implementation:
+  en: 0d0669b98b14a3dd
+  zh: 57416c205270e4e1
+/knyazevai-dsh-terminal/understand-the-implementation/design-concept:
+  en: 6bae42fb7275816f
+  zh: 5f75e1b26074108c
+/knyazevai-dsh-terminal/understand-the-implementation/source-map:
+  en: 48dab6fe2f770ced
+  zh: 9bbfd23bcc5ac2b3
+/knyazevai-dsh-terminal/understand-the-implementation/data-model-and-lifecycle:
+  en: a2adfa2708882e19
+  zh: 002f257fd8c4addb
+/knyazevai-dsh-terminal/understand-the-implementation/ownership-and-cleanup-rules:
+  en: 7af36e58919e41d5
+  zh: 4fe7b4db1099bcbf
+/knyazevai-dsh-terminal/understand-the-implementation/send-reservation:
+  en: 5815723cd0c6089c
+  zh: 0c612ffa4b8c466c
+/knyazevai-dsh-terminal/further-exploration:
+  en: 0e744f900665e8ad
+  zh: bd7b20a82fad207e
+/knyazevai-dsh-terminal/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-terminal/model-experience/indirect-consumer:
+  en: a601a3c4f5b848cd
+  zh: ec617f79f706aaa1
+/knyazevai-dsh-terminal/model-experience/indirect-consumer/what-the-model-sees:
+  en: d395e86ee6a8ea91
+  zh: 94ca08ea8ded604b
+/knyazevai-dsh-terminal/model-experience/indirect-consumer/token-effect:
+  en: 477da21b0a5be3a6
+  zh: 3ae1d37fe671ef96
+/knyazevai-dsh-terminal/model-experience/indirect-consumer/kv-cache-effect:
+  en: 8c6027afd22abb1c
+  zh: d7d85c17e8b7c11b
+/knyazevai-dsh-terminal/known-limitations-and-deferred-work:
+  en: a133ebc47a4df34f
+  zh: 9bb949487ee566d5
+/knyazevai-dsh-terminal/known-limitations-and-deferred-work/dev-note:
+  en: 112f870e68bd1ff3
+  zh: 693f37bbd32497a0
+/knyazevai-dsh-terminal/known-limitations-and-deferred-work/dev-note/undecided-directions:
+  en: 3c5203a9c40a38ef
+  zh: a7660ca08bd0d279

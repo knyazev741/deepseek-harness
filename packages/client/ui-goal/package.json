@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-goal",
   "description": "Session goal surface: GoalBar docked above the composer, read from the goal session projection",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -45,28 +45,28 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-api-remotes": "workspace:^",
-    "@knyazevai/dsh-api-session-controller": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-chat": "workspace:^",
-    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-client-ui-session": "workspace:^",
-    "@knyazevai/dsh-commands": "workspace:^",
-    "@knyazevai/dsh-goal": "workspace:^",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-chat": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-commands": "workspace:*",
+    "@knyazevai/dsh-goal": "workspace:*",
     "@testing-library/react": "^16.1.0",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^"
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*"
   },
   "files": [
     "lib/index.js",

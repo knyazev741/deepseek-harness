@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fork/llm-rate-limit-cooldown/README.md
-README.md: ed7bb13b9eed92deda365a58603a59af518b3064
-README.zh.md: 427cb2c3bb734da91e9c7d2811fc76b180c14f65
+/:
+  en: 7cb2c55511ae2bc9
+  zh: 61b558d5016f68e5
+/knyazevai-dsh-fork-llm-rate-limit-cooldown:
+  en: 8c8dcb6731a4bf9a
+  zh: 6747901b57835a01
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/summary:
+  en: 07f90d698613f672
+  zh: 4427333c26d624b7
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/table-of-contents:
+  en: c8f0732f321ae56a
+  zh: bd03f98fdbddaf2d
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/composition:
+  en: ed4bfadfb2a24fdf
+  zh: 0748f9811ef478ff
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/escalation-after-the-bounded-budget:
+  en: 7e5ce37dac37c5e1
+  zh: bdb67894a781fd33
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience/retry-recovery:
+  en: 19342267999c29bc
+  zh: 38c05a88f8e47987
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience/retry-recovery/what-the-model-sees:
+  en: 9dda14de0ebdd149
+  zh: b2ea8f22669d331e
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience/retry-recovery/token-effect:
+  en: 63f29159f572742f
+  zh: ccf36fb7ffb51f7c
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience/retry-recovery/kv-cache-effect:
+  en: 19cbafe5c77ddd5a
+  zh: 6e78900217f59f5e
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/known-limitations-and-deferred-work:
+  en: f13ce7697b9f426c
+  zh: 28c70274a14dc976
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/known-limitations-and-deferred-work/dev-note:
+  en: cfae41f999886513
+  zh: ae541efe7ad4df99

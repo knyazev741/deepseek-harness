@@ -9,7 +9,7 @@ import type {} from '@knyazevai/dsh-client-ui-workspace/client'
 import type {} from '@knyazevai/dsh-fork-session-source/types'
 import type {} from '@knyazevai/dsh-fork-workspace-session-state/remote'
 import type { WorkspaceSessionRowContext } from '@knyazevai/dsh-client-ui-workspace/client'
-import { WorkspaceRowActions, type PinMutationResult, type WorkspaceRowActionsInjected } from './WorkspaceRowActions.tsx'
+import { WorkspaceRowActions, type WorkspaceRowActionsInjected } from './WorkspaceRowActions.tsx'
 import { WorkspaceRowStatus } from './WorkspaceRowStatus.tsx'
 import { WorkspaceRowBadges } from './WorkspaceRowBadges.tsx'
 import { en, NS, zh, type WorkspaceOverlayLocaleKey } from './locales.ts'
@@ -27,7 +27,7 @@ declare module '@knyazevai/dsh-client-ui-slots' {
 
 /** Services and contribution registries required by the overlay. */
 export const inject = [
-  'slots', 'sessions', 'workspaceContributions', 'remote', 'remote.forkWorkspaceSessionState', 'locale',
+  'slots', 'sessions', 'workspaces', 'workspaceContributions', 'remote', 'remote.forkWorkspaceSessionState', 'locale',
 ] as const
 
 function sessionFrom(
@@ -42,7 +42,6 @@ export function apply(ctx: ClientContext): void {
   const store = createWorkspaceOverlayStore()
   const contributions = ctx.workspaceContributions
   const lifecycle = { disposed: false }
-  const isDisposed = (): boolean => lifecycle.disposed
 
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'fork-ui-workspace-overlay: dictionaries')
 
@@ -66,7 +65,7 @@ export function apply(ctx: ClientContext): void {
     let previous: SessionId | undefined
     const syncCurrentRead = (): void => {
       const snapshot = ctx.sessions.list.getSnapshot()
-      const current = snapshot.current
+      const current = snapshot.ids.find(id => (snapshot.byId[id]?.retainedBy.mainView ?? 0) > 0)
       if (current !== undefined) {
         const summary = sessionFrom(snapshot, current)
         if (summary !== undefined) {
@@ -80,55 +79,19 @@ export function apply(ctx: ClientContext): void {
     return ctx.sessions.list.subscribe(syncCurrentRead)
   }, 'fork-ui-workspace-overlay: current-session read watermark')
 
-  const setPinned = async (session: SessionSummary, pinned: boolean): Promise<PinMutationResult> => {
-    if (isDisposed()) return { accepted: false }
-    const result = await ctx.remote.forkWorkspaceSessionState.setPinned({
-      sessionId: session.id,
-      pinned,
-      expectedRevision: store.observedPinRevision(),
-    })
-    if (isDisposed()) return { accepted: false }
-    if (!result.ok) return { accepted: false }
-    if (result.value.ok) {
-      store.installPins(result.value.value)
-      return { accepted: true }
-    }
-    if (result.value.error.code === 'revision-conflict') {
-      // A browser tab can retain the previous Settings revision across a Host
-      // restart (or lose the initial list race). Refresh and replay this one
-      // explicit intent so a normal click is not converted into a no-op.
-      const refreshed = await ctx.remote.forkWorkspaceSessionState.list()
-      if (isDisposed() || !refreshed.ok) return { accepted: false }
-      store.replacePins(refreshed.value)
-      const retry = await ctx.remote.forkWorkspaceSessionState.setPinned({
-        sessionId: session.id,
-        pinned,
-        expectedRevision: store.observedPinRevision(),
-      })
-      if (isDisposed()) return { accepted: false }
-      if (!retry.ok) return { accepted: false }
-      if (retry.value.ok) {
-        store.installPins(retry.value.value)
-        return { accepted: true }
-      }
-      return { accepted: false, stale: retry.value.error.code === 'revision-conflict' }
-    }
-    return { accepted: false }
-  }
-
   const actions = (): WorkspaceRowActionsInjected => ({
     hooks: { overlay: store },
     markUnread: (session) => { store.markUnread(session) },
-    setPinned,
   })
 
   const pinPolicy = {
     id: 'fork.pinned-first',
     order: 100,
-    promote: (context: WorkspaceSessionRowContext): boolean => store.isPinned(context.session.id),
+    promote: (context: WorkspaceSessionRowContext): boolean =>
+      ctx.workspaces.list.getSnapshot().pinnedSessionIds.includes(context.session.id),
     compare: (left: WorkspaceSessionRowContext, right: WorkspaceSessionRowContext): number => {
-      const leftPinned = store.isPinned(left.session.id)
-      const rightPinned = store.isPinned(right.session.id)
+      const leftPinned = ctx.workspaces.list.getSnapshot().pinnedSessionIds.includes(left.session.id)
+      const rightPinned = ctx.workspaces.list.getSnapshot().pinnedSessionIds.includes(right.session.id)
       if (leftPinned === rightPinned) return 0
       return leftPinned ? -1 : 1
     },
@@ -139,9 +102,9 @@ export function apply(ctx: ClientContext): void {
     // updates gives WorkspaceBrowser a new policies snapshot and therefore
     // recomputes the order without mutating the upstream session list.
     let dispose = contributions.registerPolicy(pinPolicy)
-    let previousPins = store.getSnapshot().pins
-    const unsubscribe = store.subscribe(() => {
-      const nextPins = store.getSnapshot().pins
+    let previousPins = ctx.workspaces.list.getSnapshot().pinnedSessionIds
+    const unsubscribe = ctx.workspaces.list.subscribe(() => {
+      const nextPins = ctx.workspaces.list.getSnapshot().pinnedSessionIds
       if (nextPins === previousPins) return
       previousPins = nextPins
       dispose()

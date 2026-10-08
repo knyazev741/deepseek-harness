@@ -18,7 +18,7 @@ Loader 立即更改条目选项。EntryGroup 并发启动同级条目并记录�
 
 Fiber、Entry 和 isolate 保持上游的更新返回行为。App boot 通过现有的 `internal/update` waterfall 观察被丢弃的重启 promise，并在检查 patch 重载前等待 fiber。游离的导入完成观察器处理 fiber 的两种结果；fiber 仍保留失败信息供显式检查。Include 的持久写入在删除子条目前后均排空，防止后续拆卸写入掩盖更早的终止性写入失败。
 
-保留两项 #932 专属 vendor 改动：Include 中等待初始文件创建并强制重新读取，以及 Schemastery 条件导出。恢复 #932 前的防抖写入和读取顺序，会在缺失文件初始化测试中复现 `ENOENT`。保留这两行可以维持已有 `initial` 选项，而无需在应用侧增加文件写入器或另一份 YAML 序列化逻辑。移除 Schemastery exports 后，Web preset 测试在启动时复现 `ERR_REQUIRE_ESM_RACE_CONDITION`：并发 ESM 导入使 Node 回退到 CJS 入口。HMR 注入装饰器、条件 patch 克隆及更新返回值采用 #932 前的行为。显式 `workspace:^` 依赖使 #932 的 workspace 链接开关与专用锁文件检查不再必要。
+保留两项 #932 专属 vendor 改动：Include 中等待初始文件创建并强制重新读取，以及 Schemastery 条件导出。恢复 #932 前的防抖写入和读取顺序，会在缺失文件初始化测试中复现 `ENOENT`。保留这两行可以维持已有 `initial` 选项，而无需在应用侧增加文件写入器或另一份 YAML 序列化逻辑。移除 Schemastery exports 后，Web preset 测试在启动时复现 `ERR_REQUIRE_ESM_RACE_CONDITION`：并发 ESM 导入使 Node 回退到 CJS 入口。HMR 注入装饰器、条件 patch 克隆及更新返回值采用 #932 前的行为。显式 `workspace:` 依赖使 #932 的 workspace 链接开关与专用锁文件检查不再必要。
 
 ## 考虑过的替代方案
 
@@ -32,4 +32,4 @@ Fiber、Entry 和 isolate 保持上游的更新返回行为。App boot 通过现
 
 插件激活失败可能保留新选项和失败的 fiber。要求插件处于激活状态的调用者必须在结算后检查；仅等待 `Loader.create()` 不能证明激活。自动插件回滚需要后续独立决策，并证明其恢复收益值得额外的生命周期实现。
 
-[实时 patch 测试](../testing/2026-09-09-user-patch-hmr-test-delivery.zh.md) 保留受控事件投递和原生监视覆盖，同时断言不回滚时的失败报告。[终端释放策略](../bug-fix/2026-07-31-fail-loud-releases-the-terminal.zh.md) 仍适用于致命错误和部分启动拆卸。Web preset 组合与真实 CLI webhook 创建的模型 Session 提供手动挂载插件之外的应用级验证。
+[实时 patch 测试](../../../../packages/boot/app-boot/tests/user-patches.spec.ts) 保留受控事件投递和原生监视覆盖，同时断言不回滚时的失败报告。[终端释放策略](../../../../packages/boot/app-boot/README.zh.md) 仍适用于致命错误和部分启动拆卸。Web preset 组合与真实 CLI webhook 创建的模型 Session 提供手动挂载插件之外的应用级验证。

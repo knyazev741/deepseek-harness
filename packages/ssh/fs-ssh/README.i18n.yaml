@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/ssh/fs-ssh/README.md
-README.md: 263140101d2d307fbe6ce0853f05c1d11ec923b4
-README.zh.md: 3fc096faf35ca756e4757f455597002d0e845275
+/:
+  en: 7ee4b79f88be1b77
+  zh: 915152892d037c3c
+/knyazevai-dsh-fs-ssh:
+  en: 04d77fdef0b8b17b
+  zh: 49f974e770d35a11
+/knyazevai-dsh-fs-ssh/summary:
+  en: 7af49b384ffaf77a
+  zh: b79e9ef0d4a1f608
+/knyazevai-dsh-fs-ssh/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 725b47765ee8f30b
+/knyazevai-dsh-fs-ssh/use-this-package:
+  en: ce278245478a358d
+  zh: 9e292b591bcbaa70
+/knyazevai-dsh-fs-ssh/understand-the-implementation:
+  en: df9be336b11850b2
+  zh: 6748e9993fa1e2ac
+/knyazevai-dsh-fs-ssh/further-exploration:
+  en: 86d41ac2ed56c29f
+  zh: 462640a289037b19
+/knyazevai-dsh-fs-ssh/model-experience:
+  en: f8b078c320d36749
+  zh: 5a0f4d1b72574d72
+/knyazevai-dsh-fs-ssh/model-experience/kv-cache-effect:
+  en: 21f304c66e5ba98b
+  zh: 18185d5b164f8216
+/knyazevai-dsh-fs-ssh/known-limitations-and-deferred-work:
+  en: 2e75cffd2ab863d6
+  zh: f8fdbabe27082f08
+/knyazevai-dsh-fs-ssh/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

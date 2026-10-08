@@ -3,10 +3,6 @@ import { Context } from '@deepseek-ai/cordis'
 import { SessionId } from '@knyazevai/dsh-session'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
-import InvariantRegistry from '@knyazevai/dsh-invariants'
-import * as SessionInvariant from '@knyazevai/dsh-session/invariant'
-import * as AgentInvariant from '@knyazevai/dsh-agent/invariant'
-import * as AgentLoopInvariant from '@knyazevai/dsh-agent-loop/invariant'
 import SubagentRuntime from '@knyazevai/dsh-subagent'
 import * as spawn from '@knyazevai/dsh-subagent-spawn-in-process'
 import { STRUCTURED_OUTPUT_TOOL } from '@knyazevai/dsh-subagent-in-process-driver'
@@ -16,19 +12,11 @@ import { mountPtcRuntime } from './setup.ts'
 
 type Script = ConstructorParameters<typeof MockAdapter>[0]
 
-async function mountInvariants(ctx: Context): Promise<void> {
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
-}
-
 async function setup(script: Script) {
   const ctx = new Context()
   const adapter = new MockAdapter(script)
   await mountAgentLoopTestDependencies(ctx)
   await mountPtcRuntime(ctx)
-  await mountInvariants(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(SubagentRuntime)
   await ctx.plugin(spawn, { providerName: 'spawn' })

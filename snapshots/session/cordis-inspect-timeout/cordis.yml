@@ -1,0 +1,41 @@
+- id: agent-default-model
+  name: '@knyazevai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-pro
+
+- id: session-persistence-jsonl
+  name: '@knyazevai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: !!js 'process.env.DSH_SNAPSHOT === undefined ? ''zstd'' : ''none'''
+
+- id: agent-instructions
+  name: '@knyazevai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: tools
+  name: '@knyazevai/dsh-tools'
+  config:
+    mode: both
+
+- id: system-prompt
+  name: '@knyazevai/dsh-system-prompt'
+  config:
+    personaPrefix: |
+      You are a coding assistant powered by the {{model}} model. Your working directory is {{cwd}}.
+
+      Verify your work by running the code or tests. Keep answers brief and factual.
+
+- insert:
+    - id: cordis-host-runner
+      name: '@knyazevai/dsh-cordis-host-runner'
+      config:
+        clientInspectTimeoutMs: 100
+    - id: cordis-inspect-providers
+      name: '@knyazevai/dsh-tool-cordis/host'
+    - id: tool-cordis
+      name: '@knyazevai/dsh-tool-cordis'
+    - id: client-inspect-timeout-fixture
+      name: ./client-fixture.mjs

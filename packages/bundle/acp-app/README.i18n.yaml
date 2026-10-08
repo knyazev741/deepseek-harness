@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/bundle/acp-app/README.md
-README.md: 299088ebb7d72ef8294a1165d5a93ce01161a62a
-README.zh.md: 48b07854070d164a7b5bb19bb266af8a5970587a
+/:
+  en: 54af04fe07d4168b
+  zh: e4ceb9a3f653e74b
+/knyazevai-dsh-acp-app:
+  en: 7756f76385089939
+  zh: 28c73fba9d2ba62b
+/knyazevai-dsh-acp-app/summary:
+  en: a9c25b4f78fe815e
+  zh: 404b80450b716e56
+/knyazevai-dsh-acp-app/table-of-contents:
+  en: 636fbd365057be75
+  zh: d12fd8759c7e62e5
+/knyazevai-dsh-acp-app/use-this-package:
+  en: 253968fa459a1fe0
+  zh: 419ff64d21b0f8d4
+/knyazevai-dsh-acp-app/standard-automation-workflow:
+  en: a275f648857abadb
+  zh: 128eec8a97db5542
+/knyazevai-dsh-acp-app/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-acp-app/model-experience/acp-coding-agent-persona:
+  en: a7451ee84e5e156a
+  zh: a7451ee84e5e156a
+/knyazevai-dsh-acp-app/model-experience/acp-coding-agent-persona/what-the-model-sees:
+  en: bc0db4c628a1e547
+  zh: 740d07803bca3ce4
+/knyazevai-dsh-acp-app/model-experience/acp-coding-agent-persona/token-effect:
+  en: 371d28831239e0a8
+  zh: 0d2678654607b657
+/knyazevai-dsh-acp-app/model-experience/acp-coding-agent-persona/kv-cache-effect:
+  en: 8a5d250256381538
+  zh: 0578eaa7f774753e
+/knyazevai-dsh-acp-app/known-limitations-and-deferred-work:
+  en: e5e9b2ef3b75e6f6
+  zh: f34d43d5dd68ab60
+/knyazevai-dsh-acp-app/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: e88aeb617ffb74ea

@@ -46,34 +46,49 @@ describe('desktop package-set selection', () => {
     ])
   })
 
-  it('rejects a required internal package absent from the packed release inputs', () => {
+  it.each([
+    '@knyazevai/dsh-base', '@deepseek-ai/cordis', '@deepseek-ai/node-addon-system',
+  ])('rejects required prepared package %s absent from the packed release inputs', (dependency) => {
     const available = new Map<string, PackedDesktopPackage>([
       ['@knyazevai/dsh', packed('@knyazevai/dsh', {
-        dependencies: { '@knyazevai/dsh-base': '^1.0.0' },
+        dependencies: { [dependency]: '^1.0.0' },
       })],
       ['@knyazevai/dsh-desktop-host', packed('@knyazevai/dsh-desktop-host', {
         dependencies: { '@knyazevai/dsh': '^1.0.0' },
       })],
     ])
-    expect(() => selectDesktopPackageClosure(available)).toThrow(/unpacked internal package/u)
+    expect(() => selectDesktopPackageClosure(available)).toThrow(/unpacked package/u)
     expect(() => selectDesktopPackageClosure(new Map([
       ['@knyazevai/dsh', packed('@knyazevai/dsh')],
     ]))).toThrow(/omit @knyazevai\/dsh-desktop-host/u)
   })
 
-  it('requires the Desktop Host entry and its packaged overlay', () => {
+  it('leaves independently published Office packages to npm resolution', () => {
+    const available = new Map<string, PackedDesktopPackage>([
+      ['@knyazevai/dsh', packed('@knyazevai/dsh', {
+        dependencies: {
+          '@deepseek-ai/libreoffice-kit': '0.0.1',
+          '@deepseek-ai/libreoffice-kit-wasm': '0.0.1',
+        },
+      })],
+      ['@knyazevai/dsh-desktop-host', packed('@knyazevai/dsh-desktop-host')],
+    ])
+    expect(selectDesktopPackageClosure(available).map(entry => entry.manifest.name)).toEqual([
+      '@knyazevai/dsh', '@knyazevai/dsh-desktop-host',
+    ])
+  })
+
+  it('requires both Desktop Host and public CLI entries', () => {
     const files = [
       'package/lib/index.js',
-      'package/config/desktop.cordis.patch.yml',
+      'package/lib/cli.js',
     ]
     expect(() => {
       assertDesktopHostPackageFiles(files)
     }).not.toThrow()
     expect(() => {
-      assertDesktopHostPackageFiles(files.slice(0, 1))
-    }).toThrow(/desktop\.cordis\.patch\.yml/u)
-    expect(() => {
       assertDesktopHostPackageFiles(files.slice(1))
     }).toThrow(/lib\/index\.js/u)
+    expect(() => { assertDesktopHostPackageFiles(files.slice(0, 1)) }).toThrow(/lib\/cli\.js/u)
   })
 })

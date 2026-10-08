@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-mcp-resources",
   "description": "Scoped MCP resource discovery and reading through shared model tools",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,23 +27,23 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-scope": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-ptc-runtime": "workspace:^",
-    "@knyazevai/dsh-scope": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-ptc-runtime": "workspace:*",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-agent": "workspace:*"
   },
   "dependencies": {
-    "@knyazevai/dsh-util-values": "workspace:^"
+    "@knyazevai/dsh-util-values": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@knyazevai/dsh-system-prompt": {

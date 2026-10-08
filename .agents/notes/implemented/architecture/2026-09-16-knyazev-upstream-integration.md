@@ -10,7 +10,9 @@ The public Knyazev distribution needs upstream session, client, and CLI changes 
 
 ## Decision
 
-Use upstream `0.1.6-alpha.1` as the implementation base and preserve the fork master containing the GLM and React test fixes as the other merge parent. Port functional differences explicitly, then rescope current DSH packages to `@knyazevai/dsh`. Vendored libraries keep their existing names. The released upstream event inventories remain frozen; a separate audited fork event inventory admits only the coordinate-free `fork/session-source` marker during historical migration and validates its exact payload.
+Use upstream `0.2.1-alpha.1` as the implementation base and preserve the fork master containing the GLM metadata and wake scheduler as the other merge parent. Port functional differences explicitly, then rescope current DSH packages to `@knyazevai/dsh`. Vendored libraries keep their existing names. The released upstream event inventories remain frozen; a separate audited fork event inventory admits only the coordinate-free `fork/session-source` marker during historical migration and validates its exact payload.
+
+Native Workspace persistence owns pins; the fork adapter imports the former settings list once and retains its Remote methods. Declarative preset registrations accept the fork contributor patches, with existing Agents retaining their mounted generation.
 
 Keep the first-chunk timeout, compaction recovery, exhausted-budget cooldown, session source, pin persistence, and workspace UI packages. The new Session Controller supplies projection sequence watermarks for unread state and retires queued messages when they become durable. Workspace contributions integrate with the current row slots and retain upstream navigation, pending-interaction indicators, and drag ordering. The previously deferred Background tab remains absent; the extension registry supports contributed views.
 
@@ -24,4 +26,4 @@ A blanket conflict preference would discard either upstream behavior or fork beh
 
 ## Consequences
 
-Both histories remain available for future merge bases. Future updates must validate fork recovery, composition, installation, and historical-session tests alongside upstream checks. The event marker keeps its data and ignorable flag across formats 0, 1, and 2 into format 3, while historical code presets migrate to ptc. The current source version follows upstream's prerelease version; source integration alone does not publish a new npm release.
+Both histories remain available for future merge bases. Future updates must validate fork recovery, composition, installation, and historical-session tests alongside upstream checks. The event marker keeps its data and ignorable flag across formats 0, 1, 2, and 3 into format 4, where its name is `plugin:fork/session-source`, while historical code presets migrate to ptc. The current source version follows upstream's prerelease version; source integration alone does not publish a new npm release.

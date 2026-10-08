@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/telemetry/otel/README.md
+/:
+  en: 49f35d8bc0fe3689
+  zh: ef2fd903cca7d129
+/knyazevai-dsh-otel:
+  en: 585a5548ce84f6eb
+  zh: 3167690d4945da80
+/knyazevai-dsh-otel/summary:
+  en: e32c122f34c04593
+  zh: bea48183ab438454
+/knyazevai-dsh-otel/table-of-contents:
+  en: 23386452a66b2fbd
+  zh: 55b2121ae6059425
+/knyazevai-dsh-otel/use-this-package:
+  en: 56b47e0f01abaeed
+  zh: 75a16ccb030b6ae4
+/knyazevai-dsh-otel/understand-the-implementation:
+  en: d1b6f8f2b25ea252
+  zh: 73d6147bae811ce0
+/knyazevai-dsh-otel/further-exploration:
+  en: ee17b991de098cc0
+  zh: f90257e411921f2b
+/knyazevai-dsh-otel/model-experience:
+  en: 5b364b9451ced69f
+  zh: 025feb91ef96bdb8
+/knyazevai-dsh-otel/model-experience/kv-cache-effect:
+  en: 8be9251f0d5256ed
+  zh: d46143a02855c8bc
+/knyazevai-dsh-otel/known-limitations-and-deferred-work:
+  en: 5c3e29312d45ee52
+  zh: b148e3a6decc0f7d
+/knyazevai-dsh-otel/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

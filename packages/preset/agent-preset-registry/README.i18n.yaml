@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/preset/agent-preset-registry/README.md
+/:
+  en: e984a1ae0ffb6b97
+  zh: f1246772a5b47191
+/knyazevai-dsh-agent-preset-registry:
+  en: 7645f48ffe9517c7
+  zh: d503e1fe666db50d
+/knyazevai-dsh-agent-preset-registry/summary:
+  en: a451ec1d5b54b334
+  zh: 777d5043e9c2e9eb
+/knyazevai-dsh-agent-preset-registry/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: b3ad7867f23dad1c
+/knyazevai-dsh-agent-preset-registry/use-this-package:
+  en: bbff250eba0f1b89
+  zh: b20a47f82d8ab6e0
+/knyazevai-dsh-agent-preset-registry/use-this-package/minimal-configuration:
+  en: 44d72042840ab73b
+  zh: 531ffe4bcf0832ce
+/knyazevai-dsh-agent-preset-registry/understand-the-implementation:
+  en: 52da983d2c4b86d0
+  zh: 33fc06502cb0b71b
+/knyazevai-dsh-agent-preset-registry/further-exploration:
+  en: bbae8d79844bc481
+  zh: 4302107fd1f460e6
+/knyazevai-dsh-agent-preset-registry/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-agent-preset-registry/model-experience/preset-selection:
+  en: 9c05062c86e3d148
+  zh: 2e894dd9d93b65ba
+/knyazevai-dsh-agent-preset-registry/model-experience/preset-selection/what-the-model-sees:
+  en: 9266e780cd183409
+  zh: b07bfe9fdb8b6f45
+/knyazevai-dsh-agent-preset-registry/model-experience/preset-selection/token-effect:
+  en: 5bc14d87cbb67afd
+  zh: 99f62bdfcb31ab90
+/knyazevai-dsh-agent-preset-registry/model-experience/preset-selection/kv-cache-effect:
+  en: 5e043b0b4ee03719
+  zh: a929e47776e209e0
+/knyazevai-dsh-agent-preset-registry/known-limitations-and-deferred-work:
+  en: 8a32adf5c133fca3
+  zh: a066085a05e9b103
+/knyazevai-dsh-agent-preset-registry/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

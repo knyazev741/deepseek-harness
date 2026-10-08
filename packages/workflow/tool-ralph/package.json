@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-ralph",
   "description": "Model-facing fresh-agent Ralph loop over the workflow and subagent seams",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,32 +27,32 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-subagent": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@knyazevai/dsh-workflow": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-workflow": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-agent-loop": "workspace:^",
-    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-subagent": "workspace:^",
-    "@knyazevai/dsh-subagent-in-process-driver": "workspace:^",
-    "@knyazevai/dsh-subagent-spawn-in-process": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@knyazevai/dsh-workflow": "workspace:^",
-    "@knyazevai/dsh-workflow-ptc": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^"
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-subagent-in-process-driver": "workspace:*",
+    "@knyazevai/dsh-subagent-spawn-in-process": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-workflow": "workspace:*",
+    "@knyazevai/dsh-workflow-ptc": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-session-projection": "workspace:*"
   }
 }

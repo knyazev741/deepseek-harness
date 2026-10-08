@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/file-upload/README.md
-README.md: 50e312ea6443583f1af62f1659958c2cc88162f1
-README.zh.md: 55e884d1f488b02be2fec4c4c729a1bb4e1b0d21
+/:
+  en: c983fa9f5976bac3
+  zh: b3c2c2fdf19b461e
+/knyazevai-dsh-client-file-upload:
+  en: 4cb5c1c978754ca8
+  zh: fba99f10e97f3fe4
+/knyazevai-dsh-client-file-upload/summary:
+  en: 430b79a11643da11
+  zh: 5fbab8d425b7f15a
+/knyazevai-dsh-client-file-upload/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-client-file-upload/use-this-package:
+  en: 9d5bbf52599b0d00
+  zh: 7907542ce1e34549
+/knyazevai-dsh-client-file-upload/understand-the-implementation:
+  en: 77937960a540cf51
+  zh: 52c478bd11200975
+/knyazevai-dsh-client-file-upload/further-exploration:
+  en: ac94eb9da9ecc296
+  zh: 25cc3362e2bea330
+/knyazevai-dsh-client-file-upload/model-experience:
+  en: a928c345333d4d93
+  zh: 710172520aacfbe1
+/knyazevai-dsh-client-file-upload/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: f57cc48a1b5cbfa9
+/knyazevai-dsh-client-file-upload/known-limitations-and-deferred-work:
+  en: 8592a9aab413e5dc
+  zh: ae12d9777eda0b63
+/knyazevai-dsh-client-file-upload/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: e88aeb617ffb74ea

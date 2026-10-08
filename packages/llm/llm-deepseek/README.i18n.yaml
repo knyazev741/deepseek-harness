@@ -1,6 +1,91 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/llm/llm-deepseek/README.md
-README.md: 27fd986eb24d2116486fd785c0b69134ac2987c2
-README.zh.md: 3ad015f57c7cbccc9fd4b1fcad0a474f7574ef30
+/:
+  en: c6924d7c0d7c82ff
+  zh: 95fbf06db428f532
+/knyazevai-dsh-llm-deepseek:
+  en: ed5aa3eb6696e695
+  zh: 71aed357ea96240e
+/knyazevai-dsh-llm-deepseek/summary:
+  en: a8871f9ce192ac6a
+  zh: 7d642e993f4ca71c
+/knyazevai-dsh-llm-deepseek/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-llm-deepseek/use-this-package:
+  en: fe27b41cb85cd031
+  zh: 52d833f0909d94f1
+/knyazevai-dsh-llm-deepseek/use-this-package/when-to-choose-it:
+  en: cbeb14a9a602c2c9
+  zh: c78c0d26c5791085
+/knyazevai-dsh-llm-deepseek/use-this-package/minimal-configuration:
+  en: 9a2e4395ac12d943
+  zh: cbb325fc3ffd7bc0
+/knyazevai-dsh-llm-deepseek/use-this-package/endpoint-and-wire-format:
+  en: fce88d2ebad6296c
+  zh: 0c351f26b472d521
+/knyazevai-dsh-llm-deepseek/use-this-package/account-credentials:
+  en: 3853ba1a1ffbb46c
+  zh: 97203e80ad933e59
+/knyazevai-dsh-llm-deepseek/use-this-package/streaming-with-thinking-and-images:
+  en: 9b82549c6ce25261
+  zh: 22a3978c5022576b
+/knyazevai-dsh-llm-deepseek/use-this-package/dynamic-configuration:
+  en: 49290fc5647136b4
+  zh: 96fa9ce0f9e83c13
+/knyazevai-dsh-llm-deepseek/use-this-package/provider-specific-request-fields:
+  en: f863390198cc177c
+  zh: 8856c62ba3fb36ca
+/knyazevai-dsh-llm-deepseek/use-this-package/failures-and-recovery:
+  en: 7a09ab81593cd9c1
+  zh: 919dc0eb6347e9fd
+/knyazevai-dsh-llm-deepseek/understand-the-implementation:
+  en: 1598ac8a8bb9b6bf
+  zh: fdd089c5ae7722cd
+/knyazevai-dsh-llm-deepseek/understand-the-implementation/design-philosophy:
+  en: 829203c4c282dc46
+  zh: e05dada4a1420a95
+/knyazevai-dsh-llm-deepseek/understand-the-implementation/source-map:
+  en: dc2d2409ad8c41cc
+  zh: 51fc4ad65dab6378
+/knyazevai-dsh-llm-deepseek/understand-the-implementation/wire-flow:
+  en: 9477d8af3d762450
+  zh: 52a2967518509f94
+/knyazevai-dsh-llm-deepseek/further-exploration:
+  en: d3e6e29335c54987
+  zh: 3461235b93dfd697
+/knyazevai-dsh-llm-deepseek/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-request:
+  en: 1dc50052999253c6
+  zh: 7abf968fc18bffcd
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-request/what-the-model-sees:
+  en: 14110610860656e8
+  zh: 995e28d6931ebe4e
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-request/token-effect:
+  en: f6f8c890fb2465e4
+  zh: cb9e4173a0d7415f
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-request/kv-cache-effect:
+  en: 87ac92776176ee15
+  zh: bb49edf3a68dda07
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-response:
+  en: 957d6665495e5ca5
+  zh: 0aa72b2c2dc07167
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-response/what-the-model-sees:
+  en: 36a3d0297d6ca209
+  zh: bfc68b8300f61593
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-response/token-effect:
+  en: 533309d1f93b89de
+  zh: 4cc0b86f05c9be53
+/knyazevai-dsh-llm-deepseek/model-experience/deepseek-response/kv-cache-effect:
+  en: ddfbea043596878d
+  zh: 4fbf5864a684c053
+/knyazevai-dsh-llm-deepseek/known-limitations-and-deferred-work:
+  en: 05fe57d81d8d8202
+  zh: 61e85a6f610842dd
+/knyazevai-dsh-llm-deepseek/known-limitations-and-deferred-work/dev-note:
+  en: fc7d8c8a6258331a
+  zh: 491b454fe920a17e

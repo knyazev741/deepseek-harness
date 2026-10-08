@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-29-compaction-summarizer-retry.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-29-compaction-summarizer-retry.md
-2026-08-29-compaction-summarizer-retry.md: d27720a23bd5d985962bc3ff6c98f3aacda250b5
-2026-08-29-compaction-summarizer-retry.zh.md: b20d5b40533b9339c9c20325cc1878e81b5c9540
+/agent-note-compaction-summarizer-retries-and-agent-scoped-recovery:
+  en: c0f11f1f3416d560
+  zh: b84b20c48abd4ded
+/agent-note-compaction-summarizer-retries-and-agent-scoped-recovery/problem:
+  en: 3292f029d87f9792
+  zh: c4768d62fca29db3
+/agent-note-compaction-summarizer-retries-and-agent-scoped-recovery/decision:
+  en: f25e256d3a32673b
+  zh: 125b6ecc50217147
+/agent-note-compaction-summarizer-retries-and-agent-scoped-recovery/alternatives-considered:
+  en: 1e83bc942a04c637
+  zh: a416d8bf67b1cbf8
+/agent-note-compaction-summarizer-retries-and-agent-scoped-recovery/consequences:
+  en: 432933727faf7725
+  zh: 4d157ba077dd9a8e
+/agent-note-compaction-summarizer-retries-and-agent-scoped-recovery/testing:
+  en: 3c096731664512ce
+  zh: 62738144e72a9e54

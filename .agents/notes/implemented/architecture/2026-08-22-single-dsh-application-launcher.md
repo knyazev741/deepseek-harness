@@ -14,7 +14,7 @@ The Python SDK distributes a native executable through four platform wheels. Its
 
 ### Launch scope
 
-Every supported Node application starts through the `dsh` CLI and one named profile. The shipped application commands are `dsh web`, `dsh --profile headless`, `dsh --profile sdk`, `dsh --profile sdk-minimal`, and `dsh --profile acp`; `dsh web` is the deliberate convenience alias for `--profile web`, not another application entry.
+Every supported Node application starts through the `dsh` CLI and one named profile. The shipped profiles are `web`, `headless`, `sdk`, `sdk-minimal`, and `acp`, selected with `dsh --profile <name>` or `dsh <name>`. `plugin` names the management command; a profile with that name requires `--profile plugin`.
 
 Vendor CLIs, build-only and test-only executables, direct in-process plugin mounting, and the private browser WebWorker preview are outside the application-launch inventory. A package app bin or root demo that launches a package entry is not an accepted extension point.
 
@@ -34,7 +34,7 @@ Profile manifests own patch reload:
 
 Custom profiles default to `live`. A startup profile still applies its bundle, profile, home-level, and invocation `--patch` layers, but it does not watch them after boot. `dsh-base` inserts the module-HMR row disabled; a profile with a tested source-module reload lifecycle must enable it explicitly. None of the shipped profiles enable server module HMR: `patchReload: live` uses the launcher's config-only watcher while the startup profiles install no watcher. SDK and ACP cannot safely replace their server, agents, persistence, or tool registry inside one owned stdio connection.
 
-The shipped protocol profiles reserve stdout for protocol frames, expose help without starting transport, and route stdin EOF and signals through bounded root disposal. ACP remains automation-only. The SDK JSON-RPC methods, notification fields, and `initialize.serverInfo.name` remain stable. Full-profile model-visible tool and persistence defaults come from `dsh-base`, including its [default editor selection](../simplification/2026-09-05-base-default-file-editor.md); `sdk-minimal` owns its explicit defaults. Runnable snapshots own the assembled application outputs.
+The shipped protocol profiles reserve stdout for protocol frames, expose help without starting transport, and route stdin EOF and signals through bounded root disposal. ACP remains automation-only. The SDK JSON-RPC methods, notification fields, and `initialize.serverInfo.name` remain stable. Full-profile model-visible tool and persistence defaults come from `dsh-base`, including its [default editor selection](../../../../packages/bundle/base/README.md); `sdk-minimal` owns its explicit defaults. Runnable snapshots own the assembled application outputs.
 
 ### TypeScript SDK customization
 
@@ -46,7 +46,7 @@ Direct SDK use follows normal Harness-home resolution: explicit `dshHome`, inher
 
 ### Python runtime
 
-The Python runtime wheel stages [`python/sdk-runtime/runtime-bootstrap.mjs`](../../../../python/sdk-runtime/runtime-bootstrap.mjs) as the `dsh-python-runtime-closure` entry. Its ordinary branch calls the public CLI export; a provider-private selector dispatches to the internal subprocess runner before CLI parsing and is not an application entry point. The [native-containment decision](2026-08-28-subprocess-native-containment.md) owns that private dispatch. The Python client selects `dsh --profile sdk` by default, ordered patch files, and an explicit Harness home; the runnable example under `python/sdk/examples` selects `sdk-minimal`. The installed `dsh` console command exposes the same profile grammar and the separately packaged `web` application.
+The Python runtime wheel stages [`python/sdk-runtime/runtime-bootstrap.mjs`](../../../../python/sdk-runtime/runtime-bootstrap.mjs) as the `dsh-python-runtime-closure` entry. Its ordinary branch calls the public CLI export; a provider-private selector dispatches to the internal subprocess runner before CLI parsing and is not an application entry point. The [native-containment reference](../../../../packages/subprocess/subprocess-local/README.md) owns that private dispatch. The Python client selects `dsh --profile sdk` by default, ordered patch files, and an explicit Harness home; the runnable example under `python/sdk/examples` selects `sdk-minimal`. The installed `dsh` console command exposes the same profile grammar, including the `web` profile.
 
 The executable family is `deepseek-harness-sdk-runtime-<platform>-<arch>`. The SDK wire, wheel and import distribution names, sidecar names, and wire identity `deepseek-harness-sdk-runtime` remain stable. The SDK package family is `@knyazevai/dsh-sdk-client`, `@knyazevai/dsh-sdk-protocol`, and `@knyazevai/dsh-sdk-jsonrpc-server`; `@knyazevai/dsh-acp` remains the ACP protocol plugin. There is no Python-specific Node application, checked-in complete config, compatibility package, forwarding executable, fallback parser, or SDK/ACP launcher alias. [docs/architecture.md](../../../../docs/architecture.md) owns this launch, and the [`python/sdk-runtime` README](../../../../python/sdk-runtime/README.md) owns the Windows carrier.
 
@@ -55,6 +55,8 @@ The executable family is `deepseek-harness-sdk-runtime-<platform>-<arch>`. The S
 `verify-application-entrypoints` scans application/package manifests, executable sources, and root demo scripts. The allowlist classifies the `dsh` product bin, vendor-excluded scope, the private WebWorker build tool, and test support. An unclassified shebang, a new package bin, or a demo wrapper that bypasses `apps/cli/src/bin.ts` fails hygiene and the primary/static CI aggregates.
 
 ## Existing decisions and supersession
+
+The [CLI reference](../../../../apps/cli/reference/README.md) documents shorthand for every profile; this note retains authority over application composition and lifecycle ownership.
 
 This decision supersedes the application-launch and package-name facts in [profile plugin bundles](2026-08-05-profile-plugin-bundles.md), [TypeScript SDK client and subagent backend](../../archived/feature/2026-07-27-typescript-sdk-and-sdk-subagent-backend.md), [remove the SDK project toolchain](../../archived/simplification/2026-08-11-remove-sdk-project-toolchain.md), and [single-file Python SDK runtime distribution](2026-07-10-single-file-executable-sdk-runtime-distribution.md). Those notes retain independent authority for profile layering, client/wire semantics, deleted project tooling, and native packaging.
 

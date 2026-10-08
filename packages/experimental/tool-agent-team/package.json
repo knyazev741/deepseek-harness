@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-tool-agent-team",
   "description": "Scoped model-facing Agent Teams tools over ctx.agentTeams",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -18,43 +18,45 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./locale/*.json": "./locale/*.json",
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "peerDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-experimental-agent-team": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-experimental-agent-team": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-agent-loop": "workspace:^",
-    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^",
-    "@knyazevai/dsh-session-persistence-jsonl": "workspace:^",
-    "@knyazevai/dsh-session-query": "workspace:^",
-    "@knyazevai/dsh-scope": "workspace:^",
-    "@knyazevai/dsh-subagent": "workspace:^",
-    "@knyazevai/dsh-subagent-fork-in-process": "workspace:^",
-    "@knyazevai/dsh-subagent-spawn-in-process": "workspace:^",
-    "@knyazevai/dsh-tool-subagent-control": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-experimental-agent-team": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-llm-deepseek": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-subagent-fork-in-process": "workspace:*",
+    "@knyazevai/dsh-subagent-spawn-in-process": "workspace:*",
+    "@knyazevai/dsh-tool-subagent-control": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-experimental-agent-team": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-llm-deepseek": "workspace:*"
   }
 }

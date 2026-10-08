@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-settings-plugin-inventory",
   "description": "Read-only Cordis Loader inventory tab in Web Plugins settings",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -31,7 +31,8 @@
         "@knyazevai/dsh-api-remotes",
         "@knyazevai/dsh-client-ui-settings",
         "@knyazevai/dsh-client-locale",
-        "@knyazevai/dsh-client-ui-agent-preset"
+        "@knyazevai/dsh-client-ui-agent-preset",
+        "@knyazevai/dsh-client-modules"
       ],
       "platform": "web"
     }
@@ -42,23 +43,26 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-api-remotes": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-agent-preset": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-settings": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-agent-preset": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-settings": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-package-manifest": "workspace:*",
     "@testing-library/react": "^16.1.0",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-agent-presets": "workspace:^"
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-agent-preset-registry": "workspace:*",
+    "@knyazevai/dsh-client-modules": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*"
   },
   "files": [
     "lib/index.js",

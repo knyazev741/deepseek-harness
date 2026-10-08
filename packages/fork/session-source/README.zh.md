@@ -34,7 +34,7 @@ kind: "package-reference"
 <a id="durable-event-and-projection"></a>
 ## 持久事件与投影
 
-启用后，权威的 `session/created` 会追加一个带有 `{ source: 'github-actions' }` 的仅日志 `fork/session-source` 事件，并在事件信封中标记 `ignorable: true`。标记在会话创建的同步生命周期中写入，不会改变 `SessionHeader.origin`。从已有日志创建会话时，插件会先检查已有事件，因此重放和重复发布不会再次添加标记。
+启用后，权威的 `session/created` 会追加一个带有 `{ source: 'github-actions' }` 的仅日志 `plugin:fork/session-source` 事件，并在事件信封中标记 `ignorable: true`。标记在会话创建的同步生命周期中写入，不会改变 `SessionHeader.origin`。从已有日志创建会话时，插件会先检查已有事件，因此重放和重复发布不会再次添加标记。
 
 `forkSessionSource` 投影从 `null` 开始；最新的有效标记会折叠为 `'github-actions'`，无关事件会返回相同的状态引用。严格的 JSON 安全模式会在重放期间拒绝格式错误的持久载荷。线上的值与该可空值相同：`null` 表示标记不存在或该会话未启用来源插件；省略投影键表示没有组合投影插件。
 
@@ -65,3 +65,5 @@ kind: "package-reference"
 将此包适配到上游 API 时，保留针对分支的测试。配置和行为以上文为准。
 
 </details>
+
+当前写入器使用带 plugin 前缀的事件名；读取器也保留旧分支日志中的 `fork/session-source` 标记。

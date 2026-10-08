@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-22-fork-overlay-manifest.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-22-fork-overlay-manifest.md
-2026-08-22-fork-overlay-manifest.md: 8e52f64bcf8be4a11fa9fdc829ebad2c53550553
-2026-08-22-fork-overlay-manifest.zh.md: 7826282618bb292f0391ca7aca73a8e82d2dfaec
+/agent-note-fork-overlay-manifest-ownership-and-verification:
+  en: c3792d26cda571c2
+  zh: e3538b95a5d0b7b0
+/agent-note-fork-overlay-manifest-ownership-and-verification/problem:
+  en: dc8838c8b1dc3073
+  zh: 5aeb4e52b8d1c471
+/agent-note-fork-overlay-manifest-ownership-and-verification/decision:
+  en: 6060fc11e2c7dcfa
+  zh: bd095c94c8977018
+/agent-note-fork-overlay-manifest-ownership-and-verification/verification:
+  en: c7c54db4465833af
+  zh: 582571152401dbf7
+/agent-note-fork-overlay-manifest-ownership-and-verification/alternatives-considered:
+  en: 0c38ab6c42607744
+  zh: dde1aef5c111cd58
+/agent-note-fork-overlay-manifest-ownership-and-verification/consequences:
+  en: 15a1b4b3c492a264
+  zh: 1ab6410bec194ae6

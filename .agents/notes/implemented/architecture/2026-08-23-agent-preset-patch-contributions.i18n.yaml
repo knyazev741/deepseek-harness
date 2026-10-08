@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-23-agent-preset-patch-contributions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-23-agent-preset-patch-contributions.md
-2026-08-23-agent-preset-patch-contributions.md: 6b2bd0131fa7061a5be339ba7ff0bc94419ff8ac
-2026-08-23-agent-preset-patch-contributions.zh.md: 658ce457f9c2bc8a0026e5e1bc47ef3654aecb2a
+/agent-note-agent-preset-patch-contributions:
+  en: 2cbc4080a69886f8
+  zh: d898264012fb6ce2
+/agent-note-agent-preset-patch-contributions/problem:
+  en: bd36b9cce539dad1
+  zh: aeae750766e50369
+/agent-note-agent-preset-patch-contributions/decision:
+  en: c1d00ce6b6697710
+  zh: 91fbf3c34032c69a
+/agent-note-agent-preset-patch-contributions/alternatives-considered:
+  en: 60709421fd6e01bd
+  zh: c533a665c1e3dda6
+/agent-note-agent-preset-patch-contributions/consequences:
+  en: 305b74961e74b156
+  zh: c35cc9b965cfa0d6

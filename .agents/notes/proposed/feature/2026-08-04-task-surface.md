@@ -83,7 +83,7 @@ Limits are schema-backed configuration on the Task Surface service. The initial 
 
 The tool definition omits `isConcurrencySafe`. Under the existing tool-registry contract, omission classifies every call as an exclusive ordering barrier; no new `ToolDefinition` field is introduced. The tool is composed only in Web profiles that mount both the Host service and Web renderer. Version 1 supports `native` and `both` tool modes; a `ptc`-only profile does not advertise it because PTC mode dispatch is nested and cannot carry its presentation metadata to the outer result.
 
-The browser-safe domain package imports the type-only `Branded` primitive from `@knyazevai/dsh-brand` and owns all three Task Surface IDs. The canonical value is execution-local under the [canonical tool output contract](../../implemented/architecture/2026-07-20-canonical-tool-output-contract.md). Replay therefore uses `output.presentationMeta(args, value)` to persist this tagged payload with `tool/result.meta`:
+The browser-safe domain package imports the type-only `Branded` primitive from `@knyazevai/dsh-brand` and owns all three Task Surface IDs. The canonical value is execution-local under the [canonical tool output contract](../../../../packages/core/tools/README.md). Replay therefore uses `output.presentationMeta(args, value)` to persist this tagged payload with `tool/result.meta`:
 
 ```ts
 import type { Branded } from '@knyazevai/dsh-brand'
@@ -178,19 +178,7 @@ interface TaskSurfaceUserMessageSource {
 }
 ```
 
-The `session/queue` wire item already carries the complete `Message`. The client projection is explicitly extended to retain its source instead of dropping the correlation:
-
-```ts ignore-check
-interface QueuedMessage {
-  id: InboxItemId
-  messageId: MessageId
-  placement: 'queued' | 'steering'
-  source: MessageSource
-  content: readonly ContentBlock[]
-  preview: string
-  text: string | null
-}
-```
+The standard `inbox` projection already carries each complete `UserMessage`, including its `MessageId`, source, and content, in the raw `next-turn` or `next-step` list. The client retains that value in its generic projection store, so this proposal needs no queue transport extension or second pending-message type.
 
 The browser-safe domain package owns `TaskSurfaceId`, the submission and dismissal IDs, `TaskSurfaceCorrelation`, and the pending-submission shape. ApiProxy owns the transport augmentation that combines the correlation with `rpcId`. Keeping `kind: 'user'` preserves the ordinary user bubble and prompt semantics while the extra field provides durable correlation. The message content is a product-formatted readable summary: panel title, labels and submitted values, plus the optional note. The model receives that same text. The structured source is not a second hidden instruction.
 
@@ -198,7 +186,7 @@ The product shell owns collapse and dismiss. Collapse is local view state and se
 
 Submission is transactional at the client boundary. Acceptance returns the exact `messageId` in phase `queued`; the Dock disables every mutation through both `queued` and `claiming` and clears the persisted draft only after the matching user message becomes durable. A rejection keeps the values editable and shows the returned reason. Double clicks and transport retries reuse `submissionId` and return the first result; another submission ID receives `submission-pending` while the first is live. The Host admits one user message for one accepted Surface.
 
-The Task Surface service records accepted submission coordination as `pending.phase: 'queued'`, while the client can correlate the still-present queue row through its retained `source`. When the Agent dequeues that occurrence for ordinary prompt admission, the service synchronously changes the same pending record to `claiming` before ApiProxy publishes the ordinary queue snapshot without the claimed row. The service keeps that process-local claim across asynchronous admission and reconnect until a matching durable `user/message` is published or the Agent reports a terminal discard.
+The Task Surface service records accepted submission coordination as `pending.phase: 'queued'`, while the client can correlate the still-present queue row through its retained `source`. When the Agent claims that message for ordinary prompt admission, the service synchronously changes the same pending record to `claiming` before the durable deletion splice removes it from the generic `inbox` projection. The service keeps that process-local claim across asynchronous admission and reconnect until a matching durable `user/message` is published or the Agent reports a terminal discard.
 
 The matching `user/message` closes the durable projection and clears the claim. Rejection, cancellation, or disposal before durability reports the discard, clears the claim, and leaves the Surface open. The Dock never interprets queue-row disappearance as either outcome: it re-reads `getActive`; `pending.phase: 'claiming'` stays disabled, `pending: null` restores the draft, and `not-open` closes the Dock. `getActive` joins the log-derived active occurrence with this one process-local pending record. The record is coordination state, not a second durable authority; after a Host restart, an uncommitted claim is absent and the still-open logged Surface becomes editable again.
 

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-webhook",
   "description": "Fire-and-forget webhook rule runtime that creates Workspace-backed DeepSeek Harness Sessions",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -22,48 +22,41 @@
       "types": "./lib/types/types.d.ts",
       "default": "./lib/types/types.js"
     },
-    "./invariant": {
-      "types": "./lib/types/invariant.d.ts",
-      "default": "./lib/invariant.js"
-    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
-    "lib/invariant.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-agent-default-model": "workspace:^",
-    "@knyazevai/dsh-agent-presets": "workspace:^",
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-permission-presets": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-title": "workspace:^",
-    "@knyazevai/dsh-workspace": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-default-model": "workspace:*",
+    "@knyazevai/dsh-agent-preset-registry": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-permission-presets": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/cordis-plugin-include": "workspace:^",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-agent-default-model": "workspace:^",
-    "@knyazevai/dsh-agent-presets": "workspace:^",
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-permission-presets": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-title": "workspace:^",
-    "@knyazevai/dsh-workspace": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-default-model": "workspace:*",
+    "@knyazevai/dsh-agent-preset-registry": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-permission-presets": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*"
   },
   "dependencies": {
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-util-values": "workspace:^"
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*"
   }
 }

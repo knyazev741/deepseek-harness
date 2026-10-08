@@ -14,13 +14,13 @@ export const forkSessionSourceEventDataSchema = eventDataSchema
 /** The JSON-safe projection state and wire schema. */
 export const forkSessionSourceSchema = sourceSchema
 
-/** Last-known-value projection for the `fork/session-source` event. */
+/** Last-known-value projection for the `plugin:fork/session-source` event. */
 export const forkSessionSourceProjectionDefinition = {
   key: 'forkSessionSource',
   stateSchema: sourceSchema,
   init: () => null,
   apply: (state, event: SessionEvent) => {
-    if (event.type !== 'fork/session-source') return state
+    if (event.type !== 'plugin:fork/session-source' && event.type !== 'fork/session-source') return state
     return eventDataSchema.parse(event.data).source
   },
   wire: {

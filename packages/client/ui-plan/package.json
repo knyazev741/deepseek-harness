@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-plan",
-  "description": "Plan-mode composer control: the conversation.input.plan seat over the plan projection and the /plan command channel",
-  "version": "0.1.6-alpha.1",
+  "description": "Plan mode controls, persistent transcript plan cards, and sidebar Markdown previews",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -30,7 +30,12 @@
       "inject": [
         "@knyazevai/dsh-api-remotes",
         "@knyazevai/dsh-client-locale",
-        "@knyazevai/dsh-client-ui-conversation"
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-sidebar-right",
+        "@knyazevai/dsh-client-ui-chat",
+        "@knyazevai/dsh-client-ui-user-questions",
+        "@knyazevai/dsh-client-resources",
+        "@knyazevai/dsh-api-session-controller"
       ],
       "platform": "web"
     }
@@ -41,22 +46,32 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-api-remotes": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
-    "@knyazevai/dsh-plan-mode": "workspace:^",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-plan-mode": "workspace:*",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-client-ui-session": "workspace:^"
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-client-ui-chat": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
+    "@knyazevai/dsh-client-ui-user-questions": "workspace:*",
+    "@knyazevai/dsh-client-resources": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-util-crypto": "workspace:*"
   },
   "files": [
     "lib/index.js",

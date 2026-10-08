@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-03-pi-ai-outer-status-classification.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-03-pi-ai-outer-status-classification.md
-2026-09-03-pi-ai-outer-status-classification.md: d4eea2998414483c3a9cf341b2294f301a994dca
-2026-09-03-pi-ai-outer-status-classification.zh.md: 60cda592ef04544852eb1bf2bc9cc0bf4bf6223c
+/agent-note-classify-the-outer-pi-ai-gateway-status-before-nested-error-text:
+  en: b2a8b95d1ccb36d5
+  zh: e97e587726f224b9
+/agent-note-classify-the-outer-pi-ai-gateway-status-before-nested-error-text/problem:
+  en: ff0710c1b3d42a31
+  zh: 0b276a4eee7dbba2
+/agent-note-classify-the-outer-pi-ai-gateway-status-before-nested-error-text/decision:
+  en: 1aeb95b8158327d8
+  zh: 39c63bbe4695f8d7
+/agent-note-classify-the-outer-pi-ai-gateway-status-before-nested-error-text/alternatives-considered:
+  en: 4aca459a71dc45af
+  zh: 3108d87ee2d2ef19
+/agent-note-classify-the-outer-pi-ai-gateway-status-before-nested-error-text/consequences:
+  en: bacbe019261e5039
+  zh: eff7a8ffa1670fad
+/agent-note-classify-the-outer-pi-ai-gateway-status-before-nested-error-text/testing:
+  en: d984ca273913e9c6
+  zh: 87a410ab02d6f688

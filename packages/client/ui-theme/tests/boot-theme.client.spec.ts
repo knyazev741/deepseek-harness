@@ -20,6 +20,7 @@ function executeBootstrap(preference?: ThemePreference, fontSize?: number): void
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  delete document.documentElement.dataset.dsThemeSource
   document.body.removeAttribute(DARK_ATTRIBUTE)
   document.body.style.removeProperty('--dsh-content-font-size')
 })
@@ -35,6 +36,7 @@ describe('theme bootstrap row', () => {
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)
     if (body?.kind !== 'script') throw new Error('theme body bootstrap row is not a script')
     runInNewContext(body.text, { document, matchMedia: globalThis.matchMedia })
+    expect(document.documentElement.dataset.dsThemeSource).toBe('dark')
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(true)
   })
 
@@ -54,6 +56,7 @@ describe('theme bootstrap row', () => {
   ] as const)('resolves system=%s for the body palette', (matches, dark) => {
     mockSystemDark(matches)
     executeBootstrap('system')
+    expect(document.documentElement.dataset.dsThemeSource).toBe('system')
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(dark)
   })
 
@@ -74,8 +77,8 @@ describe('theme bootstrap row', () => {
 
   it('writes the durable content font size and defaults it to 14px', () => {
     mockSystemDark(false)
-    executeBootstrap('light', 17)
-    expect(document.body.style.getPropertyValue('--dsh-content-font-size')).toBe('17px')
+    executeBootstrap('light', 22)
+    expect(document.body.style.getPropertyValue('--dsh-content-font-size')).toBe('22px')
     executeBootstrap('light')
     expect(document.body.style.getPropertyValue('--dsh-content-font-size')).toBe('14px')
   })

@@ -1,6 +1,46 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/extensions/tool-cordis/README.md
-README.md: 5e7689d89142c86654fc17ad885a18f50da3759b
-README.zh.md: e31f0aba554a52a72006a74acad1bbe5e4c3f83f
+/:
+  en: 784a82be07311e99
+  zh: 85d917ecc6386ec9
+/knyazevai-dsh-tool-cordis:
+  en: f8aea198a49ac86f
+  zh: 42637211e83c5f79
+/knyazevai-dsh-tool-cordis/summary:
+  en: 245a3cd287214bed
+  zh: 8687666c28a676cf
+/knyazevai-dsh-tool-cordis/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 3a2f21ff0dc3420d
+/knyazevai-dsh-tool-cordis/use-this-package:
+  en: 225d5de8f9cf85be
+  zh: ddc615c113128b63
+/knyazevai-dsh-tool-cordis/understand-the-implementation:
+  en: ff959016d633c6c0
+  zh: d84dfa7e9d73532f
+/knyazevai-dsh-tool-cordis/further-exploration:
+  en: 1863373f02bcc196
+  zh: 3efdbf5569411562
+/knyazevai-dsh-tool-cordis/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-tool-cordis/model-experience/runtime-inspection:
+  en: 72ffb7cae674c31a
+  zh: 85674f298a78592a
+/knyazevai-dsh-tool-cordis/model-experience/runtime-inspection/what-the-model-sees:
+  en: 35f4831737935356
+  zh: e51219f8bc1e6131
+/knyazevai-dsh-tool-cordis/model-experience/runtime-inspection/token-effect:
+  en: 5d9791798f8ce57f
+  zh: b47984cc13e12cfd
+/knyazevai-dsh-tool-cordis/model-experience/runtime-inspection/kv-cache-effect:
+  en: f57a20cd4e76d13c
+  zh: 7b673116422bee87
+/knyazevai-dsh-tool-cordis/known-limitations-and-deferred-work:
+  en: 3c135d9cb67790d2
+  zh: ff2d0a444f55d28f
+/knyazevai-dsh-tool-cordis/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

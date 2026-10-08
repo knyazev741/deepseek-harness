@@ -9,7 +9,7 @@ import type { ClientRemote } from '@knyazevai/dsh-api-gateway/client'
 import type { CommandSubmitAttachment } from '@knyazevai/dsh-commands/types'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import type {
-  SubagentCatalog, SubagentInterruptReceipt, SubagentPromptReceipt, SubagentPromptRequest,
+  SubagentInterruptReceipt, SubagentPromptReceipt, SubagentPromptRequest,
 } from '@knyazevai/dsh-subagent/client'
 import type { RemoteResult } from '@knyazevai/dsh-typert-protocol'
 import type { SessionRemote } from '../transport.ts'
@@ -26,7 +26,6 @@ export interface SessionCommandsRemote {
 
 /** Narrow subagent namespace consumed by a Client Session and its manager. */
 export interface SessionSubagentsRemote {
-  list(parentSessionId: SessionId, signal?: AbortSignal): Promise<RemoteResult<SubagentCatalog>>
   prompt(
     request: SubagentPromptRequest,
     signal?: AbortSignal,

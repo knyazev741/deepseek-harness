@@ -1,6 +1,313 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for tool-catalog.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/tool-catalog.md
-tool-catalog.md: 4f6a70050426a999aa1a640c86cde5fd23196ab9
-tool-catalog.zh.md: de1c0ffd2cd6d42dcb1cf93caf0a196dd2005990
+/:
+  en: 0be8ffbf23193557
+  zh: ce2c69aa86875171
+/tool-schema-catalog:
+  en: 6cc2cd9ced70bb09
+  zh: 1c0e6cb4ba2ed637
+/tool-schema-catalog/tool-package-map:
+  en: aacfe73d6b878387
+  zh: e249b80ce338007d
+/tool-schema-catalog/knyazevai-dsh-plugin-manager:
+  en: 85856f288bc83689
+  zh: 85856f288bc83689
+/tool-schema-catalog/knyazevai-dsh-plugin-manager/plugin-manager:
+  en: e26021a02bb10b05
+  zh: 06569158284b33fd
+/tool-schema-catalog/knyazevai-dsh-mcp-resources:
+  en: 2e5749935883edff
+  zh: 2e5749935883edff
+/tool-schema-catalog/knyazevai-dsh-mcp-resources/list-mcp-resource-templates:
+  en: 96275ece9d040944
+  zh: 1fa9744642601ece
+/tool-schema-catalog/knyazevai-dsh-mcp-resources/list-mcp-resources:
+  en: bf4236607199d61e
+  zh: 82f4f749dcabc89f
+/tool-schema-catalog/knyazevai-dsh-mcp-resources/read-mcp-resource:
+  en: ddb356cffd5d222a
+  zh: 6119834b79171621
+/tool-schema-catalog/knyazevai-dsh-experimental-browser-use-stagehand-native:
+  en: 641c1fab5e9e828f
+  zh: 641c1fab5e9e828f
+/tool-schema-catalog/knyazevai-dsh-experimental-browser-use-stagehand-native/stagehand-act:
+  en: c4b27bf62c534dcc
+  zh: 70c53824ed57ac23
+/tool-schema-catalog/knyazevai-dsh-experimental-browser-use-stagehand-native/stagehand-extract:
+  en: ec7462ab99848155
+  zh: 632fe0249040708e
+/tool-schema-catalog/knyazevai-dsh-experimental-browser-use-stagehand-native/stagehand-navigate:
+  en: ef97f063a037a006
+  zh: 27727ccc908e007f
+/tool-schema-catalog/knyazevai-dsh-experimental-browser-use-stagehand-native/stagehand-observe:
+  en: 2068f1baa0a59e1b
+  zh: 5743c7b33e2c5ccb
+/tool-schema-catalog/knyazevai-dsh-experimental-browser-use-stagehand-native/stagehand-screenshot:
+  en: 4910ab327694ee97
+  zh: 17e79e4366cb636d
+/tool-schema-catalog/knyazevai-dsh-experimental-browser-use-stagehand-native/stagehand-tabs:
+  en: cb555124ecdc64dd
+  zh: 188d8368124d2b60
+/tool-schema-catalog/knyazevai-dsh-tool-ask-user:
+  en: 8bd69edd3063180f
+  zh: 8bd69edd3063180f
+/tool-schema-catalog/knyazevai-dsh-tool-ask-user/ask-user-question:
+  en: a6e0c07bb29e1093
+  zh: f45cda846fe303e4
+/tool-schema-catalog/knyazevai-dsh-tools:
+  en: aeaf5f411bc2b5c3
+  zh: aeaf5f411bc2b5c3
+/tool-schema-catalog/knyazevai-dsh-tools/run-code:
+  en: 36843f69c04a6df7
+  zh: 3897921efae90ac3
+/tool-schema-catalog/knyazevai-dsh-plan-mode:
+  en: f421a52f54c6da38
+  zh: f421a52f54c6da38
+/tool-schema-catalog/knyazevai-dsh-plan-mode/exit-plan-mode:
+  en: c8cfe876aec219a6
+  zh: f2a4c03b1b44e9d9
+/tool-schema-catalog/knyazevai-dsh-tool-bash:
+  en: ca6ba545e340619c
+  zh: ca6ba545e340619c
+/tool-schema-catalog/knyazevai-dsh-tool-bash/bash:
+  en: 706a3884a3b0171f
+  zh: 54163c84397794f7
+/tool-schema-catalog/knyazevai-dsh-tool-present:
+  en: 1bff902798469a16
+  zh: 1bff902798469a16
+/tool-schema-catalog/knyazevai-dsh-tool-present/present:
+  en: 48cda9e9b43c050f
+  zh: 678a0d42fe865c3c
+/tool-schema-catalog/knyazevai-dsh-tool-pwsh:
+  en: 6e9c28e8b6061e64
+  zh: 6e9c28e8b6061e64
+/tool-schema-catalog/knyazevai-dsh-tool-pwsh/pwsh:
+  en: 153ea7b0e8e9ab66
+  zh: f8a511035db5c81a
+/tool-schema-catalog/knyazevai-dsh-tool-cordis:
+  en: 36afae586782b9a9
+  zh: 36afae586782b9a9
+/tool-schema-catalog/knyazevai-dsh-tool-cordis/cordis-inspect-list:
+  en: 594e5b42047969cc
+  zh: 72189ca21345c210
+/tool-schema-catalog/knyazevai-dsh-tool-cordis/cordis-inspect-query:
+  en: 1979321b02ede39f
+  zh: 1ea7d9cadfdd6ced
+/tool-schema-catalog/knyazevai-dsh-tool-bash-persistent:
+  en: 364573afa8b769cb
+  zh: 364573afa8b769cb
+/tool-schema-catalog/knyazevai-dsh-tool-bash-persistent/bash:
+  en: 486b47f9fac6ce3f
+  zh: 4006224b4576a401
+/tool-schema-catalog/knyazevai-dsh-tool-pwsh-persistent:
+  en: 8873f050deb9fec3
+  zh: 8873f050deb9fec3
+/tool-schema-catalog/knyazevai-dsh-tool-pwsh-persistent/pwsh:
+  en: 3343ee9d96d15202
+  zh: eb022acc07509c6e
+/tool-schema-catalog/knyazevai-dsh-tool-str-replace-editor:
+  en: 9d4817cd7ee5eeed
+  zh: 9d4817cd7ee5eeed
+/tool-schema-catalog/knyazevai-dsh-tool-str-replace-editor/str-replace-editor:
+  en: e8c7086a0f31ea6d
+  zh: eccfd45520bab9a2
+/tool-schema-catalog/knyazevai-dsh-tool-fs:
+  en: 82133ffffe530cbf
+  zh: 82133ffffe530cbf
+/tool-schema-catalog/knyazevai-dsh-tool-fs/edit:
+  en: 5b6a252adde51af6
+  zh: 7aa172a5d8b9cbd2
+/tool-schema-catalog/knyazevai-dsh-tool-fs/read:
+  en: 94bfc5b03c63baef
+  zh: 339338a0e74696c3
+/tool-schema-catalog/knyazevai-dsh-tool-fs/read-image:
+  en: f6f7a1140066ce04
+  zh: d528e01a0939795a
+/tool-schema-catalog/knyazevai-dsh-tool-fs/write:
+  en: 1e9c4a582af5cae7
+  zh: 0c5d6ba27c115e17
+/tool-schema-catalog/knyazevai-dsh-tool-fs-search:
+  en: efc5bb9ed2f51c33
+  zh: efc5bb9ed2f51c33
+/tool-schema-catalog/knyazevai-dsh-tool-fs-search/glob:
+  en: 3ba734ba7852cdd5
+  zh: c6ce31ff2c195520
+/tool-schema-catalog/knyazevai-dsh-tool-fs-search/grep:
+  en: 12417fda385f2201
+  zh: 691c2874fb2400c1
+/tool-schema-catalog/knyazevai-dsh-tool-terminal:
+  en: 4896ac5d44512693
+  zh: 4896ac5d44512693
+/tool-schema-catalog/knyazevai-dsh-tool-terminal/terminal-close:
+  en: 6d6e428c866ac6c1
+  zh: 8033539fcdcb6e7b
+/tool-schema-catalog/knyazevai-dsh-tool-terminal/terminal-list:
+  en: ae7d5bce32142aa5
+  zh: e956a650a5bf294b
+/tool-schema-catalog/knyazevai-dsh-tool-terminal/terminal-open:
+  en: c542bd7f7e872441
+  zh: 14731de81780b518
+/tool-schema-catalog/knyazevai-dsh-tool-terminal/terminal-read:
+  en: 6a7491d2436e4404
+  zh: 772ff408ec0a67e3
+/tool-schema-catalog/knyazevai-dsh-tool-terminal/terminal-send:
+  en: e24ca8735dd59adb
+  zh: 24f7140a0aed0968
+/tool-schema-catalog/knyazevai-dsh-tool-terminal/terminal-signal:
+  en: 5313750037de5a5d
+  zh: a553c1bd3a01e6b1
+/tool-schema-catalog/knyazevai-dsh-tool-goal:
+  en: f46b51d2ea121b4a
+  zh: f46b51d2ea121b4a
+/tool-schema-catalog/knyazevai-dsh-tool-goal/create-goal:
+  en: 9ae877cdf8a641a3
+  zh: f83c3c09e80e4190
+/tool-schema-catalog/knyazevai-dsh-tool-goal/get-goal:
+  en: 0b517f13dfde11fe
+  zh: b7ee7482e8ecde56
+/tool-schema-catalog/knyazevai-dsh-tool-goal/update-goal:
+  en: b7d176356534d735
+  zh: b2298c8e162ec00f
+/tool-schema-catalog/knyazevai-dsh-tool-schedule:
+  en: 048b0958ae807046
+  zh: 048b0958ae807046
+/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-create:
+  en: 606fc2b8d62ba044
+  zh: 7523e106168c2ab2
+/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-delete:
+  en: 5fc994535c95cd6b
+  zh: 1910b545d7b92379
+/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-list:
+  en: 5bcfc051e364df29
+  zh: b77e60c123800eb1
+/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-update:
+  en: b790faaa97474c05
+  zh: a7ab7d4b20c52212
+/tool-schema-catalog/knyazevai-dsh-tool-lsp:
+  en: 7338fb69393c40ba
+  zh: 7338fb69393c40ba
+/tool-schema-catalog/knyazevai-dsh-tool-lsp/lsp:
+  en: ee425619aa73c988
+  zh: 196c355ac282d8e2
+/tool-schema-catalog/knyazevai-dsh-tool-ralph:
+  en: 7ec4d03787dd8c3e
+  zh: 7ec4d03787dd8c3e
+/tool-schema-catalog/knyazevai-dsh-tool-ralph/ralph:
+  en: 544abb2ffec8149b
+  zh: 72e14261ba60986a
+/tool-schema-catalog/knyazevai-dsh-tool-skill:
+  en: 6e65f33ddcb48124
+  zh: 6e65f33ddcb48124
+/tool-schema-catalog/knyazevai-dsh-tool-skill/skill:
+  en: 8b0a66cbf59620d9
+  zh: 47d2c82f556c10d2
+/tool-schema-catalog/knyazevai-dsh-tool-session-query:
+  en: 69009e6b3e398079
+  zh: 69009e6b3e398079
+/tool-schema-catalog/knyazevai-dsh-tool-session-query/session-event-read:
+  en: 6687105065ac3a5f
+  zh: 48b2f4d38536e4c7
+/tool-schema-catalog/knyazevai-dsh-tool-session-query/session-event-search:
+  en: 41251b4cbe9af70d
+  zh: 8855a5f32b4720e5
+/tool-schema-catalog/knyazevai-dsh-tool-session-query/session-event-trace:
+  en: 14b5ec05fa8c0932
+  zh: 3c85d44c13cc42c5
+/tool-schema-catalog/knyazevai-dsh-tool-session-query/session-search:
+  en: 8263202c97568fc3
+  zh: 92067337294c7a00
+/tool-schema-catalog/knyazevai-dsh-tool-session-query/session-trace:
+  en: 2af6e50b936b0861
+  zh: d449074de4fbe035
+/tool-schema-catalog/knyazevai-dsh-tool-subagent:
+  en: 29a66c8e7f99cc8b
+  zh: 29a66c8e7f99cc8b
+/tool-schema-catalog/knyazevai-dsh-tool-subagent/list-subagent-models:
+  en: c89084b31ffccbce
+  zh: d7b3b7000f2d2be9
+/tool-schema-catalog/knyazevai-dsh-tool-subagent/subagent:
+  en: 7bb35b7fec5eca31
+  zh: 48eb2a700d0a23a1
+/tool-schema-catalog/knyazevai-dsh-tool-subagent-control:
+  en: ab92c185742908ba
+  zh: ab92c185742908ba
+/tool-schema-catalog/knyazevai-dsh-tool-subagent-control/interrupt-agent:
+  en: 0cec3f2520050839
+  zh: 06735f086cea84f1
+/tool-schema-catalog/knyazevai-dsh-tool-subagent-control/list-agents:
+  en: ae22e8543d123c39
+  zh: 4943a5c5980fc2d3
+/tool-schema-catalog/knyazevai-dsh-tool-subagent-control/send-message:
+  en: e74161f3603e7c6c
+  zh: faa011a9b75debbc
+/tool-schema-catalog/knyazevai-dsh-tool-jobs:
+  en: ca27f157691a3b0b
+  zh: ca27f157691a3b0b
+/tool-schema-catalog/knyazevai-dsh-tool-jobs/job-kill:
+  en: 14294cc1988ae768
+  zh: 80a9152bdc02723f
+/tool-schema-catalog/knyazevai-dsh-tool-jobs/job-list:
+  en: 0c37fb1fed979d72
+  zh: 5ea9d07f5a4a8a6c
+/tool-schema-catalog/knyazevai-dsh-tool-jobs/job-output:
+  en: fbfcd56ea0222851
+  zh: 89cc791bbe7ebe37
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team:
+  en: 86b45d4a0d89b298
+  zh: 86b45d4a0d89b298
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/interrupt-agent:
+  en: c3c7af05ceb9f8c9
+  zh: ec379e0b42110c6a
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/list-agents:
+  en: f9457f033f75f00a
+  zh: a2d60ec44118c34c
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/send-message:
+  en: e99455aec4656ff2
+  zh: a8f88ec35cfe38b8
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/spawn-teammate:
+  en: 02d6cc746e234b99
+  zh: 49bc60ac098bca48
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-create:
+  en: 91e84febe063c3bd
+  zh: 550555d0f44f603b
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-get:
+  en: 1c6ae0aba0b8041d
+  zh: f8d634387b74121d
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-list:
+  en: 2084d494aae8798a
+  zh: e4c136c91028a7b1
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-update:
+  en: 2eac7360ba68b1bd
+  zh: b5d676bf288c245e
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/wait-agent:
+  en: 8e3cabb92dc62042
+  zh: 02fab20239ba10d2
+/tool-schema-catalog/knyazevai-dsh-tool-todo:
+  en: 96331670ef1d9fc0
+  zh: 96331670ef1d9fc0
+/tool-schema-catalog/knyazevai-dsh-tool-todo/todo-write:
+  en: 2ea515414f41e338
+  zh: fcb3ab3e26415cdf
+/tool-schema-catalog/knyazevai-dsh-tool-workflow:
+  en: 2ea545a60e43e25f
+  zh: 2ea545a60e43e25f
+/tool-schema-catalog/knyazevai-dsh-tool-workflow/workflow:
+  en: 25897d7c736e7852
+  zh: 784c73c576760260
+/tool-schema-catalog/knyazevai-dsh-tool-workspace-dependencies:
+  en: 3c4f297b21480cbd
+  zh: 3c4f297b21480cbd
+/tool-schema-catalog/knyazevai-dsh-tool-workspace-dependencies/load-workspace-dependencies:
+  en: d7e8a92f052119ab
+  zh: d9e2f69c507e28c6
+/tool-schema-catalog/knyazevai-dsh-tool-web:
+  en: e4cb1a9db42af03e
+  zh: e4cb1a9db42af03e
+/tool-schema-catalog/knyazevai-dsh-tool-web/web-fetch:
+  en: 8673f203aea9bdf2
+  zh: 4e17783ffdf34c83
+/tool-schema-catalog/knyazevai-dsh-tool-web/web-search:
+  en: cc1ad38bf0006710
+  zh: 324eacb827a09e93

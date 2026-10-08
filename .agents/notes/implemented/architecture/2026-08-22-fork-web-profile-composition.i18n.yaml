@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-22-fork-web-profile-composition.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-22-fork-web-profile-composition.md
-2026-08-22-fork-web-profile-composition.md: 95d98505d80a52b3920029fbb498bc197c452531
-2026-08-22-fork-web-profile-composition.zh.md: e8da80f500891d14b3215878af760dba55d4eaa2
+/agent-note-fork-web-profile-composition:
+  en: d4ed18a43eb72b33
+  zh: 3f6fddc20016ce42
+/agent-note-fork-web-profile-composition/problem:
+  en: d43ab34abd59b86a
+  zh: 7eec5f053c7ae42e
+/agent-note-fork-web-profile-composition/decision:
+  en: 786a5ced742d948a
+  zh: 022e7bd359e3fb21
+/agent-note-fork-web-profile-composition/alternatives-considered:
+  en: 8d22464bb0ba857d
+  zh: 2063083b2d7120ab
+/agent-note-fork-web-profile-composition/consequences:
+  en: 86f6f6cf44a0f41b
+  zh: 88570be01d5582f2

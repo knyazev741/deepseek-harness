@@ -123,7 +123,7 @@ No invariant companion is published because the package reads no second observat
 
 - [Schedule group](../README.md) — the sibling session-local reminder package, whose records also deliver as conversation turns.
 - [Session-local Schedule subsystem](../../../docs/subsystems/schedule.md) — the reminder record and delivery contracts this package deliberately does not reuse.
-- [Durable web Schedule decision](../../../.agents/notes/implemented/feature/2026-08-05-durable-web-schedule.md) — prior art for live-owner reminder delivery.
+- [Durable web Schedule decision](../../../docs/subsystems/schedule.md) — prior art for live-owner reminder delivery.
 - [Profile-configured wake scheduler decision](../../../.agents/notes/implemented/feature/2026-09-18-profile-wake-scheduler.md) — why this package stays separate from Schedule and what it deliberately does not wake.
 
 -----

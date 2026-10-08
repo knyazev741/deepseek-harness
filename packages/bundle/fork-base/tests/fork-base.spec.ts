@@ -5,19 +5,21 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as yaml from 'js-yaml'
 import { Context } from '@deepseek-ai/cordis'
-import Include, { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
+import { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import AgentDefaultModelConfig from '@knyazevai/dsh-agent-default-model'
 import LlmRuntime from '@knyazevai/dsh-llm'
 import * as LlmPiAi from '@knyazevai/dsh-llm-pi-ai'
-import FileSettingsProvider from '@knyazevai/dsh-settings-file'
+import Settings from '@knyazevai/dsh-settings'
+import ConfigEditor from '@knyazevai/dsh-config-editor'
+import { boot, initProfile, readProfilePatches, type ProfileContext } from '@knyazevai/dsh-app-boot'
+import { vi } from 'vitest'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 
 interface Manifest {
@@ -254,6 +256,10 @@ describe('dsh-fork-base bundle', () => {
       if (llmConfig === undefined || defaultModelConfig === undefined) {
         throw new Error('fork-base portable config rows are missing')
       }
+      initProfile(rootDir, ['test-bundle'])
+      const bundle = resolve(rootDir, 'node_modules/test-bundle')
+      mkdirSync(bundle, { recursive: true })
+      writeFileSync(resolve(bundle, 'package.json'), JSON.stringify({ name: 'test-bundle', version: '1.0.0', dsh: { bundle: { patch: 'cordis.patch.yml' } } }))
       const settingsPath = resolve(rootDir, 'settings.yaml')
       writeFileSync(settingsPath, [
         'llm-pi-ai:',
@@ -266,12 +272,13 @@ describe('dsh-fork-base bundle', () => {
         '',
       ].join('\n'))
       const configPath = resolve(rootDir, 'cordis.yml')
-      writeFileSync(configPath, yaml.dump([
+      writeFileSync(configPath, '[]\n')
+      writeFileSync(resolve(bundle, 'cordis.patch.yml'), yaml.dump([{ insert: [
         { id: 'llm', name: 'test-llm-service' },
+        { id: 'config-editor', name: 'cordis:editor' },
         {
           id: 'settings',
-          name: '@knyazevai/dsh-settings-file',
-          config: { path: settingsPath, watch: false },
+          name: '@knyazevai/dsh-settings',
         },
         { id: 'llm-pi-ai', name: '@knyazevai/dsh-llm-pi-ai', config: llmConfig },
         {
@@ -279,35 +286,25 @@ describe('dsh-fork-base bundle', () => {
           name: '@knyazevai/dsh-agent-default-model',
           config: defaultModelConfig,
         },
-      ]))
+      ] }]))
 
-      ctx = new Context()
-      ctx.baseUrl = pathToFileURL(rootDir).href + '/'
-      await ctx.plugin(Loader)
-      ctx.loader.builtins.include = Include
       const modules = new Map<string, unknown>([
         ['test-llm-service', LlmRuntime],
-        ['@knyazevai/dsh-settings-file', FileSettingsProvider],
+        ['@knyazevai/dsh-settings', Settings],
         ['@knyazevai/dsh-llm-pi-ai', LlmPiAi],
         ['@knyazevai/dsh-agent-default-model', AgentDefaultModelConfig],
       ])
-      ctx.loader.internal = {
-        version: 'v2',
-        async import(specifier: string) {
+      const profile: ProfileContext = { name: 'test', dir: rootDir, home: rootDir, cwd: rootDir, startedBundles: ['test-bundle'], patchPath: resolve(rootDir, 'cordis.patch.yml'), installAnchor: resolve(rootDir, 'package.json'), overlays: [], telemetryDisabledEnv: undefined }
+      ctx = await boot('test', configPath, readProfilePatches('test', profile), (ctx) => {
+        ctx.provide('profileContext', profile)
+        ctx.loader.builtins.editor = ConfigEditor
+        ctx.loader.internal = { version: 'v2', async import(specifier: string) {
           if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
           return modules.get(specifier)
-        },
-      } as unknown as NonNullable<typeof ctx.loader.internal>
-      await ctx.loader.create({
-        name: 'cordis:include',
-        config: { path: pathToFileURL(configPath).href },
+        } } as unknown as NonNullable<typeof ctx.loader.internal>
       })
-      await ctx.loader.await()
 
-      expect(ctx.agentDefaultModel.currentSelection()).toEqual({
-        provider: 'settings-provider',
-        model: 'settings-model',
-      })
+      await vi.waitFor(() => { expect(ctx?.agentDefaultModel.currentSelection()).toEqual({ provider: 'settings-provider', model: 'settings-model' }) })
       expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(['knyazev-ai'])
       expect(ctx.llm.providerRetryPolicy('knyazev-ai')).toMatchObject({
         mode: 'normal',
@@ -355,7 +352,7 @@ describe('dsh-fork-base bundle', () => {
 
   it('keeps the upstream base patch bytes unchanged', () => {
     const basePath = resolve(root, '../base/cordis.patch.yml')
-    const upstream = execFileSync('git', ['show', '0d1f50007f:packages/bundle/base/cordis.patch.yml'], { encoding: 'utf8' })
+    const upstream = execFileSync('git', ['show', '5badb15009ae1756c3afe0ae0cef1faafc290ccc:packages/bundle/base/cordis.patch.yml'], { encoding: 'utf8' })
     expect(readFileSync(basePath, 'utf8')).toBe(upstream.replaceAll('@deepseek-ai' + '/dsh', '@knyazevai/dsh'))
   })
 })
@@ -363,7 +360,8 @@ describe('dsh-fork-base bundle', () => {
 
 describe('Flash compaction parity in shipped agent presets', () => {
   it.each(['standard', 'ptc', 'cordis'])('keeps GLM and DeepSeek policies equal in %s', (preset) => {
-    const rows = readPatch(`../../preset/agent-presets/presets/${preset}/agent.cordis.yml`)
+    const declarations = readPatch(`../web-app/presets/${preset}.patch.yml`)
+    const rows = declarations[0]?.insert?.[0]?.config?.plugins as Row[]
     const group = rows.find(row => row.id === 'compaction')
     const children = group?.config as unknown as Row[]
     const compact = children.find(row => row.id === 'compaction-basic')

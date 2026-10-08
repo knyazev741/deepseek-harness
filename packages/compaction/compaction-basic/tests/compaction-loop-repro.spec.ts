@@ -8,10 +8,6 @@ import { defineContentToolFixture } from '@knyazevai/dsh-tools'
 import type { Agent } from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
-import InvariantRegistry from '@knyazevai/dsh-invariants'
-import * as SessionInvariant from '@knyazevai/dsh-session/invariant'
-import * as AgentInvariant from '@knyazevai/dsh-agent/invariant'
-import * as AgentLoopInvariant from '@knyazevai/dsh-agent-loop/invariant'
 import { BasicCompactionEngine } from '@knyazevai/dsh-compaction-basic'
 import TokenMeter from '@knyazevai/dsh-token-meter'
 import * as LlmRetry from '@knyazevai/dsh-llm-retry'
@@ -139,17 +135,9 @@ class OverflowRecoveryAdapter extends LlmAdapter {
   }
 }
 
-async function mountInvariants(ctx: Context): Promise<void> {
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
-}
-
 async function harness(toolSteps: number): Promise<{ ctx: Context; compact: ReproCompactionEngine }> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
-  await mountInvariants(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(TokenMeter)
   ctx.llm.registerAdapter(['mock'], new StepwiseToolAdapter(toolSteps))
@@ -165,6 +153,7 @@ async function harness(toolSteps: number): Promise<{ ctx: Context; compact: Repr
   // fires within the runaway turn after enough history can shrink.
   const compact = new ReproCompactionEngine(ctx, {
     auto: true,
+    headroomTokens: 0,
     thresholdRatio: 0.5,
     retainTokens: 50,
     maxTokens: 8192,
@@ -336,7 +325,7 @@ describe('token pressure after loop-admitted system prompts', () => {
         agent.session.append('system/message', {
           turn,
           step,
-          message: createSystemMessage('retry guidance', '@knyazevai/dsh-system-prompt'),
+          message: createSystemMessage('retry guidance'),
         }, { surfaceOp: { op: 'replace', startSeq: node, endSeq: node }, sourceEventSeqs: [node] })
         return { kind: 'retry' }
       })
@@ -388,7 +377,6 @@ describe('context-overflow recovery across the real loop and compaction-basic', 
       const ctx = new Context()
       const adapter = new OverflowRecoveryAdapter(delivery)
       await mountAgentLoopTestDependencies(ctx)
-      await mountInvariants(ctx)
       await ctx.plugin(AgentLoop, { agents: [] })
       await ctx.plugin(TokenMeter)
       ctx.llm.registerAdapter(['mock'], adapter)
@@ -396,6 +384,7 @@ describe('context-overflow recovery across the real loop and compaction-basic', 
         ...await next(), provider: 'mock', model: 'mock',
       }))
       await ctx.plugin(BasicCompactionEngine, {
+        headroomTokens: 0,
         thresholdRatio: 1,
         retainTokens: 100,
         maxTokens: 64,
@@ -466,12 +455,12 @@ describe('context-overflow recovery across the real loop and compaction-basic', 
     const ctx = new Context()
     const adapter = new OverflowRecoveryAdapter('thrown', true)
     await mountAgentLoopTestDependencies(ctx)
-    await mountInvariants(ctx)
     await ctx.plugin(LlmRetry)
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin(TokenMeter)
     ctx.llm.registerAdapter(['mock'], adapter)
     await ctx.plugin(BasicCompactionEngine, {
+      headroomTokens: 0,
       thresholdRatio: 1,
       retainTokens: 100,
       maxTokens: 64,

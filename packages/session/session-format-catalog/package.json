@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-session-format-catalog",
   "description": "Build-static first-party Session format codec and migration catalog",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -32,18 +32,19 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@knyazevai/dsh-session-format": "workspace:^",
-    "@knyazevai/dsh-session-format-v0-to-v1": "workspace:^",
-    "@knyazevai/dsh-session-format-v1-to-v2": "workspace:^",
-    "@knyazevai/dsh-session-format-v2-to-v3": "workspace:^",
-    "@knyazevai/dsh-compaction-image-offload": "workspace:^"
+    "@knyazevai/dsh-session-format": "workspace:*",
+    "@knyazevai/dsh-session-format-v0-to-v1": "workspace:*",
+    "@knyazevai/dsh-session-format-v1-to-v2": "workspace:*",
+    "@knyazevai/dsh-session-format-v2-to-v3": "workspace:*",
+    "@knyazevai/dsh-session-format-v3-to-v4": "workspace:*",
+    "@knyazevai/dsh-compaction-image-offload": "workspace:*"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-session": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-session": "workspace:*"
   }
 }

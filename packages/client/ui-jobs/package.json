@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-jobs",
-  "description": "Session-header background-job list: live registry state mirrored from session/jobs frames",
-  "version": "0.1.6-alpha.1",
+  "description": "Session-header background-job list with on-demand streaming record panels",
+  "version": "0.2.1-alpha.1",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -17,16 +17,6 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "dsh": {
-    "client": {
-      "inject": [
-        "@knyazevai/dsh-client-locale",
-        "@knyazevai/dsh-client-ui-conversation",
-        "@knyazevai/dsh-client-ui-primitives"
-      ],
-      "platform": "web"
-    }
-  },
   "scripts": {
     "bundle": "tsdown",
     "watch": "tsdown --watch"
@@ -41,24 +31,37 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-api-job-controller": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-jobs": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
-    "react": "^18.2.0",
-    "@knyazevai/dsh-api-session-controller": "workspace:^",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-client-ui-session": "workspace:^"
+    "react": "^18.2.0"
   },
   "files": [
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.d.ts"
-  ]
+  ],
+  "dsh": {
+    "client": {
+      "inject": [
+        "@knyazevai/dsh-api-job-controller",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-primitives"
+      ],
+      "platform": "web"
+    }
+  }
 }

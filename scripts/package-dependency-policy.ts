@@ -15,6 +15,11 @@ const HOST_DEPENDENCY_PACKAGES: readonly string[] = [
   '@knyazevai/dsh-session',
 ]
 
+/** Required Cordis services whose Host imports are type-only. */
+const REQUIRED_SERVICE_PEERS = {
+  '@knyazevai/dsh-api-terminal-controller': ['@knyazevai/dsh-subprocess'],
+} as const satisfies Readonly<Record<string, readonly string[]>>
+
 /** Development-only package relationships not represented by source imports. */
 const CONFIGURATION_ONLY_DEV_DEPENDENCIES = {
   '@knyazevai/dsh-client-locale': ['@knyazevai/dsh-api-remotes'],
@@ -34,6 +39,7 @@ const DUPLICATE_SAFE_PACKAGES: readonly string[] = [
   '@knyazevai/dsh-brand',
   '@knyazevai/dsh-lazy-require',
   '@knyazevai/dsh-typert-protocol',
+  '@knyazevai/dsh-util-code-language',
   '@knyazevai/dsh-util-crypto',
   '@knyazevai/dsh-util-values',
 ]
@@ -55,8 +61,8 @@ const SAFE_HOST_DEPENDENCY_EXPORTS = {
 
 /** Runtime exports that require every consumer to resolve the provider's shared peer instance. */
 const PEER_REQUIRED_HOST_EXPORTS = {
-  '@knyazevai/dsh-subprocess': ['SubprocessExecutableNotFoundError'],
-  '@knyazevai/dsh-scope': ['carrierKeyOf', 'scopeOf', 'scopeTarget'],
+  '@knyazevai/dsh-client-connection': ['OperatorPeer'],
+  '@knyazevai/dsh-scope': ['carrierKeyOf', 'createScope', 'scopeOf', 'scopeTarget'],
   '@knyazevai/dsh-session': ['SESSION_FORMAT_VERSION'],
   '@knyazevai/dsh-session-persistence': ['SessionPersistenceNotFoundError'],
 } as const satisfies HostDependencyExports
@@ -69,6 +75,7 @@ export interface PackageDependencyPolicy {
   readonly clientFaceInclude: readonly string[]
   readonly clientFaceExclude: readonly string[]
   readonly hostPackages: readonly string[]
+  readonly requiredServicePeers?: Readonly<Record<string, readonly string[]>>
   readonly configurationOnlyDevDependencies: Readonly<Record<string, readonly string[]>>
   readonly duplicateSafePackages?: readonly string[]
   readonly safeHostDependencyExports: HostDependencyExports
@@ -80,6 +87,7 @@ export const PACKAGE_DEPENDENCY_POLICY: PackageDependencyPolicy = {
   clientFaceInclude: CLIENT_FACE_INCLUDE,
   clientFaceExclude: CLIENT_FACE_EXCLUDE,
   hostPackages: HOST_DEPENDENCY_PACKAGES,
+  requiredServicePeers: REQUIRED_SERVICE_PEERS,
   configurationOnlyDevDependencies: CONFIGURATION_ONLY_DEV_DEPENDENCIES,
   duplicateSafePackages: DUPLICATE_SAFE_PACKAGES,
   safeHostDependencyExports: SAFE_HOST_DEPENDENCY_EXPORTS,

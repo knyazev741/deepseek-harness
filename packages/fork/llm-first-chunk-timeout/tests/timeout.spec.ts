@@ -840,7 +840,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(agent.followup).toHaveBeenCalledWith(expect.objectContaining({
       role: 'user',
       content: [{ type: 'text', text: 'continue' }],
-      source: { kind: 'plugin', plugin: 'fork-llm-first-chunk-timeout' },
+      source: { kind: 'fork-first-chunk-recovery' },
     }))
   })
 
@@ -906,7 +906,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
       const nodes = agent.session.surface.nodes.filter(seq => agent.session.eventAt(seq)?.type !== 'system/message')
       agent.session.append('user/message', createUserMessage({
         content: [{ type: 'text', text: 'compacted history' }],
-        source: { kind: 'plugin', plugin: 'test-compaction' },
+        source: { kind: 'compaction-basic' },
       }), {
         surfaceOp: { op: 'replace', startSeq: nodes[0]!, endSeq: nodes.at(-1)! },
         sourceEventSeqs: [...nodes],
@@ -924,7 +924,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(adapter.requests[1]?.messages).toContainEqual(expect.objectContaining({
       role: 'user',
       content: [{ type: 'text', text: 'continue' }],
-      source: { kind: 'plugin', plugin: 'fork-llm-first-chunk-timeout' },
+      source: { kind: 'fork-first-chunk-recovery' },
     }))
     expect(agent.session.snapshotEvents().filter(event => event.type === 'turn/start')).toHaveLength(2)
     expect(agent.session.snapshotEvents().filter(event => event.type === 'turn/end').map(event => event.data.reason.kind))

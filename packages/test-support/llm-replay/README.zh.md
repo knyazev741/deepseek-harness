@@ -83,6 +83,8 @@ parent agent 委托给进程内 subagent 的场景会为每个 Session 记录一
 - **未记录的会话发起调用**——回放会明确报错，并提示你重新录制场景。
 - **脚本占位符匹配不到内容**——`{{fromRequest:<regex>}}` 解析会校验模式与请求语料，匹配不到、模式非法或占位符未闭合都会明确报错。
 
+独立转录提取向 V3→V4 显式提供空的子 Session 事实集合；保留已有目录记录，但不发现关联文件。完整的历史父目录迁移由 JSONL 持久化负责。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -105,7 +107,6 @@ parent agent 委托给进程内 subagent 的场景会为每个 Session 记录一
 |---|---|
 | [`src/index.ts`](src/index.ts) | 类型、fixture 派生、override 校验、占位符解析、会话绑定、`installLlmReplay` 与插件导出 |
 | [`tests/session-format-corpus.spec.ts`](tests/session-format-corpus.spec.ts) | 已提交代际还原与精确历史拒绝检查 |
-| — | 不发布运行时不变式伴生入口；该仅测试适配器消费固定的回放脚本；其流语法由 LLM 伴生插件与 fixture 派生测试检验。 |
 
 ### 绑定与流式流程
 

@@ -23,14 +23,14 @@ function hasLiteralPayload(event: SessionEvent): boolean {
 /** Validate one source marker's envelope and payload. */
 function validateMarker(event: SessionEvent, fail: InvariantFailure): void {
   if (!hasLiteralPayload(event)) {
-    fail(`session event ${event.seq} has a non-literal fork/session-source payload`)
+    fail(`session event ${event.seq} has a non-literal plugin:fork/session-source payload`)
   }
   if (event.ignorable !== true) {
-    fail(`session event ${event.seq} fork/session-source marker is not ignorable`)
+    fail(`session event ${event.seq} plugin:fork/session-source marker is not ignorable`)
   }
   const envelope = event as unknown as Record<string, unknown>
   if (envelope.surfaceOp !== undefined || envelope.sourceEventSeqs !== undefined) {
-    fail(`session event ${event.seq} fork/session-source marker carries surface metadata`)
+    fail(`session event ${event.seq} plugin:fork/session-source marker carries surface metadata`)
   }
 }
 
@@ -39,9 +39,9 @@ function validateSession(session: Session, fail: InvariantFailure): void {
   let markers = 0
   // oxlint-disable-next-line typescript/no-deprecated -- Existing fork history read retained during upstream migration.
   for (const event of session.snapshotEvents()) {
-    if (event.type !== 'fork/session-source') continue
+    if (event.type !== 'plugin:fork/session-source' && event.type !== 'fork/session-source') continue
     markers += 1
-    if (markers > 1) fail(`session ${String(session.id)} contains more than one fork/session-source marker`)
+    if (markers > 1) fail(`session ${String(session.id)} contains more than one plugin:fork/session-source marker`)
     validateMarker(event, fail)
   }
 }
@@ -53,10 +53,10 @@ const install: InvariantInstaller = Object.assign((ctx: Context, fail: Invariant
   ctx.on('internal/dispatch', (_mode, eventName, args) => {
     if (eventName !== 'session/event') return
     const [session, event] = args as [Session, SessionEvent]
-    if (event.type !== 'fork/session-source') return
+    if (event.type !== 'plugin:fork/session-source' && event.type !== 'fork/session-source') return
     // oxlint-disable-next-line typescript/no-deprecated -- Existing fork history read retained during upstream migration.
-    if (session.snapshotEvents().some(item => item.type === 'fork/session-source')) {
-      fail(`session ${String(session.id)} contains more than one fork/session-source marker`)
+    if (session.snapshotEvents().some(item => (item.type === 'plugin:fork/session-source' || item.type === 'fork/session-source'))) {
+      fail(`session ${String(session.id)} contains more than one plugin:fork/session-source marker`)
     }
     validateMarker(event, fail)
   }, { global: true })

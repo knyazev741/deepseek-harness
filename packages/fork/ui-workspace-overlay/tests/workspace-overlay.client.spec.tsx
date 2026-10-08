@@ -7,7 +7,7 @@ import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
 import type { SessionId } from '@knyazevai/dsh-session/types'
-import type { SessionSummary } from '@knyazevai/dsh-api-session-controller/client'
+import type { SessionSummary, SessionReference } from '@knyazevai/dsh-api-session-controller/client'
 import type { WorkspaceId, WorkspaceView } from '@knyazevai/dsh-api-workspace-controller/client'
 import { SlotTestRuntime } from '@knyazevai/dsh-client-test-runtime'
 import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
@@ -94,9 +94,22 @@ function summary(id: string, extra: OverlaySummary = {}): SessionSummary {
     displayTitle: id,
     running: false,
     blank: false,
+    retainedBy: {},
     updatedAt: 1,
     ...extra,
   }
+}
+
+const selectedReferences = new WeakMap<TestRuntime, SessionReference>()
+async function select(runtime: TestRuntime, id: string | undefined): Promise<void> {
+  selectedReferences.get(runtime)?.release()
+  selectedReferences.delete(runtime)
+  if (id !== undefined) {
+    const reference = runtime.sessions.retain(sid(id), { source: 'mainView' })
+    selectedReferences.set(runtime, reference)
+    await reference.ready
+  }
+  await runtime.flush()
 }
 
 function workspace(sessionIds: readonly string[]): WorkspaceView {
@@ -124,13 +137,15 @@ async function bench(options: {
   runtime.slots.installLocale(locale)
   const remote = makeRemote(options.pins ?? { revision: 1, pinnedSessionIds: [] })
   if (options.initialList !== undefined) remote.queueList(options.initialList)
-  runtime.ctx.provide('remote', { forkWorkspaceSessionState: remote } as never)
-  runtime.ctx.provide('remote.forkWorkspaceSessionState', remote as never)
+  runtime.remote.provideNamespaces({ forkWorkspaceSessionState: remote })
   for (const item of options.summaries ?? []) {
-    await runtime.sessions.add({ id: String(item.id), summary: item }, { current: false })
+    await runtime.sessions.add({ id: String(item.id), summary: item })
   }
   const ids = (options.summaries ?? []).map(item => String(item.id))
-  await runtime.workspaces.update((draft) => { draft.items = [workspace(ids)] })
+  await runtime.workspaces.update((draft) => {
+    draft.items = [workspace(ids)]
+    draft.pinnedSessionIds = [...options.pins?.pinnedSessionIds ?? []]
+  })
   await runtime.declare({
     'workspace.session-row.badges': { kind: 'list', scope: 'root' },
     'workspace.session-row.status': { kind: 'list', scope: 'root' },
@@ -164,7 +179,7 @@ describe('fork workspace overlay assembled client fixture', () => {
     fireEvent.click(actions.view.getByRole('menuitem', { name: 'Mark unread' }))
     expect(status.container.querySelector('[data-state="done"]')).toBeTruthy()
 
-    await b.runtime.sessions.setCurrent(String(session.id))
+    await select(b.runtime, String(session.id))
     expect(status.container.querySelector('[data-state="done"]')).toBeNull()
     await b.runtime.dispose()
   })
@@ -180,7 +195,7 @@ describe('fork workspace overlay assembled client fixture', () => {
     fireEvent.click(actions.view.getByRole('menuitem', { name: 'Mark unread' }))
     expect(status.container.querySelector('[data-state="done"]')).toBeTruthy()
 
-    await b.runtime.sessions.setCurrent(String(session.id))
+    await select(b.runtime, String(session.id))
     expect(status.container.querySelector('[data-state="done"]')).toBeNull()
     await b.runtime.dispose()
   })
@@ -240,10 +255,10 @@ describe('fork workspace overlay assembled client fixture', () => {
     fireEvent.click(view.view.getByRole('menuitem', { name: 'Mark unread' }))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'read-me': 8 })
 
-    await b.runtime.sessions.setCurrent(String(session.id))
+    await select(b.runtime, String(session.id))
     await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 10 })
-    await b.runtime.sessions.setCurrent(String(other.id))
-    await b.runtime.sessions.setCurrent(String(session.id))
+    await select(b.runtime, String(other.id))
+    await select(b.runtime, String(session.id))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'read-me': 10 })
     await b.runtime.dispose()
   })
@@ -254,9 +269,9 @@ describe('fork workspace overlay assembled client fixture', () => {
     const other = summary('other', { projectionAsOfSeq: 2 })
     const b = await bench({ summaries: [session, other] })
 
-    await b.runtime.sessions.setCurrent(String(session.id))
+    await select(b.runtime, String(session.id))
     await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 7 })
-    await b.runtime.sessions.setCurrent(String(other.id))
+    await select(b.runtime, String(other.id))
 
     const updated = b.runtime.sessions.list.getSnapshot().byId[session.id]!
     const status = b.runtime.renderSlot('workspace.session-row.status', owner(updated, b.workspace))
@@ -270,13 +285,13 @@ describe('fork workspace overlay assembled client fixture', () => {
   it('does not lower a newer read watermark when a stale summary is marked read', async () => {
     const session = summary('stale-read', { projectionAsOfSeq: 9 })
     const b = await bench({ summaries: [session] })
-    await b.runtime.sessions.setCurrent(String(session.id))
-    await b.runtime.sessions.setCurrent(undefined)
+    await select(b.runtime, String(session.id))
+    await select(b.runtime, undefined)
     await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 10 })
-    await b.runtime.sessions.setCurrent(String(session.id))
-    await b.runtime.sessions.setCurrent(undefined)
+    await select(b.runtime, String(session.id))
+    await select(b.runtime, undefined)
     await b.runtime.sessions.updateSummary(String(session.id), { projectionAsOfSeq: 3 })
-    await b.runtime.sessions.setCurrent(String(session.id))
+    await select(b.runtime, String(session.id))
     expect(JSON.parse(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)!)).toMatchObject({ 'stale-read': 10 })
     await b.runtime.dispose()
   })
@@ -303,119 +318,15 @@ describe('fork workspace overlay assembled client fixture', () => {
     await b.runtime.dispose()
   })
 
-  it('refreshes and replays a stale pin mutation', async () => {
-    const session = summary('pin-me')
+  it('uses native Workspace pins and updates promotion on the Host pin feed', async () => {
+    const session = summary('native-pin')
     const b = await bench({ summaries: [session] })
-    b.remote.setView({ revision: 2, pinnedSessionIds: [] })
-    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
-    await vi.waitFor(() =>{  expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy() })
-    expect(b.remote.setPinned.mock.calls.map(call => call[0])).toMatchObject([
-      { expectedRevision: 1, pinned: true },
-      { expectedRevision: 2, pinned: true },
-    ])
-    expect(b.remote.list).toHaveBeenCalledTimes(2)
-    expect(b.remote.setPinned).toHaveBeenCalledTimes(2)
-    await b.runtime.dispose()
-  })
-
-  it('accepts the reset Settings revision after a Host restart', async () => {
-    const session = summary('pin-after-restart')
-    const b = await bench({
-      summaries: [session],
-      pins: { revision: 7, pinnedSessionIds: [] },
-    })
-    b.remote.setView({ revision: 0, pinnedSessionIds: [] })
-    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-
-    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
-
-    await vi.waitFor(() => {
-      expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy()
-    })
-    expect(b.remote.setPinned).toHaveBeenNthCalledWith(1, {
-      sessionId: session.id,
-      expectedRevision: 7,
-      pinned: true,
-    })
-    expect(b.remote.setPinned).toHaveBeenNthCalledWith(2, {
-      sessionId: session.id,
-      expectedRevision: 0,
-      pinned: true,
-    })
-    await b.runtime.dispose()
-  })
-
-  it('uses the pushpin icon for Pin session instead of a text star', async () => {
-    const session = summary('pin-icon')
-    const b = await bench({ summaries: [session] })
-    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    const pin = view.view.getByRole('menuitem', { name: 'Pin session' })
-    expect(pin.querySelector('svg[data-icon="pushpin-outline"]')).toBeTruthy()
-    expect(pin.textContent).not.toContain('☆')
-    await b.runtime.dispose()
-  })
-
-  it('keeps an accepted pin when an older initial list resolves late', async () => {
-    const initial = { revision: 0, pinnedSessionIds: [] as SessionId[] }
-    const initialList = deferred<{ ok: true; value: ForkWorkspaceSessionStateView }>()
-    const b = await bench({ summaries: [summary('pin-race')], pins: initial, initialList: initialList.promise })
-    const session = summary('pin-race')
-    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
-    await vi.waitFor(() =>{  expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy() })
-    initialList.resolve({ ok: true, value: initial })
-    await Promise.resolve()
-    expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy()
-    await b.runtime.dispose()
-  })
-
-  it('refreshes and retries a pin mutation after a stale revision conflict', async () => {
-    const initialList = deferred<{ ok: true; value: ForkWorkspaceSessionStateView }>()
-    const current = { revision: 7, pinnedSessionIds: [] as SessionId[] }
-    const session = summary('pin-initial-load')
-    const b = await bench({
-      summaries: [session],
-      pins: { revision: 0, pinnedSessionIds: [] },
-      initialList: initialList.promise,
-    })
-    b.remote.list.mockResolvedValue({ ok: true as const, value: current })
-    b.remote.setPinned.mockImplementation(async input => input.expectedRevision === 0
-      ? {
-        ok: true as const,
-        value: { ok: false as const, error: { code: 'revision-conflict' as const, current } },
-      }
-      : {
-        ok: true as const,
-        value: {
-          ok: true as const,
-          value: { revision: current.revision + 1, pinnedSessionIds: [sid('pin-initial-load')] },
-        },
-      })
-    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
-    initialList.resolve({ ok: true, value: current })
-
-    await vi.waitFor(() =>{  expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy() })
-    expect(b.remote.setPinned.mock.calls.map(call => call[0])).toMatchObject([
-      { expectedRevision: 0, pinned: true },
-      { expectedRevision: 7, pinned: true },
-    ])
-    await b.runtime.dispose()
-  })
-
-  it('accepts pin then unpin with each current revision', async () => {
-    const session = summary('toggle-pin')
-    const b = await bench({ summaries: [session] })
-    const view = b.runtime.renderSlot('workspace.session-row.actions', owner(session, b.workspace))
-    fireEvent.click(view.view.getByRole('menuitem', { name: 'Pin session' }))
-    await vi.waitFor(() =>{  expect(view.view.getByRole('menuitem', { name: 'Unpin session' })).toBeTruthy() })
-    fireEvent.click(view.view.getByRole('menuitem', { name: 'Unpin session' }))
-    await vi.waitFor(() =>{  expect(view.view.getByRole('menuitem', { name: 'Pin session' })).toBeTruthy() })
-    expect(b.remote.setPinned.mock.calls.map(call => call[0])).toMatchObject([
-      { expectedRevision: 1, pinned: true },
-      { expectedRevision: 2, pinned: false },
-    ])
+    const policy = () => b.runtime.ctx.workspaceContributions.policies.getSnapshot()[0]!
+    expect(policy().promote?.(owner(session))).toBe(false)
+    await b.runtime.workspaces.update((draft) => { draft.pinnedSessionIds = [session.id] })
+    expect(policy().promote?.(owner(session))).toBe(true)
+    await b.runtime.workspaces.update((draft) => { draft.pinnedSessionIds = [] })
+    expect(policy().promote?.(owner(session))).toBe(false)
     await b.runtime.dispose()
   })
 
@@ -463,7 +374,7 @@ describe('fork workspace overlay assembled client fixture', () => {
     expect(b.runtime.slots.entries('workspace.session-row.status')).toEqual([])
     expect(b.runtime.slots.entries('workspace.session-row.actions')).toEqual([])
     expect(b.runtime.ctx.locale.bind(NS)('background')).toBe('background')
-    await b.runtime.sessions.setCurrent(String(session.id))
+    await select(b.runtime, String(session.id))
     expect(localStorage.getItem(READ_WATERMARKS_STORAGE_KEY)).toBeNull()
     await b.runtime.dispose()
   })

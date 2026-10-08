@@ -9,7 +9,7 @@ import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testki
 import SubagentRuntime from '@knyazevai/dsh-subagent'
 import * as spawn from '@knyazevai/dsh-subagent-spawn-in-process'
 import { MockAdapter, textResponse } from '../packages/core/agent-loop/tests/mock-adapter.ts'
-import type {} from '@knyazevai/dsh-tool-workflow'
+import type {} from '@knyazevai/dsh-tool-workflow/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 // @ts-expect-error Scenario plugins are runtime JavaScript without declaration artifacts.
 import * as fixtureModule from './fixtures/python-snapshot-workflow-order.mjs'

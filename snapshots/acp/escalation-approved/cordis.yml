@@ -3,7 +3,7 @@
 # stdout remains reserved for ACP JSON-RPC.
 
 - id: llm-deepseek
-  name: '@knyazevai/dsh-llm-deepseek'
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
   config:
     thinking: enabled
     reasoningEffort: max

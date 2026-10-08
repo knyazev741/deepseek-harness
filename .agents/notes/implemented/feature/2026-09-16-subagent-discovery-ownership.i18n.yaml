@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-16-subagent-discovery-ownership.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-16-subagent-discovery-ownership.md
-2026-09-16-subagent-discovery-ownership.md: 2d5f8a446f09888e80c843e67e80c6afcd44868e
-2026-09-16-subagent-discovery-ownership.zh.md: cfb8d683f69992bc6b836af777318e0ee325d42e
+/agent-note-separate-subagent-discovery-ownership:
+  en: e41411d14286f457
+  zh: 54a770827a268f6f
+/agent-note-separate-subagent-discovery-ownership/problem:
+  en: fdce6357425d87ac
+  zh: fc7a4b1ebc3eb137
+/agent-note-separate-subagent-discovery-ownership/decision:
+  en: 835a83e9dba3ad10
+  zh: a3da4042a19cab60
+/agent-note-separate-subagent-discovery-ownership/alternatives-considered:
+  en: 4a43c3952913fd74
+  zh: a5e103f3f96eb0b6
+/agent-note-separate-subagent-discovery-ownership/consequences:
+  en: 4cf51d2611223d65
+  zh: e2cc9ffa8f6f0626

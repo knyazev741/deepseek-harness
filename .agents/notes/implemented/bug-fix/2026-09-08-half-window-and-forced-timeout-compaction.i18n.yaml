@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-08-half-window-and-forced-timeout-compaction.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-08-half-window-and-forced-timeout-compaction.md
-2026-09-08-half-window-and-forced-timeout-compaction.md: 640df2fa7a98ae9a6c16c96aaee4c2055449c38a
-2026-09-08-half-window-and-forced-timeout-compaction.zh.md: 9e2a8798fc5c1df485790a7f5a6cf169a2121f8c
+/agent-note-compact-at-half-window-pressure-and-force-recovery-after-first-chunk-timeout:
+  en: 83a3422e504a567d
+  zh: acd256733b8b0154
+/agent-note-compact-at-half-window-pressure-and-force-recovery-after-first-chunk-timeout/problem:
+  en: 0d3b430c203a73b3
+  zh: 727be7b487b48f06
+/agent-note-compact-at-half-window-pressure-and-force-recovery-after-first-chunk-timeout/decision:
+  en: 992fe303fc27bc80
+  zh: 711db823a04c119b
+/agent-note-compact-at-half-window-pressure-and-force-recovery-after-first-chunk-timeout/alternatives-considered:
+  en: 8d2906c7515c0cb2
+  zh: d6cd8a6682acc236
+/agent-note-compact-at-half-window-pressure-and-force-recovery-after-first-chunk-timeout/consequences:
+  en: 96d9fa738bdcd820
+  zh: 5e8bd0a152a9df24

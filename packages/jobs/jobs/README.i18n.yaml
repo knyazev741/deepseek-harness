@@ -1,6 +1,61 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/jobs/jobs/README.md
-README.md: 355c6711a2e7ca21c4a04b87412f8d41df091656
-README.zh.md: 2b9df76bf54edfb2e418ea073f8ccafb658b47cd
+/:
+  en: 4055a3bc920e4ac2
+  zh: 3bc99f3b5bc2fd71
+/knyazevai-dsh-jobs:
+  en: 5c38c20fd7fa8450
+  zh: d1e83ef7a009f8c9
+/knyazevai-dsh-jobs/summary:
+  en: f64d24a22c76423c
+  zh: 5bfd3c04ce108bcb
+/knyazevai-dsh-jobs/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-jobs/use-this-package:
+  en: 1246c880d1c61927
+  zh: 157c703fd2da6b9c
+/knyazevai-dsh-jobs/use-this-package/what-a-background-job-gives-you:
+  en: 56f117c80db88cb2
+  zh: 4df7046e005f846c
+/knyazevai-dsh-jobs/use-this-package/the-ownership-boundary:
+  en: 873494750b38dae5
+  zh: 2e6142ab889f7a8b
+/knyazevai-dsh-jobs/use-this-package/starting-background-work-needs-a-controller:
+  en: 68075d00cde8763d
+  zh: 4bc42c01d9e4dc8d
+/knyazevai-dsh-jobs/use-this-package/smallest-working-composition:
+  en: cce846c7e3b0c33e
+  zh: 17f353d970b4216d
+/knyazevai-dsh-jobs/use-this-package/what-can-go-wrong:
+  en: fcfee3f72ea703ac
+  zh: 80299901bd44783b
+/knyazevai-dsh-jobs/understand-the-implementation:
+  en: 7e13d669ecc96d59
+  zh: b5fe7ae65812d926
+/knyazevai-dsh-jobs/understand-the-implementation/design-philosophy:
+  en: 2a42e1e06dfc469e
+  zh: 5c2c77eca52846f0
+/knyazevai-dsh-jobs/understand-the-implementation/source-map:
+  en: d48098f76de74fa9
+  zh: e69cb8e7f316ce95
+/knyazevai-dsh-jobs/understand-the-implementation/service-operations:
+  en: b2e4ef34ccf1e749
+  zh: 128b57b57ed09316
+/knyazevai-dsh-jobs/further-exploration:
+  en: e8ef9de5f929d7e8
+  zh: 850c4aefbdd40c44
+/knyazevai-dsh-jobs/model-experience:
+  en: efb58cac0fc08163
+  zh: 838791f77fd79917
+/knyazevai-dsh-jobs/model-experience/kv-cache-effect:
+  en: e290ccc9b3c92c08
+  zh: d75d48f485447a74
+/knyazevai-dsh-jobs/known-limitations-and-deferred-work:
+  en: bf4e5e0bd25d579e
+  zh: ed995c02012f0c72
+/knyazevai-dsh-jobs/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

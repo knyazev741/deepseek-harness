@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-session-query",
   "description": "Combined session query service contract with concrete reads, traces, and filters",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,15 +27,15 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-title": "workspace:^",
-    "@knyazevai/dsh-tool-todo": "workspace:^",
-    "@knyazevai/dsh-session-persistence": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^",
-    "@knyazevai/dsh-session-projection-cache": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-tool-todo": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "peerDependenciesMeta": {
     "@knyazevai/dsh-session-persistence": {
@@ -49,17 +49,17 @@
     }
   },
   "devDependencies": {
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-title": "workspace:^",
-    "@knyazevai/dsh-tool-todo": "workspace:^",
-    "@knyazevai/dsh-session-persistence": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^",
-    "@knyazevai/dsh-session-projection-cache": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-tool-todo": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
-    "@knyazevai/dsh-session-format-catalog": "workspace:^"
+    "@knyazevai/dsh-session-format-catalog": "workspace:*"
   }
 }

@@ -1,6 +1,106 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/subagent/tool-subagent-control/README.md
-README.md: 4773ad752f36becd0c1ad0eee9dc118f35448df5
-README.zh.md: ff3a8d00dd6d0faeb39047d33645d0bb6973059d
+/:
+  en: 5413b8e52a0c8e3d
+  zh: 9b6d0385209ff9bb
+/knyazevai-dsh-tool-subagent-control:
+  en: 7d1143c05f57a23b
+  zh: 55eb14b1b1ba1420
+/knyazevai-dsh-tool-subagent-control/summary:
+  en: 7464eb99b6f618eb
+  zh: 8c7628c8e9f163ca
+/knyazevai-dsh-tool-subagent-control/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-tool-subagent-control/use-this-package:
+  en: 27c5bbe682f0b72b
+  zh: b16aeb2c43f3692e
+/knyazevai-dsh-tool-subagent-control/use-this-package/minimal-configuration:
+  en: 4a52c81317ec9001
+  zh: ebd9f1ba920da50a
+/knyazevai-dsh-tool-subagent-control/use-this-package/send-message:
+  en: d80bb1df2eb740b7
+  zh: e3203d9868a82910
+/knyazevai-dsh-tool-subagent-control/use-this-package/interrupt-agent:
+  en: 01dd41fe11f294d7
+  zh: f45a2e4073c0b206
+/knyazevai-dsh-tool-subagent-control/use-this-package/list-agents:
+  en: b777ad75f0eb7a59
+  zh: 19275aba6573a917
+/knyazevai-dsh-tool-subagent-control/understand-the-implementation:
+  en: c5cdf01a78c990f2
+  zh: 53c180d726ce4502
+/knyazevai-dsh-tool-subagent-control/understand-the-implementation/design-concept:
+  en: 0af7238c690ee8d6
+  zh: 5049eea23770ffed
+/knyazevai-dsh-tool-subagent-control/understand-the-implementation/delivery-and-signal-ownership:
+  en: 4c7698ccea49a60b
+  zh: fbf129ff583e6ab9
+/knyazevai-dsh-tool-subagent-control/understand-the-implementation/listing-projection:
+  en: 70e344022e6e535e
+  zh: 355488590648a82e
+/knyazevai-dsh-tool-subagent-control/understand-the-implementation/source-map:
+  en: 4baec67b26df21e4
+  zh: 7582f996e269e7f8
+/knyazevai-dsh-tool-subagent-control/further-exploration:
+  en: ce300cad33340b1d
+  zh: 858f08808423bc6b
+/knyazevai-dsh-tool-subagent-control/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-tool-subagent-control/model-experience/tool-schema:
+  en: e4c7376d4f29dbd5
+  zh: 6b7a9eaf69c9ea53
+/knyazevai-dsh-tool-subagent-control/model-experience/tool-schema/what-the-model-sees:
+  en: ff993a28858c05e0
+  zh: ca4fae33b3d22fd1
+/knyazevai-dsh-tool-subagent-control/model-experience/tool-schema/token-effect:
+  en: db207dc8d5860684
+  zh: ad2663b4967fbca9
+/knyazevai-dsh-tool-subagent-control/model-experience/tool-schema/kv-cache-effect:
+  en: 4b77d42b96b3519d
+  zh: dd393d8f0f6536c1
+/knyazevai-dsh-tool-subagent-control/model-experience/interrupt-result:
+  en: d64e936e83e89a2b
+  zh: b9905c33af6cca45
+/knyazevai-dsh-tool-subagent-control/model-experience/interrupt-result/what-the-model-sees:
+  en: 89305619897680ba
+  zh: e610a844fc09c53f
+/knyazevai-dsh-tool-subagent-control/model-experience/interrupt-result/token-effect:
+  en: 5d1bcef28b5f18da
+  zh: 027d67d93d660e76
+/knyazevai-dsh-tool-subagent-control/model-experience/interrupt-result/kv-cache-effect:
+  en: 4a629edb36a17e32
+  zh: 5a7539cfbf404c54
+/knyazevai-dsh-tool-subagent-control/model-experience/delivery-result:
+  en: ab964e307bd37dca
+  zh: 03f975252f838a42
+/knyazevai-dsh-tool-subagent-control/model-experience/delivery-result/what-the-model-sees:
+  en: 4a0a4955589012ae
+  zh: 2bbbb5196a8aa4fd
+/knyazevai-dsh-tool-subagent-control/model-experience/delivery-result/token-effect:
+  en: 0f134e37e4bd9965
+  zh: ceb858d01266e976
+/knyazevai-dsh-tool-subagent-control/model-experience/delivery-result/kv-cache-effect:
+  en: f5d5f97a153f7c70
+  zh: 3d6bc05b9eadfbc2
+/knyazevai-dsh-tool-subagent-control/model-experience/listing-result:
+  en: 094e55d258f2ec2e
+  zh: f364bc9046530bff
+/knyazevai-dsh-tool-subagent-control/model-experience/listing-result/what-the-model-sees:
+  en: efbbd1e36c7b2edd
+  zh: a8a95475666ed1dc
+/knyazevai-dsh-tool-subagent-control/model-experience/listing-result/token-effect:
+  en: 4688e849b3143dfc
+  zh: f22b5520c454f9e7
+/knyazevai-dsh-tool-subagent-control/model-experience/listing-result/kv-cache-effect:
+  en: 4a629edb36a17e32
+  zh: 5a7539cfbf404c54
+/knyazevai-dsh-tool-subagent-control/known-limitations-and-deferred-work:
+  en: 31cd8a1934cf0093
+  zh: 2fd07e05c8e58e9a
+/knyazevai-dsh-tool-subagent-control/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

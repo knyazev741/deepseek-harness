@@ -77,7 +77,7 @@ kind: "package-reference"
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
 import InvariantRegistry from '@knyazevai/dsh-invariants'
-import * as SessionInvariant from '@knyazevai/dsh-session/invariant'
+import * as SessionInvariant from '@knyazevai/dsh-fork-session-source/invariant'
 
 declare const ctx: Context
 
@@ -104,7 +104,7 @@ ctx.plugin(SessionInvariant)
 - **与产品无关的注册表。** 服务不导入任何 session、agent、scope 或 agent-loop 包，也不包含它们的检查；配套入口把检查放在其归属者旁边。
 - **真实关系，而非人为断言。** 配套入口只检查其包拥有的事件流或可变数据关系；确认方法、插件名、注入或固定纯函数结果是类型、加载或单元测试关注点，绝不是运行时不变量。
 - **注册保留归属。** 即使过滤器让 installer 保持非活动，包名也会被保留，因此两个插件永远不会静默认领同一个名字。
-- **配套入口接线由机械规则强制。** `pnpm run verify-package-invariants` 拒绝空 installer、省略或忽略 reporter 的 installer、错误注册名、不完整的发布接线，以及省略配套入口后残留的接线（[省略配套入口笔记](../../../.agents/notes/implemented/simplification/2026-08-28-omit-unneeded-invariant-companions.zh.md)）。
+- **配套入口接线由机械规则强制。** `pnpm run verify-package-invariants` 拒绝空 installer、省略或忽略 reporter 的 installer、错误注册名、不完整的发布接线，以及省略配套入口后残留的接线（[Fork integration](../../../.agents/notes/implemented/architecture/2026-09-16-knyazev-upstream-integration.zh.md)）。
 
 ### 源码地图
 
@@ -126,9 +126,9 @@ ctx.plugin(SessionInvariant)
 
 当包级约定不够用时阅读以下页面。它们从生成的服务参考逐步进入决策证据与组地图。
 
-- [运行时不变量子系统](../../../docs/subsystems/invariants.zh.md)——`Config`、installer、服务与配套入口约定的生成参考。
+- [运行时不变量子系统](../../../docs/subsystems/extensions.zh.md)——`Config`、installer、服务与配套入口约定的生成参考。
 - [生成的配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-invariants)——每个受支持配置字段及其源声明。
-- [运行时不变量约定 Agent Note](../../../.agents/notes/implemented/architecture/2026-07-19-package-invariant-runtime-contracts.zh.md)——运行时不变量可以断言什么，以及强制配套入口接线的机械门禁。
+- [Fork integration](../../../.agents/notes/implemented/architecture/2026-09-16-knyazev-upstream-integration.zh.md)——运行时不变量可以断言什么，以及强制配套入口接线的机械门禁。
 - [runtime-diagnostics 组地图](../../README.zh.md)——相邻的诊断包。
 
 -----

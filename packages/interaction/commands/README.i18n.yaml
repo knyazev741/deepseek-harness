@@ -1,6 +1,76 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/interaction/commands/README.md
-README.md: 675903185472f376e571052590a48880c571dcb2
-README.zh.md: 64346bdee59588c2a3c0fca89575ed50669e22e1
+/:
+  en: d331b9706513154d
+  zh: 20e08461c498d058
+/knyazevai-dsh-commands:
+  en: 0d19f8d3a67515a7
+  zh: 3f35d58f37d2418d
+/knyazevai-dsh-commands/summary:
+  en: 534b063e88bcf17e
+  zh: 10ac9af2797f6dee
+/knyazevai-dsh-commands/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-commands/use-this-package:
+  en: 6eee80c31dad122b
+  zh: 8f261f844a22ddad
+/knyazevai-dsh-commands/use-this-package/registering-a-command:
+  en: 81cefbf12580c26a
+  zh: 01c49d94aca89a07
+/knyazevai-dsh-commands/use-this-package/command-syntax:
+  en: f9160436da4939e7
+  zh: 90af200afaf3bb4c
+/knyazevai-dsh-commands/use-this-package/agent-scoped-commands:
+  en: b2e46875757e31c8
+  zh: 6f97db278fcbc58a
+/knyazevai-dsh-commands/use-this-package/attachments:
+  en: 5239ef9c245c3a6b
+  zh: 34e2f89e4e7f5554
+/knyazevai-dsh-commands/use-this-package/dispatching-from-an-adapter:
+  en: a5c6aecf74468137
+  zh: 5548d846d600d29a
+/knyazevai-dsh-commands/use-this-package/cancellation:
+  en: ee26e9855ce39626
+  zh: 7c092436d03b84a9
+/knyazevai-dsh-commands/understand-the-implementation:
+  en: 063b49f26f48d628
+  zh: 2ec899aa6f01359f
+/knyazevai-dsh-commands/understand-the-implementation/source-map:
+  en: 1617729234228bb0
+  zh: 3bee55cd286212e3
+/knyazevai-dsh-commands/understand-the-implementation/lifecycle-events:
+  en: c9fcc06089f8035d
+  zh: 74072476994a2093
+/knyazevai-dsh-commands/understand-the-implementation/scoping:
+  en: d2d9d05bb5efbec4
+  zh: 85ab0abcf728c56d
+/knyazevai-dsh-commands/understand-the-implementation/attachment-admission:
+  en: ee0efa5308dcf1e3
+  zh: da5a1d938301426c
+/knyazevai-dsh-commands/further-exploration:
+  en: c221545424b96d68
+  zh: f2e2261ac9e59dfa
+/knyazevai-dsh-commands/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-commands/model-experience/direct-human-commands:
+  en: 47824d39a7117a5c
+  zh: 05fefe83ee7f8ad6
+/knyazevai-dsh-commands/model-experience/direct-human-commands/what-the-model-sees:
+  en: a6c574fb3a59ac88
+  zh: 8b0a365ea1528844
+/knyazevai-dsh-commands/model-experience/direct-human-commands/token-effect:
+  en: d212d42f4315c80c
+  zh: 433dd07e1a167f12
+/knyazevai-dsh-commands/model-experience/direct-human-commands/kv-cache-effect:
+  en: a0683fff79d40075
+  zh: 3d14d36c8a640031
+/knyazevai-dsh-commands/known-limitations-and-deferred-work:
+  en: 7e930763024d2644
+  zh: 351bbea360cab6d3
+/knyazevai-dsh-commands/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

@@ -196,7 +196,6 @@ describe('WebhookRuntime', () => {
       '../src/types.ts',
       '../src/session.ts',
       '../src/index.ts',
-      '../src/invariant.ts',
     ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n')
     const forbidden: ReadonlyArray<readonly [string, RegExp]> = [
       ['execution records', /\bWebhook(?:Execution|Status)\b/],
@@ -230,7 +229,7 @@ describe('WebhookRuntime', () => {
     } as never)
     ctx.provide('agentPresets', {
       resolve: async (id: string) => ({ id }),
-      standingKeyFor: async () => ({}),
+      acquireScope: async () => ({ key: {}, [Symbol.asyncDispose]: async () => {} }),
       mount: async (_agentCtx: unknown, id: string) => ({ id }),
     } as never)
     ctx.provide('workspaceRegistry', {

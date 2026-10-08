@@ -1,6 +1,61 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/runtime-diagnostics/invariants/README.md
-README.md: 6b856b24f07c7e548a33c3b1c40d3e751ff3895c
-README.zh.md: 7897b9db0459f255d8549c8757b7cc7bbed93b6a
+/:
+  en: 42e5357bcc6d4525
+  zh: 59891074b3705f9e
+/knyazevai-dsh-invariants:
+  en: e7f9c2838fbc5e1a
+  zh: 744640f1745fdea4
+/knyazevai-dsh-invariants/summary:
+  en: cb7b0a0d555fafa6
+  zh: 23522958d2c367dd
+/knyazevai-dsh-invariants/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-invariants/use-this-package:
+  en: f0ff84f9852dca9b
+  zh: dd4ea4390478f0b7
+/knyazevai-dsh-invariants/use-this-package/when-to-use-it:
+  en: 597ae83b2c71897a
+  zh: f740fc18cbd3122f
+/knyazevai-dsh-invariants/use-this-package/enabling-checks-and-selecting-packages:
+  en: e0a1d39b22558501
+  zh: 992f942848552dce
+/knyazevai-dsh-invariants/use-this-package/which-checks-run:
+  en: 0ffc776b984ccb16
+  zh: 6cfc75179c030164
+/knyazevai-dsh-invariants/use-this-package/adding-a-companion-to-a-custom-composition:
+  en: 25319ae89e0d6f21
+  zh: e447f24be7b6a2d1
+/knyazevai-dsh-invariants/use-this-package/when-a-check-fails:
+  en: 74ced4bc91ead262
+  zh: 966b5e607f507aee
+/knyazevai-dsh-invariants/understand-the-implementation:
+  en: 5b23215f6331afac
+  zh: e2beea6daa73b614
+/knyazevai-dsh-invariants/understand-the-implementation/design-philosophy:
+  en: 599f023ae2970155
+  zh: 80d9b42483494393
+/knyazevai-dsh-invariants/understand-the-implementation/source-map:
+  en: 08ade90614209295
+  zh: d4862b249cb44379
+/knyazevai-dsh-invariants/understand-the-implementation/selection-and-registration-lifecycle:
+  en: 314e6dd14cc9228b
+  zh: da047ded06701b40
+/knyazevai-dsh-invariants/further-exploration:
+  en: c38e5c3c8eaab056
+  zh: f2e8ba750bd47326
+/knyazevai-dsh-invariants/model-experience:
+  en: 269727a21a370a19
+  zh: 9b9ab038146410cb
+/knyazevai-dsh-invariants/model-experience/kv-cache-effect:
+  en: dffdf5a0451054bb
+  zh: 2a4a419d5b52f85e
+/knyazevai-dsh-invariants/known-limitations-and-deferred-work:
+  en: 668ce3dea799676e
+  zh: 1970fbd1fa11ae17
+/knyazevai-dsh-invariants/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

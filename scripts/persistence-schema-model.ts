@@ -4,12 +4,24 @@
  */
 
 import { createHash } from 'node:crypto'
+import { isDeepStrictEqual } from 'node:util'
+
+/** Recorded reader promise for explicitly attributed source additions. */
+export interface SourceCompatibility {
+  readonly version: 1
+  readonly policy: 'session-source-attribution'
+  readonly binding: 'session.user-message.source' | 'session.developer-message.source'
+  readonly discriminator: 'kind'
+  readonly unknownKinds: 'preserve'
+  readonly attributionKinds: readonly string[]
+}
 
 /** One JSON property, with absence represented independently of its value type. */
 export interface SchemaProperty {
   readonly name: string
   readonly type: number
   readonly optional: boolean
+  readonly compatibility?: SourceCompatibility
 }
 
 /** One positional tuple element. */
@@ -55,9 +67,56 @@ export interface PersistenceType {
 
 /** Complete current-source persistence inventory; version pins normalization too. */
 export interface PersistenceSchemaInventory {
-  readonly formatVersion: 1
+  readonly formatVersion: 1 | 2
   readonly roots: readonly PersistenceRoot[]
   readonly types: readonly PersistenceType[]
+}
+
+/** Type metadata with an explicit graph when roots cannot reconstruct it exactly. */
+export interface PersistenceTypeIndex extends Omit<PersistenceType, 'schema'> {
+  readonly schema?: CanonicalSchema
+}
+
+/** Compact inventory representation; formatVersion still pins normalization. */
+export interface PersistenceSchemaSnapshot {
+  readonly formatVersion: PersistenceSchemaInventory['formatVersion']
+  readonly roots: readonly PersistenceRoot[]
+  readonly types: readonly PersistenceTypeIndex[]
+}
+
+/**
+ * Index every normalized type reachable from the supplied graphs.
+ * @param schemas - complete canonical root graphs.
+ * @returns canonical subgraphs keyed by their structural digest.
+ */
+export function reachableSchemaTypes(schemas: readonly CanonicalSchema[]): Map<string, CanonicalSchema> {
+  const types = new Map<string, CanonicalSchema>()
+  for (const schema of schemas) {
+    for (const [index] of schema.nodes.entries()) {
+      const type = canonicalizeSchema(schema.nodes, index)
+      types.set(schemaDigest(type), type)
+    }
+  }
+  return types
+}
+
+/**
+ * Omit type graphs exactly reconstructable from roots, retaining all other graphs.
+ * @param inventory - expanded inventory, including types erased from roots by normalization.
+ * @returns a lossless snapshot preserving root graphs, type order, and declaration metadata.
+ */
+export function persistenceSchemaSnapshot(inventory: PersistenceSchemaInventory): PersistenceSchemaSnapshot {
+  const reachable = reachableSchemaTypes(inventory.roots.map(root => root.schema))
+  return {
+    formatVersion: inventory.formatVersion,
+    roots: inventory.roots,
+    types: inventory.types.map(({ digest, schema, names, sources }) => ({
+      digest,
+      ...(isDeepStrictEqual(schema, reachable.get(digest)) ? {} : { schema }),
+      names,
+      sources,
+    })),
+  }
 }
 
 /**
@@ -85,7 +144,13 @@ function mapNode(node: SchemaNode, ref: (id: number) => number): SchemaNode {
     case 'object': return {
       kind: 'object',
       properties: [...node.properties].sort((left, right) => compare(left.name, right.name))
-        .map(property => ({ name: property.name, type: ref(property.type), optional: property.optional })),
+        .map(property => ({ name: property.name, type: ref(property.type), optional: property.optional,
+          ...(property.compatibility === undefined ? {} : { compatibility: {
+            version: property.compatibility.version, policy: property.compatibility.policy, binding: property.compatibility.binding,
+            discriminator: property.compatibility.discriminator, unknownKinds: property.compatibility.unknownKinds,
+            attributionKinds: [...new Set(property.compatibility.attributionKinds)].sort(compare),
+          } }),
+        })),
       indices: node.indices.map(index => ({ key: ref(index.key), value: ref(index.value) }))
         .sort((left, right) => left.key - right.key || left.value - right.value),
     }
@@ -215,7 +280,17 @@ function normalizeUnions(input: readonly SchemaNode[]): SchemaNode[] {
  * @returns lowercase hexadecimal digest.
  */
 export function schemaDigest(schema: CanonicalSchema): string {
-  return createHash('sha256').update('dsh-persistence-schema-v1\n').update(JSON.stringify(schema)).digest('hex')
+  const version = schemaHasCompatibility(schema) ? 2 : 1
+  return createHash('sha256').update(`dsh-persistence-schema-v${String(version)}\n`).update(JSON.stringify(schema)).digest('hex')
+}
+
+/**
+ * Identify graphs that require the policy-aware fingerprint domain.
+ * @param schema - resolved persisted type.
+ * @returns whether any reachable property records compatibility metadata.
+ */
+export function schemaHasCompatibility(schema: CanonicalSchema): boolean {
+  return schema.nodes.some(node => node.kind === 'object' && node.properties.some(property => property.compatibility !== undefined))
 }
 
 /**

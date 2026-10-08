@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/api/remotes/README.md
-README.md: 16d8b2ef10b4eac1afe95af0d6f7a90b1de60e26
-README.zh.md: fb219854d2751594376008ab277e12aa2c5b2d11
+/:
+  en: 1c32778606f3027a
+  zh: db7994fdb50333c8
+/knyazevai-dsh-api-remotes:
+  en: 4b31f1db58199086
+  zh: 5d81387066096a64
+/knyazevai-dsh-api-remotes/summary:
+  en: 3c54c157bb823fd0
+  zh: 0db6778e94ae671c
+/knyazevai-dsh-api-remotes/table-of-contents:
+  en: a7a78c6d1aeebeb3
+  zh: 4bb69f32d8b05ba3
+/knyazevai-dsh-api-remotes/use-this-package:
+  en: 004dd2f8f6d2a43d
+  zh: f2429abfd15e1c81
+/knyazevai-dsh-api-remotes/forwarded-host-events:
+  en: d6d82bf0e55ae5e9
+  zh: c3a0c80f8b115039
+/knyazevai-dsh-api-remotes/build-boundary:
+  en: c265b0e688a52c7b
+  zh: 0a01c370284cf86a
+/knyazevai-dsh-api-remotes/model-experience:
+  en: 6a60ae036c71e76f
+  zh: bf5e86a5ac5b4be4
+/knyazevai-dsh-api-remotes/model-experience/kv-cache-effect:
+  en: 6b51b98ce6368599
+  zh: 3d7a63126352741d
+/knyazevai-dsh-api-remotes/known-limitations-and-deferred-work:
+  en: 00a837c9e7b5a800
+  zh: 1b86e789327b7798
+/knyazevai-dsh-api-remotes/known-limitations-and-deferred-work/dev-note:
+  en: d60df1790fac729c
+  zh: cfc4e027025639bf

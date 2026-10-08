@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-message-feedback",
   "description": "The Web feedback surface: per-message Like/Dislike in the assistant-message action strip and the feedback dialog behind both ratings and /feedback, backed by the messageFeedback and sessionFeedback Host Remotes",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -43,32 +43,32 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-api-remotes": "workspace:^",
-    "@knyazevai/dsh-client-connection": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
-    "@knyazevai/dsh-message-feedback": "workspace:^",
-    "@knyazevai/dsh-remote-mock": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-message-feedback": "workspace:*",
+    "@knyazevai/dsh-remote-mock": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
     "@testing-library/react": "^16.1.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "~18.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@knyazevai/dsh-client-ui-chat": "workspace:^",
-    "@knyazevai/dsh-client-ui-session": "workspace:^",
-    "@knyazevai/dsh-client-ui-commands": "workspace:^",
-    "@knyazevai/dsh-command-feedback": "workspace:^",
-    "@knyazevai/dsh-client-store": "workspace:^"
+    "@knyazevai/dsh-client-ui-chat": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-commands": "workspace:*",
+    "@knyazevai/dsh-command-feedback": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*"
   },
   "files": [
     "lib/index.js",

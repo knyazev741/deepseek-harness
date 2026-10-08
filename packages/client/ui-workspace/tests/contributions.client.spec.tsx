@@ -12,6 +12,7 @@ import type { WorkspaceBrowserProps } from '../src/client/contract/slots.ts'
 import type { WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext } from '../src/client/contract/contributions.ts'
 import { WorkspaceContributionsRuntime } from '../src/client/contributions.ts'
 import { createWorkspaceViewStore, FLAT_SESSION_ORDER_KEY } from '../src/client/stores.ts'
+import { createWorkspaceShortcutControls } from '../src/client/shortcuts.ts'
 import { WorkspaceBrowser } from '../src/client/rows/WorkspaceBrowser.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -20,7 +21,7 @@ afterEach(cleanup)
 const sid = (id: string) => id as SessionId
 const wid = (id: string) => id as WorkspaceId
 const session = (id: string): SessionSummary => ({
-  id: sid(id), displayTitle: id, running: false, blank: false, updatedAt: 1,
+  id: sid(id), title: id, displayTitle: id, retainedBy: {}, running: false, blank: false, updatedAt: 1,
 })
 const workspace = (sessionIds: readonly string[]): WorkspaceView => ({
   workspaceId: wid('workspace'), title: 'Workspace', path: '/workspace',
@@ -28,10 +29,10 @@ const workspace = (sessionIds: readonly string[]): WorkspaceView => ({
 })
 const list = (items: readonly SessionSummary[]): SessionListState => ({
   ids: items.map(item => item.id), byId: Object.fromEntries(items.map(item => [item.id, item])),
-  current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+  projectionsBySession: {}, phase: 'ready',
 })
 const workspaces = (items: readonly WorkspaceView[]): WorkspaceListState => ({
-  items, archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+  items, pinnedSessionIds: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
 })
 function hook<T>(snapshot: T) {
   return function select<S>(selector: (state: T) => S): S { return selector(snapshot) }
@@ -75,7 +76,7 @@ describe('workspace contributions', () => {
     const second = session('second')
     const workspaceView = workspace(['first', 'second'])
     const store = createWorkspaceViewStore().create()
-    store.actions.setOrderBy('manual', {})
+    store.actions.setOrderBy('manual', { workspace: ['first', 'second'], [FLAT_SESSION_ORDER_KEY]: ['first', 'second'] })
     store.actions.setGroupExpanded('workspace', false)
     const includeSecond: WorkspaceListView = {
       id: 'featured', order: 10, label: 'Featured',
@@ -91,13 +92,19 @@ describe('workspace contributions', () => {
     const disposeView = contributions.registerView(includeSecond)
     const disposePolicy = contributions.registerPolicy(policy)
     const renderSlot = ((name: string, owner: WorkspaceSessionRowContext) => {
-      if (name === 'sidebar.workspaces.directoryFlow') return null
+      if (!name.startsWith('workspace.session-row.')) return null
       return name === 'workspace.session-row.badges'
         ? <span data-testid={`badge-${owner.session.id}`}>badge</span>
         : <span data-testid={`action-${owner.session.id}`}>action</span>
     }) as never
     const t = makeTranslate(zh, commonZh) as WorkspaceBrowserProps['t']
+    const controls = createWorkspaceShortcutControls()
     const props = {
+      useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
+      requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([first, second])),
       useWorkspaces: hook(workspaces([workspaceView])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })),
@@ -108,7 +115,7 @@ describe('workspace contributions', () => {
       useDirectoryFlow: bindSnapshotSelector(source(true)),
       useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
-      useSessionPendingInteraction: hook(new Map()),
+      useSessionStatus: hook(new Map()),
       renderSlot, t,
       useViews: (selector: (items: readonly WorkspaceListView[]) => unknown) => selector(contributions.views.getSnapshot()),
       usePolicies: (selector: (items: readonly WorkspaceListPolicy[]) => unknown) => selector(contributions.policies.getSnapshot()),
@@ -139,9 +146,15 @@ describe('workspace contributions', () => {
     const second = session('second')
     const workspaceView = workspace(['first', 'second'])
     const store = createWorkspaceViewStore().create()
-    store.actions.setOrderBy('manual', {})
+    store.actions.setOrderBy('manual', { workspace: ['first', 'second'], [FLAT_SESSION_ORDER_KEY]: ['first', 'second'] })
     store.actions.setGroupExpanded('workspace', false)
+    const controls = createWorkspaceShortcutControls()
     const props = {
+      useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
+      requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([first, second])),
       useWorkspaces: hook(workspaces([workspaceView])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
@@ -151,7 +164,7 @@ describe('workspace contributions', () => {
       createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
       useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
-      useSessionPendingInteraction: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
+      useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
     } as unknown as WorkspaceBrowserProps
     render(<WorkspaceBrowser {...props} />)
     expect(screen.queryByRole('tablist')).toBeNull()
@@ -167,9 +180,15 @@ describe('workspace contributions', () => {
     const second = session('second')
     const store = createWorkspaceViewStore().create()
     store.actions.setGroupBy('flat')
-    store.actions.setOrderBy('manual', {})
+    store.actions.setOrderBy('manual', { workspace: ['first', 'second'], [FLAT_SESSION_ORDER_KEY]: ['first', 'second'] })
     const view: WorkspaceListView = { id: 'second-only', order: 0, label: 'Second', include: ({ session: item }) => item.id === second.id }
+    const controls = createWorkspaceShortcutControls()
     const props = {
+      useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
+      requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([first, second])),
       useWorkspaces: hook(workspaces([workspace(['first', 'second'])])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
@@ -179,7 +198,7 @@ describe('workspace contributions', () => {
       createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
       useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
-      useSessionPendingInteraction: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
+      useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
       useViews: hook([view]), usePolicies: hook([]),
     } as unknown as WorkspaceBrowserProps
     render(<WorkspaceBrowser {...props} />)
@@ -195,7 +214,7 @@ describe('workspace contributions', () => {
     const two = session('two')
     const workspaceView = workspace(['stale', 'one', 'two'])
     const store = createWorkspaceViewStore().create()
-    store.actions.setOrderBy('manual', {})
+    store.actions.setOrderBy('manual', { workspace: ['first', 'second'], [FLAT_SESSION_ORDER_KEY]: ['first', 'second'] })
     const policy: WorkspaceListPolicy = {
       id: 'broken-comparator', order: 0,
       compare: (left, right) => {
@@ -203,7 +222,13 @@ describe('workspace contributions', () => {
         return 0
       },
     }
+    const controls = createWorkspaceShortcutControls()
     const props = {
+      useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
+      requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([one, two])),
       useWorkspaces: hook(workspaces([workspaceView])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
@@ -213,7 +238,7 @@ describe('workspace contributions', () => {
       createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
       useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
-      useSessionPendingInteraction: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
+      useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
       useViews: hook([]), usePolicies: hook([policy]),
     } as unknown as WorkspaceBrowserProps
     const error = vi.spyOn(window.console, 'error').mockImplementation(() => {})
@@ -227,7 +252,13 @@ describe('workspace contributions', () => {
   it('surfaces contribution callback failures', () => {
     const view: WorkspaceListView = { id: 'broken', order: 0, label: 'Broken', include: () => { throw new Error('predicate failed') } }
     const store = createWorkspaceViewStore().create()
+    const controls = createWorkspaceShortcutControls()
     const props = {
+      useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
+      requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([session('one')])),
       useWorkspaces: hook(workspaces([workspace(['one'])])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
@@ -237,7 +268,7 @@ describe('workspace contributions', () => {
       createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
       useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
-      useSessionPendingInteraction: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
+      useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
       useViews: hook([view]), usePolicies: hook([]),
     } as unknown as WorkspaceBrowserProps
     const error = vi.spyOn(window.console, 'error').mockImplementation(() => {})

@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/bundle/fork-base/README.md
-README.md: a184ace18319d72464dcd8d40debd79756cc1e33
-README.zh.md: 153ce105a03f4f183ae44c63b15c60deaeaccb8e
+/:
+  en: 487f4e4ab7251a6f
+  zh: 10dfa81bb3721977
+/knyazevai-dsh-fork-base:
+  en: 9de769b1c28db808
+  zh: 9829cc01f5bff11e
+/knyazevai-dsh-fork-base/summary:
+  en: dedd2b1809fdbfec
+  zh: adb97e006d7bfaa5
+/knyazevai-dsh-fork-base/table-of-contents:
+  en: a7223400727f622e
+  zh: b062d886c204d82d
+/knyazevai-dsh-fork-base/composition:
+  en: d9284ef3b250e478
+  zh: 5261ce5c197655a1
+/knyazevai-dsh-fork-base/mounted-capabilities:
+  en: 0dbcc41ce30fe836
+  zh: 6657b43fcf326f99
+/knyazevai-dsh-fork-base/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-fork-base/model-experience/host-overlay-rows:
+  en: 74e776a027ab4082
+  zh: c2dba30adc7f3c4a
+/knyazevai-dsh-fork-base/model-experience/host-overlay-rows/what-the-model-sees:
+  en: 389266c7c2868ffd
+  zh: ca1aed0eef147aa3
+/knyazevai-dsh-fork-base/model-experience/host-overlay-rows/token-effect:
+  en: a7b3326ae6450e53
+  zh: 0e55729ff6eeb68e
+/knyazevai-dsh-fork-base/model-experience/host-overlay-rows/kv-cache-effect:
+  en: 5f5d975e73387bb5
+  zh: c74dfc21d642b47b
+/knyazevai-dsh-fork-base/known-limitations-and-deferred-work:
+  en: 47e09d0dac8c9d5d
+  zh: 26f1f9557dc3269a
+/knyazevai-dsh-fork-base/known-limitations-and-deferred-work/dev-note:
+  en: cfae41f999886513
+  zh: ae541efe7ad4df99

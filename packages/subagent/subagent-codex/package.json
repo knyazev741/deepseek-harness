@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-subagent-codex",
   "description": "One-shot Codex subagent provider over the official app-server protocol",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -33,36 +33,36 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-subagent": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^",
-    "@knyazevai/dsh-timeout": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*"
   },
   "dependencies": {
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-sdk-protocol": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-sdk-protocol": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
     "@openai/codex": "0.153.4"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-app-boot": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-loader-smoke": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-checkpoint-policy": "workspace:^",
-    "@knyazevai/dsh-session-persistence-jsonl": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^",
-    "@knyazevai/dsh-subagent": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^",
-    "@knyazevai/dsh-subprocess-local": "workspace:^",
-    "@knyazevai/dsh-timeout": "workspace:^",
-    "@knyazevai/dsh-tool-jobs": "workspace:^",
-    "@knyazevai/dsh-tool-subagent": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-app-boot": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-loader-smoke": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-checkpoint-policy": "workspace:*",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-tool-jobs": "workspace:*",
+    "@knyazevai/dsh-tool-subagent": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*"
   }
 }

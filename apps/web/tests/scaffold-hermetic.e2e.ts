@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { expect, it } from 'vitest'
 import type {} from '@knyazevai/dsh-skill'
 import { SessionId } from '@knyazevai/dsh-session'
-import type {} from '@knyazevai/dsh-agent-presets'
+import type {} from '@knyazevai/dsh-agent-preset-registry'
 import { launchWebScaffold, type WebScaffold } from './scaffold.ts'
 
 async function writeSkill(root: string, name: string): Promise<void> {

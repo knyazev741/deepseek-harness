@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-terminal-bash",
   "description": "Persistent shell PTY backend over the DeepSeek Harness subprocess terminal primitive",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,30 +27,30 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-terminal": "workspace:^",
-    "@knyazevai/dsh-sandbox": "workspace:^",
-    "@knyazevai/dsh-sandbox-policy": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-terminal": "workspace:*",
+    "@knyazevai/dsh-sandbox": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-session-projection": "workspace:*"
   },
   "dependencies": {
-    "@knyazevai/dsh-lazy-require": "workspace:^",
-    "@knyazevai/dsh-pwsh-local": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@knyazevai/dsh-lazy-require": "workspace:*",
+    "@knyazevai/dsh-pwsh-local": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
     "@xterm/headless": "^6.0.0"
   },
   "devDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
-    "@knyazevai/dsh-terminal": "workspace:^",
-    "@knyazevai/dsh-sandbox": "workspace:^",
-    "@knyazevai/dsh-sandbox-policy": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^",
-    "@knyazevai/dsh-subprocess-local": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-terminal": "workspace:*",
+    "@knyazevai/dsh-sandbox": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

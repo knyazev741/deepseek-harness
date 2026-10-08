@@ -1,32 +1,27 @@
 import { ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { type Agent, type AgentOptions } from '@knyazevai/dsh-agent'
 import { SessionId } from '@knyazevai/dsh-session'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
-import InvariantRegistry from '@knyazevai/dsh-invariants'
-import * as SessionInvariant from '@knyazevai/dsh-session/invariant'
-import * as AgentInvariant from '@knyazevai/dsh-agent/invariant'
-import * as AgentLoopInvariant from '@knyazevai/dsh-agent-loop/invariant'
 import SubagentRuntime, { snapshotSubagentDescriptor } from '@knyazevai/dsh-subagent'
 import { defineContentToolFixture } from '@knyazevai/dsh-tools'
 import { maxTokensResponse, MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import { startInProcessRun } from '../src/index.ts'
 
-type Script = ConstructorParameters<typeof MockAdapter>[0]
-
-async function mountInvariants(ctx: Context): Promise<void> {
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'late-metadata': { kind: 'late-metadata' } & ContextFormed
+  }
 }
+
+type Script = ConstructorParameters<typeof MockAdapter>[0]
 
 async function setup(script: Script, parentOptions: Partial<AgentOptions> = {}) {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
-  await mountInvariants(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(SubagentRuntime)
   const adapter = new MockAdapter(script)
@@ -155,7 +150,7 @@ describe('startInProcessRun', () => {
       injected = true
       session.append('user/message', createUserMessage({
         content: [{ type: 'text', text: 'late metadata' }],
-        source: { kind: 'plugin', plugin: 'late-metadata' },
+        source: { kind: 'late-metadata' },
       }), { surfaceOp: 'append' })
     })
 

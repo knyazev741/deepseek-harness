@@ -1,6 +1,52 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fork/llm-first-chunk-timeout/README.md
-README.md: fa8f5593cb2c3b873881eae3124e7cf84666a35e
-README.zh.md: b38050c60be331332e2425c88899c40fb2945db8
+/:
+  en: 7cb2c55511ae2bc9
+  zh: 61b558d5016f68e5
+/knyazevai-dsh-fork-llm-first-chunk-timeout:
+  en: aee0537753b29225
+  zh: 293453fd3d405405
+/knyazevai-dsh-fork-llm-first-chunk-timeout/summary:
+  en: 8388e20f5aceeeec
+  zh: 9254e89f70930edb
+/knyazevai-dsh-fork-llm-first-chunk-timeout/table-of-contents:
+  en: 66dd8aeebad17a7d
+  zh: ec3fc382411d36fe
+/knyazevai-dsh-fork-llm-first-chunk-timeout/composition:
+  en: eeb6f6ebef319314
+  zh: 1fba569412469744
+/knyazevai-dsh-fork-llm-first-chunk-timeout/first-result-deadline:
+  en: 7b1f044f321d609f
+  zh: 1e276bae1e7aa354
+/knyazevai-dsh-fork-llm-first-chunk-timeout/first-chunk-compaction-recovery:
+  en: 2b28c73834d440af
+  zh: b590ffbee13559c9
+/knyazevai-dsh-fork-llm-first-chunk-timeout/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-fork-llm-first-chunk-timeout/model-experience/stream-failure:
+  en: 33bc4ed2f716f6d0
+  zh: 687e182fc8b4b56b
+/knyazevai-dsh-fork-llm-first-chunk-timeout/model-experience/stream-failure/what-the-model-sees:
+  en: 631ffc610574354e
+  zh: ca154416765daa83
+/knyazevai-dsh-fork-llm-first-chunk-timeout/model-experience/stream-failure/what-the-model-sees/timeout-diagnostic:
+  en: ee0425898d525ae0
+  zh: 334c83f1a12c7b21
+/knyazevai-dsh-fork-llm-first-chunk-timeout/model-experience/stream-failure/what-the-model-sees/continuation-message:
+  en: efd5e3d1207446ff
+  zh: a5bdcd9f5cba6ecb
+/knyazevai-dsh-fork-llm-first-chunk-timeout/model-experience/stream-failure/token-effect:
+  en: 7f20ebc0a68a7269
+  zh: 37df1dbba5acde19
+/knyazevai-dsh-fork-llm-first-chunk-timeout/model-experience/stream-failure/kv-cache-effect:
+  en: 9fe6aff899eb4b8a
+  zh: 519bc2407d4ac0c7
+/knyazevai-dsh-fork-llm-first-chunk-timeout/known-limitations-and-deferred-work:
+  en: 1fc52a9ffde36470
+  zh: 7d602680bb32c9b9
+/knyazevai-dsh-fork-llm-first-chunk-timeout/known-limitations-and-deferred-work/dev-note:
+  en: cfae41f999886513
+  zh: ae541efe7ad4df99

@@ -16,7 +16,9 @@ import {
   UserMessageNodeView,
 } from '../src/client/chat/MessageItem.tsx'
 import { AssistantMarkdown, type AssistantMarkdownProps } from '../src/client/chat/AssistantMarkdown.tsx'
-import { StatsPills } from '../src/client/chat/StatsPills.tsx'
+import { useDetailedPresentation } from './presentation-fixture.client.ts'
+import { useDisclosure } from '../src/client/chat/use-disclosure.ts'
+import { ActivityPill, UsagePill, type StatPillProps } from '../src/client/chat/StatsPills.tsx'
 import { zh } from '../src/client/locale.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
@@ -331,7 +333,7 @@ describe('MessageItem arms', () => {
         kind: 'context',
         seq: 3,
         content: [{ type: 'text', text: 'line one\n\nline two' }],
-        source: { kind: 'plugin', plugin: 'fixture', empty: {}, list: [] },
+        source: { kind: 'fixture', empty: {}, list: [] },
         producer: { role: 'inject', label: 'fixture' },
         form: null,
       } as never}
@@ -351,7 +353,7 @@ describe('MessageItem arms', () => {
     expect(ctxView.container.querySelector('[data-context-text]')?.textContent)
       .toBe('line one\n\nline two')
     const fields = [...ctxView.container.querySelectorAll('[data-context-fields] dt')].map(node => node.textContent)
-    expect(fields).toEqual(['plugin', 'empty', 'list'])
+    expect(fields).toEqual(['empty', 'list'])
 
     fireEvent.keyDown(disclosure, { key: ' ' })
     expect(disclosure.getAttribute('aria-expanded')).toBe('false')
@@ -650,7 +652,7 @@ describe('MessageItem arms', () => {
     const view = render(
       <MessageItem t={t} node={{
         kind: 'context', seq: 3, content: [{ type: 'text', text: 'x' }],
-        source: { kind: 'plugin', plugin: 'later', form: 'a-later-form' },
+        source: { kind: 'later', form: 'a-later-form' },
         producer: { role: 'inject', label: 'later' },
         form: null,
       } as never}
@@ -658,7 +660,7 @@ describe('MessageItem arms', () => {
     )
     fireEvent.click(view.getByRole('button', { name: /^上下文注入\s*later$/ }))
     const fields = [...view.container.querySelectorAll('[data-context-fields] dt')].map(node => node.textContent)
-    expect(fields).toEqual(['plugin', 'form'])
+    expect(fields).toEqual(['form'])
   })
 
   it('the snapshot form attributes each part to the subsystem that produced it', () => {
@@ -668,8 +670,7 @@ describe('MessageItem arms', () => {
         seq: 3,
         content: [{ type: 'text', text: 'Current runtime context.\n\nsandbox\n\nworkspace' }],
         source: {
-          kind: 'plugin',
-          plugin: '@knyazevai/dsh-system-prompt',
+          kind: 'runtime-context',
           form: 'snapshot',
           sections: [{ name: 'sandbox:policy', text: 'workspace-write' }, { name: 'workspace', text: '/repo' }],
         },
@@ -690,7 +691,7 @@ describe('MessageItem arms', () => {
         kind: 'context',
         seq: 3,
         content: [{ type: 'text', text: 'background job bash-1 finished.' }],
-        source: { kind: 'plugin', plugin: 'tool-jobs', form: 'notice', summary: 'bash pnpm test [status: completed]' },
+        source: { kind: 'tool-jobs', form: 'notice', summary: 'bash pnpm test [status: completed]' },
         producer: { role: 'inject', label: 'tool-jobs' },
         form: 'notice',
       } as never}
@@ -705,7 +706,7 @@ describe('MessageItem arms', () => {
     const view = render(
       <MessageItem t={t} node={{
         kind: 'context', seq: 3, content: [{ type: 'text', text: 'notice prose' }],
-        source: { kind: 'plugin', plugin: 'tool-jobs', form: 'notice' },
+        source: { kind: 'tool-jobs', form: 'notice' },
         producer: { role: 'inject', label: 'tool-jobs' },
         form: 'notice',
       } as never}
@@ -1044,7 +1045,8 @@ describe('useCalendarDay boundary refresh', () => {
 describe('small branch tails', () => {
   it('AssistantMarkdown single-line reasoning summary skips the newline cut', () => {
     const view = render(
-      <AssistantMarkdown
+      <AssistantMarkdown useDisclosure={useDisclosure}
+        usePresentation={useDetailedPresentation}
         t={t}
         blocks={[{ kind: 'reasoning', text: 'one-liner' }]}
         streaming={false}
@@ -1054,7 +1056,7 @@ describe('small branch tails', () => {
     expect(view.getByText('one-liner')).toBeTruthy()
   })
 
-  it('StatsPills omits the cache-hit segment when no input accounting exists at all', () => {
+  it('composer stats omit the cache-hit segment when no input accounting exists at all', () => {
     // Cache hit is null only when all three prompt buckets are zero (pure
     // output accounting) — any billed input makes it a real 0%.
     const nodes = [{
@@ -1062,14 +1064,19 @@ describe('small branch tails', () => {
     }] as const
     const snap = chatSnapshotFixture({ nodes })
     const source = { getSnapshot: () => snap, subscribe: () => () => {} }
+    const pillProps: StatPillProps = {
+      usePerformanceUsage: selector => selector('detailed'),
+      t,
+      useChat: bindSnapshotSelector(source),
+      useProjection: (key: string) => key === 'tokenUsage'
+        ? { uncachedInputTokens: 0, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 }
+        : undefined,
+    }
     const view = render(
-      <StatsPills
-        t={t}
-        useChat={bindSnapshotSelector(source)}
-        useProjection={(key: string) => key === 'tokenUsage'
-          ? { uncachedInputTokens: 0, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 }
-          : undefined}
-      />,
+      <>
+        <ActivityPill {...pillProps} />
+        <UsagePill {...pillProps} />
+      </>,
     )
     // The untimed counts pill renders static, so the usage pill is the only button.
     const [usagePill] = [...view.getAllByRole('button')] as [HTMLElement]

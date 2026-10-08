@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-session-reference",
   "description": "Cross-session snapshot references and durable untrusted model context (ctx.sessionReferenceResolver)",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -44,25 +44,26 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-util-values": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-compaction": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-output-retention": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^",
-    "@knyazevai/dsh-session-projection-cache": "workspace:^",
-    "@knyazevai/dsh-session-query": "workspace:^",
-    "@knyazevai/dsh-session-title": "workspace:^",
-    "@knyazevai/dsh-spill": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-compaction": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-output-retention": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-spill": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@knyazevai/dsh-spill": {
@@ -73,25 +74,26 @@
     }
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/cordis-plugin-include": "workspace:^",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-compaction": "workspace:^",
-    "@knyazevai/dsh-fs-local": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-output-retention": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^",
-    "@knyazevai/dsh-session-projection-cache": "workspace:^",
-    "@knyazevai/dsh-session-query": "workspace:^",
-    "@knyazevai/dsh-session-query-sqlite": "workspace:^",
-    "@knyazevai/dsh-session-title": "workspace:^",
-    "@knyazevai/dsh-spill": "workspace:^",
-    "@knyazevai/dsh-spill-local": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-tool-fs": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-compaction": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-output-retention": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@knyazevai/dsh-session-query-sqlite": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-spill": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-spill-local": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-fs": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*"
   }
 }

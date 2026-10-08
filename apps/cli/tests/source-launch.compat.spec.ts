@@ -6,22 +6,22 @@ import { fileURLToPath } from 'node:url'
 import { execa } from 'execa'
 import { describe, expect, it } from 'vitest'
 import { removeFixtureSafely } from '../../../scripts/test-fixture-cleanup.ts'
+import { testProfileResolution } from './profiles/headless/tests/profile-resolution.ts'
 
 /**
- * Keyless smoke for SOURCE `dsh` execution: keep the repository launcher on
- * the ESM-only wrapper and run `apps/cli/src/bin.ts` directly with the same
- * `node --import tsx/esm` runtime vector to assert the required-config
- * diagnostic. The Node compatibility matrix runs this
- * WHOLE file, so a Node release changing module hooks or TypeScript handling
- * breaks this gate instead of every developer's `pnpm dsh`; the built-bin
- * suite covers the published `lib/` entry, not this source chain.
+ * Keyless source-launch and profile-resolution checks through the production
+ * tsx ESM-only entry. The Node compatibility matrix runs this file without a
+ * build; source tool execution with native/generated dependencies belongs to
+ * the build-backed source-tool suite.
  */
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
 const dshSourceBin = 'apps/cli/src/bin.ts'
 
 describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
-  it('launches the repository wrapper without building', async () => {
+  testProfileResolution('src')
+
+  it('launches the source CLI without building', async () => {
     const rootPackage = JSON.parse(await readFile(new URL('../../../package.json', import.meta.url), 'utf8')) as {
       readonly scripts?: Record<string, string>
     }

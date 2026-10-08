@@ -1,3 +1,12 @@
+import type { ContextFormed } from '@knyazevai/dsh-llm'
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    /** Follow-up from the durable fork wake schedule.
+     * @persistenceAttribution
+     */
+    'wake-scheduler': { kind: 'wake-scheduler' } & ContextFormed
+  }
+}
 /**
  * Live timer owner for scheduled wake targets. The scheduler keeps one
  * disposable timer per live root agent; the durable schedule in the wake
@@ -132,7 +141,7 @@ export class WakeScheduler<Target extends WakeTarget = WakeTarget> {
     try {
       target.followup(createUserMessage({
         content: [{ type: 'text', text: schedule.prompt }],
-        source: { kind: 'plugin', plugin: 'wake-scheduler' },
+        source: { kind: 'wake-scheduler' },
       }))
     } catch (error: unknown) {
       this.options.logger.warn(

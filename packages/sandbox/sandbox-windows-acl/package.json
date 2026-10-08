@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-sandbox-windows-acl",
   "description": "Windows ACL write-restriction sandbox backend (restricted-token spawn with capability-SID write allowlist) for the DeepSeek Harness sandbox seam",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -29,23 +29,29 @@
     "lib/index.js",
     "lib/runner.js",
     "lib/types-*.js",
+    "assets",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-skill": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*"
   },
   "dependencies": {
-    "@knyazevai/dsh-lazy-require": "workspace:^",
-    "@knyazevai/dsh-win32-process": "workspace:^",
-    "koffi": "^3.1.0"
+    "@knyazevai/dsh-lazy-require": "workspace:*",
+    "@knyazevai/dsh-win32-process": "workspace:*",
+    "koffi": "3.1.1",
+    "yaml": "^2.4.2"
   },
   "devDependencies": {
-    "@knyazevai/dsh-pwsh-local": "workspace:^",
-    "@knyazevai/dsh-sandbox-local": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^",
-    "@knyazevai/dsh-subprocess-local": "workspace:^"
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
+    "@knyazevai/dsh-pwsh-local": "workspace:*",
+    "@knyazevai/dsh-sandbox-local": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-skill": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*"
   }
 }

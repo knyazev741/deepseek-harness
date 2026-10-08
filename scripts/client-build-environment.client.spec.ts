@@ -235,7 +235,6 @@ describe('client build environment', () => {
 
     const configs = clientBundle('@knyazevai/dsh-client-ui-sidebar', [
       'lib/types/index.js',
-      'lib/types/invariant.js',
     ])({ env: { DSH_BUILD_FACE: 'client' } })
     if (!Array.isArray(configs)) throw new TypeError('client bundle config must be an array')
     const dynamic = configs.find(config => config.name === '@knyazevai/dsh-client-ui-sidebar/client')
@@ -276,6 +275,10 @@ describe('client build environment', () => {
 
     write(join(official, 'apps/web/dist/index.html'), '<main>changed</main>')
     expect(() => { readClientBuildRecord(official) }).toThrow(/artifacts differ/)
+
+    const chunked = buildFixture(officialEnvironment)
+    write(join(chunked, 'packages/client/example/lib/client.pdf.js'), 'module.exports = {}\n')
+    expect(() => { readClientBuildRecord(chunked) }).toThrow(/artifacts differ/)
   })
 
   it('keeps public client values out of workflow-wide environments', () => {

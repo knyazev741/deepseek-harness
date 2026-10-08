@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-fork-ui-workspace-overlay",
   "description": "Fork-owned Background, pin, unread, source badge, and session-id actions for Workspace rows",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },

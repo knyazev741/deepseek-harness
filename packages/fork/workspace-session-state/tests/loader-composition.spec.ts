@@ -1,97 +1,21 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context, Service } from '@deepseek-ai/cordis'
-import Include from '@deepseek-ai/cordis-plugin-include'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
+import { expect, it, vi } from 'vitest'
 import { SessionId } from '@knyazevai/dsh-session'
-import { SettingsProvider } from '@knyazevai/dsh-settings'
 import { remoteMethods } from '@knyazevai/dsh-typert-protocol'
-import ForkWorkspaceSessionState from '../src/index.ts'
+import { fixture } from './fixture.ts'
 
-const SETTINGS = '@fixture/settings'
-const WORKSPACE = '@fixture/workspace'
-const STATE = '@knyazevai/dsh-fork-workspace-session-state'
-const contexts: Context[] = []
-const roots: string[] = []
-
-class MemorySettings extends SettingsProvider {
-  get writable(): boolean {
-    return true
-  }
-
-  protected load(): Promise<Record<string, unknown>> {
-    return Promise.resolve({})
-  }
-
-  protected persist(): Promise<void> {
-    return Promise.resolve()
-  }
-}
-
-class FixtureWorkspaceRegistry extends Service {
-  constructor(ctx: Context) {
-    super(ctx, 'workspaceRegistry')
-  }
-
-  list(): readonly { readonly sessionIds: readonly SessionId[] }[] {
-    return [{ sessionIds: [SessionId('loader-session')] }]
-  }
-}
-
-afterEach(async () => {
-  await Promise.all(contexts.splice(0).map(context => context.fiber.dispose()))
-  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
-})
-
-describe('fork workspace session state through a real Loader composition', () => {
-  it('mounts and removes the service and its Remote marker with the Loader entry', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-fork-workspace-session-state-loader-'))
-    roots.push(root)
-    const configPath = join(root, 'cordis.yml')
-    await writeFile(configPath, [
-      `- name: '${SETTINGS}'`,
-      `- name: '${WORKSPACE}'`,
-      `- name: '${STATE}'`,
-      '',
-    ].join('\n'))
-
-    const ctx = new Context()
-    contexts.push(ctx)
-    ctx.baseUrl = pathToFileURL(root).href + '/'
-    await ctx.plugin(Loader)
-    ctx.loader.builtins.include = Include
-    const modules = new Map<string, unknown>([
-      [SETTINGS, MemorySettings],
-      [WORKSPACE, FixtureWorkspaceRegistry],
-      [STATE, ForkWorkspaceSessionState],
-    ])
-    ctx.loader.internal = {
-      version: 'v2',
-      async import(specifier: string) {
-        if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
-        return modules.get(specifier)
-      },
-    } as unknown as NonNullable<typeof ctx.loader.internal>
-
-    await ctx.loader.create({
-      name: 'cordis:include',
-      config: { path: pathToFileURL(configPath).href },
-    })
-    await ctx.loader.await()
-
-    await expect(ctx.forkWorkspaceSessionState.list()).resolves.toEqual({
-      revision: 0,
-      pinnedSessionIds: [],
-    })
-    expect(remoteMethods(ctx.forkWorkspaceSessionState).map(marker => marker.method))
-      .toEqual(['list', 'setPinned'])
-
-    const stateEntry = [...ctx.loader.entries()].find(entry => entry.options.name === STATE)
-    if (stateEntry === undefined) throw new Error(`Loader did not mount ${STATE}`)
-    stateEntry.parent.remove(stateEntry.options.id)
-    expect(ctx.get('forkWorkspaceSessionState')).toBeUndefined()
-  })
+it('imports the former Settings pin list, preserves order across restart, and does not repin an explicit unpin', async () => {
+  const { ctx, start, home } = await fixture(['s2', 's1'])
+  await vi.waitFor(async () => { expect((await ctx.forkWorkspaceSessionState.list()).pinnedSessionIds).toEqual(['s2', 's1']) })
+  expect(readFileSync(join(home, 'settings.yaml.imported'), 'utf8')).toContain('s2')
+  expect(ctx.settings.describe().find(row => row.ns === 'fork-workspace-session-state')?.value).toEqual({ pins: { sessionIds: [] } })
+  await ctx.workspaceRegistry.unpinSession(SessionId('s2'))
+  await ctx.fiber.dispose()
+  const restored = await start()
+  expect((await restored.forkWorkspaceSessionState.list()).pinnedSessionIds).toEqual(['s1'])
+  expect(remoteMethods(restored.forkWorkspaceSessionState).map(marker => marker.exportName ?? marker.method)).toEqual(['list', 'setPinned'])
+  const entry = [...restored.loader.entries()].find(row => row.options.id === 'fork-workspace-session-state')!
+  await entry.parent.remove(entry.options.id)
+  expect(restored.get('forkWorkspaceSessionState')).toBeUndefined()
 })

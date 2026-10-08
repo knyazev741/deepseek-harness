@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useDisclosure } from '@knyazevai/dsh-client-ui-chat/src/client/chat/use-disclosure.ts'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'
 import { createSnapshotStore } from '@knyazevai/dsh-client-store'
-import type { RunningToolCall, ToolResultNode } from '@knyazevai/dsh-client-ui-chat/client'
+import type { StartedToolCall, ToolResultNode } from '@knyazevai/dsh-client-ui-chat/client'
 import type { SessionListState } from '@knyazevai/dsh-api-session-controller/client'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import { makeTranslate } from '@knyazevai/dsh-client-test-runtime'
@@ -16,6 +17,7 @@ import {
 import { GenericToolCard, type GenericToolCardProps } from '../src/client/tool/toolviews/GenericToolCard.tsx'
 import { BashRow } from '../src/client/tool/toolviews/bash-sample.tsx'
 import { en, zh } from '@knyazevai/dsh-client-ui-conversation/src/client/locales.ts'
+import { PartialArguments } from '@knyazevai/dsh-util-values'
 
 type BashRowProps = Parameters<typeof BashRow>[0]
 
@@ -44,18 +46,25 @@ const shellArgs = (over: Record<string, unknown> = {}): string => JSON.stringify
   command: 'ls -la', description: 'List files', ...over,
 })
 
-const running = (over?: Partial<RunningToolCall>): RunningToolCall => ({
-  callId: 'c1', name: 'bash', argsRaw: ARGS,
-  turn: 1, step: 1, time: 1_000, subCalls: [], ...over,
-})
+const running = (over?: Partial<StartedToolCall>): StartedToolCall => {
+  const argsRaw = over?.argsRaw ?? ARGS
+  return {
+    phase: 'start' as const, args: PartialArguments.fromText(argsRaw), callId: 'c1', name: 'bash', argsRaw,
+    turn: 1, step: 1, time: 1_000, subCalls: [], ...over,
+  }
+}
 
-const settled = (over?: Partial<ToolResultNode>): ToolResultNode => ({
-  kind: 'tool-result', seq: 10, time: 2_000, callId: 'c1',
-  call: { name: 'bash', argsRaw: ARGS },
-  callTime: 1_000,
-  content: [{ type: 'text', text: 'a.ts  b.ts\nc.ts  d.ts\n' }], isError: false,
-  subCalls: [], ...over,
-})
+const settled = (over?: Partial<ToolResultNode>): ToolResultNode => {
+  const call = over?.call === undefined ? { name: 'bash', argsRaw: ARGS } : over.call
+  return {
+    kind: 'tool-result', seq: 10, time: 2_000, callId: 'c1',
+    name: call?.name ?? '', args: call === null ? PartialArguments.EMPTY : PartialArguments.fromText(call.argsRaw),
+    call,
+    callTime: 1_000,
+    content: [{ type: 'text', text: 'a.ts  b.ts\nc.ts  d.ts\n' }], isError: false,
+    subCalls: [], ...over,
+  }
+}
 
 describe('terminalCardModel', () => {
   it('derives a running standard-shell card from raw arguments', () => {
@@ -254,13 +263,17 @@ describe('terminalCardModel', () => {
     ['timeout value', { timeoutMs: 0 }],
     ['workdir type', { workdir: 7 }],
     ['background type', { run_in_background: 'yes' }],
-    ['permission type', { sandbox_permissions: 7, justification: 'Need access' }],
-    ['permission value', { sandbox_permissions: 'read-only', justification: 'Need access' }],
-    ['missing justification', { sandbox_permissions: 'workspace-write' }],
-    ['orphan justification', { justification: 'Need access' }],
-    ['blank justification', { sandbox_permissions: 'workspace-write', justification: ' ' }],
   ])('keeps malformed standard-shell optional fields generic: %s', (_label, fields) => {
     expect(terminalCardModel(running({ argsRaw: shellArgs(fields) }))).toBeNull()
+  })
+
+  // Escalation validity depends on the Session's sandbox mode, which only the
+  // Host knows; a rejected call settles as an error result instead.
+  it.each([
+    ['permission equal to the current mode with blank justification', { sandbox_permissions: 'danger-full-access', justification: '' }],
+    ['blank justification alone', { justification: '' }],
+  ])('keeps the terminal card for escalation fields the Host accepts: %s', (_label, fields) => {
+    expect(terminalCardModel(settled({ call: { name: 'bash', argsRaw: shellArgs(fields) } }))).not.toBeNull()
   })
 
   it('accepts valid optional and unknown standard-shell fields on the open parameter root', () => {
@@ -291,9 +304,9 @@ describe('terminalCardModel', () => {
 })
 
 describe('chat row terminal body', () => {
-  const ownerProps = (block: RunningToolCall | ToolResultNode): GenericToolCardProps => ({
+  const ownerProps = (block: StartedToolCall | ToolResultNode): GenericToolCardProps => ({
     loadImage: vi.fn(() => Promise.reject(new Error('not used'))),
-    callId: 'c1', toolName: 'bash', block, openFile: vi.fn(), t,
+    useDisclosure, callId: 'c1', toolName: 'bash', ...('kind' in block ? { phase: 'result' as const, block: block } : { phase: block.phase, block: block }), openFile: vi.fn(), t,
   })
 
   /** The whole summary row is the expand toggle (ToolRow's unified interaction). */
@@ -405,18 +418,16 @@ describe('chat row terminal body', () => {
 describe('BashRow terminal card', () => {
   const list = () => createSnapshotStore<SessionListState>({
     ids: [SID],
-    byId: { [SID]: { id: SID, displayTitle: 'r', running: false, blank: false, updatedAt: 0 } },
-    current: undefined,
+    byId: { [SID]: { id: SID, displayTitle: 'r', running: false, retainedBy: {}, blank: false, updatedAt: 0 } },
     phase: 'ready',
-    subagentsByParent: {}, jobsBySession: {},
-    currentAddress: undefined,
+    projectionsBySession: {},
   })
 
-  const rowProps = (block: RunningToolCall | ToolResultNode): BashRowProps => ({
-    callId: 'c1', toolName: 'bash', block, openFile: vi.fn(),
+  const rowProps = (block: StartedToolCall | ToolResultNode): BashRowProps => ({
+    useDisclosure, callId: 'c1', toolName: 'bash', ...('kind' in block ? { phase: 'result' as const, block: block } : { phase: block.phase, block: block }), openFile: vi.fn(),
     sessionId: SID, useSessions: bindSnapshotSelector(list()),
     t,
-  } as unknown as BashRowProps)
+  } as BashRowProps)
 
   it('collapses to the summary row; the whole row toggles the command output', () => {
     const view = render(<BashRow {...rowProps(settled())} />)
@@ -431,9 +442,16 @@ describe('BashRow terminal card', () => {
     expect(view.getByText('List files')).toBeTruthy()
   })
 
-  // The row's leading StateDot and the card's run-state dot describe the same
-  // command, so a running row whose card claimed 'done' would be a contradiction
-  // the reader sees on one line.
+  it('expands a completed command that carries Host-accepted blank escalation fields', () => {
+    const view = render(<BashRow {...rowProps(settled({
+      call: { name: 'bash', argsRaw: shellArgs({ sandbox_permissions: 'danger-full-access', justification: '' }) },
+    }))} />)
+    fireEvent.click(view.getByRole('button'))
+    expect(view.getByText('a.ts  b.ts', RAW)).toBeTruthy()
+  })
+
+  // The row's running state and the card's run-state dot describe the same
+  // command, so a running row whose card claimed 'done' would contradict itself.
   it('agrees with the summary row about the run state', () => {
     const runningView = render(<BashRow {...rowProps(running())} />)
     expect(runningView.container.querySelector('[data-variant="bash"]')?.getAttribute('data-state')).toBe('running')
@@ -451,6 +469,7 @@ describe('BashRow terminal card', () => {
       content: [{ type: 'text', text: 'boom\n[exit code: 2]' }],
     }))} />)
     expect(view.container.querySelector('[data-variant="bash"]')?.getAttribute('data-state')).toBe('error')
+    expect(view.container.querySelector('[class*="_errorSummary_"]')?.textContent).toBe('List files')
   })
 
   it('shows the call description as the terminal summary', () => {

@@ -44,7 +44,7 @@ function config(): ResolvedConfig {
   return {
     backendType: 'shell', shellDialect: 'bash', shellPath: '/bin/bash', shellArgs: [], rows: 24, cols: 80,
     scrollbackLines: 10, scrollbackMaxBytes: 100, maxReadBytes: 50,
-    pollIntervalMs: 10, exactProbeAfterMs: 20, idleSilenceMs: 50, handoffGraceMs: 10, timeoutMs: 100,
+    pollIntervalMs: 10, exactProbeAfterMs: 20, idleSilenceMs: 50, handoffGraceMs: 10, promptTailGraceMs: 0, timeoutMs: 100,
     disposeGraceMs: 10,
   }
 }
@@ -73,6 +73,7 @@ function terminalHandle(): SubprocessTerminalHandle {
     done: Promise.resolve({ exitCode: 0, signal: null }),
     write: async () => {},
     resize: async () => {},
+    inspectActivity: async () => ({ state: 'unknown' as const, revision: 0 }),
     inspectForeground: async () => ({ processGroupId: 123, inputWaiting: true }),
     signalForeground: async () => 123,
     terminate: async () => { output.end() },
@@ -397,6 +398,7 @@ describe('BashTerminalBackend startup rollback', () => {
       done: outcome.promise,
       write: async () => {},
       resize: async () => {},
+      inspectActivity: async () => ({ state: 'unknown' as const, revision: 0 }),
       inspectForeground: async () => ({ processGroupId: 123, inputWaiting: true }),
       signalForeground: async () => 123,
       async terminate() {

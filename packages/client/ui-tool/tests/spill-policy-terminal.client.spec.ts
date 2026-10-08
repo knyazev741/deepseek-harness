@@ -4,6 +4,7 @@ import type { Agent } from '@knyazevai/dsh-agent'
 import type { ToolResultNode } from '@knyazevai/dsh-client-ui-chat/client'
 import { PtcRuntime } from '@knyazevai/dsh-ptc-runtime'
 import type { PtcRunRequest, PtcRunSpec, PtcRunResult } from '@knyazevai/dsh-ptc-runtime'
+import { estimateContent } from '@knyazevai/dsh-token-meter/estimate'
 import { ToolCallId } from '@knyazevai/dsh-llm'
 import { Session, SessionId } from '@knyazevai/dsh-session'
 import { SpillLocator, SpillStore, type SaveTextSpill, type SpillRef } from '@knyazevai/dsh-spill'
@@ -11,6 +12,7 @@ import * as SpillPolicy from '@knyazevai/dsh-spill-policy'
 import { formatSpillNotice } from '@knyazevai/dsh-spill-policy/notice'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime, { defineContentToolFixture } from '@knyazevai/dsh-tools'
+import { PartialArguments } from '@knyazevai/dsh-util-values'
 import { describe, expect, it } from 'vitest'
 import { isSpilledShellCall, terminalCardModel } from '../src/client/tool/models/terminal-card-model.ts'
 
@@ -34,13 +36,13 @@ class MemorySpillStore extends SpillStore {
 
 const shellArgs = { command: 'fixture-output', description: 'Return shell output fixture' }
 
-async function executeShell(text: string, nested: boolean, name = 'bash', maxInlineBytes = 256) {
+async function executeShell(text: string, nested: boolean, name = 'bash', maxInlineTokens = 256) {
   const ctx = new Context()
   try {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime, { mode: 'both' })
     await ctx.plugin(MemorySpillStore)
-    await ctx.plugin(SpillPolicy, { maxInlineBytes })
+    await ctx.plugin(SpillPolicy, { maxInlineTokens })
     if (nested) {
       // The real registry and spill policy own nested output; evaluator execution has its own process suite.
       class BindingRuntime extends PtcRuntime {
@@ -94,6 +96,7 @@ async function executeShell(text: string, nested: boolean, name = 'bash', maxInl
       block = {
         kind: 'tool-result', seq: event.seq, time: event.time, callTime: null,
         callId: event.data.subCallId, parentCallId: event.data.parentCallId,
+        name: event.data.name, args: PartialArguments.fromText(JSON.stringify(event.data.arguments)),
         call: { name: event.data.name, argsRaw: JSON.stringify(event.data.arguments) },
         content: event.data.content, isError: event.data.isError, subCalls: [],
       }
@@ -101,6 +104,7 @@ async function executeShell(text: string, nested: boolean, name = 'bash', maxInl
       expect(result.value).toEqual([{ type: 'text', text }])
       block = {
         kind: 'tool-result', seq: 1, time: 1, callTime: null, callId,
+        name, args: PartialArguments.fromText(JSON.stringify(shellArgs)),
         call: { name, argsRaw: JSON.stringify(shellArgs) },
         content: result.content, isError: result.isError, subCalls: [],
       }
@@ -136,7 +140,7 @@ describe.each([
       expect(block.content).toHaveLength(1)
       const preview = block.content[0]!
       if (preview.type !== 'text') throw new Error('expected a plain-text spill preview')
-      expect(Buffer.byteLength(preview.text, 'utf8')).toBeLessThanOrEqual(256)
+      expect(estimateContent(block.content)).toBeLessThanOrEqual(256)
       expect(preview.text).toContain('HEAD')
       if (marker !== '') expect(preview.text).toContain(marker)
       expect(terminalCardModel(block)).toBeNull()
@@ -146,7 +150,7 @@ describe.each([
     it('keeps a notice-only result generic when no preview fits', async () => {
       const original = '雪'.repeat(1_000) + '\n[exit code: 9]'
       const notice = formatSpillNotice({ kind: 'exact', count: Buffer.byteLength(original, 'utf8') }, spillReference)
-      const { block, saves } = await executeShell(original, nested, name, Buffer.byteLength(notice, 'utf8'))
+      const { block, saves } = await executeShell(original, nested, name, estimateContent([{ type: 'text', text: notice }]))
       expect(block.content).toEqual([{ type: 'text', text: notice }])
       expect(saves).toHaveLength(1)
       expect(saves[0]!.bytes).toEqual(Buffer.from(original, 'utf8'))

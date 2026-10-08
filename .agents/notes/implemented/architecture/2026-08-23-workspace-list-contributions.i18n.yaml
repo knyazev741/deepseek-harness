@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-23-workspace-list-contributions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-23-workspace-list-contributions.md
-2026-08-23-workspace-list-contributions.md: ac29a1b401c6703ce7b66a36e8ab5c88212ed664
-2026-08-23-workspace-list-contributions.zh.md: 82d42629936f456dd75df282f10401655dad952f
+/agent-note-workspace-list-contribution-points:
+  en: 28200d1741342697
+  zh: 85fbdfed8a9d8de0
+/agent-note-workspace-list-contribution-points/problem:
+  en: 544ba8135a9427e7
+  zh: 2aa1e32a6d9d00bd
+/agent-note-workspace-list-contribution-points/decision:
+  en: 7e357d410be2cc36
+  zh: ed0d1711081259d5
+/agent-note-workspace-list-contribution-points/alternatives-considered:
+  en: 2f6a1ae64c9b3bcf
+  zh: 3f696ce403a55492
+/agent-note-workspace-list-contribution-points/consequences:
+  en: e64384f275b94937
+  zh: ee9e25e2cf4b05fc
+/agent-note-workspace-list-contribution-points/maintenance-and-retirement:
+  en: 93e5616a87ac473b
+  zh: e9afb09f49380ccb
+/agent-note-workspace-list-contribution-points/verification:
+  en: a1a2388e1aad666f
+  zh: 30fc2e3c0b0658c6

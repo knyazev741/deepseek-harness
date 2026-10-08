@@ -5,7 +5,7 @@ import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testki
 import LocalFileSystem from '@knyazevai/dsh-fs-local'
 import * as FsPolicy from '@knyazevai/dsh-fs-observation-policy'
 import * as ToolFs from '@knyazevai/dsh-tool-fs'
-import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek'
+import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
 
 /**
  * Build the real fs-tool stack for with-key e2e tests. Agents have no session

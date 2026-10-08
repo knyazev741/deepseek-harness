@@ -4,9 +4,10 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@knyazevai/dsh-agent'
 import type { Agent } from '@knyazevai/dsh-agent'
-import { agentPresetProjectionDefinition } from '@knyazevai/dsh-agent-presets'
+import { agentPresetProjectionDefinition } from '@knyazevai/dsh-agent-preset-registry'
 import SessionStore, { SESSION_FORMAT_VERSION, SessionLogOffset, SessionId } from '@knyazevai/dsh-session'
 import type { SessionEvent, SessionHeader } from '@knyazevai/dsh-session'
+import { SessionAlreadyOwnedError } from '@knyazevai/dsh-session-persistence'
 import type { SessionObservation } from '@knyazevai/dsh-session-query'
 import TypertRegistry from '@knyazevai/dsh-typert-registry'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -233,6 +234,37 @@ describe('ApiSession Agent lookup and recovery', () => {
     })
     vi.spyOn(failed.ctx.agents, 'resume').mockRejectedValue(new Error('factory unavailable'))
     await expect(failed.agents.resolveAgent(meta.id)).resolves.toMatchObject({
+      error: { code: 'gateway/internal', message: expect.stringContaining('factory unavailable') as string },
+    })
+  })
+
+  it('identifies a held Session writer without classifying other resume failures as contention', async () => {
+    const { ctx, agents } = await harness()
+    const meta = header('owned-session')
+    providePersistence(ctx, {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events: [] }),
+    })
+    const resume = vi.spyOn(ctx.agents, 'resume').mockRejectedValue(new SessionAlreadyOwnedError(meta.id))
+    await expect(agents.resolveAgent(meta.id)).resolves.toMatchObject({
+      error: { code: 'session/writer-held', details: { sessionId: meta.id } },
+    })
+    resume.mockRejectedValue(Object.assign(new Error('another module copy'), { name: 'SessionAlreadyOwnedError' }))
+    await expect(agents.resolveAgent(meta.id)).resolves.toMatchObject({
+      error: { code: 'session/writer-held', details: { sessionId: meta.id } },
+    })
+    resume.mockRejectedValue(new Error('unrelated failure'))
+    await expect(agents.resolveAgent(meta.id)).resolves.toMatchObject({
+      error: { code: 'gateway/internal' },
+    })
+  })
+
+  it('retains resume diagnostics without a persistence service', async () => {
+    const { ctx, agents } = await harness()
+    const meta = header('memory-only-resume')
+    ctx.sessions.create(meta.id, { meta })
+    vi.spyOn(ctx.agents, 'resume').mockRejectedValue(new Error('factory unavailable'))
+    await expect(agents.resolveAgent(meta.id)).resolves.toMatchObject({
       error: { code: 'gateway/internal', message: expect.stringContaining('factory unavailable') as string },
     })
   })

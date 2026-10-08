@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-settings-plugins",
-  "description": "Plugins settings section with feature-owned tabs and configurable host-plane plugin cards",
-  "version": "0.1.6-alpha.1",
+  "description": "Built-in plugins settings section for the dsh web client: the Settings navigation entry and the tab chrome feature-owned tabs register into",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -29,8 +29,7 @@
     "client": {
       "inject": [
         "@knyazevai/dsh-client-locale",
-        "@knyazevai/dsh-client-ui-settings",
-        "@knyazevai/dsh-api-remotes"
+        "@knyazevai/dsh-client-ui-settings"
       ],
       "platform": "web"
     }
@@ -41,21 +40,18 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-api-remotes": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-store": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-settings": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-settings": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
     "@types/react": "~18.3.1",
-    "react": "^18.2.0",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "clsx": "^2.0.0"
+    "react": "^18.2.0"
   },
   "files": [
     "lib/index.js",

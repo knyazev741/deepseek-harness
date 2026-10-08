@@ -5,7 +5,8 @@ import * as yaml from 'js-yaml'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { ReasoningEffortId } from '@knyazevai/dsh-llm'
 import * as LlmPiAi from '@knyazevai/dsh-llm-pi-ai'
-import type { Config } from '@knyazevai/dsh-llm-pi-ai'
+import type { PiAiProviderProfile } from '@knyazevai/dsh-llm-pi-ai'
+type Config = { providers: Record<string, PiAiProviderProfile> }
 import { assemble } from '../../../llm/llm-pi-ai/tests/assemble.ts'
 import { closeMockServers, mockServer, textEvents } from '../../../llm/llm-pi-ai/tests/mock-server.ts'
 

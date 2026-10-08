@@ -10,7 +10,7 @@
   "references": [
     { "path": "../../../vendor/cordis" },
     { "path": "../../api/remotes/tsconfig.client.json" },
-    { "path": "../../client/locale" },
+    { "path": "../../client/locale/tsconfig.client.json" },
     { "path": "../../api/session-controller/tsconfig.client.json" },
     { "path": "../../client/ui-primitives" },
     { "path": "../../client/ui-slots" },

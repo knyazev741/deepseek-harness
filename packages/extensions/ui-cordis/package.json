@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-cordis",
   "description": "Cordis dynamic-plugin definition card: the keyed cordis_define tool row with its run/stop switch",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -32,7 +32,6 @@
         "@knyazevai/dsh-cordis-client-runner",
         "@knyazevai/dsh-api-remotes",
         "@knyazevai/dsh-client-locale",
-        "@knyazevai/dsh-client-ui-input-trigger",
         "@knyazevai/dsh-client-ui-renderer",
         "@knyazevai/dsh-client-ui-session",
         "@knyazevai/dsh-client-ui-tool",
@@ -47,23 +46,23 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-api-remotes": "workspace:^",
-    "@knyazevai/dsh-client-connection": "workspace:^",
-    "@knyazevai/dsh-cordis-client-runner": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-sidebar": "workspace:^",
-    "@knyazevai/dsh-client-ui-input-trigger": "workspace:^",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-client-ui-session": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
-    "@knyazevai/dsh-client-ui-tool": "workspace:^",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-cordis-client-runner": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-tool": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0"
   },
   "files": [

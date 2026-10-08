@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-web-search-deepseek",
   "description": "DeepSeek-backed search provider (native web_search via the Anthropic-compatible API) for the DeepSeek Harness web capability seam (ctx.web)",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,26 +27,31 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-credentials": "workspace:^",
-    "@knyazevai/dsh-launch-environment": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-web": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-deepseek-account": "workspace:*",
+    "@knyazevai/dsh-launch-environment": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-web": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-credentials": "workspace:^",
-    "@knyazevai/dsh-credentials-local": "workspace:^",
-    "@knyazevai/dsh-launch-environment": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-web": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^",
-    "@knyazevai/dsh-http-proxy": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-credentials-local": "workspace:*",
+    "@knyazevai/dsh-deepseek-account": "workspace:*",
+    "@knyazevai/dsh-launch-environment": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-web": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-http-proxy": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@knyazevai/dsh-deepseek-account": {
+      "optional": true
+    }
   }
 }

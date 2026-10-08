@@ -14,7 +14,7 @@ Python SDK 通过四个平台 wheel 包分发原生可执行文件。其打包�
 
 ### 启动范围
 
-所有受支持的 Node 应用都通过 `dsh` CLI 与一个具名 profile 启动。随附应用命令是 `dsh web`、`dsh --profile headless`、`dsh --profile sdk`、`dsh --profile sdk-minimal` 与 `dsh --profile acp`；`dsh web` 是刻意为 `--profile web` 保留的便捷别名，不是另一个应用入口。
+所有受支持的 Node 应用都通过 `dsh` CLI 与一个具名 profile 启动。随附 profile 为 `web`、`headless`、`sdk`、`sdk-minimal` 和 `acp`，可通过 `dsh --profile <name>` 或 `dsh <name>` 选择。`plugin` 表示管理命令；同名 profile 必须用 `--profile plugin` 选择。
 
 Vendor CLI、仅用于构建和测试的可执行文件、进程内直接挂载插件以及私有浏览器 WebWorker 预览都不属于应用启动清单。包应用 bin 或直接启动包入口的根 demo 都不是可接受的扩展点。
 
@@ -34,7 +34,7 @@ Profile manifest 负责 patch 重载：
 
 自定义 profile 默认为 `live`。`startup` profile 仍会应用组合包、profile、home 级与调用时 `--patch` 各层，但启动后不会监视这些文件。`dsh-base` 插入的模块 HMR（热模块替换）配置项默认禁用；具有经过验证的源码模块重载生命周期的 profile 必须显式启用它。随附 profile 均不启用服务器模块 HMR：`patchReload: live` 使用启动器的仅配置 watcher，`startup` profile 则不安装 watcher。SDK 与 ACP 无法在一个自有 stdio 连接内安全替换其服务器、agent、持久化或工具注册表。
 
-随附协议 profile 将 stdout 保留给协议帧，显示帮助时不启动 transport，并通过有界根节点 dispose（资源释放）处理 stdin EOF 与信号。ACP 继续仅用于自动化。SDK JSON-RPC 方法、通知字段与 `initialize.serverInfo.name` 保持稳定。完整 profile 的模型可见工具与持久化默认值来自 `dsh-base`，包括其[默认编辑器选择](../simplification/2026-09-05-base-default-file-editor.zh.md)；`sdk-minimal` 拥有自己的显式默认值。可运行快照负责固定已组装的应用输出。
+随附协议 profile 将 stdout 保留给协议帧，显示帮助时不启动 transport，并通过有界根节点 dispose（资源释放）处理 stdin EOF 与信号。ACP 继续仅用于自动化。SDK JSON-RPC 方法、通知字段与 `initialize.serverInfo.name` 保持稳定。完整 profile 的模型可见工具与持久化默认值来自 `dsh-base`，包括其[默认编辑器选择](../../../../packages/bundle/base/README.zh.md)；`sdk-minimal` 拥有自己的显式默认值。可运行快照负责固定已组装的应用输出。
 
 ### TypeScript SDK 自定义
 
@@ -46,7 +46,7 @@ SDK 用户通过 profile 自定义插件。`dsh plugin --profile <name> ...` 管
 
 ### Python 运行时
 
-Python 运行时 wheel 将 [`python/sdk-runtime/runtime-bootstrap.mjs`](../../../../python/sdk-runtime/runtime-bootstrap.mjs) 暂存为 `dsh-python-runtime-closure` 入口。其普通分支调用公开 CLI export；提供方私有选择会在 CLI 解析前分派到内部子进程 runner，而不是应用入口。[原生 containment 决策](2026-08-28-subprocess-native-containment.zh.md)负责该私有分派。Python 客户端默认选择 `dsh --profile sdk`、有序 patch 文件与显式 Harness home；`python/sdk/examples` 下的可运行示例选择 `sdk-minimal`。安装的 `dsh` 控制台命令暴露相同 profile 语法与单独打包的 `web` 应用。
+Python 运行时 wheel 将 [`python/sdk-runtime/runtime-bootstrap.mjs`](../../../../python/sdk-runtime/runtime-bootstrap.mjs) 暂存为 `dsh-python-runtime-closure` 入口。其普通分支调用公开 CLI export；提供方私有选择会在 CLI 解析前分派到内部子进程 runner，而不是应用入口。[原生 containment 参考](../../../../packages/subprocess/subprocess-local/README.zh.md)负责该私有分派。Python 客户端默认选择 `dsh --profile sdk`、有序 patch 文件与显式 Harness home；`python/sdk/examples` 下的可运行示例选择 `sdk-minimal`。安装的 `dsh` 控制台命令暴露相同的 profile 语法，包括 `web` profile。
 
 可执行文件族是 `deepseek-harness-sdk-runtime-<platform>-<arch>`。SDK 协议格式、wheel 与 import 分发名称、伴随文件名称，以及协议 identity `deepseek-harness-sdk-runtime` 保持稳定。SDK 包族是 `@knyazevai/dsh-sdk-client`、`@knyazevai/dsh-sdk-protocol` 与 `@knyazevai/dsh-sdk-jsonrpc-server`；`@knyazevai/dsh-acp` 继续作为 ACP 协议插件。仓库不保留 Python 专用 Node 应用、检入的完整配置、兼容包、转发可执行文件、后备解析器或 SDK／ACP 启动别名。[docs/architecture.md](../../../../docs/architecture.zh.md)负责该启动方式，[`python/sdk-runtime` README](../../../../python/sdk-runtime/README.zh.md)负责 Windows 载体。
 
@@ -55,6 +55,8 @@ Python 运行时 wheel 将 [`python/sdk-runtime/runtime-bootstrap.mjs`](../../..
 `verify-application-entrypoints` 扫描应用／包 manifest、可执行源码和根 demo 脚本。允许清单对 `dsh` 产品 bin、排除的 vendor 范围、私有 WebWorker 构建工具和测试支持进行分类。未分类的 shebang、新包 bin 或绕过 `apps/cli/src/bin.ts` 的 demo wrapper 都会使 hygiene 与 primary／static CI 聚合失败。
 
 ## 既有决策与取代关系
+
+[CLI 参考](../../../../apps/cli/reference/README.zh.md)说明每个 profile 的命令简写；本 Note 继续负责应用组合与生命周期的所有权。
 
 本决策取代 [profile 插件组合包](2026-08-05-profile-plugin-bundles.zh.md)、[TypeScript SDK 客户端与 SDK subagent 后端](../../archived/feature/2026-07-27-typescript-sdk-and-sdk-subagent-backend.md)、[移除 SDK 项目工具链](../../archived/simplification/2026-08-11-remove-sdk-project-toolchain.md)和[单文件 Python SDK 运行时分发](2026-07-10-single-file-executable-sdk-runtime-distribution.zh.md)中的应用启动与包名事实。这些 Note 对 profile 分层、客户端／协议语义、已删除的项目工具链与原生打包仍分别具有独立权威。
 

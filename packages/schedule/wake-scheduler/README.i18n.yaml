@@ -1,6 +1,88 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/schedule/wake-scheduler/README.md
-README.md: a061030238215453ebc558bd21d9d8247f0e6bb0
-README.zh.md: bec06d2d6d9f0bdb598ca969b61f59148c481a12
+/:
+  en: 65f6a5f59a66b4ea
+  zh: d512846724af7218
+/knyazevai-dsh-wake-scheduler:
+  en: fee856cbab0d8080
+  zh: 8aebaeeaa98c207b
+/knyazevai-dsh-wake-scheduler/summary:
+  en: bd4d2f4ddfbdc72b
+  zh: 3dc1bd2e7707d36e
+/knyazevai-dsh-wake-scheduler/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 9aa34fb1dc95d8cf
+/knyazevai-dsh-wake-scheduler/use-this-package:
+  en: ef05aa1abb64a74e
+  zh: 10fda75f4345c650
+/knyazevai-dsh-wake-scheduler/use-this-package/install-the-overlay:
+  en: 460a8ecb90a39b4e
+  zh: 5088712cc0c310a2
+/knyazevai-dsh-wake-scheduler/use-this-package/let-the-agent-set-the-schedule:
+  en: b29fcb31424a5f9a
+  zh: 84df6d68d0104643
+/knyazevai-dsh-wake-scheduler/use-this-package/enable-the-profile-fallback:
+  en: 72507228b885da77
+  zh: dfd3707fea4e8d9d
+/knyazevai-dsh-wake-scheduler/use-this-package/what-happens-across-restarts-and-cold-sessions:
+  en: 8f9faaf020d3b638
+  zh: 5cb0545d4ec9a009
+/knyazevai-dsh-wake-scheduler/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: 7ae097f3abcc5d9c
+/knyazevai-dsh-wake-scheduler/understand-the-implementation/scope-and-composition:
+  en: c8a36eaff8db61d8
+  zh: 758baaa1f355b1ae
+/knyazevai-dsh-wake-scheduler/understand-the-implementation/where-the-turn-comes-from:
+  en: 2a69fe29b1dc13f2
+  zh: 0f6a6d8155640780
+/knyazevai-dsh-wake-scheduler/understand-the-implementation/source-map:
+  en: 3b65ea58092e06c5
+  zh: cea7dc81dce30cdf
+/knyazevai-dsh-wake-scheduler/understand-the-implementation/durable-state:
+  en: 4ea36d4088db0922
+  zh: 550dfb58554878bb
+/knyazevai-dsh-wake-scheduler/understand-the-implementation/failure-containment:
+  en: 1597e1031f5906e5
+  zh: a11e2bc4bb369289
+/knyazevai-dsh-wake-scheduler/understand-the-implementation/why-there-is-no-invariant-companion:
+  en: 1560deda8647e36e
+  zh: 26e3d6b8c867acee
+/knyazevai-dsh-wake-scheduler/further-exploration:
+  en: c6c7092876a4c560
+  zh: 554e31ff4f281c60
+/knyazevai-dsh-wake-scheduler/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-wake-scheduler/model-experience/wake-schedule-tools:
+  en: 2755f2221f2950cd
+  zh: 106ef50eb4c2f502
+/knyazevai-dsh-wake-scheduler/model-experience/wake-schedule-tools/what-the-model-sees:
+  en: e788df90d8565a87
+  zh: 42e1224aecf991d4
+/knyazevai-dsh-wake-scheduler/model-experience/wake-schedule-tools/token-effect:
+  en: 60de9c0bc0ad3acf
+  zh: 568b70f31fc3b7cb
+/knyazevai-dsh-wake-scheduler/model-experience/wake-schedule-tools/kv-cache-effect:
+  en: 10f8f1dcf75657b2
+  zh: ae04e1fa6b9ab4ae
+/knyazevai-dsh-wake-scheduler/model-experience/scheduled-wake-turn:
+  en: 1094f7358a0c6485
+  zh: 20bb4d433f561a36
+/knyazevai-dsh-wake-scheduler/model-experience/scheduled-wake-turn/what-the-model-sees:
+  en: 6da6a0393cb85a81
+  zh: 905b9f0fe4e758cf
+/knyazevai-dsh-wake-scheduler/model-experience/scheduled-wake-turn/token-effect:
+  en: 70121942292c1321
+  zh: a28817c0945241e6
+/knyazevai-dsh-wake-scheduler/model-experience/scheduled-wake-turn/kv-cache-effect:
+  en: 66b4659a37e7f124
+  zh: 0c43aa8af049ccc3
+/knyazevai-dsh-wake-scheduler/known-limitations-and-deferred-work:
+  en: 6a629608bf7b98b5
+  zh: 17462cba83f2382a
+/knyazevai-dsh-wake-scheduler/known-limitations-and-deferred-work/dev-note:
+  en: daa97e4860985978
+  zh: df68e6a542fa59ad

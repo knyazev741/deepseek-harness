@@ -5,10 +5,11 @@ import { appendFile, mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import LlmRuntime from '@knyazevai/dsh-llm'
-import SessionStore, { SessionLogOffset, SessionSeq, Session, SessionId, TOOL_OUTCOME_UNKNOWN } from '@knyazevai/dsh-session'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
+import SessionStore, { SessionLogOffset, SessionSeq, Session, SessionId, TOOL_NOT_STARTED, TOOL_OUTCOME_UNKNOWN } from '@knyazevai/dsh-session'
 import type { SessionEvent } from '@knyazevai/dsh-session'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
-import ToolRuntime from '@knyazevai/dsh-tools'
+import ToolRuntime, { defineContentToolFixture, TOOL_RUNTIME_SCHEDULER } from '@knyazevai/dsh-tools'
 import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 import type { SessionHandle } from '@knyazevai/dsh-session-persistence'
 
@@ -16,6 +17,12 @@ import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
+
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'tool-bash': { kind: 'tool-bash' } & ContextFormed
+  }
+}
 
 const dirs: string[] = []
 afterEach(async () => { for (const d of dirs.splice(0)) await rm(d, { recursive: true, force: true }) })
@@ -943,7 +950,7 @@ describe('the session-persistence Agent Note: AgentLoop factory create/resume', 
     const a1 = (await ctx1.agents.create({ sessionId: SessionId('inject-sess'), meta: { cwd: '/w' }, agentOptions: { provider: 'mock', model: 'mock' } })).agent
     a1.followup(createUserMessage({ content: [{ type: 'text', text: 'q' }], source: { kind: 'user' } }))
     await waitForIdle(ctx1, a1)
-    a1.inject(createUserMessage({ content: [{ type: 'text', text: 'background job 42 finished' }], source: { kind: 'plugin', plugin: 'tool-bash' } }))
+    a1.inject(createUserMessage({ content: [{ type: 'text', text: 'background job 42 finished' }], source: { kind: 'tool-bash' } }))
     await a1.whenIdle()
     await ctx1.sessions.flush(a1.session)
     // Simulate a wedged first lifecycle: a graceful dispose would durably
@@ -967,6 +974,71 @@ describe('the session-persistence Agent Note: AgentLoop factory create/resume', 
     expect(flat).toContain('background job 42 finished')
     await ctx2.fiber.dispose()
     await ctx1.fiber.dispose()
+  })
+
+  it.each(['resume', 'fork'] as const)('%s continues persisted history after a live scheduler failure', async (mode) => {
+    const firstAdapter = new MockAdapter([[
+      { type: 'block-start', index: 0, blockType: 'tool-call' },
+      { type: 'block-end', index: 0, block: { type: 'tool-call', id: ToolCallId('started'), name: 'probe', arguments: '{}' } },
+      { type: 'block-start', index: 1, blockType: 'tool-call' },
+      { type: 'block-end', index: 1, block: { type: 'tool-call', id: ToolCallId('pending'), name: 'probe', arguments: '{}' } },
+      { type: 'finish', reason: { kind: 'tool-calls' } },
+    ]])
+    const { ctx: first, root } = await persistentHarness(firstAdapter)
+    let next: Context | undefined
+    try {
+      first.tools.register(defineContentToolFixture({
+        name: 'probe', description: 'probe', parameters: {},
+        async execute() { return [{ type: 'text', text: 'unexpected execution' }] },
+      }))
+      first.tools[TOOL_RUNTIME_SCHEDULER].prepare = () => { throw new Error('scheduler prepare failed') }
+      const sessionId = SessionId('failed-tool-history')
+      const initial = await first.agents.create({ sessionId, agentOptions: { provider: 'mock', model: 'mock' } })
+      const failed = waitForIdle(first, initial.agent)
+      initial.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'try tools' }], source: { kind: 'user' } }))
+      await failed
+      await initial.dispose()
+      await first.fiber.dispose()
+
+      const nextAdapter = new MockAdapter([textResponse('continued after failure')])
+      next = await mountPersistentHarness(root, nextAdapter)
+      const stored = await readStoredEvents(next, sessionId)
+      expect(stored.filter(event => event.type === 'tool/result').map(event => [
+        event.data.message.toolCallId, event.data.error?.code,
+      ])).toEqual([[ToolCallId('started'), TOOL_OUTCOME_UNKNOWN], [ToolCallId('pending'), TOOL_NOT_STARTED]])
+      expect(stored.at(-1)).toMatchObject({
+        type: 'turn/end', data: { reason: { kind: 'error', error: { code: 'UNKNOWN', message: 'scheduler prepare failed' } } },
+      })
+
+      const continued = mode === 'resume'
+        ? await next.agents.resume({ resumeSessionId: sessionId, agentOptions: { provider: 'mock', model: 'mock' } })
+        : await next.agents.create({
+          sessionId: SessionId('failed-tool-history-fork'), seed: stored,
+          meta: { parentSession: sessionId, isSeeded: true },
+          inheritedEventCount: SessionLogOffset(stored.length),
+          agentOptions: { provider: 'mock', model: 'mock' },
+        })
+      const done = waitForIdle(next, continued.agent)
+      continued.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'continue' }], source: { kind: 'user' } }))
+      await done
+
+      expect(nextAdapter.requests[0]?.messages.flatMap((message): string[] => {
+        if (message.role === 'tool') return [`result:${message.toolCallId}`]
+        return message.content.flatMap((block): string[] => {
+          if (block.type === 'tool-call') return [`call:${block.id}`]
+          if (message.role === 'user' && block.type === 'text') return [`user:${block.text}`]
+          return []
+        })
+      })).toEqual(['user:try tools', 'call:started', 'call:pending', 'result:started', 'result:pending', 'user:continue'])
+      await continued.dispose()
+      const reopened = await readStoredEvents(next, continued.agent.session.id)
+      expect(reopened.slice(0, stored.length)).toEqual(stored)
+      expect(reopened.filter(event => event.type === 'tool/result')).toHaveLength(2)
+      expect(reopened.at(-1)).toMatchObject({ type: 'turn/end', data: { turn: 2, reason: { kind: 'completed' } } })
+    } finally {
+      await next?.fiber.dispose()
+      await first.fiber.dispose()
+    }
   })
 
   it('resume reloads a persisted session: history + turn numbering continue, no duplicate seqs', async () => {

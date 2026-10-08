@@ -23,6 +23,7 @@ describe('Python runtime executable assets', () => {
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('node_modules/@knyazevai/dsh-web-frontend/dist/**/*')
     expect(result.stdout).toContain('node_modules/@knyazevai/dsh-skill-badge/assets/**/*')
+    expect(result.stdout).toContain('node_modules/@knyazevai/dsh-sandbox-windows-acl/assets/**/*')
     expect(result.stdout).not.toContain('node_modules/**/*.py')
   })
 })

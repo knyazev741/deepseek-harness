@@ -6,7 +6,7 @@ import { bindSnapshotSelector, RemoteError } from '@knyazevai/dsh-client-test-ru
 import { Context } from '@deepseek-ai/cordis'
 import { SettingsSchemaService } from '@knyazevai/dsh-client-ui-settings/src/client/schema.ts'
 import { SettingsDescribeMirror } from '@knyazevai/dsh-client-ui-settings/src/client/settings-mirror.ts'
-import { SettingsScopeController } from '@knyazevai/dsh-client-ui-settings/src/client/settings-scope.ts'
+import { ConfigFormController } from '@knyazevai/dsh-client-ui-settings/src/client/config-form.ts'
 
 // Every fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
 const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
@@ -46,15 +46,15 @@ function welcomeView(value: unknown, revision = 0) {
     value,
     base: {},
     user: {},
-    applies: 'live' as const,
+    autoGenerate: true, applies: 'live' as const,
     secrets: [],
     revision,
   }
 }
 
-type AttentionSnapshot = Parameters<Parameters<WelcomeNoticeProps['useSessionPendingInteraction']>[0]>[0]
+type AttentionSnapshot = Parameters<Parameters<WelcomeNoticeProps['useSessionStatus']>[0]>[0]
 const noAttention: AttentionSnapshot = new Map()
-const useSessionPendingInteraction: WelcomeNoticeProps['useSessionPendingInteraction'] = selector => selector(noAttention)
+const useSessionStatus: WelcomeNoticeProps['useSessionStatus'] = selector => selector(noAttention)
 
 function mount(
   version?: string,
@@ -77,7 +77,7 @@ function mount(
   }
   const ctx = { remote: api } as never
   const mirror = new SettingsDescribeMirror(ctx)
-  const scope = new SettingsScopeController<WelcomeSection>(
+  const scope = new ConfigFormController<WelcomeSection>(
     ctx,
     { namespace: WELCOME_NOTICE_SETTINGS_NAMESPACE, decode: decodeWelcomeSection },
     mirror,
@@ -93,8 +93,8 @@ function mount(
     complete,
     openSection: vi.fn(),
     useSessions: unusedHook,
-    useSessionPendingInteraction,
-    usePanelInfo, useResource,
+    useSessionStatus,
+    usePanelInfo, useSessionRetainInfo: () => undefined, useResource,
     useWorkspaces: unusedHook,
     controller,
     useWelcome: bindSnapshotSelector(controller.store),
@@ -106,8 +106,8 @@ function mount(
 describe('WelcomeNotice', () => {
   it('uses the exact owner copy in both GUI locales', () => {
     expect(WELCOME_NOTICE_COPY.en).toEqual({
-      title: 'Internal Testing Notice',
-      body: "DeepSeek Harness 0.1 remains in testing for Harness developers. Many areas need further improvement, and we welcome feedback from the developer community. DeepSeek Harness's core plugins and foundational APIs will continue to evolve rapidly over the coming months.\n\nWe look forward to exploring the limits of intelligence with developers around the world, building on open-source, open, reusable, and composable infrastructure. We welcome Harness developers everywhere to join the DSH plugin ecosystem.",
+      title: 'Preview Notice',
+      body: 'DeepSeek Harness 0.2 is still in preview, and many areas need continued improvement and refinement. We welcome feedback and suggestions from all developers and users. The new desktop app now targets a broad range of users, while developer-related advanced features can be enabled in the settings. DeepSeek Harness’s product features and plugin APIs are expected to continue rapid iteration and evolution, and will gradually stabilize over time.\n\nWe look forward to exploring the limits of intelligence together with users and developers around the world, building on open-source, reusable, and composable infrastructure. We welcome everyone to bring their ideas to life with DeepSeek Harness and participate in the community to enrich the plugin ecosystem.',
       continueLabel: 'Continue',
     })
     expect(en.welcomeBody).toBe(WELCOME_NOTICE_COPY.en.body)
@@ -132,8 +132,8 @@ describe('WelcomeNotice', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
-  it('completes only after the acknowledgement write commits', async () => {
-    const h = mount()
+  it('requires a fresh acknowledgement after the 0.1 notice', async () => {
+    const h = mount('2026-08-13.1')
     await screen.findByRole('dialog')
     fireEvent.click(screen.getByRole('button', { name: WELCOME_NOTICE_COPY.zh.continueLabel }))
     await act(async () => { await Promise.resolve() })

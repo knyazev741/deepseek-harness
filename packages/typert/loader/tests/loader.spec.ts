@@ -222,17 +222,20 @@ describe('typert loader', () => {
 
     ctx.loader.remove(id)
     await ctx.loader.await()
-    // The unmount reconciliation rides a queued microtask flush.
-    await new Promise(resolve => setTimeout(resolve, 20))
-    expect(ctx.typert.get('@fixture/with-typert#Thing')).toBeUndefined()
+    // The unmount reconciliation rides a queued microtask flush that settles
+    // after loader.await(); poll for the withdrawal.
+    await vi.waitFor(() => {
+      expect(ctx.typert.get('@fixture/with-typert#Thing')).toBeUndefined()
+    }, { timeout: 10_000 })
     ctx.loader.remove(plainId)
     await ctx.loader.await()
     await new Promise(resolve => setTimeout(resolve, 20))
 
     await ctx.loader.create({ name: '@fixture/with-typert' })
     await ctx.loader.await()
-    await new Promise(resolve => setTimeout(resolve, 20))
-    expect(ctx.typert.get('@fixture/with-typert#Thing')).toBeDefined()
+    await vi.waitFor(() => {
+      expect(ctx.typert.get('@fixture/with-typert#Thing')).toBeDefined()
+    }, { timeout: 10_000 })
   })
 
   it('skips package-subpath rows and validates npm aliases against the manifest owner', LOADER_TEST_TIMEOUT, async () => {
@@ -535,6 +538,14 @@ describe('validateTypertManifest', () => {
     const descriptor = strictInvocation()
     const manifest = { ...base, invocations: [descriptor] }
     expect(validateTypertManifest('pkg', manifest)).toBe(manifest)
+    const decoded = { ...descriptor, result: { ...descriptor.result, decode: (value: unknown) => value } }
+    expect(validateTypertManifest('pkg', { ...base, invocations: [decoded] }).invocations).toEqual([decoded])
+    expect(() => validateTypertManifest('pkg', {
+      ...base, invocations: [{ ...decoded, result: { ...decoded.result, decode: true } }],
+    })).toThrow('decode must be a function')
+    expect(() => validateTypertManifest('pkg', {
+      ...base, invocations: [{ ...decoded, result: { ...decoded.result, encode: true } }],
+    })).toThrow('encode must be a function')
     const cancellable = { ...descriptor, cancellation: { parameter: 'signal' } }
     expect(validateTypertManifest('pkg', { ...base, invocations: [cancellable] }).invocations)
       .toEqual([cancellable])

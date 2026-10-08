@@ -367,7 +367,7 @@ describe('task admission and package contracts', () => {
     expect(manifest.files).toContain('cordis.patch.yml')
     expect(manifest.dependencies).toHaveProperty(
       '@knyazevai/dsh-sdk-protocol',
-      'workspace:^',
+      'workspace:*',
     )
     expect(manifest.dependencies).toHaveProperty('@openai/codex', CODEX_VERSION)
     expect(manifest.dependencies).not.toHaveProperty('@knyazevai/dsh-subagent-claude-code')

@@ -1,6 +1,31 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fork/ui-workspace-overlay/README.md
-README.md: aa6326d989db3ab61a9e3eab9c174881c2dce9b2
-README.zh.md: 5afd35ee38303c51a2cc6690e8e7e8eeac9922ab
+/:
+  en: 7cb2c55511ae2bc9
+  zh: 61b558d5016f68e5
+/knyazevai-dsh-fork-ui-workspace-overlay:
+  en: b9ce2ab63f88b38f
+  zh: 8ce0ce003dd843eb
+/knyazevai-dsh-fork-ui-workspace-overlay/summary:
+  en: 01d6962171183004
+  zh: f0dbc8095fc4978c
+/knyazevai-dsh-fork-ui-workspace-overlay/behavior:
+  en: 3523672967bcd694
+  zh: 25ec22889bcec516
+/knyazevai-dsh-fork-ui-workspace-overlay/table-of-contents:
+  en: 638dd73bc5b9dc7a
+  zh: b194c13488101726
+/knyazevai-dsh-fork-ui-workspace-overlay/model-experience:
+  en: 133e97f70947c8e4
+  zh: 6831847ef8b368c2
+/knyazevai-dsh-fork-ui-workspace-overlay/model-experience/kv-cache-effect:
+  en: b66ede359389a5c7
+  zh: 628497b14c5f2080
+/knyazevai-dsh-fork-ui-workspace-overlay/known-limitations-and-deferred-work:
+  en: fcbf87fbab11f425
+  zh: 195ff75e89a025ac
+/knyazevai-dsh-fork-ui-workspace-overlay/known-limitations-and-deferred-work/dev-note:
+  en: cfae41f999886513
+  zh: ae541efe7ad4df99

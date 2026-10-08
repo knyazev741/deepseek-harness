@@ -17,7 +17,7 @@ import { LocalBashExecutor } from '@knyazevai/dsh-bash-local'
 import * as BashEnvPlugin from '@knyazevai/dsh-shell-env'
 import LocalSubprocessRuntime from '@knyazevai/dsh-subprocess-local'
 import * as ToolBash from '@knyazevai/dsh-tool-bash'
-import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek'
+import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
 import NodeRuntime from '@knyazevai/dsh-ptc-runtime-node'
 import Sandbox from '@knyazevai/dsh-sandbox-local'
 import SandboxPolicy from '@knyazevai/dsh-sandbox-policy'
@@ -28,6 +28,7 @@ import LocalJobRegistry from '@knyazevai/dsh-jobs-local'
 import * as ToolJobs from '@knyazevai/dsh-tool-jobs'
 import CordisHostRunner from '@knyazevai/dsh-cordis-host-runner'
 import * as ToolCordis from '@knyazevai/dsh-tool-cordis'
+import * as CordisInspectProviders from '@knyazevai/dsh-tool-cordis/host'
 
 /**
  * With-key PTC mode proof: a real model receives only `run_code`, composes two
@@ -225,7 +226,7 @@ describe('PTC mode typed values: keyless real-process contracts', () => {
     expect(taskOutput.job).toMatchObject({ id: jobId, kind: 'bash', status: 'completed' })
   }, 15_000)
 
-  it('pre-abort spawns nothing; post-publication abort leaves job_kill as the cancellation owner', async () => {
+  it('pre-abort spawns nothing; post-publication abort leaves job_kill as the cancellation owner', { timeout: 15_000, retry: 0 }, async () => {
     workdir = await mkdtemp(join(tmpdir(), 'dsh-ptc-task-cancel-'))
     ctx = await backgroundPtcModeHarness(workdir)
 
@@ -237,15 +238,27 @@ describe('PTC mode typed values: keyless real-process contracts', () => {
     expect(preResult.isError).toBe(true)
     expect(ctx.jobs.list()).toEqual([])
 
+    const jobs = ctx.jobs
+    // Registration is announced after the job's ownership has committed.
+    const registered = new Promise<void>((resolve) => {
+      onTestFinished(jobs.events.subscribe({ owners: 'all' }, (event) => {
+        if (event.type === 'registered') resolve()
+      }))
+    })
     const afterPublication = new AbortController()
     const running = runCode(ctx, `
       const started = await tools.bash({ command: 'sleep 10', description: 'Wait for explicit task kill', run_in_background: true });
       console.log(started.jobId);
       await new Promise(() => {});
     `, afterPublication.signal)
-    for (let attempt = 0; attempt < 100 && ctx.jobs.list().length === 0; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 10))
-    }
+    await Promise.race([
+      registered,
+      running.then((result) => {
+        // Promise.race handles a late rejection after registration, too.
+        completion(result)
+        throw new Error('run_code completed before background job registration')
+      }),
+    ])
     const job = ctx.jobs.list()[0]
     expect(job).toMatchObject({ id: 'bash-1', status: 'running' })
     afterPublication.abort('outer-call-cancelled')
@@ -260,7 +273,7 @@ describe('PTC mode typed values: keyless real-process contracts', () => {
       return await tools.job_output({ job_id: ${JSON.stringify(job!.id)}, wait: true, timeout_ms: 5000 });
     `))
     expect(settled).toMatchObject({ job: { id: job!.id, status: 'killed' } })
-  }, 15_000)
+  })
 
   it('keeps foreground bash coupled to the outer signal', async () => {
     workdir = await mkdtemp(join(tmpdir(), 'dsh-ptc-foreground-cancel-'))
@@ -277,9 +290,10 @@ describe('PTC mode typed values: keyless real-process contracts', () => {
     expect(ctx.jobs.list()).toEqual([])
   }, 15_000)
 
-  it('uses versioned Cordis DTO ids directly for running and pending Plugins, then confirms removal', async () => {
+  it('uses runtime inspection results directly through PTC', async () => {
     ctx = await typedPtcModeHarness()
     await ctx.plugin(CordisHostRunner)
+    await ctx.plugin(CordisInspectProviders)
     await ctx.plugin(ToolCordis)
     const agent = {
       id: SessionId('ptc-cordis'),
@@ -287,70 +301,15 @@ describe('PTC mode typed values: keyless real-process contracts', () => {
     } as unknown as Agent
 
     const value = completion(await runCode(ctx, `
-      const activeDefinition = await tools.cordis_define({
-        plugin: { kind: 'new', idPrefix: 'active' },
-        name: 'active-ptc-plugin',
-        purpose: 'prove an active Host half',
-        code: { host: "return { name: 'active-ptc-plugin', apply(ctx) {} }" },
+      const listed = await tools.cordis_inspect_list({});
+      const provider = listed.providers.find(item => item.id === 'Tool');
+      const inspected = await tools.cordis_inspect_query({
+        platform: provider.platform, provider: provider.id, method: provider.methods[0].name,
       });
-      const active = await tools.cordis_run({
-        pluginId: activeDefinition.pluginId,
-        packageId: activeDefinition.packageId,
-        mode: 'run',
-      });
-      const pendingDefinition = await tools.cordis_define({
-        plugin: { kind: 'new', idPrefix: 'queue' },
-        name: 'pending-ptc-plugin',
-        purpose: 'prove a Host half waiting for a Service',
-        code: { host: "return { name: 'pending-ptc-plugin', inject: ['missing-ptc-service'], apply(ctx) {} }" },
-      });
-      const pending = await tools.cordis_run({
-        pluginId: pendingDefinition.pluginId,
-        packageId: pendingDefinition.packageId,
-        mode: 'run',
-      });
-      const before = await tools.cordis_inspect_self({});
-      const removed = await tools.cordis_undefine({ pluginId: active.pluginId });
-      const after = await tools.cordis_inspect_self({});
-      await tools.cordis_undefine({ pluginId: pending.pluginId });
-      return {
-        active: {
-          pluginId: active.pluginId,
-          packageId: active.packageId,
-          pluginRunId: active.pluginRunId,
-          status: active.host.status,
-        },
-        pending: {
-          pluginId: pending.pluginId,
-          packageId: pending.packageId,
-          pluginRunId: pending.pluginRunId,
-          status: pending.host.status,
-          waitingFor: pending.host.waitingFor,
-        },
-        removed,
-        beforeContainsId: before.plugins.some(plugin => plugin.pluginId === active.pluginId),
-        afterContainsId: after.plugins.some(plugin => plugin.pluginId === active.pluginId),
-      };
+      return { provider: provider.id, names: inspected.data.tools.map(tool => tool.name) };
     `, testToolSignal, agent))
 
-    expect(value).toEqual({
-      active: {
-        pluginId: 'active-1',
-        packageId: 'pkg-1',
-        pluginRunId: 'run-1',
-        status: 'running',
-      },
-      pending: {
-        pluginId: 'queue-2',
-        packageId: 'pkg-2',
-        pluginRunId: 'run-2',
-        status: 'waiting',
-        waitingFor: ['missing-ptc-service'],
-      },
-      removed: { pluginId: 'active-1', wasRunning: true },
-      beforeContainsId: true,
-      afterContainsId: false,
-    })
+    expect(value).toEqual({ provider: 'Tool', names: ['cordis_inspect_list', 'cordis_inspect_query', 'run_code'] })
   })
 })
 

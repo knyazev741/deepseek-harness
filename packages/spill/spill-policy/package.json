@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-spill-policy",
-  "description": "Tool-result spill policy for the DeepSeek Harness — replaces oversized plain-text tool results with a retained preview plus a spill-file path (no service API)",
-  "version": "0.1.6-alpha.1",
+  "description": "Token-budgeted tool-result retention with recoverable text and image paths",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -32,29 +32,42 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-output-retention": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-spill": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-output-retention": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-spill": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-token-meter": "workspace:*"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-ptc-runtime-node": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-output-retention": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-spill": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-fs-local": "workspace:^",
-    "@knyazevai/dsh-subprocess-local": "workspace:^",
-    "@knyazevai/dsh-sandbox-local": "workspace:^",
-    "@knyazevai/dsh-sandbox-policy": "workspace:^",
-    "@knyazevai/dsh-session-projection": "workspace:^"
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-ptc-runtime-node": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-output-retention": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-spill": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@knyazevai/dsh-sandbox-local": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-token-meter": "workspace:*",
+    "@knyazevai/dsh-mcp-client": "workspace:*",
+    "@knyazevai/dsh-spill-local": "workspace:*",
+    "@knyazevai/dsh-llm-deepseek": "workspace:*",
+    "@knyazevai/dsh-ptc-runtime": "workspace:*",
+    "@knyazevai/dsh-attachment-local": "workspace:*",
+    "@knyazevai/dsh-tool-fs": "workspace:*",
+    "sharp": "^0.35.3"
   }
 }

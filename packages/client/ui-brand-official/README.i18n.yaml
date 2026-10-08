@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-brand-official/README.md
-README.md: d332cd954e012f1b9d78b7f48569294e9349beea
-README.zh.md: f8189b7a1c966f6c72b9deeab36a136daaa93bd7
+/:
+  en: a031cd88e552dc89
+  zh: 76c1af2393cb6983
+/knyazevai-dsh-client-ui-brand-official:
+  en: 9afaa06a042ffe83
+  zh: ba302095183c3ae0
+/knyazevai-dsh-client-ui-brand-official/summary:
+  en: cb6bf0a4eabd271b
+  zh: 181cf091ff44c194
+/knyazevai-dsh-client-ui-brand-official/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-client-ui-brand-official/use-this-package:
+  en: 716dc268f98996db
+  zh: 7372a67ef81a0d5e
+/knyazevai-dsh-client-ui-brand-official/use-this-package/choosing-the-profile:
+  en: 3f3f96d6adf98193
+  zh: 0b8691656a8532a0
+/knyazevai-dsh-client-ui-brand-official/use-this-package/replacing-the-brand:
+  en: 6a923aa630d01d65
+  zh: 5df0c24eebd9d0d0
+/knyazevai-dsh-client-ui-brand-official/understand-the-implementation:
+  en: 4e4aa617edd7f4ad
+  zh: ea4e2d6d4a39535e
+/knyazevai-dsh-client-ui-brand-official/further-exploration:
+  en: c9ae240d8e831cc0
+  zh: a7c9170bae79824f
+/knyazevai-dsh-client-ui-brand-official/model-experience:
+  en: 618008c7641070e7
+  zh: 7233febb4d92ccfb
+/knyazevai-dsh-client-ui-brand-official/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: f57cc48a1b5cbfa9
+/knyazevai-dsh-client-ui-brand-official/known-limitations-and-deferred-work:
+  en: 89e2b4bd095a0265
+  zh: a002f0c8a60267ad
+/knyazevai-dsh-client-ui-brand-official/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

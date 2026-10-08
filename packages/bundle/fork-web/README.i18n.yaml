@@ -1,6 +1,55 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/bundle/fork-web/README.md
-README.md: 9db5360d3dbb24a4a59031222a14561ff252ea6f
-README.zh.md: 489bf8344b8fdc83a84d363c7d928d2ee95dd619
+/:
+  en: 487f4e4ab7251a6f
+  zh: 10dfa81bb3721977
+/knyazevai-dsh-fork-web:
+  en: ab25dace99951d53
+  zh: e682685e5554a87c
+/knyazevai-dsh-fork-web/summary:
+  en: 1a7ce0d1f27785b0
+  zh: 4171572351be5a38
+/knyazevai-dsh-fork-web/table-of-contents:
+  en: 1186d07fa8972ce5
+  zh: c3116be7bbfa501e
+/knyazevai-dsh-fork-web/composition:
+  en: ef7938eb1d2da38c
+  zh: 6d528ca8b096cd36
+/knyazevai-dsh-fork-web/mounted-capability:
+  en: c5d9e980927f4cdb
+  zh: dfc7a51ddcd7b3d9
+/knyazevai-dsh-fork-web/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-fork-web/model-experience/workspace-ui-overlay:
+  en: 1652d00f7f6afbda
+  zh: 1652d00f7f6afbda
+/knyazevai-dsh-fork-web/model-experience/workspace-ui-overlay/what-the-model-sees:
+  en: a2d8adf499f8306d
+  zh: be6d10ceea7232e8
+/knyazevai-dsh-fork-web/model-experience/workspace-ui-overlay/token-effect:
+  en: 1e6050c61d4d956b
+  zh: 53d171319e6db391
+/knyazevai-dsh-fork-web/model-experience/workspace-ui-overlay/kv-cache-effect:
+  en: 5d460ed73e7f4541
+  zh: 0b98b1d50f607073
+/knyazevai-dsh-fork-web/model-experience/subagent-model-selection:
+  en: 88e374468991b310
+  zh: 4e78d26ae25ae80d
+/knyazevai-dsh-fork-web/model-experience/subagent-model-selection/what-the-model-sees:
+  en: 4685771b311e18ee
+  zh: 3b1acb199ff1763b
+/knyazevai-dsh-fork-web/model-experience/subagent-model-selection/token-effect:
+  en: 2bdc7c7dd1e0a96e
+  zh: 69f63da41a9f476c
+/knyazevai-dsh-fork-web/model-experience/subagent-model-selection/kv-cache-effect:
+  en: 61769dcfc2205e67
+  zh: 4244ff486ba670a0
+/knyazevai-dsh-fork-web/known-limitations-and-deferred-work:
+  en: dd4408f0c33cf282
+  zh: a9eb63e30dc2f4d6
+/knyazevai-dsh-fork-web/known-limitations-and-deferred-work/dev-note:
+  en: cfae41f999886513
+  zh: ae541efe7ad4df99

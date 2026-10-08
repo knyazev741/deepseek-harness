@@ -1,6 +1,61 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/web/web-fetch-http/README.md
-README.md: 63b270ed20350f03223c9b3b643a4b47117afe67
-README.zh.md: d429b6d94213fac884dd3fc97ae206d1f0530c0e
+/:
+  en: a55f23f2363fdbd6
+  zh: b1fd7328e041ec52
+/knyazevai-dsh-web-fetch-http:
+  en: 8a47f2fdbe47ae38
+  zh: ebd054aef7b962b3
+/knyazevai-dsh-web-fetch-http/summary:
+  en: 88157c32f36635d5
+  zh: a149d576df0349bc
+/knyazevai-dsh-web-fetch-http/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-web-fetch-http/use-this-package:
+  en: 630b12516d53e905
+  zh: eed124cfe9c8dc1f
+/knyazevai-dsh-web-fetch-http/use-this-package/when-to-choose-it:
+  en: eb52e77279c21d6f
+  zh: 0560e89caa377bfc
+/knyazevai-dsh-web-fetch-http/use-this-package/minimal-configuration:
+  en: 9b2f098ba1d0bbad
+  zh: 2054887922cebaac
+/knyazevai-dsh-web-fetch-http/use-this-package/what-a-fetch-returns:
+  en: 2d18cdcc9b53dd0f
+  zh: 3bc6ca7c5933ee5d
+/knyazevai-dsh-web-fetch-http/use-this-package/transport-behavior:
+  en: c432147daf2877cf
+  zh: c14d507dd66e124a
+/knyazevai-dsh-web-fetch-http/use-this-package/failures-and-recovery:
+  en: 35407f106dc65deb
+  zh: 02118072fba68b8f
+/knyazevai-dsh-web-fetch-http/understand-the-implementation:
+  en: 9842c69ad3636bb3
+  zh: 3cdc3f816cbdd0cb
+/knyazevai-dsh-web-fetch-http/understand-the-implementation/design-philosophy:
+  en: a8d806f0706f02e2
+  zh: d922732a5b7e88bd
+/knyazevai-dsh-web-fetch-http/understand-the-implementation/source-map:
+  en: 023ca0c9a9ef4968
+  zh: 74a5785a493f5111
+/knyazevai-dsh-web-fetch-http/understand-the-implementation/read-path:
+  en: 749c0ffeac145807
+  zh: 1468821a33a9518a
+/knyazevai-dsh-web-fetch-http/further-exploration:
+  en: 0dc53ab97dc71845
+  zh: 480fc42b57fc80b3
+/knyazevai-dsh-web-fetch-http/model-experience:
+  en: 5c488f8d23ce3e90
+  zh: 3cc8f8dc3ab60b65
+/knyazevai-dsh-web-fetch-http/model-experience/kv-cache-effect:
+  en: 40294c1c31b74824
+  zh: d75d48f485447a74
+/knyazevai-dsh-web-fetch-http/known-limitations-and-deferred-work:
+  en: 4d935fd8f466a234
+  zh: c398eb7aa737f5ea
+/knyazevai-dsh-web-fetch-http/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

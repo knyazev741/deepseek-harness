@@ -6,7 +6,7 @@ import { isAbsolute } from 'node:path'
 import { brandString } from '@knyazevai/dsh-brand'
 import type { ModelSelection } from '@knyazevai/dsh-agent'
 import type {} from '@knyazevai/dsh-agent-default-model'
-import type {} from '@knyazevai/dsh-agent-presets'
+import type {} from '@knyazevai/dsh-agent-preset-registry'
 import { boundContextSummary, createUserMessage, errorChain, type LlmCallConfig } from '@knyazevai/dsh-llm'
 import type {} from '@knyazevai/dsh-permission-presets'
 import type { SessionId } from '@knyazevai/dsh-session'
@@ -124,7 +124,8 @@ export async function createWebhookSession(
   const resolved = resolveRequest(ctx, request)
   ctx.permissionPresets.resolve(resolved.permissionPreset)
   const preset = await ctx.agentPresets.resolve(resolved.agentPreset)
-  await ctx.agentPresets.standingKeyFor(preset.id)
+  await using presetScope = await ctx.agentPresets.acquireScope(preset.id)
+  void presetScope
   signal.throwIfAborted()
 
   const workspace = await ctx.workspaceRegistry.create(resolved.workspacePath)

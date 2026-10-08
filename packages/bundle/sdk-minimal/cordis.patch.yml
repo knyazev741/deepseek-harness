@@ -24,7 +24,7 @@
       name: '@knyazevai/dsh-plugin-package-inventory-deepseek'
 
     - id: llm-deepseek
-      name: '@knyazevai/dsh-llm-deepseek'
+      name: '@knyazevai/dsh-llm-deepseek-api-key'
       config:
         apiKeyEnv: DEEPSEEK_API_KEY
         defaultContextWindow: !!js Number(process.env.DSH_CONTEXT_WINDOW ?? 1000000)
@@ -102,21 +102,6 @@
 
     - id: jobs
       name: '@knyazevai/dsh-jobs-local'
-
-    - id: invariants
-      name: '@knyazevai/dsh-invariants'
-
-    - id: session-invariant
-      name: '@knyazevai/dsh-session/invariant'
-
-    - id: agent-invariant
-      name: '@knyazevai/dsh-agent/invariant'
-
-    - id: scope-invariant
-      name: '@knyazevai/dsh-scope/invariant'
-
-    - id: agent-loop-invariant
-      name: '@knyazevai/dsh-agent-loop/invariant'
 
     - id: agent-loop
       name: '@knyazevai/dsh-agent-loop'

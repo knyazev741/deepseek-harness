@@ -1,6 +1,85 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/guard/repeat-tool-reminder/README.md
-README.md: 5d3e4e7109db9e26f5db8c94284542c2c412426c
-README.zh.md: d6109b9ec1ddb999f4d83e20f4438770dc6bbdc2
+/:
+  en: 8eb3c6cc73da87aa
+  zh: 4059266a0486ff38
+/knyazevai-dsh-repeat-tool-reminder:
+  en: 2c5cfb1be27a2739
+  zh: 5883826962270aaa
+/knyazevai-dsh-repeat-tool-reminder/summary:
+  en: 36ac7ba52bc4fee0
+  zh: 39894a1c067754c4
+/knyazevai-dsh-repeat-tool-reminder/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-repeat-tool-reminder/use-this-package:
+  en: dcffe01b4cde60e0
+  zh: 9a105a1d0121b990
+/knyazevai-dsh-repeat-tool-reminder/use-this-package/when-to-choose-it:
+  en: c6b47c1f0034c021
+  zh: 5a2097425754d8b0
+/knyazevai-dsh-repeat-tool-reminder/use-this-package/setting-the-thresholds-and-scope:
+  en: 0c51f03eade2470c
+  zh: 86e6098cc57ef924
+/knyazevai-dsh-repeat-tool-reminder/use-this-package/what-you-get:
+  en: 5cf91a5809d2c68a
+  zh: 8f60231436b863b8
+/knyazevai-dsh-repeat-tool-reminder/understand-the-implementation:
+  en: dd6d7a1571af5a9a
+  zh: eba00095dfc1c92a
+/knyazevai-dsh-repeat-tool-reminder/understand-the-implementation/design-philosophy:
+  en: 7bca56e3cba01338
+  zh: 530fda764d226f39
+/knyazevai-dsh-repeat-tool-reminder/understand-the-implementation/detection-the-repeat-chain:
+  en: b76a432aad14aa90
+  zh: b0cd916f7897fb42
+/knyazevai-dsh-repeat-tool-reminder/understand-the-implementation/reminder-delivery:
+  en: a3edc5c0f98b0d1e
+  zh: 173f6166ce3af779
+/knyazevai-dsh-repeat-tool-reminder/understand-the-implementation/source-map:
+  en: ba2eb423e165510d
+  zh: db5155503a8504cb
+/knyazevai-dsh-repeat-tool-reminder/further-exploration:
+  en: 9c5e1d9c4fac7da4
+  zh: 976bde1d9e44cd3e
+/knyazevai-dsh-repeat-tool-reminder/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-repeat-tool-reminder/model-experience/first-threshold-context-message:
+  en: 798ea2afb5efde7c
+  zh: 14fae1e31d882e8a
+/knyazevai-dsh-repeat-tool-reminder/model-experience/first-threshold-context-message/what-the-model-sees:
+  en: cf01847a41f3fe3d
+  zh: aebeb78ac617999c
+/knyazevai-dsh-repeat-tool-reminder/model-experience/first-threshold-context-message/what-the-model-sees/first-threshold-reminder:
+  en: 38c7616427fa569d
+  zh: fd443fab22a57894
+/knyazevai-dsh-repeat-tool-reminder/model-experience/first-threshold-context-message/token-effect:
+  en: 111c6d779b73194b
+  zh: 09b0e7073308ba91
+/knyazevai-dsh-repeat-tool-reminder/model-experience/first-threshold-context-message/kv-cache-effect:
+  en: f5d5f97a153f7c70
+  zh: 51155536aab03002
+/knyazevai-dsh-repeat-tool-reminder/model-experience/later-threshold-context-message:
+  en: edfa41e2478fb579
+  zh: 76b87439f3bef43c
+/knyazevai-dsh-repeat-tool-reminder/model-experience/later-threshold-context-message/what-the-model-sees:
+  en: cddb7a41c335141f
+  zh: 7ea33c6570bb2bd0
+/knyazevai-dsh-repeat-tool-reminder/model-experience/later-threshold-context-message/what-the-model-sees/later-threshold-reminder:
+  en: 341114f2e5e9c05b
+  zh: 8938e7d0f7fc150b
+/knyazevai-dsh-repeat-tool-reminder/model-experience/later-threshold-context-message/token-effect:
+  en: 2e92c0d5a90c482b
+  zh: 07ba3851b725f06d
+/knyazevai-dsh-repeat-tool-reminder/model-experience/later-threshold-context-message/kv-cache-effect:
+  en: f5d5f97a153f7c70
+  zh: 51155536aab03002
+/knyazevai-dsh-repeat-tool-reminder/known-limitations-and-deferred-work:
+  en: 59ffa89bf74f8da2
+  zh: 7652f49b9eac40d6
+/knyazevai-dsh-repeat-tool-reminder/known-limitations-and-deferred-work/dev-note:
+  en: ef308dcf213685c7
+  zh: 5830b6bbeea9863f

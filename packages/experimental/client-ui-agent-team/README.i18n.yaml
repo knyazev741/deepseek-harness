@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/client-ui-agent-team/README.md
-README.md: 1cb0068834f9e3f3d54d37fcb07ddf1ae445ed26
-README.zh.md: 9a1724153d828e4e1a31deba25fdc5aca92c382a
+/:
+  en: 6deb254c416ff51b
+  zh: e0913c7be837da78
+/knyazevai-dsh-experimental-client-ui-agent-team:
+  en: 0845625e87dbb538
+  zh: df077123c594a095
+/knyazevai-dsh-experimental-client-ui-agent-team/summary:
+  en: a30d7bbb951ed3ec
+  zh: 8b12eca1138820f0
+/knyazevai-dsh-experimental-client-ui-agent-team/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-experimental-client-ui-agent-team/use-this-package:
+  en: 0f50e52a85b3227e
+  zh: 29f0a910d10a65b6
+/knyazevai-dsh-experimental-client-ui-agent-team/use-this-package/inspect-and-navigate-the-roster:
+  en: 62778e911a4ee9e9
+  zh: dff1dbbc3d5e4af6
+/knyazevai-dsh-experimental-client-ui-agent-team/use-this-package/inspect-the-task-board:
+  en: cf09faa436dad9fd
+  zh: e7423f4111eb88f9
+/knyazevai-dsh-experimental-client-ui-agent-team/understand-the-implementation:
+  en: 3ea723e7ea467be7
+  zh: dba02b20bef0fd7f
+/knyazevai-dsh-experimental-client-ui-agent-team/further-exploration:
+  en: 71ac041029c64d5a
+  zh: fef2e4c5dccb8d1b
+/knyazevai-dsh-experimental-client-ui-agent-team/model-experience:
+  en: 47ebeba07d72759d
+  zh: 8fe8133f6dd845a9
+/knyazevai-dsh-experimental-client-ui-agent-team/model-experience/kv-cache-effect:
+  en: b51b320f5e4dacfc
+  zh: 6695947c3f9fed28
+/knyazevai-dsh-experimental-client-ui-agent-team/known-limitations-and-deferred-work:
+  en: 254e4aa2f81037d2
+  zh: 3cdf19dffafb51df
+/knyazevai-dsh-experimental-client-ui-agent-team/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

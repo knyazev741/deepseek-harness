@@ -83,6 +83,8 @@ Two failure modes are not reconstructable from a durable Assistant settlement al
 - **An unrecorded session makes a call** — replay fails loud and tells you to re-record the scenario.
 - **A scripted placeholder matches nothing** — `{{fromRequest:<regex>}}` resolution validates the pattern and the request corpus and fails loud on no match, an invalid pattern, or an unterminated placeholder.
 
+Isolated transcript extraction supplies an explicit empty child-fact set to V3→V4. It retains recorded catalog entries but does not discover related files. Complete historical parent catalog migration belongs to JSONL persistence.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -105,7 +107,6 @@ The [committed-corpus test](tests/session-format-corpus.spec.ts) restores each v
 |---|---|
 | [`src/index.ts`](src/index.ts) | Types, fixture derivation, override validation, placeholder resolution, session binding, `installLlmReplay`, and the plugin export |
 | [`tests/session-format-corpus.spec.ts`](tests/session-format-corpus.spec.ts) | Committed-generation restoration and exact historical refusal checks |
-| — | No runtime invariant companion is published; this test-only adapter consumes a fixed replay script; its stream grammar is checked by the LLM companion and fixture derivation tests. |
 
 ### Binding and stream flow
 

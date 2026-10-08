@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-08-knyazevai-dsh-npm-scope.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-08-knyazevai-dsh-npm-scope.md
-2026-09-08-knyazevai-dsh-npm-scope.md: 692441b570a894c58b0683daab8d1d3e856cc826
-2026-09-08-knyazevai-dsh-npm-scope.zh.md: 14917aa195812808fc8b1786c66b17752b438c22
+/agent-note-permanent-dsh-npm-scope:
+  en: 46ef21548966df83
+  zh: ff369fdcad63e289
+/agent-note-permanent-dsh-npm-scope/problem:
+  en: cffdc360c3bea6f7
+  zh: 8174477e2f4a561c
+/agent-note-permanent-dsh-npm-scope/decision:
+  en: 8aeb775ef19cf42b
+  zh: 9b5e807769c12aa3
+/agent-note-permanent-dsh-npm-scope/alternatives-considered:
+  en: 6abd26fdbfa569f9
+  zh: 1ba80bda1a3a82f1
+/agent-note-permanent-dsh-npm-scope/consequences:
+  en: 2ecbc6d1d455c538
+  zh: edc9a53e80d6e284

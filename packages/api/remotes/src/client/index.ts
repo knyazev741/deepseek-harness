@@ -2,12 +2,20 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import forkWorkspaceSessionStateRemote from '@knyazevai/dsh-fork-workspace-session-state/remote'
-import agentPresetsRemote from '@knyazevai/dsh-agent-presets/remote'
+import productAnalyticsRemote from '@knyazevai/dsh-client-product-analytics/remote'
+export type {} from '@knyazevai/dsh-client-product-analytics/remote'
+import agentPresetsRemote from '@knyazevai/dsh-agent-preset-registry/remote'
+import userQuestionsRemote from '@knyazevai/dsh-user-questions/remote'
 import commandsRemote from '@knyazevai/dsh-commands/remote'
+import accountRemote from '@knyazevai/dsh-api-account-controller/remote'
 import settingsControllerRemote from '@knyazevai/dsh-api-settings-controller/remote'
+import officeToPdfRemote from '@knyazevai/dsh-office-to-pdf/remote'
 import goalsRemote from '@knyazevai/dsh-goal/remote'
+import scheduleRemote from '@knyazevai/dsh-schedule/remote'
 import llmRemote from '@knyazevai/dsh-llm/remote'
 import dynamicRemote from '@knyazevai/dsh-cordis-host-runner/remote'
+import pluginManagerRemote from '@knyazevai/dsh-plugin-manager/remote'
+import pluginRegistryProbeRemote from '@knyazevai/dsh-client-ui-plugin-manager/remote'
 import pluginInventoryRemote from '@knyazevai/dsh-host-plugin-inventory/remote'
 import messageFeedbackRemote from '@knyazevai/dsh-message-feedback/remote'
 import permissionPresetsRemote from '@knyazevai/dsh-permission-presets/remote'
@@ -16,6 +24,7 @@ import fileUploadsRemote from '@knyazevai/dsh-client-file-upload/remote'
 import sessionReferencesRemote from '@knyazevai/dsh-session-reference/remote'
 import subagentsRemote from '@knyazevai/dsh-subagent/remote'
 import sessionRemote from '@knyazevai/dsh-api-session-controller/remote'
+import jobRemote from '@knyazevai/dsh-api-job-controller/remote'
 import workspaceRemote from '@knyazevai/dsh-api-workspace-controller/remote'
 import terminalRemote from '@knyazevai/dsh-api-terminal-controller/remote'
 import workspaceFilesRemote from '@knyazevai/dsh-api-workspace-files/remote'
@@ -24,11 +33,23 @@ import type { ClientRemote } from '@knyazevai/dsh-api-gateway/client'
 export type * from '@knyazevai/dsh-fork-workspace-session-state/types'
 export type {} from '@knyazevai/dsh-fork-workspace-session-state/remote'
 export type { ClientRemote } from '@knyazevai/dsh-api-gateway/client'
+export type {
+  BundleInfo, BundleRowInfo, ChangeResult, IncompatiblePlugin, InspectOptions, InstallBundleOptions, InstallSpecKind, ManagementError,
+  PackageResult,
+  PluginChange, PluginEntryId, PluginInfo, PluginInspectProblem, PluginInstallCancellation, PluginInstallFailureKind,
+  PluginInstallLogChunk, PluginInstallProgress, PluginInstallRequestId, PluginRegistries, PluginSpecInspection, ReadOnlyReason, Registry,
+} from '@knyazevai/dsh-plugin-manager/types'
+export type {} from '@knyazevai/dsh-plugin-manager/remote'
+export type {} from '@knyazevai/dsh-client-ui-plugin-manager/remote'
 export type { PluginInventorySnapshot } from '@knyazevai/dsh-host-plugin-inventory/types'
-export type {} from '@knyazevai/dsh-agent-presets/remote'
+export type {} from '@knyazevai/dsh-agent-preset-registry/remote'
+export type {} from '@knyazevai/dsh-user-questions/remote'
 export type {} from '@knyazevai/dsh-commands/remote'
 export type {} from '@knyazevai/dsh-api-settings-controller/remote'
+export type {} from '@knyazevai/dsh-api-account-controller/remote'
 export type {} from '@knyazevai/dsh-goal/remote'
+export type {} from '@knyazevai/dsh-schedule/remote'
+export type {} from '@knyazevai/dsh-office-to-pdf/remote'
 export type {} from '@knyazevai/dsh-llm/remote'
 export type {} from '@knyazevai/dsh-host-plugin-inventory/remote'
 export type {} from '@knyazevai/dsh-message-feedback/remote'
@@ -40,13 +61,14 @@ export type {} from '@knyazevai/dsh-subagent/remote'
 export type * from '@knyazevai/dsh-subagent/client'
 export type {} from '@knyazevai/dsh-api-session-controller/remote'
 export type * from '@knyazevai/dsh-api-session-controller/types'
+export type {} from '@knyazevai/dsh-api-job-controller/remote'
+export type * from '@knyazevai/dsh-api-job-controller/types'
 export type {} from '@knyazevai/dsh-api-workspace-controller/remote'
 export type * from '@knyazevai/dsh-api-workspace-controller/types'
 export type {} from '@knyazevai/dsh-api-workspace-files/remote'
 export type * from '@knyazevai/dsh-api-workspace-files/types'
 export type {} from '@knyazevai/dsh-api-terminal-controller/remote'
 export type * from '@knyazevai/dsh-api-terminal-controller/types'
-export type { SessionJob as JobView } from '@knyazevai/dsh-api-session-controller/types'
 // The forwarded-event allowlist's selection seat: without it in the consumer's
 // compilation face `TypertRemoteEvent` is `never` and every `$on` call fails.
 export type { ApiRemoteForwardedEvent } from '../types.ts'
@@ -57,7 +79,7 @@ export type {} from '@knyazevai/dsh-commands/types'
 export type {} from '@knyazevai/dsh-cordis-host-runner/types'
 export type {} from '@knyazevai/dsh-credentials/types'
 export type {} from '@knyazevai/dsh-llm/types'
-export type {} from '@knyazevai/dsh-agent-presets/types'
+export type {} from '@knyazevai/dsh-agent-preset-registry/types'
 export type {} from '@knyazevai/dsh-permission-presets/types'
 export type {} from '@knyazevai/dsh-settings/types'
 export type {} from '@knyazevai/dsh-user-approval/types'
@@ -160,9 +182,13 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposers: Array<() => Promise<void>> = []
   try {
     for (const contribution of [
-      forkWorkspaceSessionStateRemote, agentPresetsRemote, commandsRemote, settingsControllerRemote, goalsRemote, llmRemote, dynamicRemote,
-      pluginInventoryRemote, messageFeedbackRemote, sessionFeedbackRemote, fileUploadsRemote, sessionReferencesRemote,
-      permissionPresetsRemote, subagentsRemote, sessionRemote, workspaceRemote, workspaceFilesRemote, terminalRemote,
+      forkWorkspaceSessionStateRemote,
+      productAnalyticsRemote, agentPresetsRemote, commandsRemote, settingsControllerRemote, accountRemote,
+      goalsRemote, llmRemote, dynamicRemote, scheduleRemote,
+      pluginInventoryRemote, pluginManagerRemote, pluginRegistryProbeRemote, messageFeedbackRemote, sessionFeedbackRemote,
+      fileUploadsRemote, sessionReferencesRemote,
+      permissionPresetsRemote, subagentsRemote, sessionRemote, jobRemote, workspaceRemote, workspaceFilesRemote, terminalRemote,
+      officeToPdfRemote, userQuestionsRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }

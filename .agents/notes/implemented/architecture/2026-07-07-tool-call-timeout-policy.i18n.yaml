@@ -1,6 +1,28 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-07-07-tool-call-timeout-policy.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-07-07-tool-call-timeout-policy.md
-2026-07-07-tool-call-timeout-policy.md: 9af5a2f524937ce5420fe3c5aadd75987eb5f46b
-2026-07-07-tool-call-timeout-policy.zh.md: 868cbdd24dcd0bdc8a423be2abe54a8ac29d3a46
+/agent-note-tool-call-timeout-policy-as-a-plugin:
+  en: 46fa7d1eac4fe061
+  zh: 7a62f8f7b1c66722
+/agent-note-tool-call-timeout-policy-as-a-plugin/problem:
+  en: 44fdedf48b97e6f6
+  zh: f1f1377bf7c7013a
+/agent-note-tool-call-timeout-policy-as-a-plugin/decision:
+  en: adf215aeab2b4ee6
+  zh: dcdacc539ac1e3c0
+/agent-note-tool-call-timeout-policy-as-a-plugin/decision/the-tools-execute-around-dispatch-extension-point:
+  en: 4062660e408dcad6
+  zh: bf471349496a8749
+/agent-note-tool-call-timeout-policy-as-a-plugin/decision/the-timeout-policy-plugin:
+  en: 4c79774d71dfee05
+  zh: fc244cd7c4208851
+/agent-note-tool-call-timeout-policy-as-a-plugin/decision/existing-tool-adaptation:
+  en: ebf7740477948d2e
+  zh: 3bf8da8b40e74259
+/agent-note-tool-call-timeout-policy-as-a-plugin/alternatives-considered:
+  en: 801fbc5def13cf06
+  zh: a9f2c4e5cafe6470
+/agent-note-tool-call-timeout-policy-as-a-plugin/consequences:
+  en: 7f1dd05ba224a22e
+  zh: 7e8ca0c5cb5b25a2

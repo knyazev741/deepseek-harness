@@ -1,6 +1,52 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/agent-team-profile/README.md
-README.md: 707a161814fa57ac55e9d7a3fd03f20fe1b12dcb
-README.zh.md: acebe30ed8851335a66379ba6a1e14ac860acd09
+/:
+  en: e263a0edd266210f
+  zh: c5779bf7f64631d3
+/knyazevai-dsh-experimental-agent-team-profile:
+  en: 5599779f1a1ef7fd
+  zh: e1b451309f4498bf
+/knyazevai-dsh-experimental-agent-team-profile/summary:
+  en: 3ca34df3ee31841d
+  zh: a413140d89be2d05
+/knyazevai-dsh-experimental-agent-team-profile/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-experimental-agent-team-profile/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/knyazevai-dsh-experimental-agent-team-profile/use-this-package/install-into-a-profile:
+  en: 24118a7473d84ca6
+  zh: 0cf9661cba0b3bc6
+/knyazevai-dsh-experimental-agent-team-profile/use-this-package/what-you-get:
+  en: f0e95e60095fc5cb
+  zh: 8c36603b423475d0
+/knyazevai-dsh-experimental-agent-team-profile/understand-the-implementation:
+  en: cac23b0774e00717
+  zh: 4446c09b6525587a
+/knyazevai-dsh-experimental-agent-team-profile/further-exploration:
+  en: 76e92afc23c0ec7c
+  zh: 7bd671bd557a91ee
+/knyazevai-dsh-experimental-agent-team-profile/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-experimental-agent-team-profile/model-experience/team-policy-and-tools:
+  en: 8e1e365ff3b0dfb2
+  zh: c6c91fbf1e1df934
+/knyazevai-dsh-experimental-agent-team-profile/model-experience/team-policy-and-tools/what-the-model-sees:
+  en: 578f0b9655925a84
+  zh: 8eb81f8250f86134
+/knyazevai-dsh-experimental-agent-team-profile/model-experience/team-policy-and-tools/token-effect:
+  en: 8264e34d70ad8cff
+  zh: 3dac89f62d767351
+/knyazevai-dsh-experimental-agent-team-profile/model-experience/team-policy-and-tools/kv-cache-effect:
+  en: e331337b094aacde
+  zh: bb2e5df5ebeb9305
+/knyazevai-dsh-experimental-agent-team-profile/known-limitations-and-deferred-work:
+  en: 0413821c2fc20bea
+  zh: 53e135425dd82e12
+/knyazevai-dsh-experimental-agent-team-profile/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

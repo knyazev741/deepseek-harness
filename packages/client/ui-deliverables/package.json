@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-deliverables",
-  "description": "Produced-files turn tail and clickable final-response file references for Web",
-  "version": "0.1.6-alpha.1",
+  "description": "Changed-files card with per-file comparison tabs, delivery cards, and clickable final-response file references for Web",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -34,7 +34,9 @@
         "@knyazevai/dsh-client-ui-chat",
         "@knyazevai/dsh-client-ui-conversation",
         "@knyazevai/dsh-client-ui-renderer",
-        "@knyazevai/dsh-client-ui-tool"
+        "@knyazevai/dsh-client-ui-sidebar-right",
+        "@knyazevai/dsh-client-ui-tool",
+        "@knyazevai/dsh-client-ui-settings"
       ],
       "platform": "web"
     }
@@ -45,35 +47,40 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-api-remotes": "workspace:^",
-    "@knyazevai/dsh-client-connection": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-store": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-chat": "workspace:^",
-    "@knyazevai/dsh-client-ui-conversation": "workspace:^",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-chat": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-dockkit": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-system-prompt": "workspace:^",
-    "@knyazevai/dsh-session-query": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-client-ui-tool": "workspace:^",
-    "@knyazevai/dsh-tool-present": "workspace:^",
-    "@knyazevai/dsh-api-session-controller": "workspace:^",
-    "@knyazevai/dsh-util-workspace-path": "workspace:^",
-    "@knyazevai/dsh-api-workspace-files": "workspace:^",
-    "@knyazevai/dsh-fs": "workspace:^",
-    "@knyazevai/dsh-fs-local": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-sandbox-policy": "workspace:^"
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-client-ui-tool": "workspace:*",
+    "@knyazevai/dsh-tool-present": "workspace:*",
+    "@knyazevai/dsh-workspace-changes": "workspace:*",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@knyazevai/dsh-util-workspace-path": "workspace:*",
+    "@knyazevai/dsh-api-workspace-files": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-client-ui-settings": "workspace:*"
   },
   "files": [
     "lib/index.js",
@@ -81,6 +88,6 @@
     "lib/types/**/*.d.ts"
   ],
   "dependencies": {
-    "@knyazevai/dsh-typert-protocol": "workspace:^"
+    "@knyazevai/dsh-typert-protocol": "workspace:*"
   }
 }

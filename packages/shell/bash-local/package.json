@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-bash-local",
   "description": "Local-subprocess implementation of the DeepSeek Harness bash executor seam",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -27,21 +27,19 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-shell": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^",
-    "@knyazevai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^"
+    "@knyazevai/dsh-shell": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-shell": "workspace:^",
-    "@knyazevai/dsh-subprocess": "workspace:^",
-    "@knyazevai/dsh-subprocess-local": "workspace:^",
-    "@knyazevai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^"
+    "@knyazevai/dsh-shell": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

@@ -5,8 +5,10 @@ export type ForkSessionSource = 'github-actions' | null
 
 declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
-    /** Log-only marker identifying a session created in GitHub Actions. */
+    /** Read-compatible legacy marker; current writers use the plugin-prefixed identity. */
     'fork/session-source': { source: 'github-actions' }
+    /** Log-only marker identifying a session created in GitHub Actions. */
+    'plugin:fork/session-source': { source: 'github-actions' }
   }
 }
 

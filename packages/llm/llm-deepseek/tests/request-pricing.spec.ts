@@ -3,9 +3,9 @@ import { offloadedImageText, requestImageHandleText, textOnlyImageText } from '@
 import type { ImageBlock } from '@knyazevai/dsh-llm'
 import { AttachmentId } from '@knyazevai/dsh-attachment'
 import type { ImageAttachmentRef } from '@knyazevai/dsh-attachment'
-import { deepSeekImageRequestPricing } from '../src/common/request-pricing.ts'
+import { deepSeekImageRequestPricing } from '../src/request-pricing.ts'
 import { resolveAdapterOptions } from '../src/index.ts'
-import type { Config } from '../src/index.ts'
+import type { Options as Config } from '../src/index.ts'
 
 const VISION_MODEL = {
   id: 'vision',

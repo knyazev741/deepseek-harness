@@ -1,6 +1,31 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/llm/deepseek-llm-api-extensions/README.md
-README.md: 27ab9003aac619c0e175b10865514a8dda63e3bb
-README.zh.md: 85c2ab4c3b98d3d4aed3b038ee126b5156ac30ca
+/:
+  en: 8805672f8507e16d
+  zh: 07696ec60f8d86e8
+/knyazevai-dsh-deepseek-llm-api-extensions:
+  en: 454cf2d56824c320
+  zh: c1a560d65f70053e
+/knyazevai-dsh-deepseek-llm-api-extensions/summary:
+  en: 2ee01d6439e60359
+  zh: a1fb7c4c0d686895
+/knyazevai-dsh-deepseek-llm-api-extensions/table-of-contents:
+  en: 6b7f62c318c9aad6
+  zh: 5e22d58884e60c87
+/knyazevai-dsh-deepseek-llm-api-extensions/service:
+  en: 1297e9413a625fb0
+  zh: f28259087104bf53
+/knyazevai-dsh-deepseek-llm-api-extensions/model-experience:
+  en: c6396cd892daf5de
+  zh: 315deec98fcbd205
+/knyazevai-dsh-deepseek-llm-api-extensions/model-experience/kv-cache-effect:
+  en: 83eb7f1e6ce80b45
+  zh: 516811171411ffca
+/knyazevai-dsh-deepseek-llm-api-extensions/known-limitations-and-deferred-work:
+  en: 440169524f1a1323
+  zh: 935424afe40201b7
+/knyazevai-dsh-deepseek-llm-api-extensions/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: e88aeb617ffb74ea

@@ -7,6 +7,13 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { createUserMessage, BlockAssembler } from '@knyazevai/dsh-llm'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'dsh-session-title-llm': { kind: 'dsh-session-title-llm' } & ContextFormed
+  }
+}
+
 import type { FinishReason, GenerateOptions, Message } from '@knyazevai/dsh-llm'
 import { deadline, MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import { deepFreeze } from '@knyazevai/dsh-util-values'
@@ -247,7 +254,7 @@ export async function generateSessionTitleWithLlm(
   const route = resolveRoute(config, request)
   const messages: Message[] = [createUserMessage({
     content: [{ type: 'text', text: framedInput }],
-    source: { kind: 'plugin', plugin: 'dsh-session-title-llm' },
+    source: { kind: 'dsh-session-title-llm' },
   })]
   const system = systemPrompt(config)
   using callDeadline = deadline(request.signal, config.timeoutMs, SESSION_TITLE_TIMEOUT_CODE)

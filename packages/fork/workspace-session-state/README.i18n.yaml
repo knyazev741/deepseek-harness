@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/fork/workspace-session-state/README.md
-README.md: 1fbf84c70fe6f91f38c3405c9ed57d88ebc2e324
-README.zh.md: 5832444477309baba66392f8b2d480123c512910
+/:
+  en: 7cb2c55511ae2bc9
+  zh: 61b558d5016f68e5
+/knyazevai-dsh-fork-workspace-session-state:
+  en: bfdacf1dae32943e
+  zh: c6c62ef1218d80be
+/knyazevai-dsh-fork-workspace-session-state/summary:
+  en: 1337b448d52be5bb
+  zh: 8ccec574925b56bb
+/knyazevai-dsh-fork-workspace-session-state/table-of-contents:
+  en: 060bce07fb5c15df
+  zh: 56ab0fd40df8c7f3
+/knyazevai-dsh-fork-workspace-session-state/composition:
+  en: 8171345b260d1edf
+  zh: 52a74d69e827d069
+/knyazevai-dsh-fork-workspace-session-state/host-service-and-remote:
+  en: 1e9ea700c50b14ef
+  zh: 99136c38812cb19b
+/knyazevai-dsh-fork-workspace-session-state/model-experience:
+  en: 6e1ef72e3abeabab
+  zh: 9d8bb80154b7e114
+/knyazevai-dsh-fork-workspace-session-state/model-experience/kv-cache-effect:
+  en: 6d6e6a1efa5f3fc1
+  zh: 3d01bbdfdad8a180
+/knyazevai-dsh-fork-workspace-session-state/known-limitations-and-deferred-work:
+  en: 1306a1e864a4617a
+  zh: f216498a89ff26cd
+/knyazevai-dsh-fork-workspace-session-state/known-limitations-and-deferred-work/dev-note:
+  en: cfae41f999886513
+  zh: ae541efe7ad4df99

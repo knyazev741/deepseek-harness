@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/browser-use-runtime/README.md
-README.md: f5e42443db99a85effeaba9abf684bad8f4c8eaa
-README.zh.md: 7a9e1497a9692fb240f0840327708839339efa86
+/:
+  en: 32bd01db6a5146ed
+  zh: 31e56827b98bc1b3
+/knyazevai-dsh-experimental-browser-use-runtime:
+  en: 98f7fa54e8845bd4
+  zh: 3fb3300536b302a4
+/knyazevai-dsh-experimental-browser-use-runtime/summary:
+  en: ac29eb4a94d3cbff
+  zh: 66f2e800cabb19aa
+/knyazevai-dsh-experimental-browser-use-runtime/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: f14f34fce35a8d90
+/knyazevai-dsh-experimental-browser-use-runtime/use-this-package:
+  en: 82042be4816a2cae
+  zh: 4b6db826414c0fd6
+/knyazevai-dsh-experimental-browser-use-runtime/understand-the-implementation:
+  en: ad923b17fcb5421c
+  zh: c2449382d6e0c7ff
+/knyazevai-dsh-experimental-browser-use-runtime/further-exploration:
+  en: 2a8d2c9b217b9e95
+  zh: 084c9ad664e55498
+/knyazevai-dsh-experimental-browser-use-runtime/model-experience:
+  en: 705441e08df596c9
+  zh: d70a7ba9611daca5
+/knyazevai-dsh-experimental-browser-use-runtime/model-experience/kv-cache-effect:
+  en: 68b91a73746b663a
+  zh: 18f6d14457ed81d9
+/knyazevai-dsh-experimental-browser-use-runtime/known-limitations-and-deferred-work:
+  en: 967b70eb9d05064b
+  zh: 6810738575c0f8c0
+/knyazevai-dsh-experimental-browser-use-runtime/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

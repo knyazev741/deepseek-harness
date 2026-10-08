@@ -1,6 +1,70 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/llm/llm-retry/README.md
-README.md: 9e4a9d3f38c76303b3cfa781dd27d54a93e9951c
-README.zh.md: ae06ac0e3aa12372417567adcb62c4dd4c0e0fee
+/:
+  en: 48b7b8ee60e92601
+  zh: 28dfac5ed11f58ce
+/knyazevai-dsh-llm-retry:
+  en: 29d63487cc1ffc57
+  zh: e7fdaa8314047265
+/knyazevai-dsh-llm-retry/summary:
+  en: 9475ebb3e600d47d
+  zh: 7372dfb82ba758f7
+/knyazevai-dsh-llm-retry/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-llm-retry/use-this-package:
+  en: ecee4f255eaa53bd
+  zh: 2e7983fd7668fa00
+/knyazevai-dsh-llm-retry/use-this-package/when-to-choose-it:
+  en: 17f7e708d9daed6c
+  zh: 6ebf99501110948a
+/knyazevai-dsh-llm-retry/use-this-package/minimal-configuration:
+  en: 95b1cf09ee2c77a9
+  zh: 4d45e437db4988c7
+/knyazevai-dsh-llm-retry/use-this-package/what-you-can-observe:
+  en: 21267b22ad48e012
+  zh: 521bfad2c2d8e418
+/knyazevai-dsh-llm-retry/use-this-package/failures-and-recovery:
+  en: 730567739a21a4d2
+  zh: 3ea222c68d960948
+/knyazevai-dsh-llm-retry/understand-the-implementation:
+  en: cef3289094f94c25
+  zh: c7f40ff6e4e56de6
+/knyazevai-dsh-llm-retry/understand-the-implementation/design-philosophy:
+  en: fc4f15a14435698c
+  zh: 3c6d83f5ba04ec0e
+/knyazevai-dsh-llm-retry/understand-the-implementation/source-map:
+  en: 9b79cdd6597930e0
+  zh: 0838f3efbc1e83ac
+/knyazevai-dsh-llm-retry/understand-the-implementation/recovery-flow:
+  en: 85bace285b029101
+  zh: 6e0237450ca6ccc0
+/knyazevai-dsh-llm-retry/understand-the-implementation/waterfall-composition:
+  en: 388e8db333e03cb1
+  zh: 54b6446ac3584724
+/knyazevai-dsh-llm-retry/further-exploration:
+  en: 379f79ac2cafe26d
+  zh: e6d23a010079e41d
+/knyazevai-dsh-llm-retry/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-llm-retry/model-experience/model-request-recovery:
+  en: 8496b7aefbe6fa20
+  zh: ed7b60ef09380ec4
+/knyazevai-dsh-llm-retry/model-experience/model-request-recovery/what-the-model-sees:
+  en: 9772b77e48e70dba
+  zh: df3d4105f7b8c256
+/knyazevai-dsh-llm-retry/model-experience/model-request-recovery/token-effect:
+  en: f86254d7c2ed2444
+  zh: 7e0f7b9e026e0bf2
+/knyazevai-dsh-llm-retry/model-experience/model-request-recovery/kv-cache-effect:
+  en: 82d6bdfc0ec747ea
+  zh: 14269c9dcd086611
+/knyazevai-dsh-llm-retry/known-limitations-and-deferred-work:
+  en: bef1baa545592b9c
+  zh: 61984a1e10de8294
+/knyazevai-dsh-llm-retry/known-limitations-and-deferred-work/dev-note:
+  en: add61ee91e4ae8e4
+  zh: 3877c147b541b2c9

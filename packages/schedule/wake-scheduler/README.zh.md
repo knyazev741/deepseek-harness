@@ -123,7 +123,7 @@ No invariant companion is published because 本包不读取任何可能与它所
 
 - [schedule 组](../README.zh.md) — 同级的会话本地提醒包，其记录也会作为会话回合交付。
 - [会话本地 Schedule 子系统](../../../docs/subsystems/schedule.zh.md) — 本包刻意未复用的提醒记录与交付契约。
-- [持久 Web Schedule 决策](../../../.agents/notes/implemented/feature/2026-08-05-durable-web-schedule.zh.md) — live owner 提醒交付的既有实践。
+- [持久 Web Schedule 决策](../../../docs/subsystems/schedule.zh.md) — live owner 提醒交付的既有实践。
 - [由 profile 配置的唤醒调度器决策](../../../.agents/notes/implemented/feature/2026-09-18-profile-wake-scheduler.zh.md) — 说明本包为何独立于 Schedule，以及它刻意不唤醒什么。
 
 -----

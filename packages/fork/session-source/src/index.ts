@@ -41,7 +41,7 @@ const SOURCE_EVENT_DATA = { source: 'github-actions' } as const
 /** Whether a session already contains the source marker in its persisted log. */
 function hasSourceMarker(session: Session): boolean {
   // oxlint-disable-next-line typescript/no-deprecated -- Existing fork history read retained during upstream migration.
-  return session.snapshotEvents().some(event => event.type === 'fork/session-source')
+  return session.snapshotEvents().some(event => (event.type === 'plugin:fork/session-source' || event.type === 'fork/session-source'))
 }
 
 /**
@@ -56,7 +56,7 @@ export function apply(ctx: Context, config: Config = { enabledWhenEnv: 'GITHUB_A
   ctx.inject(['sessions'], (sessionCtx) => {
     sessionCtx.on('session/created', (session) => {
       if (process.env[config.enabledWhenEnv] !== 'true' || hasSourceMarker(session)) return
-      session.append('fork/session-source', SOURCE_EVENT_DATA, { ignorable: true })
+      session.append('plugin:fork/session-source', SOURCE_EVENT_DATA, { ignorable: true })
     }, { global: true })
   })
 }

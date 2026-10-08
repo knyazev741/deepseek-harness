@@ -1,6 +1,61 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/host/directory-picker-browse/README.md
-README.md: 77c87c60d224210b15acb68aff18eb67827680f5
-README.zh.md: 69aaa5da49243ee21306c299f1ece05bb0753cce
+/:
+  en: bea16365bc3196b2
+  zh: ba6b3c899a0f20b2
+/knyazevai-dsh-host-directory-picker-browse:
+  en: 2a3637db792d34c9
+  zh: 4fbdaffe17a1f870
+/knyazevai-dsh-host-directory-picker-browse/summary:
+  en: 49d1427956180353
+  zh: 15955b505310295a
+/knyazevai-dsh-host-directory-picker-browse/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-host-directory-picker-browse/use-this-package:
+  en: 943e692ce514daf6
+  zh: 917f508c4c612eae
+/knyazevai-dsh-host-directory-picker-browse/use-this-package/listing-a-directory:
+  en: fc4fc8e16e37df02
+  zh: d609eeb57557e5cb
+/knyazevai-dsh-host-directory-picker-browse/use-this-package/creating-a-directory:
+  en: 71acb6e2f9b6176d
+  zh: 64e0bd932507dfe9
+/knyazevai-dsh-host-directory-picker-browse/use-this-package/observable-failures:
+  en: 3f136f768deaab29
+  zh: 39eef7ad16271cdb
+/knyazevai-dsh-host-directory-picker-browse/use-this-package/configuration:
+  en: ecc5673865224cfb
+  zh: 3a2ec83c9b06d49b
+/knyazevai-dsh-host-directory-picker-browse/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: 4ed0861911abaf5d
+/knyazevai-dsh-host-directory-picker-browse/understand-the-implementation/design-concept:
+  en: cec8eab00b0484b9
+  zh: 213a5cf9f61bd0e0
+/knyazevai-dsh-host-directory-picker-browse/understand-the-implementation/the-fully-qualified-fence:
+  en: b547791a9cd9d9f0
+  zh: fd62beb4b2cac303
+/knyazevai-dsh-host-directory-picker-browse/understand-the-implementation/abort-and-probing:
+  en: adffb1740e726f22
+  zh: edfe4a1f3141a1b5
+/knyazevai-dsh-host-directory-picker-browse/understand-the-implementation/source-map:
+  en: 014babc8e5a26317
+  zh: b1a1039dd3dd48a9
+/knyazevai-dsh-host-directory-picker-browse/further-exploration:
+  en: feb113af98be01de
+  zh: af9ae3a513ad2e67
+/knyazevai-dsh-host-directory-picker-browse/model-experience:
+  en: cdbb9c75fbb91bb5
+  zh: 35047dda1956f0ac
+/knyazevai-dsh-host-directory-picker-browse/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: de54f3467ef3b9be
+/knyazevai-dsh-host-directory-picker-browse/known-limitations-and-deferred-work:
+  en: 45c0c8ff249e6119
+  zh: d7e4ff77f5978fba
+/knyazevai-dsh-host-directory-picker-browse/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

@@ -19,7 +19,7 @@ import { renderPersistencePair, type PersistenceArtifact } from './persistence-a
 
 export { annotateSurface, collectEventEnvelopeTypes, collectLogEvents, collectSurfaceEventTypes } from './persistence-catalog-source.ts'
 export type { AnnotatedLogEventEntry, EventEnvelopeTypeEntry, LogEventEntry } from './persistence-catalog-source.ts'
-import type { PersistenceSchemaInventory } from './persistence-schema-model.ts'
+import { persistenceSchemaSnapshot, type PersistenceSchemaInventory } from './persistence-schema-model.ts'
 import { renderPersistenceSchemaDefinitions, renderPersistenceSchemaIndex } from './render-persistence-schema.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -40,6 +40,8 @@ const LINK_MAP: Record<string, string> = {
   StreamChunk: 'subsystems/llm-streaming.md',
   TokenUsage: 'subsystems/llm-streaming.md',
   TodoItem: 'subsystems/todo.md',
+  WorkspaceChangesSummary: 'subsystems/deliverables.md',
+  PresentedFile: 'subsystems/deliverables.md',
   TurnTrigger: 'subsystems/session.md',
   TurnEndReason: 'subsystems/session.md',
   SessionTitleEventData: 'subsystems/session-title.md',
@@ -100,7 +102,7 @@ export function render(
     '',
     text.envelopeIntro,
     '',
-    ...(schema ? [renderPersistenceSchemaIndex(schema, locale)] : []),
+    ...(schema ? [renderPersistenceSchemaIndex(schema, locale, undefined, 2, 'current')] : []),
     `## ${text.envelope}`,
     '',
     '```' + FENCE,
@@ -119,7 +121,7 @@ export function render(
       lines.push(...renderEvent(e, locale))
     }
   }
-  if (schema) lines.push(renderPersistenceSchemaDefinitions(schema, locale))
+  if (schema) lines.push(renderPersistenceSchemaDefinitions(schema, locale, undefined, 2, 'current'))
   return lines.join('\n')
 }
 
@@ -176,7 +178,7 @@ export function persistenceCatalogArtifacts(scanRoot: string, schema: Persistenc
   return [
     ...renderPersistencePair(scanRoot, OUT, render(events, envelope, schema), render(events, envelope, schema, 'zh')),
     { path: OUT_RUNTIME_TYPES, content: renderKnownEventTypes(events) },
-    { path: OUT_SCHEMA, content: `${JSON.stringify(schema, null, 2)}\n` },
+    { path: OUT_SCHEMA, content: `${JSON.stringify(persistenceSchemaSnapshot(schema), null, 2)}\n` },
   ]
 }
 

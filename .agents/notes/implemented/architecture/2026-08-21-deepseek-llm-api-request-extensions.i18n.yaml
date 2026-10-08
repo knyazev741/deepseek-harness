@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-21-deepseek-llm-api-request-extensions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-21-deepseek-llm-api-request-extensions.md
-2026-08-21-deepseek-llm-api-request-extensions.md: 67f127030947574d62c77818fd2f09a33af2104d
-2026-08-21-deepseek-llm-api-request-extensions.zh.md: 01908a6bcc29f052fa8d23a0d8f9756af3385b95
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages:
+  en: bbb93b705960a21b
+  zh: 0fc6fc150215f08f
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/problem:
+  en: 4945ce54f66df55c
+  zh: 9fbd833c1d8122a7
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/decision:
+  en: 354307d990082e94
+  zh: b6814f7c8f76e2ca
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/incremental-session-log-field:
+  en: b116bcf170983a4a
+  zh: 08c07df205f7640c
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/plugin-package-field:
+  en: 7d31e8f45464f0c1
+  zh: 1335b3258253a4de
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/deferred-inventory-caching:
+  en: eb69576e756f4aa1
+  zh: 5c1923159da3f7a2
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/verification:
+  en: 9935338a0970d09d
+  zh: a9a36702bc72a9f7
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/alternatives-considered:
+  en: 5faf7699272f99b4
+  zh: 7a402e24c80131cf
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/alternatives-considered/why-not-request-relative-message-references:
+  en: 3f03c2028adf5814
+  zh: c50f7f7b0af04655
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/alternatives-considered/why-not-omit-assistant-chunks-or-overlapping-event-data:
+  en: b6eff63f49220dcc
+  zh: 8e4a6c785ed2256a
+/agent-note-deepseek-llm-api-request-extensions-for-session-logs-and-plugin-packages/consequences:
+  en: 853cd7b21db6208b
+  zh: bfaf459f006fe2db

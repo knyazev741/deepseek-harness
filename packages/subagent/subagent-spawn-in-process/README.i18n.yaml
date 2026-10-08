@@ -1,6 +1,79 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/subagent/subagent-spawn-in-process/README.md
-README.md: ee038395b23e2a5b6fc47a67d88b75324dff4fdb
-README.zh.md: 833108a60f5096e36a9dd05fa9cf68102ecdc8b7
+/:
+  en: d510765ec1bebc28
+  zh: 35efb9f71f05f326
+/knyazevai-dsh-subagent-spawn-in-process:
+  en: 6ceda097f11acdd7
+  zh: e753a0e39bbd618d
+/knyazevai-dsh-subagent-spawn-in-process/summary:
+  en: 84d0a0acfc4251fe
+  zh: 8480ddf68e377522
+/knyazevai-dsh-subagent-spawn-in-process/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-subagent-spawn-in-process/use-this-package:
+  en: ca895c3af2ec6371
+  zh: 51dbe9e2fa79de30
+/knyazevai-dsh-subagent-spawn-in-process/use-this-package/when-to-choose-it:
+  en: 5f14443940e59bb5
+  zh: 3e8610aec21c55e8
+/knyazevai-dsh-subagent-spawn-in-process/use-this-package/minimal-configuration:
+  en: 08b7ebe8fd78cd94
+  zh: 1c5409d22656975b
+/knyazevai-dsh-subagent-spawn-in-process/use-this-package/what-a-delegation-does:
+  en: 9f4e6f31ad4d86d1
+  zh: 4ad77e0b80c6efcc
+/knyazevai-dsh-subagent-spawn-in-process/understand-the-implementation:
+  en: 9e00b9dc2f9cf38c
+  zh: 60ce00ce6c3b5564
+/knyazevai-dsh-subagent-spawn-in-process/understand-the-implementation/design-concept:
+  en: 80716c24d7a0ee78
+  zh: 9bead3317f5a357e
+/knyazevai-dsh-subagent-spawn-in-process/understand-the-implementation/source-map:
+  en: f23771c3d213ffb1
+  zh: c0b16b102dc26345
+/knyazevai-dsh-subagent-spawn-in-process/understand-the-implementation/run-flow:
+  en: 7b55a5649bc38155
+  zh: 51fe220c84ca759a
+/knyazevai-dsh-subagent-spawn-in-process/understand-the-implementation/ownership-and-scope:
+  en: 8af949dc29cb4a5c
+  zh: f4e4f9f9f4a4b7c9
+/knyazevai-dsh-subagent-spawn-in-process/further-exploration:
+  en: 7ca64f94c070cbe6
+  zh: 79502acb06930f54
+/knyazevai-dsh-subagent-spawn-in-process/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/child-agent-request:
+  en: 05e6180f1498fdf9
+  zh: 2b05d2b97bfa67da
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/child-agent-request/what-the-model-sees:
+  en: 2035bdd8640e5a8a
+  zh: 5afa645d7dbe31a5
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/child-agent-request/token-effect:
+  en: e74d21e38e4a53a9
+  zh: 6a5e3ef5fe0f4f14
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/child-agent-request/kv-cache-effect:
+  en: 78d800b26fb3b0af
+  zh: 313169b62c29af1d
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/parent-tool-result-indirectly:
+  en: 75d061c2151624a7
+  zh: 71e58e020b60ff90
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/parent-tool-result-indirectly/what-the-model-sees:
+  en: 93ae79a8f38c984b
+  zh: 6ede5c4312685ff0
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/parent-tool-result-indirectly/token-effect:
+  en: ff8045aa0f466c2a
+  zh: e38fc5c6af2ce076
+/knyazevai-dsh-subagent-spawn-in-process/model-experience/parent-tool-result-indirectly/kv-cache-effect:
+  en: f5d5f97a153f7c70
+  zh: 3d6bc05b9eadfbc2
+/knyazevai-dsh-subagent-spawn-in-process/known-limitations-and-deferred-work:
+  en: 68720f2a663a4aad
+  zh: a472436c5cc2b801
+/knyazevai-dsh-subagent-spawn-in-process/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

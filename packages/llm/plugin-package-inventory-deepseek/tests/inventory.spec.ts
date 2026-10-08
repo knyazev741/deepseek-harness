@@ -10,7 +10,7 @@ import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 import { SessionId } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import { createScope } from '@knyazevai/dsh-scope'
-import AgentPresets, { mountPreset } from '@knyazevai/dsh-agent-presets'
+import AgentPresets from '@knyazevai/dsh-agent-preset-registry'
 import { PluginPackages } from '@knyazevai/dsh-app-boot'
 import DeepSeekLlmApiExtensionRegistry from '@knyazevai/dsh-deepseek-llm-api-extensions'
 import * as PluginInventory from '../src/index.ts'
@@ -50,7 +50,7 @@ async function harness(
   ctx.loader.builtins.include = Include
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionProjectionRegistry)
-  await ctx.plugin(AgentPresets, { default: 'fixture', roots: [], includeShippedRoot: false, includeUserRoot: false })
+  await ctx.plugin(AgentPresets, { default: 'fixture' })
   await ctx.plugin(DeepSeekLlmApiExtensionRegistry)
   const inventory = enabled === undefined
     ? ctx.plugin(PluginInventory)
@@ -192,6 +192,8 @@ describe('DeepSeek plugin package inventory', () => {
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(DeepSeekLlmApiExtensionRegistry)
     await ctx.plugin(PluginInventory)
+    ctx.loader.builtins.noop = () => {}
+    await ctx.loader.create({ name: 'cordis:noop' })
     const prepared = await ctx.deepseekLlmApiExtensions.prepare({ body: { messages: [] }, signal: SIGNAL })
     expect(prepared.fields.dsh_plugin_packages).toEqual({ version: 1, packages: [] })
   })
@@ -219,26 +221,35 @@ describe('DeepSeek plugin package inventory', () => {
     ])
   })
 
-  it('mirrors the standing preset bare-package override instead of its local node_modules', async () => {
+  it('resolves preset plugins from the host and nested composition bases', async () => {
     const { ctx, root } = await harness()
     await packagePlugin(root, 'node_modules/preset-only', { name: 'preset-only', version: '4.0.0' })
-    const presetDir = join(root, 'preset')
-    await mkdir(presetDir, { recursive: true })
-    await packagePlugin(presetDir, 'node_modules/preset-only', { name: 'preset-only', version: '9.0.0' })
-    const composition = join(presetDir, 'agent.cordis.yml')
-    await writeFile(composition, '- id: preset-only\n  name: preset-only/plugin.mjs\n')
-
-    const standingKey = {}
-    const standing = createScope(ctx, standingKey)
-    await mountPreset(standing.ctx, { id: 'fixture', trust: 'user', path: composition })
-    const agentKey = {}
-    const agentScope = createScope(ctx, agentKey, { parent: standingKey })
+    const nestedRoot = join(root, 'nested-preset')
+    await packagePlugin(nestedRoot, 'node_modules/preset-only', { name: 'preset-only', version: '5.0.0' })
+    const composition = join(nestedRoot, 'cordis.yml')
+    await writeFile(composition, '- id: nested\n  name: preset-only/plugin.mjs\n')
+    await ctx.agentPresets.register({ id: 'fixture', plugins: [
+      { id: 'preset-only', name: 'preset-only/plugin.mjs' },
+      { id: 'nested', name: 'cordis:include', config: { path: pathToFileURL(composition).href } },
+    ] })
+    const agentScope = createScope(ctx, {})
+    await ctx.agentPresets.mount(agentScope.ctx)
     const id = SessionId('preset-agent')
     const agent = { id, ctx: agentScope.ctx, session: { id } } as unknown as Agent
     await ctx.agents.register(agent)
+    const modules = ctx.agentPresets.inspectCompositions(agentScope.ctx)
+      .flatMap(row => row.modules).filter(row => row.moduleName === 'preset-only/plugin.mjs')
+    expect(modules.map(row => row.useHostBase)).toEqual([true, false])
+    expect(modules.map(row => new URL('probe.mjs', row.baseUrl).href)).toEqual([
+      new URL('probe.mjs', ctx.baseUrl).href,
+      new URL('probe.mjs', pathToFileURL(composition)).href,
+    ])
 
     const prepared = await ctx.deepseekLlmApiExtensions.prepare({ body: { messages: [] }, signal: SIGNAL, sessionId: id })
-    expect(prepared.fields.dsh_plugin_packages?.packages).toEqual([{ name: 'preset-only', version: '4.0.0' }])
+    expect(prepared.fields.dsh_plugin_packages?.packages).toEqual([
+      { name: 'preset-only', version: '4.0.0' },
+      { name: 'preset-only', version: '5.0.0' },
+    ])
   })
 
   it('withdraws the inventory field when the contributing plugin reloads', async () => {

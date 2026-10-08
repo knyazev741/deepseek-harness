@@ -1,6 +1,43 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-goal/README.md
-README.md: b1cc5792f7c2f00d610aa71fbd7e6de4dd2b4d55
-README.zh.md: 987d210ed09b352eb1402381adc4601b2aa7c60f
+/:
+  en: dd1d437b386e4216
+  zh: 4b59a2d565d99a0c
+/knyazevai-dsh-client-ui-goal:
+  en: 2d49e29d9ba16f3a
+  zh: cba11b3c707639d5
+/knyazevai-dsh-client-ui-goal/summary:
+  en: 615de8980e1b06c3
+  zh: 7fc3284c2bb00f20
+/knyazevai-dsh-client-ui-goal/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-client-ui-goal/use-this-package:
+  en: 4f6e6353d793a0de
+  zh: cde6e470f7dd9057
+/knyazevai-dsh-client-ui-goal/use-this-package/the-command-input-bubble:
+  en: 05c5db0eb58dffef
+  zh: 54e7bea0b810b1b8
+/knyazevai-dsh-client-ui-goal/use-this-package/failures:
+  en: 097bbdd748dc17e5
+  zh: 867d341d046ba609
+/knyazevai-dsh-client-ui-goal/understand-the-implementation:
+  en: ab510274586c2d1d
+  zh: 4f65fc3b8e367e1e
+/knyazevai-dsh-client-ui-goal/further-exploration:
+  en: 591a317a4f0af7d9
+  zh: b1665ca4f6fb811e
+/knyazevai-dsh-client-ui-goal/model-experience:
+  en: 53ca3b1f16b1ef44
+  zh: 39254d4076e3723d
+/knyazevai-dsh-client-ui-goal/model-experience/kv-cache-effect:
+  en: 68c9a2a057acb6cf
+  zh: baba87876e432666
+/knyazevai-dsh-client-ui-goal/known-limitations-and-deferred-work:
+  en: bbb97ea1b94eae0f
+  zh: 8e6b0e0516746dcf
+/knyazevai-dsh-client-ui-goal/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

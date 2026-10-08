@@ -6,7 +6,7 @@ Status: proposed
 
 ## 问题
 
-本 harness 运行自己的 agent loop；控制台编码智能体（Codex、Claude Code、讲 ACP 的客户端）在这里仅作为一次性 subagent provider 存在（[Codex 与 Claude Code 后端](../../implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.zh.md)），把一次子运行收敛为一条最终 tool result。用户无法在本 GUI 中打开一个由外部智能体驱动的会话，之后智能体也无法托管这样的会话：多轮延续、实时流式输出、智能体原生压缩、斜杠命令、原生模型目录与权限请求都没有承载面。subagent seam 的 continuation manager 在构造上就是进程内的——外部进程无法进入其 inbox 契约——因此交互性无法回填到 `SubagentProvider.start()` 上。
+本 harness 运行自己的 agent loop；控制台编码智能体（Codex、Claude Code、讲 ACP 的客户端）在这里仅作为一次性 subagent provider 存在（[Codex 与 Claude Code 后端](../../../../packages/fork/external-session/README.zh.md)），把一次子运行收敛为一条最终 tool result。用户无法在本 GUI 中打开一个由外部智能体驱动的会话，之后智能体也无法托管这样的会话：多轮延续、实时流式输出、智能体原生压缩、斜杠命令、原生模型目录与权限请求都没有承载面。subagent seam 的 continuation manager 在构造上就是进程内的——外部进程无法进入其 inbox 契约——因此交互性无法回填到 `SubagentProvider.start()` 上。
 
 ## 提案
 

@@ -116,7 +116,7 @@ describe('WakeScheduler', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(h.messages).toHaveLength(1)
     expect(textOf(h.messages[0]!)).toBe(PROMPT)
-    expect(h.messages[0]!.source).toMatchObject({ kind: 'plugin', plugin: 'wake-scheduler' })
+    expect(h.messages[0]!.source).toMatchObject({ kind: 'wake-scheduler' })
     expect(h.store.get(SESSION)).toMatchObject({
       lastRunAt: T0 + INTERVAL,
       nextRunAt: T0 + INTERVAL * 2,

@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import * as yaml from 'js-yaml'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { ToolCallId, createUserMessage, ReasoningEffortId } from '@knyazevai/dsh-llm'
+import LlmRuntime, { ToolCallId, createToolResultMessage, createUserMessage, ReasoningEffortId } from '@knyazevai/dsh-llm'
 import * as LlmPiAi from '@knyazevai/dsh-llm-pi-ai'
-import type { Config } from '@knyazevai/dsh-llm-pi-ai'
+import type { PiAiProviderProfile } from '@knyazevai/dsh-llm-pi-ai'
+type Config = { providers: Record<string, PiAiProviderProfile> }
 import { assemble } from '../../../llm/llm-pi-ai/tests/assemble.ts'
 
 let context: Context | undefined
@@ -25,7 +26,7 @@ describe.skipIf(!process.env.KNYAZEV_AI_API_KEY)('fork GLM real API', () => {
     await ctx.plugin(LlmPiAi, config)
     const messages = [createUserMessage({
       content: [{ type: 'text', text: 'Use get_weather to check weather in Bali.' }],
-      source: { kind: 'plugin', plugin: 'test' },
+      source: { kind: 'user' },
     })]
     const tools = [{
       name: 'get_weather',
@@ -41,10 +42,7 @@ describe.skipIf(!process.env.KNYAZEV_AI_API_KEY)('fork GLM real API', () => {
     expect(JSON.parse(call.arguments)).toMatchObject({ city: expect.stringMatching(/bali/i) as string })
     const second = await assemble(ctx, {
       ...options,
-      messages: [...messages, first.message, createUserMessage({
-        content: [{ type: 'tool-result', toolCallId: ToolCallId(call.id), content: [{ type: 'text', text: 'Bali: sunny, 28 C.' }] }],
-        source: { kind: 'plugin', plugin: 'test' },
-      })],
+      messages: [...messages, first.message, createToolResultMessage({ callId: ToolCallId(call.id), isError: false, content: [{ type: 'text', text: 'Bali: sunny, 28 C.' }] })],
     })
     expect(second.finish.kind).toBe('stop')
     const text = second.message.content.filter(block => block.type === 'text').map(block => block.text).join('')

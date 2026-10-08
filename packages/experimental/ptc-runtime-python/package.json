@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-ptc-runtime-python",
   "description": "CPython subprocess implementation of the DeepSeek Harness PTC execution seam",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-alpha.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
@@ -24,19 +24,19 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-ptc-runtime": "workspace:^",
-    "@knyazevai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-util-values": "workspace:^"
+    "@knyazevai/dsh-ptc-runtime": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-util-values": "workspace:*"
   },
   "devDependencies": {
-    "@knyazevai/dsh-ptc-runtime": "workspace:^",
-    "@knyazevai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-util-values": "workspace:^"
+    "@knyazevai/dsh-ptc-runtime": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-util-values": "workspace:*"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "publishConfig": {
     "access": "public"
