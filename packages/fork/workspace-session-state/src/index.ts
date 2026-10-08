@@ -119,7 +119,8 @@ export class ForkWorkspaceSessionState extends TypertRemoteService {
     super(ctx, 'forkWorkspaceSessionState')
     validateStoredState({ pins: config.pins.get() })
     ctx.on('settings/document-updated', (ns) => {
-      if (ns === SETTINGS_NAMESPACE) void this.enqueue(() => this.importPins()).catch(error => ctx.logger.warn(error))
+      if (ns !== SETTINGS_NAMESPACE) return
+      void this.enqueue(() => this.importPins()).catch((error: unknown) => { ctx.logger.warn(error) })
     })
     const drain = async () => {
       this.stopped = true

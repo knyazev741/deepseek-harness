@@ -39,17 +39,17 @@
     }
   },
   "dependencies": {
-    "@knyazevai/dsh-fork-llm-first-chunk-timeout": "workspace:^",
-    "@knyazevai/dsh-fork-llm-rate-limit-cooldown": "workspace:^",
-    "@knyazevai/dsh-fork-session-source": "workspace:^",
-    "@knyazevai/dsh-fork-workspace-session-state": "workspace:^"
+    "@knyazevai/dsh-fork-llm-first-chunk-timeout": "workspace:*",
+    "@knyazevai/dsh-fork-llm-rate-limit-cooldown": "workspace:*",
+    "@knyazevai/dsh-fork-session-source": "workspace:*",
+    "@knyazevai/dsh-fork-workspace-session-state": "workspace:*"
   },
   "peerDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

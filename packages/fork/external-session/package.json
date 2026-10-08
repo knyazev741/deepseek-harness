@@ -37,11 +37,11 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

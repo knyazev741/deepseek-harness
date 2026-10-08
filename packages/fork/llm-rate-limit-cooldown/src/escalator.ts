@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto'
+import { RetryId } from '@knyazevai/dsh-llm-retry'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import type { Context, Events } from '@deepseek-ai/cordis'
 import type { SessionEvent } from '@knyazevai/dsh-session'
 import type { RequestErrorAction } from '@knyazevai/dsh-agent'
@@ -96,20 +99,48 @@ async function recover(
   { agent, turn, step, provider, failure, retryPolicy, signal }: Parameters<Events['agent/request-error']>[0],
   next: () => Promise<RequestErrorAction>,
 ): Promise<RequestErrorAction> {
-  if (!retryableCodes.includes(failure.code)) return next()
-  // An unbounded or absent policy never exposes an exhausted budget to this
-  // plugin: `always` is owned by dsh-llm-retry, and an unprepared route has
-  // no bounded chain to escalate past.
+  if (!retryableCodes.includes('*') && !retryableCodes.includes(failure.code)) return next()
   if (retryPolicy === undefined || retryPolicy.mode !== 'normal') return next()
-  // oxlint-disable-next-line typescript/no-deprecated -- Existing fork history read retained during upstream migration.
-  if (priorRetries(agent.session.snapshotEvents(), turn, step, provider) < retryPolicy.maxRetries) return next()
-
   const fusedSignal = AbortSignal.any([signal, lifetimeSignal])
-  if (fusedSignal.aborted) return
-  ctx.logger.info(
-    `fork-llm-rate-limit-cooldown: provider "${provider}" still rate-limited after ${retryPolicy.maxRetries} retries; waiting ${cooldownMs}ms and retrying`,
-  )
-  if (!await cancellableDelay(cooldownMs, fusedSignal)) return
-  ctx.logger.info(`fork-llm-rate-limit-cooldown: provider "${provider}" cooldown elapsed; retrying request`)
+  const aborted = (): boolean => fusedSignal.aborted
+  if (aborted()) return
+  // oxlint-disable-next-line typescript/no-deprecated -- Retry history is durable across cooldown attempts.
+  const count = priorRetries(agent.session.snapshotEvents(), turn, step, provider)
+  const retryAfter = failure.providerRetryAfterMs
+  const providerDelay = retryAfter !== undefined && Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 0
+  if (count < retryPolicy.maxRetries && retryPolicy.retryableCodes.includes(failure.code)
+    && providerDelay <= retryPolicy.maxDelayMs) return next()
+
+  // Compaction and other recovery owners get the first chance to repair the request.
+  try {
+    const action = await next()
+    if (action?.kind === 'retry') return aborted() ? undefined : action
+  } catch (error: unknown) {
+    ctx.logger.warn('fork cooldown: downstream recovery failed; retaining the request: %o', error)
+  }
+  if (aborted()) return
+  const delayMs = Math.max(cooldownMs, providerDelay)
+  const policyKey = JSON.stringify(['fork-cooldown', cooldownMs, retryableCodes])
+  // oxlint-disable-next-line typescript/no-deprecated -- Reuse the persisted identity of this policy chain.
+  const previous = agent.session.snapshotEvents().findLast(event => event.type === 'llm/retry'
+    && event.data.turn === turn && event.data.step === step
+    && event.data.provider === provider && event.data.policyKey === policyKey)
+  const prior = previous?.type === 'llm/retry' ? previous.data : undefined
+  const retry = (prior?.retry ?? 0) + 1
+  const retryId = prior?.retryId ?? RetryId(randomUUID())
+  agent.session.append('llm/retry', {
+    retryId, turn, step, provider, mode: 'always',
+    policyKey, retry, delayMs, failure,
+  })
+  ctx.logger.info(`fork cooldown: provider "${provider}" failed with ${failure.code}; waiting ${delayMs}ms before retry ${retry}`)
+  // Node clamps oversized timers to 1ms; split long provider waits without truncating them.
+  let remaining = delayMs
+  while (remaining > 0) {
+    const chunk = Math.min(remaining, MAX_TIMER_DELAY_MS)
+    if (!await cancellableDelay(chunk, fusedSignal)) return
+    remaining -= chunk
+  }
+  if (aborted()) return
+  agent.session.append('llm/retry-started', { retryId, turn, step, retry })
   return { kind: 'retry' }
 }

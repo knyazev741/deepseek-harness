@@ -158,6 +158,8 @@ kind: "package-reference"
 
 -----
 
+`summarizerRetryForever: true` 让失败的摘要请求持续冷却重试，直到成功或取消，包括未列出的提供方错误和空摘要。默认值为 `false`，保留提供方错误码选择。超出快速上限的提供方延迟进入冷却，不再终止压缩。下游重试后重置溢出压缩预算。Gonka 模型策略启用持续摘要恢复。
+
 <a id="model-experience"></a>
 ## 模型体验
 

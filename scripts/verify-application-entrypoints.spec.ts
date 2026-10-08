@@ -29,6 +29,15 @@ describe('application entrypoints', () => {
     expect(applicationEntrypointViolations(resolve(import.meta.dirname, '..'))).toEqual([])
   })
 
+  it('accepts only the dsh source-or-build wrapper at the CLI bin', () => {
+    const root = fixture()
+    write(root, 'apps/cli/package.json', JSON.stringify({ bin: { dsh: 'bin.mjs' } }))
+    write(root, 'apps/cli/bin.mjs', '#!/usr/bin/env node\n')
+    expect(applicationEntrypointViolations(root)).toEqual([])
+    write(root, 'apps/cli/package.json', JSON.stringify({ bin: { dsh: 'rogue.mjs' } }))
+    expect(applicationEntrypointViolations(root)).toEqual([expect.stringContaining('classified bin must remain')])
+  })
+
   it('rejects a package-level application bin', () => {
     const root = fixture()
     write(root, 'packages/example/app/package.json', JSON.stringify({ bin: { app: 'lib/bin.js' } }))

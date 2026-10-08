@@ -35,7 +35,7 @@
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-token-meter": "workspace:*",
-    "@knyazevai/dsh-timeout": "workspace:^"
+    "@knyazevai/dsh-timeout": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@knyazevai/dsh-compaction-tool-result-pruner": {
@@ -63,6 +63,6 @@
     "@knyazevai/dsh-token-meter": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-compaction-image-offload": "workspace:*",
-    "@knyazevai/dsh-timeout": "workspace:^"
+    "@knyazevai/dsh-timeout": "workspace:*"
   }
 }

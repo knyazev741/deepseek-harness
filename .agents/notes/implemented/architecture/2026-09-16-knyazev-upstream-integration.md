@@ -1,4 +1,4 @@
-# Agent Note: Preserve the Knyazev distribution on the September upstream
+# Agent Note: Preserve the Knyazev distribution on upstream 0.2.1-alpha.1
 
 Status: implemented
 
@@ -25,5 +25,7 @@ The repository launcher calls the current CLI's exported entry explicitly. `dsh 
 A blanket conflict preference would discard either upstream behavior or fork behavior. Replaying thousands of package-name edits before functional adaptation would obscure moved packages and newly introduced protocols. Copying old client code would discard the new Session Controller, navigation service, and interaction state. Treating all ignorable historical events as safe to migrate would permit unknown embedded sequence coordinates; only the audited fork marker is admitted.
 
 ## Consequences
+
+Publication includes the retained invariant companions and the source-or-build CLI wrapper. Workspace dependency ranges follow upstream package families. The unknown-cast inventory imports only exact assertions inherited from either merge parent after scope normalization; adapted fixtures use current types.
 
 Both histories remain available for future merge bases. Future updates must validate fork recovery, composition, installation, and historical-session tests alongside upstream checks. The event marker keeps its data and ignorable flag across formats 0, 1, 2, and 3 into format 4, where its name is `plugin:fork/session-source`, while historical code presets migrate to ptc. The current source version follows upstream's prerelease version; source integration alone does not publish a new npm release.

@@ -11,12 +11,14 @@ import type {
   ContentBlock, FinishReason, GenerateOptions, LlmFailure, Message, RequestMessage, ResolvedRetryPolicy, TokenUsage, ToolSchema,
 } from '@knyazevai/dsh-llm'
 import type { Agent } from '@knyazevai/dsh-agent'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 
 interface SummaryConfig {
   readonly summarizationProvider: string
   readonly summarizationModel: string
   readonly maxTokens: number
   readonly summarizerCooldownMs: number
+  readonly summarizerRetryForever?: boolean
 }
 
 /** Tags wrapping the structured summary inside the landed checkpoint node. */
@@ -167,23 +169,31 @@ export async function summarizeWithLlm(
       return await summarizeAttempt(ctx, options, config)
     } catch (error: unknown) {
       signal?.throwIfAborted()
-      const failure = retryableFailure(error, policy)
+      const failure = retryableFailure(error, policy) ?? (config.summarizerRetryForever === true
+        ? error instanceof LlmError ? error.failure : { code: 'COMPACTION_ERROR', message: String(error) }
+        : undefined)
       if (failure === undefined) throw error
 
-      const fastBackoff = policy.mode === 'always' || fastRetries < policy.maxRetries
+      const fastBackoff = policy.mode === 'always'
+        || fastRetries < policy.maxRetries && policy.retryableCodes.includes(failure.code)
       const nextRetry = fastBackoff ? fastRetries + 1 : fastRetries
-      const delayMs = fastBackoff
-        ? retryDelay(policy, nextRetry, failure)
-        : config.summarizerCooldownMs
-      if (delayMs === undefined) throw error
+      const fastDelay = fastBackoff ? retryDelay(policy, nextRetry, failure) : undefined
+      const suggested = failure.providerRetryAfterMs
+      const providerDelay = suggested !== undefined && Number.isFinite(suggested) && suggested > 0 ? suggested : 0
+      const delayMs = fastDelay ?? Math.max(config.summarizerCooldownMs, providerDelay)
       ctx.logger.info(
         `compaction summarizer: ${failure.code} `
         + `${fastBackoff ? `retry ${nextRetry}` : 'cooldown retry'} in ${delayMs}ms`
         + (fastBackoff ? '' : ' after the provider retry budget'),
       )
-      if (!await cancellableDelay(delayMs, signal)) {
-        signal?.throwIfAborted()
-        throw error
+      let remaining = delayMs
+      while (remaining > 0) {
+        const chunk = Math.min(remaining, MAX_TIMER_DELAY_MS)
+        if (!await cancellableDelay(chunk, signal)) {
+          signal?.throwIfAborted()
+          throw error
+        }
+        remaining -= chunk
       }
       fastRetries = nextRetry
     }

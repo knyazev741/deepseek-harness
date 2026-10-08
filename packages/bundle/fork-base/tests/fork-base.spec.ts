@@ -64,10 +64,10 @@ describe('dsh-fork-base bundle', () => {
     expect(manifest.publishConfig?.access).toBe('public')
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.dependencies).toMatchObject({
-      '@knyazevai/dsh-fork-session-source': 'workspace:^',
-      '@knyazevai/dsh-fork-workspace-session-state': 'workspace:^',
-      '@knyazevai/dsh-fork-llm-first-chunk-timeout': 'workspace:^',
-      '@knyazevai/dsh-fork-llm-rate-limit-cooldown': 'workspace:^',
+      '@knyazevai/dsh-fork-session-source': 'workspace:*',
+      '@knyazevai/dsh-fork-workspace-session-state': 'workspace:*',
+      '@knyazevai/dsh-fork-llm-first-chunk-timeout': 'workspace:*',
+      '@knyazevai/dsh-fork-llm-rate-limit-cooldown': 'workspace:*',
     })
     expect(Object.keys(manifest.dependencies ?? {}).sort()).toEqual([
       '@knyazevai/dsh-fork-llm-first-chunk-timeout',
@@ -105,15 +105,7 @@ describe('dsh-fork-base bundle', () => {
     expect(rows.find(row => row.id === 'fork-llm-rate-limit-cooldown')?.config)
       .toEqual({
         cooldownMs: 600000,
-        retryableCodes: [
-          'RATE_LIMIT',
-          'QUOTA',
-          'SERVER',
-          'TIMEOUT',
-          'FIRST_CHUNK_TIMEOUT',
-          'TRANSPORT',
-          'PI_AI_ERROR',
-        ],
+        retryableCodes: ['*'],
       })
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
     expect(rows.some(row => row.name === '@knyazevai/dsh-fork-external-session')).toBe(false)
@@ -298,10 +290,19 @@ describe('dsh-fork-base bundle', () => {
       ctx = await boot('test', configPath, readProfilePatches('test', profile), (ctx) => {
         ctx.provide('profileContext', profile)
         ctx.loader.builtins.editor = ConfigEditor
-        ctx.loader.internal = { version: 'v2', async import(specifier: string) {
-          if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
-          return modules.get(specifier)
-        } } as unknown as NonNullable<typeof ctx.loader.internal>
+        const unexpectedLoaderCall = (): never => { throw new Error('fixture only supports Loader imports') }
+        ctx.loader.internal = {
+          version: 'v2',
+          get loadCache() { return unexpectedLoaderCall() },
+          register: unexpectedLoaderCall,
+          getOrCreateModuleJob: unexpectedLoaderCall,
+          resolveSync: unexpectedLoaderCall,
+          load: unexpectedLoaderCall,
+          async import(specifier: string) {
+            if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
+            return modules.get(specifier)
+          },
+        }
       })
 
       await vi.waitFor(() => { expect(ctx?.agentDefaultModel.currentSelection()).toEqual({ provider: 'settings-provider', model: 'settings-model' }) })
@@ -366,6 +367,8 @@ describe('Flash compaction parity in shipped agent presets', () => {
     const children = group?.config as unknown as Row[]
     const compact = children.find(row => row.id === 'compaction-basic')
     const policies = compact?.config?.modelPolicies as Record<string, unknown>[]
+    expect(policies.filter(policy => policy.provider === 'knyazev-ai' && policy.summarizerRetryForever === true)
+      .map(policy => policy.model)).toEqual(['deepseek-v4-flash', 'glm-5.3-flash', 'minimax-2.7'])
     const flash = policies.find(policy => policy.model === 'deepseek-v4-flash')
     const glm = policies.find(policy => policy.model === 'glm-5.3-flash')
     expect(glm).toEqual({ ...flash, model: 'glm-5.3-flash' })

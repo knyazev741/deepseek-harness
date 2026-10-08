@@ -22,7 +22,7 @@ kind: "package-bundle"
 <a id="composition"></a>
 ## 组合方式
 
-该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state`、`fork-llm-first-chunk-timeout` 和 `fork-llm-rate-limit-cooldown`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000` 和 `maxFirstChunkCompactionRetries: 100`；冷却行携带 `cooldownMs: 600000`，并在有界 retry 预算耗尽后显式处理 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT` 和 `PI_AI_ERROR`。模型行配置 `KnyazevAI API` 路由 `knyazev-ai`，使用 `api: openai-completions` 和 `https://knyazevai.work/v1`，并设置 `streamIdleTimeoutMs: 900000`、`timeoutMs: 1800000`、`compat.thinkingFormat: openai`、`compat.supportsReasoningEffort: true`，以及 `retryPolicy.mode: normal`、`maxRetries: 20`；可重试代码严格按 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT`、`STREAM_CLOSED`、`EMPTY_RESPONSE` 排序。模型与线上 API 目录一致：`deepseek-v4-flash`（context window `400000`、max tokens `40000`、effort `off/high/max`）、`glm-5.3-flash`（`400000`、`40000`、effort `low/high/max`）和 `minimax-2.7`（`204800`、`40000`、不支持 reasoning）。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段，因此每个模型保留 API 自己的默认值。
+该 patch 先按顺序插入 `fork-session-source`、`fork-workspace-session-state`、`fork-llm-first-chunk-timeout` 和 `fork-llm-rate-limit-cooldown`，再按 id 完整替换上游 `llm-pi-ai` 与 `agent-default-model` 行的 config。超时行携带 `firstChunkIdleTimeoutMs: 120000` 和 `maxFirstChunkCompactionRetries: 100`；冷却行携带 `cooldownMs: 600000`，并在有界 retry 预算耗尽后显式处理 `retryableCodes: ['*']` 匹配的所有规范化提供方失败。模型行配置 `KnyazevAI API` 路由 `knyazev-ai`，使用 `api: openai-completions` 和 `https://knyazevai.work/v1`，并设置 `streamIdleTimeoutMs: 900000`、`timeoutMs: 1800000`、`compat.thinkingFormat: openai`、`compat.supportsReasoningEffort: true`，以及 `retryPolicy.mode: normal`、`maxRetries: 20`；可重试代码严格按 `RATE_LIMIT`、`QUOTA`、`SERVER`、`TIMEOUT`、`FIRST_CHUNK_TIMEOUT`、`TRANSPORT`、`STREAM_CLOSED`、`EMPTY_RESPONSE` 排序。模型与线上 API 目录一致：`deepseek-v4-flash`（context window `400000`、max tokens `40000`、effort `off/high/max`）、`glm-5.3-flash`（`400000`、`40000`、effort `low/high/max`）和 `minimax-2.7`（`204800`、`40000`、不支持 reasoning）。default-model 行选择 `knyazev-ai/deepseek-v4-flash`，并有意不在 composition 中携带 `reasoningEffort` 字段，因此每个模型保留 API 自己的默认值。
 
 该路由把选择的 reasoning 等级作为 `reasoning_effort` 发送；KnyazevAI API 会为 DeepSeek 归一化这些等级，并直接把它们用于 GLM。由于 API 默认让 DeepSeek 思考，DeepSeek 的 Off 会显式发送 `off`；GLM 不提供 Off，而 MiniMax 明确不显示 reasoning 选择器。端点发现会保留 API 发布的 reasoning 等级，因此采纳模型列表不会再静默移除 Effort 菜单。
 
@@ -38,7 +38,7 @@ kind: "package-bundle"
 - [`fork-session-source/`](../../fork/session-source/README.zh.md) 记录可选的 GitHub Actions 来源标记，并提供可空 projection。
 - [`fork-workspace-session-state/`](../../fork/workspace-session-state/README.zh.md) 持久化有序的工作区会话置顶列表，并提供生成的 Remote。
 - [`fork-llm-first-chunk-timeout/`](../../fork/llm-first-chunk-timeout/README.zh.md) 限制 LLM 流首个结果之前的空闲等待，并在压缩产生持久进展后于新一轮排入 `continue` follow-up。
-- [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.zh.md) 在 provider 的有界 `llm-retry` 预算耗尽后，等待 `cooldownMs` 再重试持续受限（`RATE_LIMIT`、`SERVER`、`QUOTA`、`TIMEOUT`、`TRANSPORT`、`PI_AI_ERROR`，以及该组合包中的 `FIRST_CHUNK_TIMEOUT`）的请求。
+- [`fork-llm-rate-limit-cooldown/`](../../fork/llm-rate-limit-cooldown/README.zh.md) 在有界重试策略无法继续时，等待 `cooldownMs` 后重试所有规范化的提供方错误。三个随包提供的 Gonka 模型还在 standard、ptc 和 cordis 预设中启用无限摘要恢复。
 
 每项能力仍由自己的包拥有；上游 base 更新时可以分别移除或替换它们。
 

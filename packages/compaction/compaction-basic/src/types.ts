@@ -31,6 +31,8 @@ export interface CompactionPolicyConfig {
   maxSummarizationInputTokens?: number
   /** Cooldown before retrying a transient summarizer failure after its provider retry budget. Defaults to `600000`. */
   summarizerCooldownMs?: number
+  /** Retry every failed summary attempt until success or cancellation; defaults to `false`. */
+  summarizerRetryForever?: boolean
   /** Extra attempts after the first compaction when pressure remains above threshold. Defaults to `1`. */
   compactionRetries?: number
   /** Maximum retries after canonical context overflow; `0` disables recovery. Defaults to `1`. */
@@ -67,6 +69,7 @@ interface ResolvedPolicyFields {
   readonly maxTokens: number
   readonly maxSummarizationInputTokens: number
   readonly summarizerCooldownMs: number
+  readonly summarizerRetryForever: boolean
   readonly compactionRetries: number
   readonly maxOverflowRetries: number
 }

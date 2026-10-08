@@ -49,23 +49,23 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:~",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^",
-    "@knyazevai/dsh-workspace": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^",
-    "@knyazevai/dsh-workspace": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

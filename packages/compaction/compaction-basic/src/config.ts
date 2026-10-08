@@ -40,6 +40,7 @@ const POLICY_CONFIG_KEYS = [
   'maxTokens',
   'maxSummarizationInputTokens',
   'summarizerCooldownMs',
+  'summarizerRetryForever',
   'compactionRetries',
   'maxOverflowRetries',
 ] as const
@@ -114,6 +115,7 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     maxSummarizationInputTokens: config.maxSummarizationInputTokens
       ?? DEFAULT_MAX_SUMMARIZATION_INPUT_TOKENS,
     summarizerCooldownMs: config.summarizerCooldownMs ?? DEFAULT_SUMMARIZER_COOLDOWN_MS,
+    summarizerRetryForever: config.summarizerRetryForever ?? false,
     compactionRetries: config.compactionRetries ?? 1,
     maxOverflowRetries: config.maxOverflowRetries ?? 1,
     modelPolicies,
@@ -148,6 +150,7 @@ export function resolveTargetPolicy(
     maxSummarizationInputTokens: override?.maxSummarizationInputTokens
       ?? config.maxSummarizationInputTokens,
     summarizerCooldownMs: override?.summarizerCooldownMs ?? config.summarizerCooldownMs,
+    summarizerRetryForever: override?.summarizerRetryForever ?? config.summarizerRetryForever,
     compactionRetries: override?.compactionRetries ?? config.compactionRetries,
     maxOverflowRetries: override?.maxOverflowRetries ?? config.maxOverflowRetries,
   })
@@ -228,6 +231,7 @@ export function resolveCompactSpec(
     maxTokens: policy.maxTokens,
     maxSummarizationInputTokens: policy.maxSummarizationInputTokens,
     summarizerCooldownMs: policy.summarizerCooldownMs,
+    summarizerRetryForever: policy.summarizerRetryForever,
     compactionRetries: policy.compactionRetries,
     maxOverflowRetries: policy.maxOverflowRetries,
   })
@@ -301,6 +305,9 @@ function validatePolicy(
   const retainTokens = config.retainTokens
   const maxTokens = config.maxTokens
   const maxSummarizationInputTokens = config.maxSummarizationInputTokens
+  if (config.summarizerRetryForever !== undefined && typeof config.summarizerRetryForever !== 'boolean') {
+    throw new TypeError(`${name}.summarizerRetryForever must be a boolean`)
+  }
   const summarizerCooldownMs = config.summarizerCooldownMs
   const compactionRetries = config.compactionRetries
   const maxOverflowRetries = config.maxOverflowRetries

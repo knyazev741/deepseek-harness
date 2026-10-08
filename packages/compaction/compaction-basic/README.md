@@ -158,6 +158,8 @@ Read these pages when the package-level contract is not enough; they move from t
 
 -----
 
+`summarizerRetryForever: true` keeps failed summary requests alive through cooldown until success or cancellation, including unlisted provider errors and empty summaries. The default is `false`, retaining provider code selection. An oversized provider retry delay enters cooldown instead of ending compaction. Overflow compaction budgets restart after a downstream retry. Gonka model policies enable persistent summary recovery.
+
 <a id="model-experience"></a>
 ## Model Experience
 

@@ -27,23 +27,23 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:~",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-storage-domain": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-storage-domain": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@knyazevai/dsh-agent": "workspace:^",
-    "@knyazevai/dsh-agent-loop-testkit": "workspace:^",
-    "@knyazevai/dsh-llm": "workspace:^",
-    "@knyazevai/dsh-storage": "workspace:^",
-    "@knyazevai/dsh-storage-domain": "workspace:^",
-    "@knyazevai/dsh-tools": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-storage": "workspace:*",
+    "@knyazevai/dsh-storage-domain": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*"
   }
 }

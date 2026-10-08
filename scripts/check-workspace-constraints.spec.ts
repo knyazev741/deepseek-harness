@@ -255,6 +255,14 @@ describe('dsh family version coherence', () => {
 })
 
 describe('package payload constraints', () => {
+  it('ships an exported invariant companion and rejects its omission', () => {
+    const dir = 'packages/fork/llm-rate-limit-cooldown'
+    const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
+    expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
+    expect(checkWorkspaceManifest({ dir, manifest: { ...manifest, files: manifest.files!.filter(file => file !== 'lib/invariant.js') } }))
+      .toEqual([expect.stringContaining('package.json files must be')])
+  })
+
   it.each([
     ['./art/icon.svg', ['art/icon.svg']],
     [{ import: './art/icon.svg', default: './art/fallback.svg' }, ['art/icon.svg', 'art/fallback.svg']],
@@ -359,7 +367,7 @@ it('publishes CLI runtime declarations and rejects a payload that omits them', (
   const manifest = JSON.parse(readFileSync(new URL('../apps/cli/package.json', import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
   expect(checkWorkspaceManifest({ dir: 'apps/cli', manifest })).toEqual([])
   expect(checkWorkspaceManifest({ dir: 'apps/cli', manifest: { ...manifest, files: ['lib/*.js'] } }))
-    .toEqual([expect.stringContaining('@knyazevai/dsh: package.json files must be ["lib/*.js","lib/types/*.d.ts"]')])
+    .toEqual([expect.stringContaining('@knyazevai/dsh: package.json files must be ["lib/*.js","lib/types/*.d.ts","bin.mjs"]')])
 })
 
 it('requires the shared Web injection entry in the published payload', () => {

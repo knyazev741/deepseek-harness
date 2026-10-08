@@ -454,6 +454,7 @@ flowchart TD
   pkg_skill --> pkg_llm
   pkg_skill --> pkg_scope
   pkg_web --> pkg_llm
+  pkg_api_remotes --> pkg_scope
   pkg_attachment --> pkg_brand
   pkg_browser_use --> pkg_brand
   pkg_fork_base --> pkg_invariants
@@ -647,8 +648,6 @@ flowchart TD
   pkg_goal --> pkg_session
   pkg_goal --> pkg_session_projection
   pkg_goal --> pkg_typert_protocol
-  pkg_api_remotes --> pkg_fork_workspace_session_state
-  pkg_api_remotes --> pkg_scope
   pkg_file_reference --> pkg_agent
   pkg_time_context --> pkg_agent
   pkg_time_context --> pkg_llm
@@ -1361,15 +1360,6 @@ flowchart TD
   pkg_experimental_tool_agent_team --> pkg_session
   pkg_experimental_tool_agent_team --> pkg_system_prompt
   pkg_experimental_tool_agent_team --> pkg_tools
-  pkg_fork_ui_workspace_overlay --> pkg_api_remotes
-  pkg_fork_ui_workspace_overlay --> pkg_api_session_controller
-  pkg_fork_ui_workspace_overlay --> pkg_client_locale
-  pkg_fork_ui_workspace_overlay --> pkg_client_ui_workspace
-  pkg_fork_ui_workspace_overlay --> pkg_fork_session_source
-  pkg_fork_ui_workspace_overlay --> pkg_fork_workspace_session_state
-  pkg_fork_ui_workspace_overlay --> pkg_invariants
-  pkg_fork_ui_workspace_overlay --> pkg_session
-  pkg_fork_ui_workspace_overlay --> pkg_typert_protocol
   pkg_schedule --> pkg_agent
   pkg_schedule --> pkg_api_session_controller
   pkg_schedule --> pkg_brand
@@ -1525,6 +1515,7 @@ flowchart TD
 | [`experimental-webworker-packer`](../packages/experimental/webworker-packer) | `experimental` | — |
 | [`client-ui-cordis`](../packages/extensions/ui-cordis) | `extensions` | — |
 | [`cordis-client-runner`](../packages/extensions/cordis-client-runner) | `extensions` | — |
+| [`fork-ui-workspace-overlay`](../packages/fork/ui-workspace-overlay) | `fork` | — |
 | [`host-directory-picker`](../packages/host/directory-picker) | `host` | — |
 | [`host-directory-picker-browse`](../packages/host/directory-picker-browse) | `host` | — |
 | [`host-directory-picker-native`](../packages/host/directory-picker-native) | `host` | — |
@@ -1546,6 +1537,7 @@ flowchart TD
 | [`system-prompt`](../packages/core/system-prompt) | `core` | [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope) |
 | [`skill`](../packages/skill/skill) | `skill` | [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope) |
 | [`web`](../packages/web/web) | `web` | [`llm`](../packages/llm/llm) |
+| [`api-remotes`](../packages/api/remotes) | `api` | [`scope`](../packages/core/scope) |
 | [`attachment`](../packages/attachment/attachment) | `attachment` | [`brand`](../packages/util/brand) |
 | [`browser-use`](../packages/browser-use/browser-use) | `browser-use` | [`brand`](../packages/util/brand) |
 | [`fork-base`](../packages/bundle/fork-base) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants) |
@@ -1624,7 +1616,6 @@ flowchart TD
 | [`llm-retry`](../packages/llm/llm-retry) | `llm` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`timeout`](../packages/util/timeout) |
 | [`agent-default-model`](../packages/core/agent-default-model) | `core` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm) |
 | [`goal`](../packages/goal/goal) | `goal` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`typert-protocol`](../packages/typert/protocol) |
-| [`api-remotes`](../packages/api/remotes) | `api` | [`fork-workspace-session-state`](../packages/fork/workspace-session-state), [`scope`](../packages/core/scope) |
 | [`file-reference`](../packages/context/file-reference) | `context` | [`agent`](../packages/core/agent) |
 | [`time-context`](../packages/context/time-context) | `context` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection) |
 | [`tmux-context`](../packages/context/tmux-context) | `context` | [`agent`](../packages/core/agent), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`shell`](../packages/shell/shell) |
@@ -1749,7 +1740,6 @@ flowchart TD
 | [`experimental-client-ui-claude-code-mods`](../packages/experimental/client-ui-claude-code-mods) | `experimental` | [`api-remotes`](../packages/api/remotes), [`api-session-controller`](../packages/api/session-controller), [`client-locale`](../packages/client/locale), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-primitives`](../packages/client/ui-primitives), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-session`](../packages/client/ui-session), [`client-ui-slots`](../packages/client/ui-slots), [`experimental-claude-code-mods`](../packages/experimental/claude-code-mods), [`session`](../packages/core/session), [`typert-protocol`](../packages/typert/protocol) |
 | [`experimental-client-ui-voice-input`](../packages/experimental/client-ui-voice-input) | `experimental` | [`api-gateway`](../packages/api/gateway), [`api-remotes`](../packages/api/remotes), [`api-session-controller`](../packages/api/session-controller), [`client-locale`](../packages/client/locale), [`client-store`](../packages/client/store), [`client-ui-conversation`](../packages/client/ui-conversation), [`client-ui-plugin-manager`](../packages/client/ui-plugin-manager), [`client-ui-primitives`](../packages/client/ui-primitives), [`client-ui-renderer`](../packages/client/ui-renderer), [`client-ui-session`](../packages/client/ui-session), [`client-ui-slots`](../packages/client/ui-slots), [`experimental-api-speech-to-text`](../packages/experimental/api-speech-to-text), [`experimental-speech-to-text`](../packages/experimental/speech-to-text), [`session`](../packages/core/session), [`typert-protocol`](../packages/typert/protocol) |
 | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | `experimental` | [`agent`](../packages/core/agent), [`experimental-agent-team`](../packages/experimental/agent-team), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
-| [`fork-ui-workspace-overlay`](../packages/fork/ui-workspace-overlay) | `fork` | [`api-remotes`](../packages/api/remotes), [`api-session-controller`](../packages/api/session-controller), [`client-locale`](../packages/client/locale), [`client-ui-workspace`](../packages/client/ui-workspace), [`fork-session-source`](../packages/fork/session-source), [`fork-workspace-session-state`](../packages/fork/workspace-session-state), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`typert-protocol`](../packages/typert/protocol) |
 | [`schedule`](../packages/schedule/schedule) | `schedule` | [`agent`](../packages/core/agent), [`api-session-controller`](../packages/api/session-controller), [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-persistence`](../packages/session/session-persistence), [`session-projection`](../packages/session/session-projection), [`storage-domain`](../packages/storage/storage-domain), [`subagent`](../packages/subagent/subagent), [`tools`](../packages/core/tools), [`typert-protocol`](../packages/typert/protocol), [`workspace`](../packages/workspace/workspace) |
 | [`sdk-client`](../packages/sdk/client) | `sdk` | [`llm`](../packages/llm/llm), [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session) |
 | [`sdk-jsonrpc-server`](../packages/sdk/server) | `sdk` | [`agent`](../packages/core/agent), [`attachment`](../packages/attachment/attachment), [`llm`](../packages/llm/llm), [`llm-deepseek-api-key`](../packages/llm/llm-deepseek-api-key), [`scope`](../packages/core/scope), [`sdk-protocol`](../packages/sdk/protocol), [`session`](../packages/core/session), [`subagent`](../packages/subagent/subagent) |

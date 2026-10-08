@@ -55,8 +55,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-scope": "workspace:*",
-    "@knyazevai/dsh-fork-workspace-session-state": "workspace:^"
+    "@knyazevai/dsh-scope": "workspace:*"
   },
   "devDependencies": {
     "@knyazevai/dsh-agent": "workspace:*",
@@ -96,6 +95,6 @@
     "@knyazevai/dsh-api-account-controller": "workspace:*",
     "@knyazevai/dsh-deepseek-account": "workspace:*",
     "@knyazevai/dsh-client-product-analytics": "workspace:*",
-    "@knyazevai/dsh-fork-workspace-session-state": "workspace:^"
+    "@knyazevai/dsh-fork-workspace-session-state": "workspace:*"
   }
 }

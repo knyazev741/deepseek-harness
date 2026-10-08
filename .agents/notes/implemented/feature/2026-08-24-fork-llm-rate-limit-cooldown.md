@@ -10,6 +10,8 @@ The `knyazev-ai` provider returns `429` persistently during an outage. `dsh-llm-
 
 ## Decision
 
+Current retry exhaustion, durable wait reporting, and fallback semantics are owned by [persistent provider recovery](../bug-fix/2026-10-08-persistent-provider-recovery.md). That decision supersedes the finite stopping conditions and silent waits here while preserving the compaction ownership and continuation rationale.
+
 Add an opt-in fork plugin, `fork-llm-rate-limit-cooldown`, on the documented `agent/request-error` waterfall. It is order-independent: it claims a failure only when `failure.code` is in `retryableCodes` (default `['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR']`: `RATE_LIMIT` is HTTP `429`, `SERVER` is an upstream 5xx such as `502`/`503`, `TRANSPORT` is a stream/connection truncation, and `PI_AI_ERROR` is the pi-ai catch-all) and the request's durable `llm/retry` chain for that `turn`/`step`/`provider` has already reached the provider's `maxRetries`; everything else delegates through `next()` to `dsh-llm-retry` or a later listener. The claim waits `cooldownMs` (default `600000` = 10 minutes) on a delay cancellable by the turn signal and by plugin disposal, then returns `{ kind: 'retry' }` so the loop re-runs the same request.
 
 Because the claim is a pure function of the persistent retry count, listener order on the waterfall does not matter; the Host `fork-base` patch inserts the row after `dsh-llm-retry` with `cooldownMs: 600000`, so a persistent `429`, upstream `5xx`, quota, timeout, or transport fall is retried roughly every ten minutes until it succeeds or the user cancels.

@@ -10,6 +10,8 @@ Status: implemented
 
 ## 决策
 
+当前停止条件与重试日志由[持续提供方恢复](../bug-fix/2026-10-08-persistent-provider-recovery.zh.md)取代；服务职责与继续执行的理由仍然适用。
+
 扩展选择性启用的 `fork-llm-first-chunk-timeout` 插件，使其首次读取超时发出一个独立的 `FIRST_CHUNK_TIMEOUT` 失败码，并新增一个伴随的 `agent/request-error` 监听器（以 `prepend` 注册，因此会先于 `dsh-llm-retry` 执行）。发生 `FIRST_CHUNK_TIMEOUT` 失败时，先通过 `compaction` 服务强制压缩一次（`compactIfNeeded(agent, 'context-overflow', signal)`）。产生持久进展后，暂存一条内容严格为 `continue`、由插件生成的消息，且监听器不返回重试动作。失败请求因此先以原始超时结束；其 `idle` 状态转换随后通过 `agent.followup()` 插入暂存消息，并从替换 surface 唤醒新一轮。如果在失败 driver 内插入 follow-up，它会在该 driver 退出后留在队列中。会跳过快速退避，因为它无法修复卡住的首个分片；强制的 `context-overflow` 路径即使在低于常规压力阈值时也会缩减上下文。
 
 恢复由 `maxFirstChunkCompactionRetries`（默认 `100`）在一次连续的 agent 活动内加以限制。每个成功的压缩 follow-up 都会开启新的编号轮次，因此按失败的 `turn`/`step` 计数会重置上限并允许无界链。达到上限时仍会否决 waterfall，让原始 `FIRST_CHUNK_TIMEOUT` 结束该轮且不再追加 continuation。压缩出错或没有产生持久进展时，会委托给下游 retry/cooldown 策略；如果没有下游策略接管失败，原始超时会结束该轮。如果没有 `compaction` 引擎，监听器会通过 `next()` 委托，保留插件原有的独立行为。agent 转为空闲时会丢弃每个 agent 的记账状态。

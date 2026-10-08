@@ -99,27 +99,28 @@ describe('workspace contributions', () => {
     }) as never
     const t = makeTranslate(zh, commonZh) as WorkspaceBrowserProps['t']
     const controls = createWorkspaceShortcutControls()
-    const props = {
+    const props: WorkspaceBrowserProps = {
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
-      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+      notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
+      useSessionRetainInfo: () => undefined,
+      useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
 
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([first, second])),
       useWorkspaces: hook(workspaces([workspaceView])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })),
-      searchResultLimit: 20, renameSession: vi.fn(async () => {}), forkSession: vi.fn(),
-      renameWorkspace: vi.fn(async () => {}), deleteWorkspace: vi.fn(async () => {}),
-      archiveSession: vi.fn(async () => {}), insertWorkspaceBefore: vi.fn(async () => {}),
-      insertSessionBefore: vi.fn(async () => {}), createWorkspace: vi.fn(async () => workspace([])),
+      searchResultLimit: 20, renameWorkspace: vi.fn(async () => {}), deleteWorkspace: vi.fn(async () => {}),
+      insertWorkspaceBefore: vi.fn(async () => {}),
+      createWorkspace: vi.fn(async () => workspace([])),
       useDirectoryFlow: bindSnapshotSelector(source(true)),
-      useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
+      useHostInfo: hook({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
       useSessionStatus: hook(new Map()),
       renderSlot, t,
-      useViews: (selector: (items: readonly WorkspaceListView[]) => unknown) => selector(contributions.views.getSnapshot()),
-      usePolicies: (selector: (items: readonly WorkspaceListPolicy[]) => unknown) => selector(contributions.policies.getSnapshot()),
-    } as unknown as WorkspaceBrowserProps
+      useViews: hook(contributions.views.getSnapshot()),
+      usePolicies: hook(contributions.policies.getSnapshot()),
+    }
     try {
       render(<WorkspaceBrowser {...props} />)
       expect(screen.getByRole('tablist')).toBeTruthy()
@@ -149,23 +150,26 @@ describe('workspace contributions', () => {
     store.actions.setOrderBy('manual', { workspace: ['first', 'second'], [FLAT_SESSION_ORDER_KEY]: ['first', 'second'] })
     store.actions.setGroupExpanded('workspace', false)
     const controls = createWorkspaceShortcutControls()
-    const props = {
+    const props: WorkspaceBrowserProps = {
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
-      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+      notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
+      useSessionRetainInfo: () => undefined,
+      useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
 
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([first, second])),
       useWorkspaces: hook(workspaces([workspaceView])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
-      renameSession: vi.fn(async () => {}), forkSession: vi.fn(), renameWorkspace: vi.fn(async () => {}),
-      deleteWorkspace: vi.fn(async () => {}), archiveSession: vi.fn(async () => {}),
-      insertWorkspaceBefore: vi.fn(async () => {}), insertSessionBefore: vi.fn(async () => {}),
-      createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
-      useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
+      renameWorkspace: vi.fn(async () => {}),
+      deleteWorkspace: vi.fn(async () => {}),
+      insertWorkspaceBefore: vi.fn(async () => {}),
+      createWorkspace: vi.fn(async () => workspace([])),
+      useDirectoryFlow: bindSnapshotSelector(source(false)),
+      useHostInfo: hook({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
       useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
-    } as unknown as WorkspaceBrowserProps
+    }
     render(<WorkspaceBrowser {...props} />)
     expect(screen.queryByRole('tablist')).toBeNull()
     fireEvent.click(screen.getByRole('treeitem', { name: 'Workspace' }))
@@ -183,24 +187,27 @@ describe('workspace contributions', () => {
     store.actions.setOrderBy('manual', { workspace: ['first', 'second'], [FLAT_SESSION_ORDER_KEY]: ['first', 'second'] })
     const view: WorkspaceListView = { id: 'second-only', order: 0, label: 'Second', include: ({ session: item }) => item.id === second.id }
     const controls = createWorkspaceShortcutControls()
-    const props = {
+    const props: WorkspaceBrowserProps = {
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
-      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+      notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
+      useSessionRetainInfo: () => undefined,
+      useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
 
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([first, second])),
       useWorkspaces: hook(workspaces([workspace(['first', 'second'])])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
-      renameSession: vi.fn(async () => {}), forkSession: vi.fn(), renameWorkspace: vi.fn(async () => {}),
+      renameWorkspace: vi.fn(async () => {}),
       deleteWorkspace: vi.fn(async () => {}),
-      archiveSession: vi.fn(async () => {}), insertWorkspaceBefore: vi.fn(async () => {}), insertSessionBefore: vi.fn(async () => {}),
-      createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
-      useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
+      insertWorkspaceBefore: vi.fn(async () => {}),
+      createWorkspace: vi.fn(async () => workspace([])),
+      useDirectoryFlow: bindSnapshotSelector(source(false)),
+      useHostInfo: hook({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
       useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
       useViews: hook([view]), usePolicies: hook([]),
-    } as unknown as WorkspaceBrowserProps
+    }
     render(<WorkspaceBrowser {...props} />)
     expect(store.getSnapshot().sessionOrderByAccount[FLAT_SESSION_ORDER_KEY]).toEqual(['first', 'second'])
     fireEvent.click(screen.getByRole('tab', { name: 'Second' }))
@@ -223,24 +230,27 @@ describe('workspace contributions', () => {
       },
     }
     const controls = createWorkspaceShortcutControls()
-    const props = {
+    const props: WorkspaceBrowserProps = {
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
-      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+      notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
+      useSessionRetainInfo: () => undefined,
+      useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
 
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([one, two])),
       useWorkspaces: hook(workspaces([workspaceView])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
-      renameSession: vi.fn(async () => {}), forkSession: vi.fn(), renameWorkspace: vi.fn(async () => {}),
-      deleteWorkspace: vi.fn(async () => {}), archiveSession: vi.fn(async () => {}),
-      insertWorkspaceBefore: vi.fn(async () => {}), insertSessionBefore: vi.fn(async () => {}),
-      createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
-      useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
+      renameWorkspace: vi.fn(async () => {}),
+      deleteWorkspace: vi.fn(async () => {}),
+      insertWorkspaceBefore: vi.fn(async () => {}),
+      createWorkspace: vi.fn(async () => workspace([])),
+      useDirectoryFlow: bindSnapshotSelector(source(false)),
+      useHostInfo: hook({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
       useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
       useViews: hook([]), usePolicies: hook([policy]),
-    } as unknown as WorkspaceBrowserProps
+    }
     const error = vi.spyOn(window.console, 'error').mockImplementation(() => {})
     try {
       expect(() => render(<WorkspaceBrowser {...props} />)).toThrow('comparator failed')
@@ -253,24 +263,27 @@ describe('workspace contributions', () => {
     const view: WorkspaceListView = { id: 'broken', order: 0, label: 'Broken', include: () => { throw new Error('predicate failed') } }
     const store = createWorkspaceViewStore().create()
     const controls = createWorkspaceShortcutControls()
-    const props = {
+    const props: WorkspaceBrowserProps = {
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
-      useSessionRetainInfo: () => undefined, useResource: () => undefined,
+      notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
+      useSessionRetainInfo: () => undefined,
+      useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
 
       wide: true, expandSidebar: vi.fn(), useSessions: hook(list([session('one')])),
       useWorkspaces: hook(workspaces([workspace(['one'])])), useStore: bindSnapshotSelector(store), actions: store.actions,
       startSession: vi.fn(), open: vi.fn(), searchSessions: vi.fn(async () => ({ items: [], hasMore: false })), searchResultLimit: 20,
-      renameSession: vi.fn(async () => {}), forkSession: vi.fn(), renameWorkspace: vi.fn(async () => {}),
+      renameWorkspace: vi.fn(async () => {}),
       deleteWorkspace: vi.fn(async () => {}),
-      archiveSession: vi.fn(async () => {}), insertWorkspaceBefore: vi.fn(async () => {}), insertSessionBefore: vi.fn(async () => {}),
-      createWorkspace: vi.fn(async () => workspace([])), useDirectoryFlow: bindSnapshotSelector(source(false)),
-      useHostInfo: (selector: (x: { home: undefined; isLoopback: boolean }) => unknown) => selector({ home: undefined, isLoopback: true }),
+      insertWorkspaceBefore: vi.fn(async () => {}),
+      createWorkspace: vi.fn(async () => workspace([])),
+      useDirectoryFlow: bindSnapshotSelector(source(false)),
+      useHostInfo: hook({ home: undefined, isLoopback: true }),
       usePanelInfo: hook({ activePanelId: null }),
       useSessionStatus: hook(new Map()), renderSlot: vi.fn(), t: makeTranslate(zh, commonZh),
       useViews: hook([view]), usePolicies: hook([]),
-    } as unknown as WorkspaceBrowserProps
+    }
     const error = vi.spyOn(window.console, 'error').mockImplementation(() => {})
     try {
       render(<WorkspaceBrowser {...props} />)

@@ -272,10 +272,10 @@ importers:
         specifier: workspace:*
         version: link:../../packages/experimental/voice-input-bundle
       '@knyazevai/dsh-fork-base':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/bundle/fork-base
       '@knyazevai/dsh-fork-web':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/bundle/fork-web
       '@knyazevai/dsh-fs-local':
         specifier: workspace:*
@@ -434,7 +434,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/skill/tool-workspace-dependencies
       '@knyazevai/dsh-wake-scheduler':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/schedule/wake-scheduler
       '@knyazevai/dsh-web-app':
         specifier: workspace:*
@@ -1287,7 +1287,7 @@ importers:
         specifier: workspace:*
         version: link:../../context/file-reference
       '@knyazevai/dsh-fork-workspace-session-state':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../fork/workspace-session-state
       '@knyazevai/dsh-goal':
         specifier: workspace:*
@@ -2262,45 +2262,45 @@ importers:
   packages/bundle/fork-base:
     dependencies:
       '@knyazevai/dsh-fork-llm-first-chunk-timeout':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../fork/llm-first-chunk-timeout
       '@knyazevai/dsh-fork-llm-rate-limit-cooldown':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../fork/llm-rate-limit-cooldown
       '@knyazevai/dsh-fork-session-source':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../fork/session-source
       '@knyazevai/dsh-fork-workspace-session-state':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../fork/workspace-session-state
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
 
   packages/bundle/fork-web:
     dependencies:
       '@knyazevai/dsh-base':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../base
       '@knyazevai/dsh-fork-base':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../fork-base
       '@knyazevai/dsh-fork-ui-workspace-overlay':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../fork/ui-workspace-overlay
       '@knyazevai/dsh-web-app':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../web-app
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
 
   packages/bundle/headless:
@@ -6527,7 +6527,7 @@ importers:
         specifier: workspace:*
         version: link:../../session/session-projection
       '@knyazevai/dsh-timeout':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../util/timeout
       '@knyazevai/dsh-token-meter':
         specifier: workspace:*
@@ -8789,10 +8789,10 @@ importers:
   packages/fork/external-session:
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
 
   packages/fork/llm-first-chunk-timeout:
@@ -8802,43 +8802,43 @@ importers:
         version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/cordis-plugin-include':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/include
       '@deepseek-ai/cordis-plugin-loader':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/loader
       '@knyazevai/dsh-agent':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/agent
       '@knyazevai/dsh-agent-loop':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/agent-loop
       '@knyazevai/dsh-agent-preset-registry':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../preset/agent-preset-registry
       '@knyazevai/dsh-compaction':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../compaction/compaction
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
       '@knyazevai/dsh-llm':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../llm/llm
       '@knyazevai/dsh-session':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/session
       '@knyazevai/dsh-system-prompt':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/system-prompt
       '@knyazevai/dsh-timeout':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../util/timeout
       '@knyazevai/dsh-tools':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/tools
 
   packages/fork/llm-rate-limit-cooldown:
@@ -8848,40 +8848,40 @@ importers:
         version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/cordis-plugin-include':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/include
       '@deepseek-ai/cordis-plugin-loader':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/loader
       '@knyazevai/dsh-agent':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/agent
       '@knyazevai/dsh-agent-loop':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/agent-loop
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
       '@knyazevai/dsh-llm':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../llm/llm
       '@knyazevai/dsh-llm-retry':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../llm/llm-retry
       '@knyazevai/dsh-session':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/session
       '@knyazevai/dsh-system-prompt':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/system-prompt
       '@knyazevai/dsh-timeout':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../util/timeout
       '@knyazevai/dsh-tools':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/tools
 
   packages/fork/session-source:
@@ -8894,64 +8894,67 @@ importers:
         version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@deepseek-ai/cordis-plugin-include':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/include
       '@deepseek-ai/cordis-plugin-loader':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/loader
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
       '@knyazevai/dsh-session':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/session
       '@knyazevai/dsh-session-projection':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../session/session-projection
 
   packages/fork/ui-workspace-overlay:
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@knyazevai/dsh-api-remotes':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../api/remotes
       '@knyazevai/dsh-api-session-controller':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../api/session-controller
       '@knyazevai/dsh-client-locale':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../client/locale
       '@knyazevai/dsh-client-test-runtime':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../test-support/client-runtime
       '@knyazevai/dsh-client-ui-primitives':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../client/ui-primitives
+      '@knyazevai/dsh-client-ui-renderer':
+        specifier: workspace:*
+        version: link:../../client/ui-renderer
       '@knyazevai/dsh-client-ui-slots':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../client/ui-slots
       '@knyazevai/dsh-client-ui-workspace':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../client/ui-workspace
       '@knyazevai/dsh-fork-session-source':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../session-source
       '@knyazevai/dsh-fork-workspace-session-state':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../workspace-session-state
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
       '@knyazevai/dsh-session':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/session
       '@knyazevai/dsh-typert-protocol':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../typert/protocol
       '@testing-library/react':
         specifier: ^16.1.0
@@ -8976,22 +8979,22 @@ importers:
         version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@knyazevai/dsh-invariants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../runtime-diagnostics/invariants
       '@knyazevai/dsh-session':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/session
       '@knyazevai/dsh-settings':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../settings/settings
       '@knyazevai/dsh-typert-protocol':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../typert/protocol
       '@knyazevai/dsh-workspace':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../workspace/workspace
 
   packages/fs/fs:
@@ -10817,7 +10820,7 @@ importers:
         version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
 
   packages/sandbox/sandbox:
@@ -11042,25 +11045,25 @@ importers:
         version: 4.4.3
     devDependencies:
       '@deepseek-ai/cordis':
-        specifier: workspace:^
+        specifier: workspace:~
         version: link:../../../vendor/cordis
       '@knyazevai/dsh-agent':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/agent
       '@knyazevai/dsh-agent-loop-testkit':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../test-support/agent-loop-testkit
       '@knyazevai/dsh-llm':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../llm/llm
       '@knyazevai/dsh-storage':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../storage/storage
       '@knyazevai/dsh-storage-domain':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../storage/storage-domain
       '@knyazevai/dsh-tools':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core/tools
 
   packages/sdk/client:

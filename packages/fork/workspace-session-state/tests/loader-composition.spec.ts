@@ -16,6 +16,6 @@ it('imports the former Settings pin list, preserves order across restart, and do
   expect((await restored.forkWorkspaceSessionState.list()).pinnedSessionIds).toEqual(['s1'])
   expect(remoteMethods(restored.forkWorkspaceSessionState).map(marker => marker.exportName ?? marker.method)).toEqual(['list', 'setPinned'])
   const entry = [...restored.loader.entries()].find(row => row.options.id === 'fork-workspace-session-state')!
-  await entry.parent.remove(entry.options.id)
+  entry.parent.remove(entry.options.id)
   expect(restored.get('forkWorkspaceSessionState')).toBeUndefined()
 })

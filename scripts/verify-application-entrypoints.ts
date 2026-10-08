@@ -25,13 +25,14 @@ interface LauncherPolicy {
 
 /** Public product launcher plus the build-only WebWorker packer. */
 const MANIFEST_BIN_ALLOWLIST = new Map<string, ManifestBin>([
-  ['apps/cli/package.json', { dsh: 'lib/bin.js' }],
+  ['apps/cli/package.json', { dsh: 'bin.mjs' }],
   ['packages/experimental/webworker-packer/package.json', { 'dsh-pack-vfs-image': './bin.js' }],
 ])
 
 /** Every JavaScript executable in an application or packaging workspace has one explicit role. */
 const EXECUTABLE_SOURCE_ALLOWLIST = new Map<string, string>([
   ['apps/cli/src/bin.ts', 'supported dsh application launcher'],
+  ['apps/cli/bin.mjs', 'dsh wrapper selecting repository source or packaged runtime'],
   ['apps/desktop/scripts/logged-notarytool.mjs', 'build-only notarization logging wrapper'],
   ['packages/context/time-context/tests/fixtures/driver.ts', 'test-only subprocess driver'],
   ['packages/experimental/webworker-packer/bin.js', 'build-only wrapper'],

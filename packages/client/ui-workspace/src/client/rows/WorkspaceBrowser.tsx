@@ -58,7 +58,7 @@ const DEFAULT_VIEW_ID = 'workspace.default'
 
 function rowContext(session: SessionSummary, workspaces: readonly WorkspaceView[], selected: boolean): WorkspaceSessionRowContext {
   const workspace = workspaces.find(candidate => candidate.sessionIds.includes(session.id))
-    ?? { workspaceId: '' as WorkspaceId, title: 'Ungrouped', path: session.cwd ?? '', sessionIds: [session.id],
+    ?? { workspaceId: '' as WorkspaceId, title: '', path: session.cwd ?? '', sessionIds: [session.id],
       createdAt: '', updatedAt: '' }
   return { session, workspace, selected }
 }

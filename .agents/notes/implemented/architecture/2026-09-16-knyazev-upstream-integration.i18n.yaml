@@ -2,18 +2,18 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-16-knyazev-upstream-integration.md
-/agent-note-preserve-the-knyazev-distribution-on-the-september-upstream:
-  en: d09c226ac89ccb99
-  zh: 2a1649e8571dd6b5
-/agent-note-preserve-the-knyazev-distribution-on-the-september-upstream/problem:
+/agent-note-preserve-the-knyazev-distribution-on-upstream-0-2-1-alpha-1:
+  en: 466cc6424547b27c
+  zh: 0f1234239d8c567e
+/agent-note-preserve-the-knyazev-distribution-on-upstream-0-2-1-alpha-1/problem:
   en: 52e029fcc5b42ee7
   zh: 97b0232cc195e663
-/agent-note-preserve-the-knyazev-distribution-on-the-september-upstream/decision:
+/agent-note-preserve-the-knyazev-distribution-on-upstream-0-2-1-alpha-1/decision:
   en: eb119a3c65a7d392
   zh: eb84d64347bcaa2b
-/agent-note-preserve-the-knyazev-distribution-on-the-september-upstream/alternatives-considered:
+/agent-note-preserve-the-knyazev-distribution-on-upstream-0-2-1-alpha-1/alternatives-considered:
   en: bdf1aedfd465eb6a
   zh: 189ec4396915fab3
-/agent-note-preserve-the-knyazev-distribution-on-the-september-upstream/consequences:
-  en: aa558a5b54064d22
-  zh: 820f6e62b5c9ca6c
+/agent-note-preserve-the-knyazev-distribution-on-upstream-0-2-1-alpha-1/consequences:
+  en: 56210944fb706d72
+  zh: fed12a1ef8a824a8

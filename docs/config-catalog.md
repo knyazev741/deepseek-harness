@@ -679,7 +679,7 @@ export type ThemePreference = typeof THEME_PREFERENCES[number]
 ## `@knyazevai/dsh-compaction-basic`
 
 - `inject`: `llm` · `tokenMeter` · `sessions`
-- `source`: [`packages/compaction/compaction-basic/src/types.ts:49`](../packages/compaction/compaction-basic/src/types.ts)
+- `source`: [`packages/compaction/compaction-basic/src/types.ts:51`](../packages/compaction/compaction-basic/src/types.ts)
 
 ```ts config-catalog
 /** Basic compaction configuration with an optional exact-target policy table. */
@@ -715,6 +715,8 @@ export interface CompactionPolicyConfig {
   maxSummarizationInputTokens?: number
   /** Cooldown before retrying a transient summarizer failure after its provider retry budget. Defaults to `600000`. */
   summarizerCooldownMs?: number
+  /** Retry every failed summary attempt until success or cancellation; defaults to `false`. */
+  summarizerRetryForever?: boolean
   /** Extra attempts after the first compaction when pressure remains above threshold. Defaults to `1`. */
   compactionRetries?: number
   /** Maximum retries after canonical context overflow; `0` disables recovery. Defaults to `1`. */
@@ -1268,7 +1270,7 @@ export interface Config {
 export interface Config {
   /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
   readonly firstChunkIdleTimeoutMs?: number
-  /** Maximum consecutive first-chunk compaction follow-ups before idle (default 100). */
+  /** Maximum first-chunk compaction follow-ups before delegating retry policy (default 100). */
   readonly maxFirstChunkCompactionRetries?: number
 }
 ```
@@ -1280,14 +1282,14 @@ export interface Config {
 ## `@knyazevai/dsh-fork-llm-rate-limit-cooldown`
 
 - `inject`: `agents`
-- `source`: [`packages/fork/llm-rate-limit-cooldown/src/index.ts:27`](../packages/fork/llm-rate-limit-cooldown/src/index.ts)
+- `source`: [`packages/fork/llm-rate-limit-cooldown/src/index.ts:25`](../packages/fork/llm-rate-limit-cooldown/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the long rate-limit cooldown escalation. */
 export interface Config {
   /** Cooldown before one retry of an exhausted rate-limited request, in ms (default 600000). */
   readonly cooldownMs?: number
-  /** Normalized failure codes that trigger escalation (default rate limit, 5xx, quota, timeout, transport, pi-ai catch-all). */
+  /** Failure codes eligible for cooldown; `*` includes every normalized provider failure. */
   readonly retryableCodes?: string[]
 }
 ```

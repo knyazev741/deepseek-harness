@@ -138,6 +138,7 @@ const modelPolicy: z<ModelCompactPolicyConfig> = z.object({
   maxTokens: maxTokensSchema,
   maxSummarizationInputTokens: maxSummarizationInputTokensSchema,
   summarizerCooldownMs: summarizerCooldownMsSchema,
+  summarizerRetryForever: z.boolean(),
   compactionRetries: compactionRetriesSchema,
   maxOverflowRetries: maxOverflowRetriesSchema,
 })
@@ -163,6 +164,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     maxTokens: maxTokensSchema,
     maxSummarizationInputTokens: maxSummarizationInputTokensSchema,
     summarizerCooldownMs: summarizerCooldownMsSchema,
+    summarizerRetryForever: z.boolean(),
     compactionRetries: compactionRetriesSchema,
     maxOverflowRetries: maxOverflowRetriesSchema,
     modelPolicies: z.array(modelPolicy),
@@ -239,7 +241,11 @@ export class BasicCompactionEngine extends CompactionEngine {
       if (target === undefined) return next()
       const policy = resolveTargetPolicy(this.config, target)
       const retries = this.overflowRetries.get(agent) ?? 0
-      if (retries >= policy.maxOverflowRetries) return next()
+      if (retries >= policy.maxOverflowRetries) {
+        const action = await next()
+        if (action?.kind === 'retry') this.overflowRetries.delete(agent)
+        return action
+      }
 
       const generation = agent.session.surface.replaceGeneration
       let result: CompactionResult | null

@@ -10,6 +10,8 @@ Status: implemented
 
 ## 决策
 
+[上游集成](../architecture/2026-09-16-knyazev-upstream-integration.zh.md) 使用显式 Gonka 模型策略替代全局半窗口默认值；服务默认值为 `0.8`。强制超时触发器继续生效。
+
 `compaction-basic` 将 `thresholdRatio` 的默认值设为 `0.5`，因此对于 400k 上下文的模型，除非配置提供其他比例，否则会在 200k token 时开始自动步骤边界压缩。精确的提供方／模型策略仍可覆盖服务默认值。
 
 选择性启用的 `fork-llm-first-chunk-timeout` 恢复独立于普通压力。每个 `FIRST_CHUNK_TIMEOUT` 都会请求选定的压缩服务执行强制 `context-overflow` 压缩。持久替换会结束失败轮次，并在 agent 到达 `idle` 后排入由插件生成的 `continue` 消息，具体由[首个分片恢复决策](../feature/2026-08-27-fork-llm-first-chunk-compaction.zh.md)定义。没有持久替换时，会委托给下游 retry 和 cooldown 策略。

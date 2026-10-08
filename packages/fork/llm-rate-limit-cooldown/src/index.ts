@@ -3,11 +3,9 @@
  * bounded `dsh-llm-retry` budget is exhausted: wait a long cooldown, then
  * return one retry action so the agent loop re-attempts the same request.
  *
- * The escalation is order-independent on the `agent/request-error` waterfall:
- * it claims only a normalized failure whose code matches and whose bounded
- * retry chain (`llm/retry` records) has already reached the provider's
- * `maxRetries`. Everything else delegates through `next()`, leaving fast
- * backoff and unbounded `always` policy ownership to `dsh-llm-retry`.
+ * Matching failures enter cooldown after fast retries are exhausted, or when
+ * their code or Retry-After cannot use fast backoff. Downstream recovery runs
+ * first. Durable retry events expose the cancellable wait to clients.
  *
  * @module @knyazevai/dsh-fork-llm-rate-limit-cooldown
  */
@@ -27,7 +25,7 @@ export const inject = ['agents']
 export interface Config {
   /** Cooldown before one retry of an exhausted rate-limited request, in ms (default 600000). */
   readonly cooldownMs?: number
-  /** Normalized failure codes that trigger escalation (default rate limit, 5xx, quota, timeout, transport, pi-ai catch-all). */
+  /** Failure codes eligible for cooldown; `*` includes every normalized provider failure. */
   readonly retryableCodes?: string[]
 }
 
@@ -42,7 +40,7 @@ const DEFAULT_COOLDOWN_MS = 600_000
  * can also carry a non-transient `Cannot find module` environment error, per
  * deployment preference for aggressive provider-outage coverage.
  */
-const DEFAULT_RETRYABLE_CODES = ['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR']
+const DEFAULT_RETRYABLE_CODES = ['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR', 'STREAM_CLOSED', 'EMPTY_RESPONSE']
 
 /** Loader schema for {@link Config}. */
 export const Config: z<Config> = z.object({

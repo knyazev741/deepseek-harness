@@ -102,9 +102,11 @@ export function createRecovery(ctx: Context, maxRetries: number): RecoveryHandle
     const count = counters.get(agent) ?? 0
     if (count >= maxRetries) {
       ctx.logger.warn(
-        `first-chunk idle timeout persisted after ${maxRetries} compactions; ending the turn`,
+        `first-chunk idle timeout persisted after ${maxRetries} compactions; delegating retry policy`,
       )
-      return undefined
+      const action = await next()
+      if (action?.kind === 'retry') counters.delete(agent)
+      return action
     }
     const generation = agent.session.surface.replaceGeneration
     try {

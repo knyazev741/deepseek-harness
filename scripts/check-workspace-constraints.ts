@@ -61,7 +61,7 @@ const standardReleaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[
 const desktopApplicationDirectory = 'apps/desktop'
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
-  '@knyazevai/dsh': ['lib/*.js', 'lib/types/*.d.ts'],
+  '@knyazevai/dsh': ['lib/*.js', 'lib/types/*.d.ts', 'bin.mjs'],
   '@knyazevai/dsh-desktop-host': [
     'lib/index.js', 'lib/cli.js',
   ],
@@ -263,6 +263,7 @@ export function expectedDshPackageFiles(manifest: PackageManifest): readonly str
     ...new Set(icons),
     ...[...localeFiles].sort(),
     'lib/index.js',
+    ...exportDefault(manifest, './invariant') === './lib/invariant.js' ? ['lib/invariant.js'] : [],
     ...manifest.bin ? ['lib/bin.js'] : [],
     // Worker-thread packages ship a CJS worker entry; the browser worker
     // bundle is an ES module a page loads with `new Worker(type: 'module')`.

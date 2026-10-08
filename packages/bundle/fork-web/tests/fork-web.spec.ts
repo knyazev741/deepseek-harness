@@ -59,10 +59,10 @@ describe('dsh-fork-web bundle', () => {
     expect(manifest.publishConfig?.access).toBe('public')
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.dependencies).toMatchObject({
-      '@knyazevai/dsh-base': 'workspace:^',
-      '@knyazevai/dsh-web-app': 'workspace:^',
-      '@knyazevai/dsh-fork-base': 'workspace:^',
-      '@knyazevai/dsh-fork-ui-workspace-overlay': 'workspace:^',
+      '@knyazevai/dsh-base': 'workspace:*',
+      '@knyazevai/dsh-web-app': 'workspace:*',
+      '@knyazevai/dsh-fork-base': 'workspace:*',
+      '@knyazevai/dsh-fork-ui-workspace-overlay': 'workspace:*',
     })
   })
 

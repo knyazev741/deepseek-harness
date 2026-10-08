@@ -76,6 +76,25 @@ interface GenericSkip {
 }
 
 const GENERIC_SKIPS: readonly GenericSkip[] = [
+  // Current preset ids and Cordis event domains retain their product names.
+  { file: 'apps/cli/tests/profiles/web/tests/fork-session-create.expected.e2e.ts', upstream: ['cordis'] },
+  { file: 'apps/web/tests/agent-preset-selection.e2e.ts', upstream: ['cordis'] },
+  { file: 'apps/web/tests/developer-tools-settings.e2e.ts', upstream: ['cordis'] },
+  { file: 'docs/subsystems/schedule.md', upstream: ['cordis'] },
+  { file: 'docs/subsystems/schedule.zh.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.zh.md', upstream: ['cordis'] },
+  { file: 'docs/user/guide/schedule.md', upstream: ['cordis'] },
+  { file: 'docs/user/guide/schedule.zh.md', upstream: ['cordis'] },
+  { file: 'packages/bundle/fork-base/tests/fork-base.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/bundle/web-app/cordis.patch.yml', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/src/client/CreatePluginMenuItem.tsx', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/tests/components.client.spec.tsx', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/tests/create-plugin-menu-item.client.spec.tsx', upstream: ['cordis'] },
+  { file: 'packages/client/ui-agent-preset/tests/section-store.client.spec.ts', upstream: ['cordis'] },
+  { file: 'packages/extensions/cordis-host-runner/tests/inspect-registry.spec.ts', upstream: ['cordis'] },
+  { file: 'snapshots/session/cordis-inspect-liveness/client-fixture.mjs', upstream: ['cordis'] },
+  { file: 'snapshots/session/cordis-inspect-timeout/client-fixture.mjs', upstream: ['cordis'] },
   // `Symbol.for('schemastery')` and the `vendor:` metadata field are upstream identifiers.
   { file: 'vendor/schemastery/src/index.ts', upstream: ['schemastery'] },
   // Narrows a Standard Schema by the same upstream `vendor:` identifier.
@@ -220,9 +239,7 @@ const EXACT_EDITS: readonly ExactEdit[] = [
     id: 'publication-set-scope-assertion',
     file: 'scripts/publish-npm-baseline.ts',
     find: '      if (!isVendored && !name.startsWith(\'@deepseek-ai/\')) {',
-    replace: `      // Vendored packages are rescoped too (vendor/README.md), so publication
-      // never carries an upstream name that would squat it on the registry.
-      if (!name.startsWith('@deepseek-ai/')) {`,
+    replace: '      if (!isBaselinePackageName(name, origin)) {',
     expect: 1,
   },
   {

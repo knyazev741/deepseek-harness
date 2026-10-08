@@ -163,7 +163,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
       const context = scope.ctx.extend({ baseUrl: record.context.baseUrl })
       const patches = this.patchContributions.get(record.config.id)?.flatMap(entry => entry.patches) ?? []
       const plugins = applyEntryPatches(record.config.plugins as EntryOptions[], [...patches] as PatchOptions[],
-        (message, ...args) => { this.owner.logger.warn(message, ...args) })
+        (message: string, ...args: unknown[]) => { this.owner.logger.warn(message, ...args) })
       const mount = await mountPreset(context, record.config.id, plugins)
       const generation: Generation = { scope, key, mount, users: 0, retired: false }
       context.effect(() => {

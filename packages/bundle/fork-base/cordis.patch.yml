@@ -37,14 +37,7 @@
       name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
       config:
         cooldownMs: 600000
-        retryableCodes:
-          - RATE_LIMIT
-          - QUOTA
-          - SERVER
-          - TIMEOUT
-          - FIRST_CHUNK_TIMEOUT
-          - TRANSPORT
-          - PI_AI_ERROR
+        retryableCodes: ['*']
 
 # The upstream adapter row is dormant without a settings section. The fork
 # composition supplies a portable route while keeping the credential external.

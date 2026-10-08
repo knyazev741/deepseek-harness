@@ -34,16 +34,11 @@ The plugin requires `agents` and listens on the `agent/request-error` waterfall.
 <a id="escalation-after-the-bounded-budget"></a>
 ## Escalation after the bounded budget
 
-`dsh-llm-retry` owns fast exponential backoff for transient failures up to each provider's `retryPolicy.maxRetries` and, for `mode: always`, retries every failure unboundedly. This plugin extends the bounded (`mode: normal`) path only:
+`dsh-llm-retry` owns fast backoff. This plugin extends only a provider's `normal` policy: after its fast budget, an unsupported fast-retry code, or an oversized `Retry-After`, matching failures receive an unlimited sequence of cooldown attempts. `retryableCodes: ['*']`, selected by `fork-base`, includes every normalized provider failure. A missing policy and `always` policy remain owned by downstream recovery.
 
-- It claims a failure only when `failure.code` is in `retryableCodes` (default `['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR']`: `RATE_LIMIT` is HTTP `429`, `SERVER` is an upstream 5xx such as `502`/`503`, `QUOTA` is capacity-quota exhaustion, `TIMEOUT` is a request timeout, `TRANSPORT` is a stream/connection truncation, and `PI_AI_ERROR` is the pi-ai provider catch-all) and the request's durable `llm/retry` chain for that `turn`/`step`/`provider` has reached the provider's `maxRetries`.
-- Anything else — a different code, an unbounded/absent policy, or a budget not yet exhausted — is delegated through `next()`, leaving ownership with `dsh-llm-retry` or a later listener.
+Other recovery listeners, including compaction, run before a cooldown is scheduled. Each wait lasts at least `cooldownMs` (default `600000`, ten minutes), or longer when the provider requests it. Long waits are split at Node's timer limit. Turn cancellation and plugin disposal cancel the wait and prevent another request.
 
-The claim waits `cooldownMs` (default `600000` = 10 minutes, non-zero and no greater than Node's reliable timer maximum `2147483647`) on a delay cancellable by the turn `signal` and by plugin disposal, then returns `{ kind: 'retry' }`. The loop then re-runs the same request; if it is limited again, the plugin claims again and waits again — so a persistent `429`, upstream `5xx`, quota, timeout, or transport fall is retried roughly every `cooldownMs`.
-
-The default code set is keyed to live-session evidence: these are the transient provider and upstream falls observed on real `knyazev-ai` sessions. `PI_AI_ERROR` is included by default despite also carrying a non-transient module-resolution environment error in rare cases, per the deployment's preference for aggressive provider-outage coverage; drop it from `retryableCodes` if you prefer to surface those failures terminally instead of retrying them.
-
-Because the claim is a pure function of the durable retry count, the plugin is order-independent on the waterfall: whether it or `dsh-llm-retry` fires first, only the exhausted case escalates.
+Each wait appends `llm/retry` with `mode: always`, followed by `llm/retry-started` only after the delay completes. A separate policy chain starts at one and keeps its retry identity, so clients show the current wait instead of a stale exhausted fast-retry counter. The same failed request is retried until it succeeds or is cancelled.
 
 <a id="model-experience"></a>
 ## Model Experience
@@ -52,7 +47,7 @@ Because the claim is a pure function of the durable retry count, the plugin is o
 
 #### What the model sees
 
-The plugin adds no prompt, tool schema, or other model-visible text. When it claims an exhausted limited request, the model simply sees the request eventually succeed after the cooldown, or fail terminally if the turn is cancelled. The `agent/request-error` recovery appends no durable session event.
+The plugin adds no prompt, tool schema, or other model-visible text. When it claims an exhausted limited request, the model simply sees the request eventually succeed after the cooldown, or fail terminally if the turn is cancelled. Recovery records `llm/retry` and `llm/retry-started` events without changing the model-visible context.
 
 #### Token effect
 

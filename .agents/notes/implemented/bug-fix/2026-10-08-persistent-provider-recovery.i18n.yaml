@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-10-08-persistent-provider-recovery.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-10-08-persistent-provider-recovery.md
+/agent-note-persistent-provider-recovery-after-fast-retries:
+  en: 1b62f7100854a676
+  zh: 58174ba463b325da
+/agent-note-persistent-provider-recovery-after-fast-retries/problem:
+  en: 952649e0660882c3
+  zh: 4c3b3bb3c39d281c
+/agent-note-persistent-provider-recovery-after-fast-retries/decision:
+  en: 0faf7b32b7aa51da
+  zh: bd8a962203a6383d
+/agent-note-persistent-provider-recovery-after-fast-retries/alternatives-considered:
+  en: 243ede91ee094052
+  zh: ba66d20747dd3f96
+/agent-note-persistent-provider-recovery-after-fast-retries/consequences:
+  en: e21434d9b6aeb70f
+  zh: ced5e4932004f5fc
+/agent-note-persistent-provider-recovery-after-fast-retries/testing:
+  en: 43725d0e05e5f097
+  zh: df2ee815e13a2baf

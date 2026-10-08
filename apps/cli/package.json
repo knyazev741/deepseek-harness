@@ -104,9 +104,9 @@
     "@knyazevai/dsh-agent-preset": "workspace:*",
     "@knyazevai/dsh-experimental-voice-input-bundle": "workspace:*",
     "@knyazevai/dsh-experimental-auto-review": "workspace:*",
-    "@knyazevai/dsh-wake-scheduler": "workspace:^",
-    "@knyazevai/dsh-fork-base": "workspace:^",
-    "@knyazevai/dsh-fork-web": "workspace:^"
+    "@knyazevai/dsh-wake-scheduler": "workspace:*",
+    "@knyazevai/dsh-fork-base": "workspace:*",
+    "@knyazevai/dsh-fork-web": "workspace:*"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "1.4.0",

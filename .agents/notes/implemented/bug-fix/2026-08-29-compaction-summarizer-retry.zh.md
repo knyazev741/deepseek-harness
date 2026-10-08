@@ -10,6 +10,8 @@ Status: implemented
 
 ## 决策
 
+当前停止条件与重试日志由[持续提供方恢复](2026-10-08-persistent-provider-recovery.zh.md)取代；服务职责与继续执行的理由仍然适用。
+
 `compaction-basic` 解析所选提供方路由捕获的 `ResolvedRetryPolicy`，并将其应用于每次辅助流尝试。普通路由在 `maxRetries` 范围内使用快速退避；有限预算耗尽后，`summarizerCooldownMs`（默认 `600000`）等待并重试符合条件的临时失败，且不重置快速计数。always 路由使用没有上限的本地退避。路由限制以内的有效提供方 `Retry-After` 会被遵守；超过上限的值会使普通路由失败，并让 always 路由回退到本地延迟。取消与不可重试失败仍具有最终决定权，每次尝试都会创建新的 block assembler。
 
 首分片恢复 listener 会先解析 `ctx.agentPresets.serviceFor(agent, 'compaction')`，然后才回退到宿主压缩服务。它只有在压缩取得持久替换进展后才暂存插件创建的 `continue` follow-up，因此 `FIRST_CHUNK_TIMEOUT` 会在摘要器重试或等待 cooldown 时保持在恢复操作中。

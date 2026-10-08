@@ -79,14 +79,19 @@
                       model: deepseek-v4-flash
                       thresholdRatio: 0.5
                       maxSummarizationInputTokens: 131072
+                      summarizerRetryForever: true
                       compactionRetries: 2
                       maxOverflowRetries: 2
                     - provider: knyazev-ai
                       model: glm-5.3-flash
                       thresholdRatio: 0.5
                       maxSummarizationInputTokens: 131072
+                      summarizerRetryForever: true
                       compactionRetries: 2
                       maxOverflowRetries: 2
+                    - provider: knyazev-ai
+                      model: minimax-2.7
+                      summarizerRetryForever: true
               - id: command-compact
                 name: '@knyazevai/dsh-command-compact'
               - id: tool-result-pruner

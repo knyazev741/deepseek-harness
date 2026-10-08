@@ -15,10 +15,8 @@ export const name = 'llm-rate-limit-cooldown-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant: this plugin only delays and returns a retry action on
- * the `agent/request-error` waterfall; it writes no durable session event and
- * adds no model-visible surface. Its recovery decision is proven by package
- * tests against the loop's retry action.
+ * No independent runtime relation: the Session retry projection validates
+ * the retry identities and attempt ordering emitted by this plugin.
  */
 const install: InvariantInstaller = () => {}
 

@@ -39,17 +39,17 @@
     }
   },
   "dependencies": {
-    "@knyazevai/dsh-base": "workspace:^",
-    "@knyazevai/dsh-web-app": "workspace:^",
-    "@knyazevai/dsh-fork-base": "workspace:^",
-    "@knyazevai/dsh-fork-ui-workspace-overlay": "workspace:^"
+    "@knyazevai/dsh-base": "workspace:*",
+    "@knyazevai/dsh-web-app": "workspace:*",
+    "@knyazevai/dsh-fork-base": "workspace:*",
+    "@knyazevai/dsh-fork-ui-workspace-overlay": "workspace:*"
   },
   "peerDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import { onTestFinished, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { AttachmentId } from '@knyazevai/dsh-attachment'
 import BasicCompactionEngine from '@knyazevai/dsh-compaction-basic'
@@ -367,6 +367,7 @@ describe('compact configuration and defaults', () => {
       maxTokens: 65_536,
       maxSummarizationInputTokens: 131072,
       summarizerCooldownMs: 600000,
+      summarizerRetryForever: false,
       compactionRetries: 1,
       maxOverflowRetries: 1,
       modelPolicies: [],
@@ -591,6 +592,7 @@ describe('compact configuration and defaults', () => {
       [{ maxSummarizationInputTokens: 1.5 }, /maxSummarizationInputTokens/],
       [{ maxSummarizationInputTokens: Number.MAX_SAFE_INTEGER + 1 }, /maxSummarizationInputTokens/],
       [{ maxSummarizationInputTokens: 'many' }, /maxSummarizationInputTokens/],
+      [{ summarizerRetryForever: 'yes' }, /summarizerRetryForever/],
       [{ summarizerCooldownMs: 0 }, /summarizerCooldownMs/],
       [{ summarizerCooldownMs: 1.5 }, /summarizerCooldownMs/],
       [{ summarizerCooldownMs: Number.MAX_SAFE_INTEGER + 1 }, /summarizerCooldownMs/],
@@ -1144,8 +1146,41 @@ describe('bounded summarization input', () => {
 })
 
 describe('summarizer retry', () => {
+  it('retries an actual empty summary in persistent mode', async () => {
+    const ctx = new Context()
+    onTestFinished(() => ctx.fiber.dispose())
+    void new LlmRuntime(ctx)
+    const adapter = new SummaryRetryAdapter({ failures: 0 })
+    const stream = vi.spyOn(adapter, 'stream').mockImplementationOnce(async function* () {
+      yield { type: 'finish', reason: { kind: 'stop' } }
+    })
+    ctx.llm.registerAdapter(['summary'], adapter)
+    await expect(summarizeWithLlm(ctx, {
+      summarizationProvider: '', summarizationModel: '', maxTokens: 128,
+      summarizerCooldownMs: 1, summarizerRetryForever: true,
+    }, promptInput('history'), agent(Session.create(SessionId('summary-empty')), 'summary')))
+      .resolves.toMatchObject({ provider: 'summary' })
+    expect(stream).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['AUTH', 'EMPTY_RESPONSE', 'PI_AI_ERROR'])(
+    'keeps the summary alive through repeated %s failures in persistent mode', async (code) => {
+      const ctx = new Context()
+      void new LlmRuntime(ctx)
+      const adapter = new SummaryRetryAdapter({ failures: 25, failure: { code, message: 'provider down' } })
+      ctx.llm.registerAdapter(['summary'], adapter)
+      await expect(summarizeWithLlm(ctx, {
+        summarizationProvider: '', summarizationModel: '', maxTokens: 128,
+        summarizerCooldownMs: 1, summarizerRetryForever: true,
+      }, promptInput('history'), agent(Session.create(SessionId(`summary-persistent-${code}`)), 'summary')))
+        .resolves.toMatchObject({ provider: 'summary' })
+      expect(adapter.requests).toBe(26)
+    },
+  )
+
   it('retries transient failures through the fast budget and then a cooldown', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => { vi.useRealTimers() })
     const ctx = new Context()
     const adapter = new SummaryRetryAdapter()
     void new LlmRuntime(ctx)
@@ -1215,6 +1250,7 @@ describe('summarizer retry', () => {
 
   it('honors a valid provider Retry-After without adding jitter', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => { vi.useRealTimers() })
     const ctx = new Context()
     void new LlmRuntime(ctx)
     const adapter = new SummaryRetryAdapter({
@@ -1247,7 +1283,7 @@ describe('summarizer retry', () => {
     expect(adapter.requests).toBe(2)
   })
 
-  it('returns the original failure when normal Retry-After exceeds the route cap', async () => {
+  it('uses the cooldown when normal Retry-After exceeds the route cap', async () => {
     const ctx = new Context()
     void new LlmRuntime(ctx)
     const adapter = new SummaryRetryAdapter({
@@ -1272,12 +1308,13 @@ describe('summarizer retry', () => {
       },
       promptInput('history'),
       agent(Session.create(SessionId('summary-over-cap')), 'summary'),
-    )).rejects.toMatchObject({ code: 'RATE_LIMIT' })
-    expect(adapter.requests).toBe(1)
+    )).resolves.toMatchObject({ provider: 'summary' })
+    expect(adapter.requests).toBe(2)
   })
 
   it('uses local backoff for an always policy after an over-cap Retry-After', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => { vi.useRealTimers() })
     const ctx = new Context()
     void new LlmRuntime(ctx)
     const adapter = new SummaryRetryAdapter({
@@ -1308,6 +1345,7 @@ describe('summarizer retry', () => {
 
   it('cancels a cooldown wait without starting another summarization attempt', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => { vi.useRealTimers() })
     const ctx = new Context()
     void new LlmRuntime(ctx)
     const adapter = new SummaryRetryAdapter({ failures: 2 })
@@ -1336,6 +1374,7 @@ describe('summarizer retry', () => {
 
   it('retries a coded middleware failure through the same policy', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => { vi.useRealTimers() })
     const ctx = new Context()
     void new LlmRuntime(ctx)
     const adapter = new SummaryRetryAdapter({ failures: 0 })
@@ -2528,6 +2567,17 @@ describe('automatic listener and loader composition', () => {
     compactSpy.mockClear()
     expect(await recover(ctx, owner, overflow())).toBe(false)
     expect(compactSpy).not.toHaveBeenCalled()
+  })
+
+  it('starts a new overflow compaction batch after downstream recovery retries', async () => {
+    const ctx = createContext()
+    const compact = new TestCompactionEngine(ctx, { maxOverflowRetries: 1 })
+    const owner = agent(conversation(3), MODEL)
+    expect(await recover(ctx, owner, overflow())).toBe(true)
+    expect(await recover(ctx, owner, overflow(), SIGNAL, async () => ({ kind: 'retry' }))).toBe(true)
+    const spy = vi.spyOn(compact, 'compactIfNeeded')
+    await recover(ctx, owner, overflow())
+    expect(spy).toHaveBeenCalledOnce()
   })
 
   it('applies the routed model override to the overflow retry cap', async () => {

@@ -16,7 +16,7 @@ import PinState from '../src/index.ts'
 
 export async function fixture(legacyPins: string[] = []) {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'fork-pins-')))
-  onTestFinished(() => rmSync(home, { recursive: true, force: true }))
+  onTestFinished(() => { rmSync(home, { recursive: true, force: true }) })
   const dir = join(home, 'profiles', 'test')
   initProfile(dir, ['test-bundle'])
   const bundle = join(dir, 'node_modules', 'test-bundle')

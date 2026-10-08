@@ -24,7 +24,7 @@ it('sends low, high and max instead of an on/off flag and rejects off for GLM', 
   const config = rows.find(row => row.id === 'llm-pi-ai')!.config!
   const server = await mockServer(['low', 'high', 'max'].map(() => ({ events: textEvents })))
   vi.stubEnv('KNYAZEV_AI_API_KEY', 'keyless-glm-wire-test')
-  config.providers!['knyazev-ai']!.baseURL = `${server.url}/v1`
+  config.providers['knyazev-ai']!.baseURL = `${server.url}/v1`
   const ctx = new Context()
   context = ctx
   await ctx.plugin(LlmRuntime)
@@ -48,7 +48,7 @@ it('sends an explicit off value for DeepSeek because the API defaults to thinkin
   const config = rows.find(row => row.id === 'llm-pi-ai')!.config!
   const server = await mockServer([{ events: textEvents }])
   vi.stubEnv('KNYAZEV_AI_API_KEY', 'keyless-deepseek-wire-test')
-  config.providers!['knyazev-ai']!.baseURL = `${server.url}/v1`
+  config.providers['knyazev-ai']!.baseURL = `${server.url}/v1`
   const ctx = new Context()
   context = ctx
   await ctx.plugin(LlmRuntime)
