@@ -1,4 +1,5 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { provideWorkingDirectoryFixture, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,7 +17,6 @@ import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import LocalSubprocessRuntime from '@knyazevai/dsh-subprocess-local'
 import { resolvePwshPath } from '@knyazevai/dsh-pwsh-local/src/resolve.ts'
 import * as ptyLocal from '@knyazevai/dsh-terminal-bash'
-import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 
 const roots: string[] = []
 const contexts: Context[] = []
@@ -59,6 +59,7 @@ async function harness(
   const root = mkdtempSync(join(tmpdir(), 'dsh-pty-local-'))
   roots.push(root)
   const ctx = new Context()
+  provideWorkingDirectoryFixture(ctx)
   contexts.push(ctx)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(TerminalSessionService)

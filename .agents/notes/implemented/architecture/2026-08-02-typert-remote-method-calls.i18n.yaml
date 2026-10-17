@@ -12,14 +12,14 @@
   en: 99bb9a9508deafcd
   zh: 05e036982effd57f
 /agent-note-typert-gateway-targeted-method-calls/components-and-cordis-services:
-  en: 7f0ce77acfd4aef7
-  zh: 5d040d616bd76886
+  en: 1376ad60f5810196
+  zh: 4695d9337616e784
 /agent-note-typert-gateway-targeted-method-calls/business-declarations:
-  en: 7aa3427057762b12
-  zh: 252c818c95cc1e1d
+  en: dac6af2f7c59eb1f
+  zh: a82d5011287ff5ed
 /agent-note-typert-gateway-targeted-method-calls/decorators-and-the-explicit-gateway-facet:
-  en: 155afbe4b8af600b
-  zh: 14705698a9cdbd84
+  en: 161dccf2b4cf565d
+  zh: fa587fe0b46bf551
 /agent-note-typert-gateway-targeted-method-calls/lookup-and-remote-scope-registration:
   en: 9f7448898cf5cadc
   zh: 419573c589ed6f7d
@@ -33,8 +33,8 @@
   en: a244f6a88fdabf3d
   zh: e4feedb7297f4865
 /agent-note-typert-gateway-targeted-method-calls/three-artifact-kinds-and-two-typescript-programs:
-  en: 6ea4bddcf35a834d
-  zh: 4af474c6818b1cf0
+  en: c5bcd6eb76bf3d42
+  zh: 9df2fbb364643186
 /agent-note-typert-gateway-targeted-method-calls/the-remote-package-entry:
   en: 137dec97cae864e0
   zh: 89c9532bdb07591a
@@ -48,8 +48,8 @@
   en: 5d14e1b7afc53efb
   zh: e2f4b5814083738f
 /agent-note-typert-gateway-targeted-method-calls/src-and-lib-operating-modes:
-  en: 1e366dcfab74831b
-  zh: 14199f25f20a9352
+  en: f1b8426d1cfaed35
+  zh: a370376923c98d6e
 /agent-note-typert-gateway-targeted-method-calls/host-gateway-resolution:
   en: 88a95d7ab4621caf
   zh: 89b63fb6440fca79
@@ -66,11 +66,11 @@
   en: 78ecff21791b5d54
   zh: bb6236b363ef9311
 /agent-note-typert-gateway-targeted-method-calls/alternatives-considered:
-  en: 0d68c499b7780f4f
-  zh: bdd1e57232b996e2
+  en: eaa3ffe5ca14005c
+  zh: 1f0b455e30ade872
 /agent-note-typert-gateway-targeted-method-calls/verification:
   en: 1292c0c64e1ebe90
   zh: 13aabf332e273e57
 /agent-note-typert-gateway-targeted-method-calls/consequences:
-  en: c3459afdb606cfbe
-  zh: ec69f2bb39170a7c
+  en: abab48251550f584
+  zh: 2568c46d78dbefdf

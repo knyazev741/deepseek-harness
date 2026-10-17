@@ -9,7 +9,7 @@ kind: persistence-change
 
 ## 概述
 
-在上游 Session 格式中保留分支来源标记与继续消息归属。
+在当前 V4 会话中保留分支来源标记与继续执行的归属信息。
 
 ## 目录
 
@@ -27,36 +27,32 @@ id: 2026-10-08-fork-upstream-v4
 baseline: false
 changes:
   - root: "event:agent/inbox/spliced"
-    previous: "2026-09-21-user-question-reply"
-    after: "4c24bd680e273b5e065ba81faa73650169fff2210be427ba015bdba5ced4f543"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "9308eeca974942d895e0f6a503fe3919331061373a87acd003ade30104ba462f"
     decision: same-version
   - root: "event:developer/message"
-    previous: "2026-09-21-user-question-reply"
-    after: "14913187742aa0d062da7382b5ded7bef4bb7ea64a663f209795fce8417e9ee7"
-    decision: same-version
-  - root: "event:plugin:fork/session-source"
-    previous: null
-    after: "3aaa59a268212c86eccaca795786af10d541233f52f13ffe6b97393a8f8db554"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "bd513c6a8a40609220d4e2ddc91e3752fbc67eff44a78255557893aadbe7d069"
     decision: same-version
   - root: "event:session/title-llm-request"
-    previous: "2026-09-21-user-question-reply"
-    after: "2282e7cac04d81b50903c710052bfc3b1f0a93201aaf47d6910bbe8ecf67460f"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "f5b9422088c2dcf7419b0e4df9cbb9ad12e1a36bcfeeee4dbb91349b7da86c5e"
     decision: same-version
   - root: "event:user/message"
-    previous: "2026-09-21-user-question-reply"
-    after: "291943d7629883cefd30b18c0f8775f7d3a76e8860f3fd2cf8b7414a0672fe53"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "57d2ce8a691e6ff2c23d362810a0dd25d9d48372e63801faf961ba8de21734f8"
     decision: same-version
 ```
 
 <a id="compatibility"></a>
 ## 兼容性
 
-相邻的上游迁移将可忽略的 fork/session-source 事件重命名为 plugin:fork/session-source，并保留其字面载荷。已发布的历史代文件保持不变。唤醒调度器与首块恢复来源仅增加归属信息：读取器保留这些消息，无需加载相应生产者。
+已有 V0–V3 代际文件保持不变。相邻迁移保留已识别的 ignorable 分支来源标记。当前写入方使用原生插件记录 API，保持相同的类型、载荷和 ignorable 信封；声明位于 SessionEventMap 之外。历史 fork/session-source 事件仍然可读。唤醒调度与首块恢复的归属信息仍是可选来源元数据。未知必需事件仍会拒绝重建。
 
 <a id="verification"></a>
 ## 验证
 
-合并实现通过了 session-migrate catalog、分支 session-source、首块超时与 wake-scheduler 的针对性测试。
+聚焦的 Session 格式迁移与分支来源标记测试通过：38 个文件、1,175 个测试。
 
 <a id="dev-note"></a>
 ## 开发备注

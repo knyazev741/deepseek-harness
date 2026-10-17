@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import InvariantRegistry from '@knyazevai/dsh-invariants'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { appendPluginRecord, SessionId } from '@knyazevai/dsh-session'
 import * as ForkSessionSourceInvariant from '../src/invariant.ts'
 
 const activeContexts: Context[] = []
@@ -60,21 +60,22 @@ describe('fork session source invariant', () => {
     const ctx = await setup()
     const duplicate = ctx.sessions.create(SessionId('invalid-duplicate'))
 
-    duplicate.append('plugin:fork/session-source', { source: 'github-actions' }, { ignorable: true })
-    expect(() => duplicate.append('plugin:fork/session-source', { source: 'github-actions' }, { ignorable: true })).toThrow()
+    appendPluginRecord(duplicate, 'plugin:fork/session-source', { source: 'github-actions' })
+    expect(() => appendPluginRecord(duplicate, 'plugin:fork/session-source', { source: 'github-actions' })).toThrow()
 
     const payload = ctx.sessions.create(SessionId('invalid-payload'))
-    expect(() => payload.append('plugin:fork/session-source', { source: 'not-github-actions' } as never, { ignorable: true }))
+    expect(() => appendPluginRecord(payload, 'plugin:fork/session-source', { source: 'not-github-actions' } as never))
       .toThrow(/non-literal/)
 
     const nullPayload = ctx.sessions.create(SessionId('invalid-null-payload'))
-    expect(() => nullPayload.append('plugin:fork/session-source', null as never, { ignorable: true })).toThrow(/non-literal/)
+    expect(() => appendPluginRecord(nullPayload, 'plugin:fork/session-source', null as never)).toThrow(/non-literal/)
 
     const arrayPayload = ctx.sessions.create(SessionId('invalid-array-payload'))
-    expect(() => arrayPayload.append('plugin:fork/session-source', [] as never, { ignorable: true })).toThrow(/non-literal/)
+    expect(() => appendPluginRecord(arrayPayload, 'plugin:fork/session-source', [] as never)).toThrow(/non-literal/)
 
     const marker = ctx.sessions.create(SessionId('invalid-ignorable'))
-    expect(() => marker.append('plugin:fork/session-source', { source: 'github-actions' })).toThrow()
+    const unmarkedCandidate = { type: 'plugin:fork/session-source', seq: 0, time: Date.now(), data: { source: 'github-actions' } } as never
+    expect(() => { ctx.events.emit('internal/dispatch', 'emit', 'session/event', [marker, unmarkedCandidate]) }).toThrow()
 
     const dispatchSession = ctx.sessions.create(SessionId('invalid-dispatch'))
     const surfaceCandidate = {

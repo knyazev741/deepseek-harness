@@ -2,6 +2,7 @@
 import type { GlobalStandardProps } from '@knyazevai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { allowAllAccess } from '@knyazevai/dsh-client-test-runtime'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { ToolCallId } from '@knyazevai/dsh-llm/brand'
 import {
@@ -74,6 +75,7 @@ const chatState: ChatState = {
   nodes: {
     get: () => undefined,
     source: () => emptyNodeSource,
+    bottomSource: () => ({ getSnapshot: () => false, subscribe: () => () => {} }),
     turnDataSource: () => { throw new Error('unused') },
     processSource: () => emptyNodeSource,
     values: () => [],
@@ -122,6 +124,7 @@ const kit: Omit<QuestionComposerProps, 'matched'> = {
   useSessionStatus: selector => selector(attentionState),
   useSessionRetainInfo: () => undefined,
   useWorkspaces: selector => selector(workspaceState),
+  ...allowAllAccess,
   useConversation: selector => selector(conversationState),
   useChat: selector => selector(chatState),
   useTrajectory: selector => selector(trajectoryState),

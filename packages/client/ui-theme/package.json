@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-theme",
   "description": "Theme plugin: Host bootstrap for the pre-plugin palette; DOM-free ThemeRuntime for light/dark/system state; --dsw-* token styles and Appearance settings row",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -24,13 +24,15 @@
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json",
-    "./brand-font.css": "./lib/styles/brand-font.css"
+    "./brand-font.css": "./lib/styles/brand-font.css",
+    "./locale/*.json": "./locale/*.json"
   },
   "dsh": {
     "client": {
       "inject": [
         "@knyazevai/dsh-client-connection",
         "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-shortcuts",
         "@knyazevai/dsh-client-ui-renderer",
         "@knyazevai/dsh-client-ui-settings",
         "@knyazevai/dsh-api-remotes"
@@ -48,6 +50,7 @@
     "@knyazevai/dsh-api-remotes": "workspace:*",
     "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-shortcuts": "workspace:*",
     "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-client-test-runtime": "workspace:*",
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
@@ -55,12 +58,12 @@
     "@knyazevai/dsh-client-ui-settings": "workspace:*",
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
     "@knyazevai/dsh-host-webserver": "workspace:*",
-    "@types/react": "~18.3.1",
     "react": "^18.2.0",
     "clsx": "^2.0.0",
     "@knyazevai/dsh-settings": "workspace:*"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/client.js",
     "lib/styles",

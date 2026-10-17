@@ -33,7 +33,7 @@ kind: "package-bundle"
 
 本包自身没有运行时 API。后续 profile patch 可以按 id 禁用 `ui-workspace-overlay`，同时保留上游 browser 行和 Host fork 行。
 
-模型选择设置为每次子代理调用启用四条已配置的 Gonka 路由。现有用户设置覆盖这些默认值。
+模型选择设置为每次子代理调用启用三条 KnyazevAI 路由和 `deepseek-official/deepseek-flash`。官方 Flash 需要 DeepSeek 凭证，并支持当前 V4.1 Flash 模型。现有用户设置覆盖这些默认值。
 
 <a id="model-experience"></a>
 ## 模型体验
@@ -56,7 +56,7 @@ kind: "package-bundle"
 
 #### 模型看到的内容
 
-上游子代理工具允许从已配置的 Gonka 路由列表中逐次选择提供者和模型。子代理启动前会验证选定路由。
+上游子代理工具允许从已配置的 KnyazevAI 与官方 DeepSeek 路由列表中逐次选择提供者和模型。子代理启动前会验证选定路由。
 
 #### Token 影响
 

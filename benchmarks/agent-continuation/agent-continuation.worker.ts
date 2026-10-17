@@ -9,7 +9,7 @@ import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testki
 import { createUserMessage, LlmAdapter } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@knyazevai/dsh-llm'
 import { SESSION_FORMAT_VERSION } from '@knyazevai/dsh-session'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { defineContentToolFixture } from '@knyazevai/dsh-tools'
 import { assertBuiltBenchmarkRuntime } from '../support/built-worker.ts'
 import { PARENT_ID, response, resultText, syntheticHistory, TIME_ZERO, WORKLOAD } from './workload.ts'

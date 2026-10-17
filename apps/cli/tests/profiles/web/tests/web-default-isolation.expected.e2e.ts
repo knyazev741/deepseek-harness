@@ -3,7 +3,8 @@
 import { FiberState } from '@deepseek-ai/cordis'
 import type { WebBootGraph } from '@knyazevai/dsh-client-modules/client'
 import { expect, it } from 'vitest'
-import { experimentalRuntimeReferences, modulePackage } from './runtime-roster.ts'
+import { modulePackage } from './runtime-roster.ts'
+import { experimentalRuntimeReferences } from './runtime-roster-isolation.ts'
 import { withDefaultWeb, webGet } from './default-web-process.ts'
 
 const experimentalName = '@knyazevai/dsh-experimental-client-ui-agent-team'

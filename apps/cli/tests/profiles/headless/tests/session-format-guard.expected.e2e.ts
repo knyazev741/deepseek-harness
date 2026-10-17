@@ -17,7 +17,7 @@ import {
   type SessionEvent,
   type SessionHeader,
 } from '@knyazevai/dsh-session'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import {
   generationLogFilename,
   generationLogPath,

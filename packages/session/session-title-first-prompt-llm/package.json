@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-session-title-first-prompt-llm",
   "description": "First-message LLM provider plugin for DeepSeek Harness session titles",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -18,9 +18,14 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
-  "files": ["lib/index.js", "lib/types/**/*.d.ts"],
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/types/**/*.d.ts"
+  ],
   "license": "MIT",
   "peerDependencies": {
     "@knyazevai/dsh-llm": "workspace:*",
@@ -30,6 +35,7 @@
     "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
+    "@knyazevai/dsh-util-values": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
@@ -38,6 +44,7 @@
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-llm-deepseek": "workspace:*",
     "@knyazevai/dsh-llm-deepseek-api-key": "workspace:*",
+    "@knyazevai/dsh-llm-pi-ai": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-title": "workspace:*",
     "@knyazevai/dsh-session-title-llm": "workspace:*",

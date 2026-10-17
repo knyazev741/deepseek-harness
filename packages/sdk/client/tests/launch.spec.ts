@@ -35,7 +35,7 @@ function manifestPair(dsh: object, client: object): { dshUrl: string; clientUrl:
 describe('SDK dsh launch resolution', () => {
   it('resolves the same-version installed dsh entry by default', () => {
     const bin = installedDshBin()
-    expect(bin.endsWith(join('apps', 'cli', 'lib', 'bin.js'))).toBe(true)
+    expect(bin.endsWith(join('apps', 'cli', 'bin.mjs'))).toBe(true)
     const launch = resolveDshLaunch()
     expect(launch.command).toBe(process.execPath)
     expect(launch.args).toEqual(existsSync(bin)

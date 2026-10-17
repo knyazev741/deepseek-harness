@@ -115,6 +115,7 @@ it('samples one local environment at startup without validating watcher outputs'
     await mkdir(join(root, 'packages/client/example/lib'), { recursive: true })
     await writeFile(join(root, 'package.json'), JSON.stringify({ version: '1.2.3' }))
     await writeFile(join(root, 'apps/web/dist/index.html'), '<main></main>')
+    await writeFile(join(root, 'apps/web/dist/theme.css'), ':root { --dsw-font-family: sans-serif; }')
     await writeFile(join(root, 'packages/client/example/lib/client.js'), 'module.exports = {}\n')
     writeClientBuildRecord(root, {
       DSH_CLIENT_BUILD_PROFILE: 'official',
@@ -167,7 +168,7 @@ it('discovers client-preset packages the shell links, excluding loader-delivered
       await writeFile(join(root, dir, 'package.json'), JSON.stringify(manifest))
       await writeFile(join(root, dir, 'tsdown.config.ts'), config)
     }
-    const clientPreset = "import { clientLibrary } from '../tsdown.client.ts'\nexport default clientLibrary('x', [])\n"
+    const clientPreset = "import { clientLibrary } from '../tsdown.client.ts'\nexport default clientLibrary(import.meta.dirname, [])\n"
 
     // Linked by the compile shell: client preset, no loader-delivered half.
     await write('packages/client/linked', {}, clientPreset)

@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { eligibleDshRescopePath, parseDshRescopeMode, rescopeDshText } from './rescope-dsh.ts'
 
 describe('DSH package rescope', () => {
+  it('rewrites split package paths, registry URLs, and generated anchors', () => {
+    expect(rescopeDshText("join('node_modules', '@deepseek-ai', 'dsh-session')"))
+      .toBe("join('node_modules', '@knyazevai', 'dsh-session')")
+    expect(rescopeDshText('https://registry.example/@deepseek-ai%2fdsh-session'))
+      .toBe('https://registry.example/@knyazevai%2fdsh-session')
+    expect(rescopeDshText('https://registry.example/%40deepseek-ai%2Fdsh-session'))
+      .toBe('https://registry.example/%40knyazevai%2Fdsh-session')
+    expect(rescopeDshText('catalog.md#deepseek-aidsh-session')).toBe('catalog.md#knyazevaidsh-session')
+    expect(rescopeDshText("join('@deepseek-ai', 'cordis')")).toBe("join('@deepseek-ai', 'cordis')")
+  })
+
   it('rewrites the DSH prefix without changing vendored package names or repository URLs', () => {
     expect(rescopeDshText(JSON.stringify({
       name: '@deepseek-ai/dsh-tool-bash',

@@ -14,6 +14,7 @@ import GoalService, {
 } from '@knyazevai/dsh-goal'
 import type { GoalChangeMeta, GoalRef, GoalSnapshotChangeMeta } from '@knyazevai/dsh-goal'
 import { createInboxStub } from '@knyazevai/dsh-agent-loop-testkit'
+import { remoteMethods } from '@knyazevai/dsh-typert-protocol'
 
 declare module '@knyazevai/dsh-llm' {
   interface MessageSourceMap {
@@ -179,6 +180,16 @@ describe('GoalService creation and replay', () => {
     expect(goals.create(stub.agent, { objective: 'direct' })).toMatchObject({
       objective: 'direct', maxGoalRounds: 256,
     })
+  })
+
+  it('declares no resource readers on goals/get, leaving its Session resource to the Agent lookup', async () => {
+    const ctx = new Context()
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(SessionProjectionRegistry)
+    const goals = new GoalService(ctx)
+    const marker = remoteMethods(goals).find(method => method.method === 'get')
+    expect(marker).toMatchObject({ method: 'get' })
+    expect(marker?.resources).toBeUndefined()
   })
 
   it('rejects invalid direct configuration', async () => {

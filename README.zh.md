@@ -46,6 +46,8 @@ pnpm dsh web
 
 已有 profile 可能仍在 `settings.yaml` 中拥有 `providers.knyazev-ai.models`；这个用户数组会替换 bundle 目录，因此 `git pull` 不会主动改写它。更新后打开 **Settings → Models → KnyazevAI API**，选择 **Fetch available models**，保留系统建议修复的勾选项，再选择 **Adopt** 和 **Apply**。这样会恢复 reasoning 元数据，同时保留用户调整过的容量。若保存列表中仍有 `kimi-2.6`，请手工删除，因为线上 API 已不再发布它。
 
+如需使用当前官方 Flash 模型（[DeepSeek-V4.1-Flash-1017](https://api-docs.deepseek.com/updates)），请在 **Settings → Models → DeepSeek** 保存官方 API 密钥，然后为新会话选择 **DeepSeek-V4.1-Flash**。此路由使用 `deepseek-official/deepseek-flash`，支持图像和 `off`、`low`、`high`、`max` 推理级别。KnyazevAI 路由保留其自身发布的模型 id 与容量。
+
 ## 社区与支持
 
 - 通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。

@@ -242,6 +242,7 @@ describe('dsh-fork-base bundle', () => {
     const rootDir = mkdtempSync(resolve(tmpdir(), 'dsh-fork-loader-'))
     let ctx: Context | undefined
     try {
+      vi.stubEnv('KNYAZEV_AI_API_KEY', 'fixture-key')
       const overlay = readPatch('./cordis.patch.yml')
       const llmConfig = overlay.find(patch => patch.id === 'llm-pi-ai')?.config
       const defaultModelConfig = overlay.find(patch => patch.id === 'agent-default-model')?.config
@@ -345,15 +346,18 @@ describe('dsh-fork-base bundle', () => {
         })
       expect(ctx.settings.describe().find(entry => entry.ns === 'agent-default-model')?.value)
         .toEqual({ provider: 'settings-provider', model: 'settings-model' })
+      vi.stubEnv('KNYAZEV_AI_API_KEY', undefined)
+      await expect(ctx.llm.listModels('knyazev-ai')).resolves.toEqual([])
     } finally {
       await ctx?.fiber.dispose()
+      vi.unstubAllEnvs()
       rmSync(rootDir, { recursive: true, force: true })
     }
   })
 
   it('keeps the upstream base patch bytes unchanged', () => {
     const basePath = resolve(root, '../base/cordis.patch.yml')
-    const upstream = execFileSync('git', ['show', '5badb15009ae1756c3afe0ae0cef1faafc290ccc:packages/bundle/base/cordis.patch.yml'], { encoding: 'utf8' })
+    const upstream = execFileSync('git', ['show', '687f282e8625c6b8d11ff58211a90524be2e4317:packages/bundle/base/cordis.patch.yml'], { encoding: 'utf8' })
     expect(readFileSync(basePath, 'utf8')).toBe(upstream.replaceAll('@deepseek-ai' + '/dsh', '@knyazevai/dsh'))
   })
 })

@@ -2,6 +2,8 @@
 - name: '@knyazevai/dsh-system-prompt'
 - name: '@knyazevai/dsh-tools'
 - name: '@knyazevai/dsh-fs-local'
+- name: '@knyazevai/dsh-session-projection'
+- name: '@knyazevai/dsh-working-directory'
 - name: '@knyazevai/dsh-tool-fs'
 - name: '@knyazevai/dsh-session-query-sqlite'
   config:

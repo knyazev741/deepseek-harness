@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-browser-use-runtime",
   "description": "Session-owned browser resource lifecycles and MCP integration for experimental providers",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -38,7 +38,8 @@
     "@knyazevai/dsh-mcp-client": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
-    "@knyazevai/dsh-system-prompt": "workspace:*"
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~"
@@ -61,6 +62,8 @@
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/cordis-plugin-include": "workspace:~",
     "@knyazevai/dsh-attachment-local": "workspace:*",
-    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*"
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*"
   }
 }

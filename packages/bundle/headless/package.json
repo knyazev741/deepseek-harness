@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-headless",
   "description": "The dsh one-shot bundle: a direct core Agent/Session runner over dsh-base with no Host, HTTP, or browser layer",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -54,7 +54,8 @@
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-query": "workspace:*",
-    "@knyazevai/dsh-fs": "workspace:*"
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -66,6 +67,12 @@
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-query": "workspace:*",
-    "@knyazevai/dsh-fs": "workspace:*"
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@knyazevai/dsh-subagent": {
+      "optional": true
+    }
   }
 }

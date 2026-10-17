@@ -11,7 +11,7 @@ import * as ToolTodo from '@knyazevai/dsh-tool-todo'
 import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
 import TokenMeter from '@knyazevai/dsh-token-meter'
 import ToolResultPruner from '@knyazevai/dsh-compaction-tool-result-pruner'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import * as SessionCheckpointPolicy from '@knyazevai/dsh-session-checkpoint-policy'
 import { BasicCompactionEngine } from '@knyazevai/dsh-compaction-basic'
 import type { BasicCompactionConfig } from '@knyazevai/dsh-compaction-basic'
@@ -66,6 +66,7 @@ export interface CodingHarnessOptions {
 export async function codingHarness(workdir: string, options: CodingHarnessOptions = {}): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx, {
+    workingDirectory: true,
     systemPrompt: { personaPrefix: options.personaPrefix ?? '' },
   })
   await ctx.plugin(AgentLoop, { agents: [] })

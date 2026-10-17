@@ -6,7 +6,7 @@ import type { HostObservable } from '@knyazevai/dsh-client-ui-slots'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { SessionListState, SessionSummary } from '@knyazevai/dsh-api-session-controller/client'
 import type { WorkspaceId, WorkspaceSnapshot as WorkspaceListState, WorkspaceView } from '@knyazevai/dsh-api-workspace-controller/client'
-import { bindSnapshotSelector, makeTranslate } from '@knyazevai/dsh-client-test-runtime'
+import { allowAllAccess, bindSnapshotSelector, makeTranslate } from '@knyazevai/dsh-client-test-runtime'
 import { zh as commonZh } from '@knyazevai/dsh-client-locale/src/locales/zh.ts'
 import type { WorkspaceBrowserProps } from '../src/client/contract/slots.ts'
 import type { WorkspaceListPolicy, WorkspaceListView, WorkspaceSessionRowContext } from '../src/client/contract/contributions.ts'
@@ -100,9 +100,10 @@ describe('workspace contributions', () => {
     const t = makeTranslate(zh, commonZh) as WorkspaceBrowserProps['t']
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
+      ...allowAllAccess,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
-      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
       notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
       useSessionRetainInfo: () => undefined,
       useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
@@ -151,9 +152,10 @@ describe('workspace contributions', () => {
     store.actions.setGroupExpanded('workspace', false)
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
+      ...allowAllAccess,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
-      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
       notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
       useSessionRetainInfo: () => undefined,
       useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
@@ -188,9 +190,10 @@ describe('workspace contributions', () => {
     const view: WorkspaceListView = { id: 'second-only', order: 0, label: 'Second', include: ({ session: item }) => item.id === second.id }
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
+      ...allowAllAccess,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
-      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
       notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
       useSessionRetainInfo: () => undefined,
       useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
@@ -231,9 +234,10 @@ describe('workspace contributions', () => {
     }
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
+      ...allowAllAccess,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
-      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
       notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
       useSessionRetainInfo: () => undefined,
       useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),
@@ -264,9 +268,10 @@ describe('workspace contributions', () => {
     const store = createWorkspaceViewStore().create()
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
+      ...allowAllAccess,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
-      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename, dismissForkError: controls.dismissForkError,
+      setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
       notifyArchivedNotOpenable: vi.fn(), unarchiveSession: vi.fn(async () => {}),
       useSessionRetainInfo: () => undefined,
       useResource: () => ({ status: 'none', value: undefined, failure: undefined, reload: () => {} }),

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-client-ui-claude-code-mods",
   "description": "Web band above the prompt for Claude Code mods: draws each session's mod tree and sends button presses back to the bridge",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -48,18 +48,7 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-api-remotes": "workspace:*",
-    "@knyazevai/dsh-api-session-controller": "workspace:*",
-    "@knyazevai/dsh-client-locale": "workspace:*",
-    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
-    "@knyazevai/dsh-client-ui-session": "workspace:*",
-    "@knyazevai/dsh-client-ui-slots": "workspace:*",
-    "@knyazevai/dsh-experimental-claude-code-mods": "workspace:*",
-    "@knyazevai/dsh-session": "workspace:*",
-    "@knyazevai/dsh-typert-protocol": "workspace:*"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -75,8 +64,7 @@
     "@knyazevai/dsh-experimental-claude-code-mods": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*",
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "~18.3.1",
+    "@testing-library/react": "^16.3.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }

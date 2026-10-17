@@ -231,7 +231,8 @@ export function createAssembledRemote(options: AssembledRemoteOptions = {}): Ass
   mock.unary('session/projections', (request: unknown) => {
     const sessionId = recordString(recordValue(request, 'request'), 'sessionId')
     const summary = sessions.find(candidate => candidate.sessionId === sessionId)
-    return ok(structuredClone(summary?.projections ?? fixture.control.value.projections[sessionId] ?? null))
+    const projections = summary?.projections ?? fixture.control.value.projections[sessionId]
+    return ok(projections === undefined ? null : { ...structuredClone(projections), kind: 'sequenced' })
   })
   mock.unary('workspace/create', (request: unknown) => {
     const path = recordString(recordValue(request, 'request'), 'path')

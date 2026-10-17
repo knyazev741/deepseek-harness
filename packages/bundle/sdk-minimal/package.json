@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-sdk-minimal",
   "description": "The standalone minimal SDK profile bundle: JSON-RPC, one DeepSeek adapter, persistent shell, and JSONL sessions",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -37,6 +37,9 @@
     "@deepseek-ai/cordis-plugin-timer": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-agent-loop": "workspace:*",
+    "@knyazevai/dsh-attachment-local": "workspace:*",
+    "@knyazevai/dsh-compaction-basic": "workspace:*",
+    "@knyazevai/dsh-compaction-image-offload": "workspace:*",
     "@knyazevai/dsh-deepseek-llm-api-extensions": "workspace:*",
     "@knyazevai/dsh-jobs-local": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
@@ -57,9 +60,14 @@
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-terminal": "workspace:*",
     "@knyazevai/dsh-terminal-bash": "workspace:*",
+    "@knyazevai/dsh-token-meter": "workspace:*",
     "@knyazevai/dsh-tool-bash-persistent": "workspace:*",
+    "@knyazevai/dsh-tool-fs": "workspace:*",
     "@knyazevai/dsh-tool-pwsh-persistent": "workspace:*",
-    "@knyazevai/dsh-tools": "workspace:*"
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-tool-working-directory": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"

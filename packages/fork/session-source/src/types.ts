@@ -7,7 +7,10 @@ declare module '@knyazevai/dsh-session/types' {
   interface SessionEventMap {
     /** Read-compatible legacy marker; current writers use the plugin-prefixed identity. */
     'fork/session-source': { source: 'github-actions' }
-    /** Log-only marker identifying a session created in GitHub Actions. */
+  }
+
+  interface PluginRecordMap {
+    /** Optional GitHub Actions source marker retained across fork and resume. */
     'plugin:fork/session-source': { source: 'github-actions' }
   }
 }

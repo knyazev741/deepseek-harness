@@ -6,7 +6,7 @@
     - id: ui-workspace-overlay
       name: '@knyazevai/dsh-fork-ui-workspace-overlay'
 
-# Use upstream's persisted route selection, with Gonka routes available by default.
+# Persisted subagent routes include the gateway models and official Flash.
 - id: subagent-model-selection-settings
   config:
     enabled: true
@@ -17,3 +17,5 @@
         model: glm-5.3-flash
       - provider: knyazev-ai
         model: minimax-2.7
+      - provider: deepseek-official
+        model: deepseek-flash

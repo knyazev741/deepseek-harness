@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Frame interactions with a real store and explicitly driven browser measurements. */
 import type { GlobalStandardProps, RenderOpts } from '@knyazevai/dsh-client-ui-slots'
-import { bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'
+import { allowAllAccess, bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 import { AppFrame } from '../src/client/AppFrame.tsx'
@@ -99,6 +99,7 @@ function mountFrame(windowWidth = frameWidth) {
       useSessionRetainInfo={() => undefined}
       useResource={useResource}
       useWorkspaces={sel => sel(workspaceState)}
+      {...allowAllAccess}
       t={key => key === 'brand.localBuild' ? 'DSH Local Build' : key}
     />
   )

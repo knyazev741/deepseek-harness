@@ -76,6 +76,10 @@ interface GenericSkip {
 }
 
 const GENERIC_SKIPS: readonly GenericSkip[] = [
+  { file: 'apps/cli/tests/optional-bundle-transitions.e2e.ts', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.md', upstream: ['cordis'] },
+  { file: 'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.zh.md', upstream: ['cordis'] },
+  { file: 'scripts/rescope-dsh.spec.ts', upstream: ['cordis'] },
   // Current preset ids and Cordis event domains retain their product names.
   { file: 'apps/cli/tests/profiles/web/tests/fork-session-create.expected.e2e.ts', upstream: ['cordis'] },
   { file: 'apps/web/tests/agent-preset-selection.e2e.ts', upstream: ['cordis'] },

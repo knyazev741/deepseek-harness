@@ -8,6 +8,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Session } from '@knyazevai/dsh-session'
+import { appendPluginRecord, pluginRecordOf } from '@knyazevai/dsh-session'
 import { forkSessionSourceProjectionDefinition } from './projection.ts'
 
 // Type-only imports make the optional projection and session event augmentations
@@ -41,7 +42,7 @@ const SOURCE_EVENT_DATA = { source: 'github-actions' } as const
 /** Whether a session already contains the source marker in its persisted log. */
 function hasSourceMarker(session: Session): boolean {
   // oxlint-disable-next-line typescript/no-deprecated -- Existing fork history read retained during upstream migration.
-  return session.snapshotEvents().some(event => (event.type === 'plugin:fork/session-source' || event.type === 'fork/session-source'))
+  return session.snapshotEvents().some(event => pluginRecordOf(event)?.type === 'plugin:fork/session-source' || event.type === 'fork/session-source')
 }
 
 /**
@@ -56,7 +57,7 @@ export function apply(ctx: Context, config: Config = { enabledWhenEnv: 'GITHUB_A
   ctx.inject(['sessions'], (sessionCtx) => {
     sessionCtx.on('session/created', (session) => {
       if (process.env[config.enabledWhenEnv] !== 'true' || hasSourceMarker(session)) return
-      session.append('plugin:fork/session-source', SOURCE_EVENT_DATA, { ignorable: true })
+      appendPluginRecord(session, 'plugin:fork/session-source', SOURCE_EVENT_DATA)
     }, { global: true })
   })
 }

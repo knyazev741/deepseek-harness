@@ -9,7 +9,7 @@ English | [中文](2026-10-08-fork-upstream-v4.zh.md)
 
 ## Summary
 
-Retain fork source markers and continuation attribution on the upstream Session format.
+Retain the fork source marker and continuation attribution on current V4 sessions.
 
 ## Table of Contents
 
@@ -27,36 +27,32 @@ id: 2026-10-08-fork-upstream-v4
 baseline: false
 changes:
   - root: "event:agent/inbox/spliced"
-    previous: "2026-09-21-user-question-reply"
-    after: "4c24bd680e273b5e065ba81faa73650169fff2210be427ba015bdba5ced4f543"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "9308eeca974942d895e0f6a503fe3919331061373a87acd003ade30104ba462f"
     decision: same-version
   - root: "event:developer/message"
-    previous: "2026-09-21-user-question-reply"
-    after: "14913187742aa0d062da7382b5ded7bef4bb7ea64a663f209795fce8417e9ee7"
-    decision: same-version
-  - root: "event:plugin:fork/session-source"
-    previous: null
-    after: "3aaa59a268212c86eccaca795786af10d541233f52f13ffe6b97393a8f8db554"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "bd513c6a8a40609220d4e2ddc91e3752fbc67eff44a78255557893aadbe7d069"
     decision: same-version
   - root: "event:session/title-llm-request"
-    previous: "2026-09-21-user-question-reply"
-    after: "2282e7cac04d81b50903c710052bfc3b1f0a93201aaf47d6910bbe8ecf67460f"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "f5b9422088c2dcf7419b0e4df9cbb9ad12e1a36bcfeeee4dbb91349b7da86c5e"
     decision: same-version
   - root: "event:user/message"
-    previous: "2026-09-21-user-question-reply"
-    after: "291943d7629883cefd30b18c0f8775f7d3a76e8860f3fd2cf8b7414a0672fe53"
+    previous: "2026-10-13-user-rpc-principal"
+    after: "57d2ce8a691e6ff2c23d362810a0dd25d9d48372e63801faf961ba8de21734f8"
     decision: same-version
 ```
 
 <a id="compatibility"></a>
 ## Compatibility
 
-The adjacent upstream migration renames the ignorable fork/session-source event to plugin:fork/session-source while preserving its literal payload. Released historical generations remain unchanged. Wake scheduler and first-chunk recovery sources are attribution-only additions: readers preserve their messages without requiring either producer.
+Existing V0–V3 generations remain unchanged. Adjacent migrations preserve the recognized ignorable fork source marker. Current writers use the native plugin-record API with the same type, payload, and ignorable envelope; its declaration is outside SessionEventMap. The historical fork/session-source event remains readable. Wake-scheduler and first-chunk recovery attribution remain optional source metadata. Unknown required events continue to refuse reconstruction.
 
 <a id="verification"></a>
 ## Verification
 
-Focused session-migrate catalog, fork session-source, first-chunk timeout and wake-scheduler tests pass on the merged implementation.
+Focused Session-format migration and fork source-marker tests pass: 38 files and 1,175 tests.
 
 <a id="dev-note"></a>
 ## Dev Note

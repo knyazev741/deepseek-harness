@@ -12,8 +12,13 @@ export const name = 'fork-session-source-invariant'
 /** The invariant registry is required before this companion can register. */
 export const inject = ['invariants']
 
+/** Recognize current plugin records and the historical event name. */
+function isSourceMarker(event: { readonly type: string }): boolean {
+  return event.type === 'plugin:fork/session-source' || event.type === 'fork/session-source'
+}
+
 /** Whether an unknown event value is exactly the marker's durable payload. */
-function hasLiteralPayload(event: SessionEvent): boolean {
+function hasLiteralPayload(event: { readonly data: unknown }): boolean {
   const rawData: unknown = event.data
   if (rawData === null || typeof rawData !== 'object' || Array.isArray(rawData)) return false
   const data = rawData as Record<string, unknown>
@@ -21,15 +26,20 @@ function hasLiteralPayload(event: SessionEvent): boolean {
 }
 
 /** Validate one source marker's envelope and payload. */
-function validateMarker(event: SessionEvent, fail: InvariantFailure): void {
+function validateMarker(event: {
+  readonly seq: number
+  readonly data: unknown
+  readonly ignorable?: boolean
+  readonly surfaceOp?: unknown
+  readonly sourceEventSeqs?: unknown
+}, fail: InvariantFailure): void {
   if (!hasLiteralPayload(event)) {
     fail(`session event ${event.seq} has a non-literal plugin:fork/session-source payload`)
   }
   if (event.ignorable !== true) {
     fail(`session event ${event.seq} plugin:fork/session-source marker is not ignorable`)
   }
-  const envelope = event as unknown as Record<string, unknown>
-  if (envelope.surfaceOp !== undefined || envelope.sourceEventSeqs !== undefined) {
+  if (event.surfaceOp !== undefined || event.sourceEventSeqs !== undefined) {
     fail(`session event ${event.seq} plugin:fork/session-source marker carries surface metadata`)
   }
 }
@@ -39,7 +49,7 @@ function validateSession(session: Session, fail: InvariantFailure): void {
   let markers = 0
   // oxlint-disable-next-line typescript/no-deprecated -- Existing fork history read retained during upstream migration.
   for (const event of session.snapshotEvents()) {
-    if (event.type !== 'plugin:fork/session-source' && event.type !== 'fork/session-source') continue
+    if (!isSourceMarker(event)) continue
     markers += 1
     if (markers > 1) fail(`session ${String(session.id)} contains more than one plugin:fork/session-source marker`)
     validateMarker(event, fail)
@@ -53,9 +63,9 @@ const install: InvariantInstaller = Object.assign((ctx: Context, fail: Invariant
   ctx.on('internal/dispatch', (_mode, eventName, args) => {
     if (eventName !== 'session/event') return
     const [session, event] = args as [Session, SessionEvent]
-    if (event.type !== 'plugin:fork/session-source' && event.type !== 'fork/session-source') return
+    if (!isSourceMarker(event)) return
     // oxlint-disable-next-line typescript/no-deprecated -- Existing fork history read retained during upstream migration.
-    if (session.snapshotEvents().some(item => (item.type === 'plugin:fork/session-source' || item.type === 'fork/session-source'))) {
+    if (session.snapshotEvents().some(isSourceMarker)) {
       fail(`session ${String(session.id)} contains more than one plugin:fork/session-source marker`)
     }
     validateMarker(event, fail)

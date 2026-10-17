@@ -34,7 +34,7 @@ The plugin requires `sessions` and registers its projection only when `sessionPr
 <a id="durable-event-and-projection"></a>
 ## Durable event and projection
 
-When enabled, authoritative `session/created` appends one log-only `plugin:fork/session-source` event with `{ source: 'github-actions' }` and an `ignorable: true` envelope marker. The marker is written synchronously with session creation and never changes `SessionHeader.origin`. A session created from an existing log is inspected before appending, so replay and repeated publication do not add another marker.
+When enabled, authoritative `session/created` uses `appendPluginRecord` to append one log-only `plugin:fork/session-source` record with `{ source: 'github-actions' }` and an `ignorable: true` envelope marker. The marker is written synchronously with session creation and never changes `SessionHeader.origin`. A session created from an existing log is inspected before appending, so replay and repeated publication do not add another marker.
 
 The `forkSessionSource` projection starts at `null`, folds the latest valid marker as `'github-actions'`, and returns the same state reference for unrelated events. Its strict JSON-safe schema rejects malformed durable payloads during replay. The wire value is the same nullable value: `null` means the marker is absent or the source plugin was disabled for that session; an omitted projection key means the projection plugin is not composed.
 

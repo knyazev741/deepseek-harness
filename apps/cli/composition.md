@@ -30,6 +30,8 @@ flowchart LR
   cfg --> plugin_dsh_base_typert_loader
   plugin_dsh_base_typert_gateway["typert-gateway<br/>@knyazevai/dsh-api-gateway"]
   cfg --> plugin_dsh_base_typert_gateway
+  plugin_dsh_base_remote_access["remote-access<br/>@knyazevai/dsh-api-remote-access"]
+  cfg --> plugin_dsh_base_remote_access
   plugin_dsh_base_session_title["session-title<br/>@knyazevai/dsh-session-title"]
   cfg --> plugin_dsh_base_session_title
   plugin_dsh_base_session_title_llm["session-title-llm<br/>@knyazevai/dsh-session-title-first-prompt-llm"]
@@ -64,6 +66,10 @@ flowchart LR
   cfg --> plugin_dsh_base_attachment_local
   plugin_dsh_base_session_query_sqlite["session-query-sqlite<br/>@knyazevai/dsh-session-query-sqlite"]
   cfg --> plugin_dsh_base_session_query_sqlite
+  plugin_dsh_base_working_directory["working-directory<br/>@knyazevai/dsh-working-directory"]
+  cfg --> plugin_dsh_base_working_directory
+  plugin_dsh_base_tool_working_directory["tool-working-directory<br/>@knyazevai/dsh-tool-working-directory"]
+  cfg --> plugin_dsh_base_tool_working_directory
   plugin_dsh_base_session_projection["session-projection<br/>@knyazevai/dsh-session-projection"]
   cfg --> plugin_dsh_base_session_projection
   plugin_dsh_base_storage["storage<br/>@knyazevai/dsh-storage"]
@@ -112,8 +118,6 @@ flowchart LR
   cfg --> plugin_dsh_base_skill
   plugin_dsh_base_skill_filesystem["skill-filesystem<br/>@knyazevai/dsh-skill-filesystem"]
   cfg --> plugin_dsh_base_skill_filesystem
-  plugin_dsh_base_skill_badge["skill-badge<br/>@knyazevai/dsh-skill-badge"]
-  cfg --> plugin_dsh_base_skill_badge
   plugin_dsh_base_tool_skill["tool-skill<br/>@knyazevai/dsh-tool-skill"]
   cfg --> plugin_dsh_base_tool_skill
   plugin_dsh_base_commands["commands<br/>@knyazevai/dsh-commands"]
@@ -170,14 +174,14 @@ flowchart LR
   cfg --> plugin_dsh_base_tool_todo
   plugin_dsh_base_tool_goal["tool-goal<br/>@knyazevai/dsh-tool-goal"]
   cfg --> plugin_dsh_base_tool_goal
-  plugin_dsh_base_tool_ralph["tool-ralph<br/>@knyazevai/dsh-tool-ralph"]
-  cfg --> plugin_dsh_base_tool_ralph
   plugin_dsh_base_repeat_tool_reminder["repeat-tool-reminder<br/>@knyazevai/dsh-repeat-tool-reminder"]
   cfg --> plugin_dsh_base_repeat_tool_reminder
   plugin_dsh_base_web["web<br/>@knyazevai/dsh-web"]
   cfg --> plugin_dsh_base_web
   plugin_dsh_base_web_search_deepseek["web-search-deepseek<br/>@knyazevai/dsh-web-search-deepseek"]
   cfg --> plugin_dsh_base_web_search_deepseek
+  plugin_dsh_base_web_deepseek_api["web-deepseek-api<br/>@knyazevai/dsh-web-deepseek-api"]
+  cfg --> plugin_dsh_base_web_deepseek_api
   plugin_dsh_base_web_fetch_http["web-fetch-http<br/>@knyazevai/dsh-web-fetch-http"]
   cfg --> plugin_dsh_base_web_fetch_http
   plugin_dsh_base_tool_web["tool-web<br/>@knyazevai/dsh-tool-web"]
@@ -211,6 +215,7 @@ flowchart LR
 | `typert` | `@knyazevai/dsh-typert-registry` |
 | `typert-loader` | `@knyazevai/dsh-typert-loader` |
 | `typert-gateway` | `@knyazevai/dsh-api-gateway` |
+| `remote-access` | `@knyazevai/dsh-api-remote-access` |
 | `session-title` | `@knyazevai/dsh-session-title` |
 | `session-title-llm` | `@knyazevai/dsh-session-title-first-prompt-llm` |
 | `user-questions` | `@knyazevai/dsh-user-questions` |
@@ -228,6 +233,8 @@ flowchart LR
 | `session-persistence-jsonl` | `@knyazevai/dsh-session-persistence-jsonl` |
 | `attachment-local` | `@knyazevai/dsh-attachment-local` |
 | `session-query-sqlite` | `@knyazevai/dsh-session-query-sqlite` |
+| `working-directory` | `@knyazevai/dsh-working-directory` |
+| `tool-working-directory` | `@knyazevai/dsh-tool-working-directory` |
 | `session-projection` | `@knyazevai/dsh-session-projection` |
 | `storage` | `@knyazevai/dsh-storage` |
 | `storage-json` | `@knyazevai/dsh-storage-json` |
@@ -252,7 +259,6 @@ flowchart LR
 | `agent-instructions` | `@knyazevai/dsh-agent-instructions` |
 | `skill` | `@knyazevai/dsh-skill` |
 | `skill-filesystem` | `@knyazevai/dsh-skill-filesystem` |
-| `skill-badge` | `@knyazevai/dsh-skill-badge` |
 | `tool-skill` | `@knyazevai/dsh-tool-skill` |
 | `commands` | `@knyazevai/dsh-commands` |
 | `command-feedback` | `@knyazevai/dsh-command-feedback` |
@@ -281,10 +287,10 @@ flowchart LR
 | `image-offload` | `@knyazevai/dsh-compaction-image-offload` |
 | `tool-todo` | `@knyazevai/dsh-tool-todo` |
 | `tool-goal` | `@knyazevai/dsh-tool-goal` |
-| `tool-ralph` | `@knyazevai/dsh-tool-ralph` |
 | `repeat-tool-reminder` | `@knyazevai/dsh-repeat-tool-reminder` |
 | `web` | `@knyazevai/dsh-web` |
 | `web-search-deepseek` | `@knyazevai/dsh-web-search-deepseek` |
+| `web-deepseek-api` | `@knyazevai/dsh-web-deepseek-api` |
 | `web-fetch-http` | `@knyazevai/dsh-web-fetch-http` |
 | `tool-web` | `@knyazevai/dsh-tool-web` |
 | `mcp-resources` | `@knyazevai/dsh-mcp-resources` |

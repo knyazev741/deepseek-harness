@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-api-remotes",
   "description": "Remote BFF assembly for application-selected Host capabilities",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -27,7 +27,8 @@
       "default": "./lib/types/types.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "dsh": {
     "client": {
@@ -44,6 +45,7 @@
   },
   "license": "MIT",
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.js",
@@ -79,6 +81,7 @@
     "@knyazevai/dsh-permission-presets": "workspace:*",
     "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-reference": "workspace:*",
     "@knyazevai/dsh-settings": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
@@ -86,10 +89,11 @@
     "@knyazevai/dsh-user-approval": "workspace:*",
     "@knyazevai/dsh-user-questions": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
-    "zod": "^4.4.3",
+    "zod": "4.4.3",
     "@knyazevai/dsh-command-feedback": "workspace:*",
     "@knyazevai/dsh-api-terminal-controller": "workspace:*",
     "@knyazevai/dsh-plugin-manager": "workspace:*",
+    "@knyazevai/dsh-plugin-market": "workspace:*",
     "@knyazevai/dsh-client-ui-plugin-manager": "workspace:*",
     "@knyazevai/dsh-office-to-pdf": "workspace:*",
     "@knyazevai/dsh-api-account-controller": "workspace:*",

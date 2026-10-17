@@ -4,7 +4,7 @@ import { SESSION_FORMAT_VERSION, Session, SessionId, SessionLogOffset, SessionSe
 import type { SessionEvent } from '@knyazevai/dsh-session'
 import { SessionFormatUnsupportedError } from '@knyazevai/dsh-session-persistence'
 import type { SessionHandle } from '@knyazevai/dsh-session-persistence'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'

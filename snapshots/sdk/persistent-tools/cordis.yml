@@ -108,10 +108,6 @@
   name: '@knyazevai/dsh-tool-goal'
   disabled: true
 
-- id: tool-ralph
-  name: '@knyazevai/dsh-tool-ralph'
-  disabled: true
-
 - id: tool-web
   name: '@knyazevai/dsh-tool-web'
   disabled: true

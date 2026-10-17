@@ -3,7 +3,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import { SESSION_FORMAT_VERSION, Session, SessionId } from '@knyazevai/dsh-session'
 import type { SessionFormatEvent } from '@knyazevai/dsh-session-format'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

@@ -33,7 +33,7 @@ The shipped `fork-web` profile template layers `dsh-base`, `dsh-web-app`, `dsh-f
 
 The package has no runtime API of its own. Later profile patches can disable `ui-workspace-overlay` by id while retaining the upstream browser rows and Host fork rows.
 
-The model-selection settings enable the four configured Gonka routes for per-call subagent selection. Existing user settings override these defaults.
+The model-selection settings enable the three KnyazevAI routes and `deepseek-official/deepseek-flash` for per-call subagent selection. Official Flash requires a DeepSeek credential and supports the current V4.1 Flash model. Existing user settings override these defaults.
 
 <a id="model-experience"></a>
 ## Model Experience
@@ -56,7 +56,7 @@ The overlay does not rewrite model requests or their prefixes, so it has no dire
 
 #### What the model sees
 
-Upstream subagent tools accept per-call provider and model selection from the configured Gonka route list. The selected route is validated before the child starts.
+Upstream subagent tools accept per-call provider and model selection from the configured KnyazevAI and official DeepSeek route list. The selected route is validated before the child starts.
 
 #### Token effect
 

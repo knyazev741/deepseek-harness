@@ -42,6 +42,8 @@ pnpm dsh web
 
 An existing profile may still own `providers.knyazev-ai.models` in `settings.yaml`; that user array replaces the bundle catalog and is intentionally not rewritten by `git pull`. After updating, open **Settings → Models → KnyazevAI API**, choose **Fetch available models**, keep the suggested repairs selected, then choose **Adopt** and **Apply**. This restores reasoning metadata without overwriting tuned capacities. Remove any saved `kimi-2.6` row manually because the live API no longer publishes it.
 
+To use the current official Flash model ([DeepSeek-V4.1-Flash-1017](https://api-docs.deepseek.com/updates)), save your official API key in **Settings → Models → DeepSeek**, then select **DeepSeek-V4.1-Flash** for a new session. This route uses `deepseek-official/deepseek-flash` and supports images and `off`, `low`, `high`, and `max` reasoning. The KnyazevAI route keeps its own published model ids and capacities.
+
 ## Community and support
 
 - Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).

@@ -3,6 +3,7 @@ import type { GlobalStandardProps } from '@knyazevai/dsh-client-ui-slots'
 import { useSyncExternalStore } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { allowAllAccess } from '@knyazevai/dsh-client-test-runtime'
 import { ToolCallId } from '@knyazevai/dsh-llm'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { AskUserQuestionAnswerItem } from '@knyazevai/dsh-user-questions/types'
@@ -74,6 +75,7 @@ const chatState: ChatState = {
   nodes: {
     get: () => undefined,
     source: () => emptyNodeSource,
+    bottomSource: () => ({ getSnapshot: () => false, subscribe: () => () => {} }),
     turnDataSource: () => { throw new Error('unused') },
     processSource: () => emptyNodeSource,
     values: () => [],
@@ -121,6 +123,7 @@ const kitBase: Omit<QuestionComposerProps, 'matched' | 'useStore' | 'useQuestion
   useSessionStatus: selector => selector(attentionState),
   useSessionRetainInfo: () => undefined,
   useWorkspaces: selector => selector(workspaceState),
+  ...allowAllAccess,
   useConversation: selector => selector(conversationState),
   useChat: selector => selector(chatState),
   useTrajectory: selector => selector(trajectoryState),

@@ -75,6 +75,7 @@ describe('dsh-fork-web bundle', () => {
         { provider: 'knyazev-ai', model: 'deepseek-v4-flash' },
         { provider: 'knyazev-ai', model: 'glm-5.3-flash' },
         { provider: 'knyazev-ai', model: 'minimax-2.7' },
+        { provider: 'deepseek-official', model: 'deepseek-flash' },
       ] },
     })
     expect(Object.keys(patches[0] ?? {})).toEqual(['insert'])

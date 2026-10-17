@@ -43,6 +43,9 @@ export function eligibleDshRescopePath(path: string): boolean {
 export function rescopeDshText(text: string): string {
   return text.replaceAll(SOURCE_PREFIX, TARGET_PREFIX)
     .replaceAll('@deepseek-ai\\/dsh', '@knyazevai\\/dsh')
+    .replaceAll(/(['"])@deepseek-ai\1(\s*,\s*['"]dsh(?=[-'"]))/gu, '$1@knyazevai$1$2')
+    .replaceAll(/(@|%40)deepseek-ai(%2[fF])dsh/gu, '$1knyazevai$2dsh')
+    .replaceAll('deepseek-aidsh', 'knyazevaidsh')
 }
 
 type Mode = 'dry-run' | 'apply' | 'check'

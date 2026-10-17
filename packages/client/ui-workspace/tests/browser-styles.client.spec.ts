@@ -121,7 +121,7 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(tabs?.get('align-items')).toBe('center')
     expect(tabs?.get('gap')).toBe('2px')
     expect(tab?.get('border')).toBe('none')
-    expect(tab?.get('border-radius')).toBe('7px')
+    expect(tab?.get('border-radius')).toBe('var(--dsw-radius-sm)')
     expect(active?.get('background')).toBe('var(--dsw-alias-interactive-bg-hover)')
   })
 

@@ -4,7 +4,7 @@
   width: 100%;
   margin-bottom: 4px;
   padding-bottom: 4px;
-  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l1);
 }
 
 .menuSymbol {
@@ -23,7 +23,7 @@
   min-height: 18px;
   margin-inline-start: 6px;
   padding: 0 5px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: 4px;
   color: var(--dsw-alias-label-secondary);
   font-size: 11px;

@@ -13,7 +13,7 @@ import ToolRuntime, { defineContentToolFixture, TOOL_RUNTIME_SCHEDULER } from '@
 import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 import type { SessionHandle } from '@knyazevai/dsh-session-persistence'
 
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import { MockAdapter, textResponse } from './mock-adapter.ts'

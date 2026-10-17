@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-settings-general",
   "description": "Settings ownerless-copy and product onboarding plugin: the General section, shell trigger/header chrome content, settings dictionaries, and the versioned welcome notice",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -26,7 +26,8 @@
       "types": "./lib/types/types.d.ts"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "dsh": {
     "client": {
@@ -36,7 +37,9 @@
         "@knyazevai/dsh-client-connection",
         "@knyazevai/dsh-api-remotes",
         "@knyazevai/dsh-client-ui-sidebar",
-        "@knyazevai/dsh-client-shortcuts"
+        "@knyazevai/dsh-client-shortcuts",
+        "@knyazevai/dsh-client-modules",
+        "@knyazevai/dsh-client-ui-layout"
       ],
       "platform": "web"
     }
@@ -57,8 +60,10 @@
     "@knyazevai/dsh-api-remotes": "workspace:*",
     "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-modules": "workspace:*",
     "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-layout": "workspace:*",
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
@@ -66,8 +71,6 @@
     "@knyazevai/dsh-client-ui-sidebar": "workspace:*",
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
     "@knyazevai/dsh-remote-mock": "workspace:*",
-    "@types/react": "~18.3.1",
-    "@types/react-dom": "~18.3.0",
     "clsx": "^2.0.0",
     "react": "^18.2.0",
     "@knyazevai/dsh-settings": "workspace:*",
@@ -75,6 +78,7 @@
     "@knyazevai/dsh-client-shortcuts": "workspace:*"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.d.ts"

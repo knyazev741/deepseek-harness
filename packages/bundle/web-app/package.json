@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-web-app",
-  "description": "The dsh browser-surface bundle: the web patch layer over dsh-base plus the runtime glue plugin (frontend dist serving, web-surface prompt, bash runtime variables, URL line)",
-  "version": "0.2.1-alpha.1",
+  "description": "The dsh browser-surface bundle: the web patch layer over dsh-base plus the runtime glue plugin (frontend dist serving, bash runtime variables, URL line)",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -25,9 +25,13 @@
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./presets/*.patch.yml": "./presets/*.patch.yml",
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./startup/locale/*.json": "./locale/startup/*.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
+    "locale/*.json",
+    "locale/startup/*.json",
     "lib/index.js",
     "lib/startup.js",
     "cordis.patch.yml",
@@ -86,12 +90,14 @@
     "@knyazevai/dsh-client-ui-layout": "workspace:*",
     "@knyazevai/dsh-client-ui-message-feedback": "workspace:*",
     "@knyazevai/dsh-client-ui-model-selection": "workspace:*",
+    "@knyazevai/dsh-client-ui-deepseek-model-label-1017": "workspace:*",
     "@knyazevai/dsh-client-ui-open-in-app": "workspace:*",
     "@knyazevai/dsh-client-ui-permission-presets": "workspace:*",
     "@knyazevai/dsh-client-ui-plan": "workspace:*",
     "@knyazevai/dsh-client-ui-plugin-manager": "workspace:*",
     "@knyazevai/dsh-client-ui-reference": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-secret-mask": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
     "@knyazevai/dsh-client-ui-schedule": "workspace:*",
     "@knyazevai/dsh-client-ui-settings": "workspace:*",
@@ -139,6 +145,7 @@
     "@knyazevai/dsh-persona": "workspace:*",
     "@knyazevai/dsh-plan-mode": "workspace:*",
     "@knyazevai/dsh-plugin-manager": "workspace:*",
+    "@knyazevai/dsh-plugin-market": "workspace:*",
     "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-session-log-export": "workspace:*",
     "@knyazevai/dsh-session-reference": "workspace:*",
@@ -160,7 +167,6 @@
     "@knyazevai/dsh-tool-present": "workspace:*",
     "@knyazevai/dsh-tool-pwsh": "workspace:*",
     "@knyazevai/dsh-tool-pwsh-persistent": "workspace:*",
-    "@knyazevai/dsh-tool-ralph": "workspace:*",
     "@knyazevai/dsh-tool-schedule": "workspace:*",
     "@knyazevai/dsh-tool-skill": "workspace:*",
     "@knyazevai/dsh-tool-subagent": "workspace:*",
@@ -174,20 +180,20 @@
     "@knyazevai/dsh-workspace-changes": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "commander": "^15.0.0",
-    "open": "^11.0.0",
+    "open": "^11.0.2",
     "@knyazevai/dsh-api-account-controller": "workspace:*",
     "@knyazevai/dsh-client-ui-settings-account": "workspace:*",
     "@knyazevai/dsh-client-shortcuts": "workspace:*",
     "@knyazevai/dsh-client-ui-shortcuts": "workspace:*",
     "@knyazevai/dsh-client-product-analytics": "workspace:*",
     "@knyazevai/dsh-host-product-telemetry-otel": "workspace:*",
-    "@knyazevai/dsh-client-ui-settings-session-log": "workspace:*"
+    "@knyazevai/dsh-client-ui-settings-session-log": "workspace:*",
+    "@knyazevai/dsh-harness-dev-context": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
-    "@knyazevai/dsh-shell-env": "workspace:*",
-    "@knyazevai/dsh-system-prompt": "workspace:*"
+    "@knyazevai/dsh-shell-env": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -199,7 +205,6 @@
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-projection": "workspace:*",
     "@knyazevai/dsh-shell-env": "workspace:*",
-    "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-typert-registry": "workspace:*",
     "@deepseek-ai/libreoffice-kit": "^0.1.5",
     "@knyazevai/dsh-otel": "workspace:*"

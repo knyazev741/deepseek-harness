@@ -35,8 +35,37 @@
 
     # Shared projection registry: sandbox-policy and terminal-bash fold
     # sandbox-mode state through its units and require it as a hard injection.
+    - id: filesystem
+      name: '@knyazevai/dsh-fs-local'
+
+    - id: attachment-local
+      name: '@knyazevai/dsh-attachment-local'
+
+    - id: tool-fs
+      name: '@knyazevai/dsh-tool-fs'
+      config:
+        read: false
+        readImage: true
+        write: false
+        edit: false
+
+    - id: working-directory
+      name: '@knyazevai/dsh-working-directory'
+
+    - id: tool-working-directory
+      name: '@knyazevai/dsh-tool-working-directory'
+
     - id: session-projection
       name: '@knyazevai/dsh-session-projection'
+
+    - id: token-meter
+      name: '@knyazevai/dsh-token-meter'
+
+    - id: compaction-basic
+      name: '@knyazevai/dsh-compaction-basic'
+
+    - id: image-offload
+      name: '@knyazevai/dsh-compaction-image-offload'
 
     - id: sandbox-policy
       name: '@knyazevai/dsh-sandbox-policy'

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh",
   "description": "dsh CLI: profile launch, plugin management, and configuration inspection",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -46,8 +46,6 @@
     "@knyazevai/dsh-goal-round-driver": "workspace:*",
     "@knyazevai/dsh-headless": "workspace:*",
     "@knyazevai/dsh-home-paths": "workspace:*",
-    "@knyazevai/dsh-hooks-claude-code": "workspace:*",
-    "@knyazevai/dsh-hooks-codex": "workspace:*",
     "@knyazevai/dsh-jobs-local": "workspace:*",
     "@knyazevai/dsh-launch-environment": "workspace:*",
     "@knyazevai/dsh-mcp-client": "workspace:*",
@@ -80,7 +78,6 @@
     "@knyazevai/dsh-tool-jobs": "workspace:*",
     "@knyazevai/dsh-tool-pwsh": "workspace:*",
     "@knyazevai/dsh-tool-pwsh-persistent": "workspace:*",
-    "@knyazevai/dsh-tool-ralph": "workspace:*",
     "@knyazevai/dsh-tool-schedule": "workspace:*",
     "@knyazevai/dsh-tool-skill": "workspace:*",
     "@knyazevai/dsh-tool-str-replace-editor": "workspace:*",
@@ -90,13 +87,11 @@
     "@knyazevai/dsh-tool-web": "workspace:*",
     "@knyazevai/dsh-tool-workflow": "workspace:*",
     "@knyazevai/dsh-web-app": "workspace:*",
-    "@knyazevai/dsh-webhook": "workspace:*",
-    "@knyazevai/dsh-webhook-github": "workspace:*",
     "@knyazevai/dsh-workflow-ptc": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "commander": "^15.0.0",
-    "js-yaml": "^4.2.0",
-    "node-addon-require-builtin": "^0.1.6",
+    "js-yaml": "^4.3.2",
+    "node-addon-require-builtin": "^0.1.9",
     "@knyazevai/dsh-http-proxy": "workspace:*",
     "@knyazevai/dsh-mcp-resources": "workspace:*",
     "@knyazevai/dsh-plugin-manager": "workspace:*",
@@ -106,9 +101,23 @@
     "@knyazevai/dsh-experimental-auto-review": "workspace:*",
     "@knyazevai/dsh-wake-scheduler": "workspace:*",
     "@knyazevai/dsh-fork-base": "workspace:*",
-    "@knyazevai/dsh-fork-web": "workspace:*"
+    "@knyazevai/dsh-fork-web": "workspace:*",
+    "@knyazevai/dsh-experimental-cot-translation-bundle": "workspace:*",
+    "@knyazevai/dsh-experimental-badge-skill-bundle": "workspace:*",
+    "@knyazevai/dsh-experimental-ralph-bundle": "workspace:*",
+    "@knyazevai/dsh-experimental-session-titles-bundle": "workspace:*",
+    "@knyazevai/dsh-experimental-terminal-bundle": "workspace:*",
+    "@knyazevai/dsh-experimental-session-search": "workspace:*",
+    "@knyazevai/dsh-experimental-tool-worktree": "workspace:*",
+    "@knyazevai/dsh-experimental-plugin-market-bundle": "workspace:*"
   },
   "devDependencies": {
+    "@knyazevai/dsh-skill-badge": "workspace:*",
+    "@knyazevai/dsh-webhook-github": "workspace:*",
+    "@knyazevai/dsh-webhook": "workspace:*",
+    "@knyazevai/dsh-tool-ralph": "workspace:*",
+    "@knyazevai/dsh-hooks-codex": "workspace:*",
+    "@knyazevai/dsh-hooks-claude-code": "workspace:*",
     "@agentclientprotocol/sdk": "1.4.0",
     "@knyazevai/dsh-acp": "workspace:*",
     "@knyazevai/dsh-agent": "workspace:*",
@@ -154,8 +163,8 @@
     "@types/js-yaml": "^4.0.9",
     "@types/ws": "8.18.1",
     "ajv": "^8.20.0",
-    "execa": "^10.0.0",
-    "ws": "8.21.0"
+    "execa": "^10.0.1",
+    "ws": "8.21.3"
   },
   "exports": {
     "./profile-boot": {

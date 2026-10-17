@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-attachment",
   "description": "Dynamic attachment presentation plugin for conversation input, message-image, and trajectory image slots",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -23,11 +23,13 @@
       "default": "./lib/client.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "dsh": {
     "client": {
       "inject": [
+        "@knyazevai/dsh-client-locale",
         "@knyazevai/dsh-client-ui-chat",
         "@knyazevai/dsh-client-ui-conversation",
         "@knyazevai/dsh-client-ui-renderer",
@@ -44,8 +46,7 @@
   "license": "MIT",
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
-    "@types/react": "~18.3.1",
-    "@types/react-dom": "~18.3.0",
+    "@knyazevai/dsh-client-locale": "workspace:*",
     "@knyazevai/dsh-client-ui-chat": "workspace:*",
     "@knyazevai/dsh-client-ui-conversation": "workspace:*",
     "@knyazevai/dsh-client-ui-trajectory": "workspace:*",
@@ -59,6 +60,7 @@
     "clsx": "^2.0.0"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.d.ts"

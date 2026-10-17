@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-pwsh",
   "description": "Model-facing pwsh tool over the bash executor seam",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -19,9 +19,11 @@
       "default": "./lib/index.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/types/**/*.d.ts"
   ],
@@ -37,7 +39,8 @@
     "@knyazevai/dsh-shell-env": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
-    "@knyazevai/dsh-user-approval": "workspace:*"
+    "@knyazevai/dsh-user-approval": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~"
@@ -62,6 +65,8 @@
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-tool-jobs": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
-    "@knyazevai/dsh-user-approval": "workspace:*"
+    "@knyazevai/dsh-user-approval": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*"
   }
 }

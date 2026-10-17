@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-browser-use-stagehand-native",
   "description": "Experimental Stagehand browser tools with separately configured native models",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -44,7 +44,7 @@
     "@knyazevai/dsh-mcp-client": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "^4.4.3",
+    "zod": "4.4.3",
     "@knyazevai/dsh-subprocess": "workspace:*",
     "@puppeteer/browsers": "3.2.2"
   },
@@ -63,6 +63,6 @@
     "@knyazevai/dsh-session-projection": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
-    "tsx": "^4.19.2"
+    "tsx": "^4.23.13"
   }
 }

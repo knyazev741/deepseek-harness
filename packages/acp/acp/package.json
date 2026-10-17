@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-acp",
   "description": "Automation-only Agent Client Protocol server for driving DeepSeek Harness agents over JSON-RPC stdio",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -59,6 +59,7 @@
     "@knyazevai/dsh-session-persistence": "workspace:*",
     "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
     "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-token-meter": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-user-approval": "workspace:*"

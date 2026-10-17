@@ -15,6 +15,7 @@ describe('Session Typert provider', () => {
     expect(lookup).toMatchObject({
       parameter: 'session',
       wire: 'sessionId',
+      resource: 'session',
       hostTypeSymbol: '@knyazevai/dsh-session#Session',
       wireTypeSymbol: '@knyazevai/dsh-session/types#SessionId',
     })

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SessionId, SessionStore } from '@knyazevai/dsh-session'
+import { pluginRecordOf, SessionId, SessionStore } from '@knyazevai/dsh-session'
 import { SessionProjectionRegistry } from '@knyazevai/dsh-session-projection'
 import * as ForkSessionSource from '../src/index.ts'
 import { forkSessionSourceProjectionDefinition } from '../src/projection.ts'
@@ -37,6 +37,7 @@ describe('fork session source projection', () => {
     const marker = {
       type: 'plugin:fork/session-source',
       data: { source: 'github-actions' },
+      ignorable: true,
     } as const
     const unrelated = {
       type: 'session/title',
@@ -56,6 +57,7 @@ describe('fork session source projection', () => {
     const malformed = {
       type: 'plugin:fork/session-source',
       data: { source: 'unknown' },
+      ignorable: true,
     } as const
 
     const applyProjection = forkSessionSourceProjectionDefinition.apply
@@ -74,7 +76,7 @@ describe('fork session source plugin', () => {
     const { ctx } = await createHarness()
     const session = ctx.sessions.create(SessionId('source-enabled'))
 
-    const markers = session.snapshotEvents().filter(event => event.type === 'plugin:fork/session-source')
+    const markers = session.snapshotEvents().filter(event => pluginRecordOf(event)?.type === 'plugin:fork/session-source')
     expect(markers).toHaveLength(1)
     expect(markers[0]).toMatchObject({
       data: { source: 'github-actions' },
@@ -89,7 +91,7 @@ describe('fork session source plugin', () => {
     const { ctx } = await createHarness()
     const session = ctx.sessions.create(SessionId('source-disabled'))
 
-    expect(session.snapshotEvents().some(event => event.type === 'plugin:fork/session-source')).toBe(false)
+    expect(session.snapshotEvents().some(event => pluginRecordOf(event)?.type === 'plugin:fork/session-source')).toBe(false)
     expect(ctx.sessionProjections.snapshot(session).values.forkSessionSource).toBeNull()
   })
 
@@ -101,7 +103,7 @@ describe('fork session source plugin', () => {
       seed: original.snapshotEvents(),
     })
 
-    expect(replay.snapshotEvents().filter(event => event.type === 'plugin:fork/session-source')).toHaveLength(1)
+    expect(replay.snapshotEvents().filter(event => pluginRecordOf(event)?.type === 'plugin:fork/session-source')).toHaveLength(1)
   })
 
   it('removes the append listener and projection registration on disposal', async () => {
@@ -110,7 +112,7 @@ describe('fork session source plugin', () => {
     await fiber.dispose()
     const session = ctx.sessions.create(SessionId('source-disposed'))
 
-    expect(session.snapshotEvents().some(event => event.type === 'plugin:fork/session-source')).toBe(false)
+    expect(session.snapshotEvents().some(event => pluginRecordOf(event)?.type === 'plugin:fork/session-source')).toBe(false)
     expect(ctx.sessionProjections.snapshot(session).values.forkSessionSource).toBeUndefined()
   })
 })
@@ -152,7 +154,7 @@ describe('fork session source loader composition', () => {
     await ctx.loader.await()
     const session = ctx.sessions.create(SessionId('loader-composition'))
 
-    expect(session.snapshotEvents().some(event => event.type === 'plugin:fork/session-source')).toBe(true)
+    expect(session.snapshotEvents().some(event => pluginRecordOf(event)?.type === 'plugin:fork/session-source')).toBe(true)
     expect(ctx.sessionProjections.snapshot(session).values.forkSessionSource).toBe('github-actions')
   })
 })

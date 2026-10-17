@@ -18,6 +18,7 @@
           "parentSessionId": "fx-alpha",
           "cwd": "/tmp/fixture",
           "projections": {
+            "kind": "sequenced",
             "asOfSeq": -1,
             "values": {
               "modelSelection": {

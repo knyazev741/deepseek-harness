@@ -18,7 +18,7 @@ import { defineTool } from '@knyazevai/dsh-tools'
 import type { ToolCallView, ToolResultView } from '@knyazevai/dsh-tools'
 import type { Agent } from '@knyazevai/dsh-agent'
 import type { ContentBlock } from '@knyazevai/dsh-llm'
-import type { JobId, JobOutcome } from '@knyazevai/dsh-jobs'
+import type { JobId, JobOutcome, JobToolCall } from '@knyazevai/dsh-jobs'
 import type { Session, SessionEventMap } from '@knyazevai/dsh-session'
 import type { JsonValue } from '@knyazevai/dsh-util-values'
 import type {
@@ -255,6 +255,7 @@ function renderResult(name: string, agentsStarted: number, value: JsonValue, max
  * @param ctx - plugin context (engine, optional jobs registry, logger).
  * @param args - the validated tool call.
  * @param parent - the calling agent; owns the job.
+ * @param toolCall - creating invocation, including its root call.
  * @param recordsRun - whether this top-level call records durable run events.
  * @param deps - the tool's recorder/mirror taps and the render cap.
  * @returns the background result for the tool's output schema.
@@ -263,6 +264,7 @@ function startBackgroundRun(
   ctx: Context,
   args: WorkflowCallArgs,
   parent: Agent,
+  toolCall: JobToolCall,
   recordsRun: boolean,
   deps: { recorder: WorkflowRecorder; mirror: WorkflowRecordMirror; maxResultChars: number },
 ): { kind: 'background'; jobId: JobId; runId: WorkflowRunId } {
@@ -275,6 +277,7 @@ function startBackgroundRun(
     kind: 'workflow',
     label: args.meta.name,
     owner: parent.id,
+    toolCall,
     run: (job) => {
       // A synchronous engine rejection (META_INVALID/SCRIPT_PARSE) propagates
       // out of the starter, so the registry registers nothing and the model
@@ -420,7 +423,7 @@ export function apply(ctx: Context, config: Config): void {
         // jobs.start synchronously from there. The shell tools await a
         // sandbox escalation approval before registering, which is the window
         // their check covers.
-        return startBackgroundRun(ctx, args, parent, exec.parent === undefined, {
+        return startBackgroundRun(ctx, args, parent, { callId: exec.callId, rootCallId: exec.rootCallId }, exec.parent === undefined, {
           recorder,
           mirror,
           maxResultChars,

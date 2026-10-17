@@ -1,7 +1,9 @@
+import { mountWorkingDirectoryFixture } from '../../subagent/tests/working-directory-fixture.ts'
 /** Default-off settings and per-session model-selection decisions. */
 
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { assembleContextFor } from '@knyazevai/dsh-agent'
 import { ToolCallId } from '@knyazevai/dsh-llm'
 import { Session, SESSION_FORMAT_VERSION, SessionId } from '@knyazevai/dsh-session'
 import type { SessionEvent } from '@knyazevai/dsh-session'
@@ -44,6 +46,7 @@ async function boot(withPreset = true): Promise<Context> {
   selectionConfigs.set(ctx, await liveConfig(ctx, SubagentModelSelectionConfig))
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
+  await mountWorkingDirectoryFixture(ctx)
   subagentConfigs.set(ctx, await liveConfig(ctx, SubagentRuntime))
   await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
   if (withPreset) {
@@ -51,7 +54,6 @@ async function boot(withPreset = true): Promise<Context> {
     await preset.ctx.plugin(tool, {
       provider: 'spawn',
       modelSelectionSettings: true,
-      backgroundMode: 'continuable',
     })
     modelSelectionPresets.set(ctx, preset)
   }
@@ -171,10 +173,9 @@ describe('SubagentModelSelectionConfig', () => {
       setup: async (agentCtx, agent) => {
         prepared = agent
         const fiber = agentCtx.inject(tool.inject, (runtimeCtx) => {
-          tool.apply(runtimeCtx, {
+          return tool.apply(runtimeCtx, {
             provider: 'spawn',
             modelSelectionSettings: true,
-            backgroundMode: 'continuable',
           }, agent.session)
         })
         await fiber.await()
@@ -190,7 +191,7 @@ describe('SubagentModelSelectionConfig', () => {
   it('creates sessions with two model-selectable delegation tools and one discovery owner', async () => {
     const ctx = await boot()
     try {
-      await ctx.settings.update('subagent-model-selection', {
+      await selectionConfigs.get(ctx)!.update({
         enabled: true,
         allowedModels: ALLOWED_MODELS,
       })
@@ -200,7 +201,6 @@ describe('SubagentModelSelectionConfig', () => {
         toolName: 'subagent_fork',
         modelSelectionSettings: true,
         modelSelectionDiscovery: false,
-        backgroundMode: 'continuable',
       })
       for (const id of ['first-paired-session', 'second-paired-session']) {
         const agent = await createAgent(ctx, id)
@@ -275,7 +275,6 @@ describe('SubagentModelSelectionConfig', () => {
     await preset.ctx.plugin(tool, {
       provider: 'spawn',
       modelSelectionSettings: true,
-      backgroundMode: 'continuable',
     })
 
     let enabledBinding: ReturnType<typeof bindScopeParent> | undefined
@@ -330,7 +329,6 @@ describe('SubagentModelSelectionConfig', () => {
     await preset.ctx.plugin(tool, {
       provider: 'spawn',
       modelSelectionSettings: true,
-      backgroundMode: 'continuable',
     })
     let binding: ReturnType<typeof bindScopeParent> | undefined
     const handle = await ctx.agents.create({
@@ -399,24 +397,20 @@ describe('SubagentModelSelectionConfig', () => {
   it('requires both the Host setting owner and a scoped standing preset', async () => {
     const withoutSettings = new Context()
     await mountAgentLoopTestDependencies(withoutSettings)
+    await mountWorkingDirectoryFixture(withoutSettings)
     await withoutSettings.plugin(SubagentRuntime)
-    expect(() => {
-      tool.apply(withoutSettings, {
-        provider: 'missing',
-        modelSelectionSettings: true,
-        maxDepth: 'provider-managed',
-      })
-    }).toThrow('requires @knyazevai/dsh-tool-subagent/model-selection-settings')
+    await expect(tool.apply(withoutSettings, {
+      provider: 'missing',
+      modelSelectionSettings: true,
+      maxDepth: 'provider-managed',
+    })).rejects.toThrow('requires @knyazevai/dsh-tool-subagent/model-selection-settings')
     await withoutSettings.fiber.dispose()
 
     const withoutAgent = await boot(false)
-    expect(() => {
-      tool.apply(withoutAgent, {
-        provider: 'spawn',
-        modelSelectionSettings: true,
-        backgroundMode: 'continuable',
-      })
-    }).toThrow('requires a scoped preset Context')
+    await expect(tool.apply(withoutAgent, {
+      provider: 'spawn',
+      modelSelectionSettings: true,
+    })).rejects.toThrow('requires a scoped preset Context')
 
     await withoutAgent.fiber.dispose()
   })
@@ -426,6 +420,7 @@ describe('SubagentModelSelectionConfig', () => {
     try {
       selectionConfigs.set(ctx, await liveConfig(ctx, SubagentModelSelectionConfig))
       await ctx.plugin(SessionProjectionRegistry)
+      await mountWorkingDirectoryFixture(ctx)
       subagentConfigs.set(ctx, await liveConfig(ctx, SubagentRuntime))
       const childId = SessionId('child-without-session-registry')
       const child = Session.create(childId, undefined, {
@@ -437,19 +432,16 @@ describe('SubagentModelSelectionConfig', () => {
         parentSession: SessionId('missing-parent'),
       })
 
-      expect(() => {
-        tool.apply(ctx, {
-          provider: 'missing',
-          modelSelectionSettings: true,
-          maxDepth: 'provider-managed',
-        }, child)
-      }).toThrow('child model-selection inheritance requires the Session registry')
+      await expect(tool.apply(ctx, {
+        provider: 'missing',
+        modelSelectionSettings: true,
+        maxDepth: 'provider-managed',
+      }, child)).rejects.toThrow('child model-selection inheritance requires the Session registry')
     } finally {
       await ctx.fiber.dispose()
     }
   })
 })
-
 
 it('reads the saved default depth at each delegation without remounting the tool', async () => {
   const ctx = await boot(false)
@@ -457,18 +449,34 @@ it('reads the saved default depth at each delegation without remounting the tool
   try {
     ctx.subagents.registerProvider({
       name: 'capture-depth',
-      capabilities: { agentOptions: true, outputSchema: true, depthLimit: true, toolFilter: true, persona: true },
+      capabilities: { agentOptions: true, agentPreset: false, outputSchema: true, depthLimit: true },
       inheritsParentContext: false,
       start: async (request) => {
         depths.push(request.maxDepth)
-        return { id: SessionId(`depth-${depths.length}`), localAgent: undefined,
+        return { id: SessionId(`depth-${depths.length}`),
           result: Promise.resolve({ output: [], stopReason: 'completed' as const }), dispose: async () => {} }
       },
     })
     await ctx.plugin(tool, { provider: 'capture-depth' })
+    const { agent } = await ctx.agents.create({ sessionId: SessionId('live-depth-context') })
+    const initial = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    expect(initial.contexts.find(part => part.name === 'tool:subagent:depth')?.text)
+      .toBe('')
     await callSubagent(ctx, { description: 'first', prompt: 'work' })
     await subagentConfigs.get(ctx)!.update({ maxDepth: 5 })
+    const updated = ctx.systemPrompt.refreshContext(initial, assembleContextFor(agent))
+    expect(updated.contexts.find(part => part.name === 'tool:subagent:depth')?.text)
+      .toBe('')
     await callSubagent(ctx, { description: 'second', prompt: 'work' })
+    await subagentConfigs.get(ctx)!.update({ maxDepth: 0 })
+    const disabled = ctx.systemPrompt.refreshContext(initial, assembleContextFor(agent))
+    expect(disabled.contexts.find(part => part.name === 'tool:subagent:depth')?.text)
+      .toBe('Delegation depth for `subagent`: current 0, maximum 0, remaining levels 0. Do not call `subagent` at this depth; carry out the work directly.')
+    expect(disabled.sections).toEqual(initial.sections)
+    expect(disabled.tools).toEqual(initial.tools)
+    await subagentConfigs.get(ctx)!.update({ maxDepth: 2 })
+    expect(ctx.systemPrompt.refreshContext(disabled, assembleContextFor(agent))
+      .contexts.find(part => part.name === 'tool:subagent:depth')?.text).toBe('')
     await subagentConfigs.get(ctx)!.update({ maxDepth: 0 })
     await callSubagent(ctx, { description: 'disabled', prompt: 'work' })
     expect(depths).toEqual([1, 5, 0])

@@ -15,6 +15,8 @@ import * as toolsPlugin from '@knyazevai/dsh-tools'
 import * as fsPlugin from '@knyazevai/dsh-fs-local'
 import * as toolFsPlugin from '@knyazevai/dsh-tool-fs'
 import * as sessionPlugin from '@knyazevai/dsh-session'
+import * as sessionProjectionPlugin from '@knyazevai/dsh-session-projection'
+import * as workingDirectoryPlugin from '@knyazevai/dsh-working-directory'
 import { Session, SessionId } from '@knyazevai/dsh-session'
 import * as queryPlugin from '@knyazevai/dsh-session-query-sqlite'
 import * as referencePlugin from '@knyazevai/dsh-session-reference'
@@ -45,6 +47,8 @@ describe('session-reference real Loader composition', () => {
     ctx.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
       ['@knyazevai/dsh-session', sessionPlugin],
+      ['@knyazevai/dsh-session-projection', sessionProjectionPlugin],
+      ['@knyazevai/dsh-working-directory', workingDirectoryPlugin],
       ['@knyazevai/dsh-system-prompt', systemPromptPlugin],
       ['@knyazevai/dsh-tools', toolsPlugin],
       ['@knyazevai/dsh-fs-local', fsPlugin],

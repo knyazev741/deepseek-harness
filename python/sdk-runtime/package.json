@@ -57,9 +57,6 @@
     "@knyazevai/dsh-goal": "workspace:*",
     "@knyazevai/dsh-goal-round-driver": "workspace:*",
     "@knyazevai/dsh-home-paths": "workspace:*",
-    "@knyazevai/dsh-hook-protocol": "workspace:*",
-    "@knyazevai/dsh-hooks-claude-code": "workspace:*",
-    "@knyazevai/dsh-hooks-codex": "workspace:*",
     "@knyazevai/dsh-host-plugin-inventory": "workspace:*",
     "@knyazevai/dsh-host-webserver": "workspace:*",
     "@knyazevai/dsh-http-proxy": "workspace:*",
@@ -78,9 +75,8 @@
     "@knyazevai/dsh-persona": "workspace:*",
     "@knyazevai/dsh-plan-mode": "workspace:*",
     "@knyazevai/dsh-plugin-manager": "workspace:*",
+    "@knyazevai/dsh-plugin-market": "workspace:*",
     "@knyazevai/dsh-plugin-package-inventory-deepseek": "workspace:*",
-    "@knyazevai/dsh-ptc-runtime": "workspace:*",
-    "@knyazevai/dsh-ptc-runtime-node": "workspace:*",
     "@knyazevai/dsh-pwsh-local": "workspace:*",
     "@knyazevai/dsh-repeat-tool-reminder": "workspace:*",
     "@knyazevai/dsh-sandbox": "workspace:*",
@@ -116,7 +112,6 @@
     "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-subagent-acp": "workspace:*",
     "@knyazevai/dsh-subagent-fork-in-process": "workspace:*",
-    "@knyazevai/dsh-subagent-in-process-driver": "workspace:*",
     "@knyazevai/dsh-subagent-spawn-in-process": "workspace:*",
     "@knyazevai/dsh-subprocess": "workspace:*",
     "@knyazevai/dsh-subprocess-local": "workspace:*",
@@ -138,7 +133,6 @@
     "@knyazevai/dsh-tool-present": "workspace:*",
     "@knyazevai/dsh-tool-pwsh": "workspace:*",
     "@knyazevai/dsh-tool-pwsh-persistent": "workspace:*",
-    "@knyazevai/dsh-tool-ralph": "workspace:*",
     "@knyazevai/dsh-tool-skill": "workspace:*",
     "@knyazevai/dsh-tool-str-replace-editor": "workspace:*",
     "@knyazevai/dsh-tool-subagent": "workspace:*",
@@ -163,6 +157,8 @@
     "@knyazevai/dsh-workflow-ptc": "workspace:*",
     "@knyazevai/dsh-otel": "workspace:*",
     "@knyazevai/dsh-workspace": "workspace:*",
-    "@deepseek-ai/schemastery": "workspace:~"
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@knyazevai/dsh-tool-working-directory": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*"
   }
 }
