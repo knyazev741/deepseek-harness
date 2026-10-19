@@ -79,11 +79,12 @@ describe('dsh-fork-base bundle', () => {
 
   it('inserts ordered, unique, Codex-free fork rows without secret literals', () => {
     const patches = readPatch('./cordis.patch.yml')
-    expect(patches).toHaveLength(3)
+    expect(patches).toHaveLength(4)
     expect(Object.keys(patches[0] ?? {})).toEqual(['insert'])
     expect(patches.slice(1).map(patch => patch.id)).toEqual([
       'llm-pi-ai',
       'agent-default-model',
+      'compaction-basic',
     ])
 
     const rows = flattenInsertRows(patches)
@@ -104,7 +105,7 @@ describe('dsh-fork-base bundle', () => {
       .toEqual({ firstChunkIdleTimeoutMs: 120000, maxFirstChunkCompactionRetries: 100 })
     expect(rows.find(row => row.id === 'fork-llm-rate-limit-cooldown')?.config)
       .toEqual({
-        cooldownMs: 600000,
+        cooldownMs: 10000,
         retryableCodes: ['*'],
       })
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
@@ -125,6 +126,9 @@ describe('dsh-fork-base bundle', () => {
     expect(rows.some(row => row.name === '@knyazevai/dsh-fork-external-session')).toBe(false)
     const llm = rows.find(row => row.id === 'llm-pi-ai')
     const defaultModel = rows.find(row => row.id === 'agent-default-model')
+    expect(rows.find(row => row.id === 'compaction-basic')?.config).toEqual({
+      summarizerCooldownMs: 10000, summarizerRetryForever: true,
+    })
     expect(llm?.config).toEqual({
       providers: {
         'knyazev-ai': {
@@ -132,22 +136,11 @@ describe('dsh-fork-base bundle', () => {
           apiKeyEnv: 'KNYAZEV_AI_API_KEY',
           api: 'openai-completions',
           baseURL: 'https://knyazevai.work/v1',
-          streamIdleTimeoutMs: 900000,
+          streamIdleTimeoutMs: 120000,
           timeoutMs: 1800000,
           retryPolicy: {
-            mode: 'normal',
-            maxRetries: 20,
-            retryableCodes: [
-              'RATE_LIMIT',
-              'QUOTA',
-              'SERVER',
-              'TIMEOUT',
-              'FIRST_CHUNK_TIMEOUT',
-              'TRANSPORT',
-              'STREAM_CLOSED',
-              'EMPTY_RESPONSE',
-              'PI_AI_ERROR',
-            ],
+            mode: 'always',
+            backoff: { initialDelayMs: 500, maxDelayMs: 10000, jitterRatio: 0.1 },
           },
           compat: {
             thinkingFormat: 'openai',
@@ -190,7 +183,7 @@ describe('dsh-fork-base bundle', () => {
     expect(llm?.config).not.toHaveProperty('providers.knyazev-ai.apiKey')
     expect(defaultModel?.config).not.toHaveProperty('reasoningEffort')
 
-    const overridden = new Set(['llm-pi-ai', 'agent-default-model'])
+    const overridden = new Set(['llm-pi-ai', 'agent-default-model', 'compaction-basic'])
     for (const upstreamRow of upstreamRows) {
       if (overridden.has(upstreamRow.id)) continue
       expect(rows.find(row => row.id === upstreamRow.id)).toEqual(upstreamRow)
@@ -309,19 +302,10 @@ describe('dsh-fork-base bundle', () => {
       await vi.waitFor(() => { expect(ctx?.agentDefaultModel.currentSelection()).toEqual({ provider: 'settings-provider', model: 'settings-model' }) })
       expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(['knyazev-ai'])
       expect(ctx.llm.providerRetryPolicy('knyazev-ai')).toMatchObject({
-        mode: 'normal',
-        maxRetries: 20,
-        retryableCodes: [
-          'RATE_LIMIT',
-          'QUOTA',
-          'SERVER',
-          'TIMEOUT',
-          'FIRST_CHUNK_TIMEOUT',
-          'TRANSPORT',
-          'STREAM_CLOSED',
-          'EMPTY_RESPONSE',
-          'PI_AI_ERROR',
-        ],
+        mode: 'always',
+        initialDelayMs: 500,
+        maxDelayMs: 10000,
+        jitterRatio: 0.1,
       })
       await expect(ctx.llm.listModels('knyazev-ai')).resolves.toMatchObject([
         { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'knyazev-ai' },
@@ -334,7 +318,7 @@ describe('dsh-fork-base bundle', () => {
             'knyazev-ai': {
               apiKeyEnv: 'KNYAZEV_AI_API_KEY',
               baseURL: 'https://settings.example/v1',
-              streamIdleTimeoutMs: 900000,
+              streamIdleTimeoutMs: 120000,
               timeoutMs: 1800000,
               models: [
                 { id: 'deepseek-v4-flash', contextWindow: 400000, maxTokens: 40000 },
@@ -371,7 +355,8 @@ describe('Flash compaction parity in shipped agent presets', () => {
     const children = group?.config as unknown as Row[]
     const compact = children.find(row => row.id === 'compaction-basic')
     const policies = compact?.config?.modelPolicies as Record<string, unknown>[]
-    expect(policies.filter(policy => policy.provider === 'knyazev-ai' && policy.summarizerRetryForever === true)
+    expect(policies.filter(policy => policy.provider === 'knyazev-ai' && policy.summarizerRetryForever === true
+      && policy.summarizerCooldownMs === 10000)
       .map(policy => policy.model)).toEqual(['deepseek-v4-flash', 'glm-5.3-flash', 'minimax-2.7'])
     const flash = policies.find(policy => policy.model === 'deepseek-v4-flash')
     const glm = policies.find(policy => policy.model === 'glm-5.3-flash')

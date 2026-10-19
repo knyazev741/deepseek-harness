@@ -28,15 +28,12 @@
         firstChunkIdleTimeoutMs: 120000
         maxFirstChunkCompactionRetries: 100
 
-    # Keep a persistently failing request alive after dsh-llm-retry's bounded
-    # budget is exhausted: wait a long cooldown, then retry. The knyazev-ai
-    # route below retries fast 20 times per attempt; this escalation keeps
-    # re-claiming every later exhausted budget on an unstable upstream without
-    # ending the turn.
+    # Normal-mode routes retain a retry after their bounded budget. Gonka's
+    # always-mode policy below continues with its own capped backoff.
     - id: fork-llm-rate-limit-cooldown
       name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
       config:
-        cooldownMs: 600000
+        cooldownMs: 10000
         retryableCodes: ['*']
 
 # The upstream adapter row is dormant without a settings section. The fork
@@ -49,21 +46,14 @@
         apiKeyEnv: KNYAZEV_AI_API_KEY
         api: openai-completions
         baseURL: https://knyazevai.work/v1
-        streamIdleTimeoutMs: 900000
+        streamIdleTimeoutMs: 120000
         timeoutMs: 1800000
         retryPolicy:
-          mode: normal
-          maxRetries: 20
-          retryableCodes:
-            - RATE_LIMIT
-            - QUOTA
-            - SERVER
-            - TIMEOUT
-            - FIRST_CHUNK_TIMEOUT
-            - TRANSPORT
-            - STREAM_CLOSED
-            - EMPTY_RESPONSE
-            - PI_AI_ERROR
+          mode: always
+          backoff:
+            initialDelayMs: 500
+            maxDelayMs: 10000
+            jitterRatio: 0.1
         compat:
           thinkingFormat: openai
           supportsReasoningEffort: true
@@ -97,3 +87,8 @@
   config:
     provider: knyazev-ai
     model: deepseek-v4-flash
+
+- id: compaction-basic
+  config:
+    summarizerCooldownMs: 10000
+    summarizerRetryForever: true

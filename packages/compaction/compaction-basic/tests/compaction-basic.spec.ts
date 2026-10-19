@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import * as yaml from 'js-yaml'
 import { onTestFinished, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { AttachmentId } from '@knyazevai/dsh-attachment'
@@ -22,6 +24,7 @@ import type {
   LlmResolvedModelInfo,
   Message,
   ResolvedRetryPolicy,
+  RetryPolicyConfig,
   StreamChunk,
   TokenUsage,
 } from '@knyazevai/dsh-llm'
@@ -1146,6 +1149,32 @@ describe('bounded summarization input', () => {
 })
 
 describe('summarizer retry', () => {
+  it('keeps the shipped Gonka summary policy below ten seconds after 25 auth failures', async () => {
+    const ctx = new Context()
+    onTestFinished(async () => {
+      try {
+        await ctx.fiber.dispose()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+    vi.useFakeTimers()
+    void new LlmRuntime(ctx)
+    const rows = yaml.load(readFileSync(new URL('../../../bundle/fork-base/cordis.patch.yml', import.meta.url), 'utf8')) as { id?: string; config?: { providers: Record<string, { retryPolicy?: RetryPolicyConfig }> } }[]
+    const policy = rows.find(row => row.id === 'llm-pi-ai')!.config!.providers['knyazev-ai']!.retryPolicy
+    const adapter = new SummaryRetryAdapter({
+      policy: resolveRetryPolicy(policy, 'Gonka summary retryPolicy'), failures: 25, failure: { code: 'AUTH', message: 'temporary upstream auth failure' },
+    })
+    ctx.llm.registerAdapter(['summary'], adapter)
+    const running = summarizeWithLlm(ctx, {
+      summarizationProvider: '', summarizationModel: '', maxTokens: 128,
+      summarizerCooldownMs: 600_000, summarizerRetryForever: true,
+    }, promptInput('history'), agent(Session.create(SessionId('summary-gonka')), 'summary'))
+    await vi.advanceTimersByTimeAsync(250_000)
+    expect(adapter.requests).toBe(26)
+    await expect(running).resolves.toMatchObject({ summary: [{ type: 'text', text: 'recovered summary' }] })
+  })
+
   it('retries an actual empty summary in persistent mode', async () => {
     const ctx = new Context()
     onTestFinished(() => ctx.fiber.dispose())

@@ -10,7 +10,7 @@ The fork promises recovery through long provider outages, but empty responses, c
 
 ## Decision
 
-The fork overlay selects every normalized provider failure for unlimited cooldown recovery. Fast retries remain bounded; cooldown begins when that budget is exhausted or cannot handle the failure. Other request recovery listeners run first. Each cancellable wait lasts at least ten minutes in the shipped overlay and honors longer provider delays. The existing retry event protocol records a separate unbounded policy chain with a stable identity and contiguous attempts.
+The Gonka route selects the provider-owned always policy: every normalized model failure retries with jittered exponential backoff from 500 ms to a 10-second cap. Summary requests use the same policy. Normal-mode routes retain the fork cooldown after their bounded budget, with a 10-second deployment delay and longer provider delays honored. Other request recovery listeners run first. Existing retry events retain a stable policy-chain identity and contiguous attempts.
 
 First-chunk and overflow compaction ceilings delegate to retry policy. A downstream retry permits another bounded compaction batch. Gonka model policies enable persistent summary recovery; empty summaries and failures outside the provider's fast list also wait and retry. Summary requests retain their own cancellation and operational logging because they may run without an open turn or step.
 
@@ -26,4 +26,4 @@ Transient failures no longer exhaust the fork's attempt budget. Permanent provid
 
 ## Testing
 
-Real agent-loop cases traverse 45 failures for each of twelve codes before success, plus pre-budget Retry-After and unsupported-code cases. The keyless fork-cooldown snapshot reopens the resulting log after twenty fast retries and two cooldown retries. Compaction tests cover renewed batches, summary recovery, and cancellation.
+Real agent-loop cases traverse 45 failures for each of twelve codes before success, plus pre-budget Retry-After and unsupported-code cases. The keyless persistent-provider snapshot reopens a log with 27 failures under the always policy; the fork-cooldown snapshot also covers the normal-mode fallback. Compaction tests cover renewed batches, summary recovery, and cancellation.

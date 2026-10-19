@@ -9,8 +9,8 @@
   en: 952649e0660882c3
   zh: 4c3b3bb3c39d281c
 /agent-note-persistent-provider-recovery-after-fast-retries/decision:
-  en: 0faf7b32b7aa51da
-  zh: bd8a962203a6383d
+  en: 5b8f6f913bd06f77
+  zh: 21fdb70259c20599
 /agent-note-persistent-provider-recovery-after-fast-retries/alternatives-considered:
   en: 243ede91ee094052
   zh: ba66d20747dd3f96
@@ -18,5 +18,5 @@
   en: e21434d9b6aeb70f
   zh: ced5e4932004f5fc
 /agent-note-persistent-provider-recovery-after-fast-retries/testing:
-  en: 43725d0e05e5f097
-  zh: df2ee815e13a2baf
+  en: d62637df2ffe7545
+  zh: 4b75604dbf3db293
