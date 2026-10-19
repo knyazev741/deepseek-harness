@@ -2,7 +2,7 @@
 # script comes from the scenario's committed session JSONL.
 
 - id: llm-deepseek
-  name: '@knyazevai/dsh-llm-deepseek'
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
   disabled: true
 
 - id: plugin-package-inventory-deepseek
@@ -39,13 +39,47 @@
               - id: deepseek-v4-flash
               - id: deepseek-v4-pro
 
-# Restrict inherited capabilities before the child assembles its first request.
+# The parent owns its file and web tools; the child selects a separate preset.
+- id: tool-fs
+  disabled: true
+
+- id: tool-fs-search
+  disabled: true
+
+- id: tool-web
+  disabled: true
+
+- insert:
+    - id: agent-preset-registry
+      name: '@knyazevai/dsh-agent-preset-registry'
+      config:
+        default: parent
+    - id: preset-parent
+      name: '@knyazevai/dsh-agent-preset'
+      config:
+        id: parent
+        plugins:
+          - name: '@knyazevai/dsh-tool-fs'
+          - name: '@knyazevai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - name: '@knyazevai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+    - id: preset-child
+      name: '@knyazevai/dsh-agent-preset'
+      config:
+        id: child
+        plugins: []
+    - id: parent-agent-preset
+      name: '../../../packages/test-support/session-snapshot/tests/fixtures/parent-agent-preset.ts'
+
 - id: tool-subagent
   name: '@knyazevai/dsh-tool-subagent'
+  inject: [agentPresets]
   config:
     provider: spawn
     toolName: subagent
-    backgroundMode: continuable
     maxDepth: 1
-    toolFilter:
-      deny: [write, edit, glob, grep, web_search, web_fetch]
+    agentPreset: child

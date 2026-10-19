@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   ComposerAttachment, ComposerAttachmentsProps, ComposerImageAttachment,
 } from '@knyazevai/dsh-client-ui-conversation/client'
-import { IconCloseFill14 } from '@knyazevai/dsh-client-ui-primitives'
+import { IconCloseFillRegular } from '@knyazevai/dsh-client-ui-primitives'
 import { AttachmentRail } from '../AttachmentRail.tsx'
 import type { AttachmentRailItem } from '../AttachmentRail.tsx'
 import { DropOverlay } from '../DropOverlay.tsx'
 import { FileCard } from '../FileCard.tsx'
-import { ImageLightbox } from '../ImageLightbox.tsx'
+import { ImageLightbox } from '@knyazevai/dsh-client-ui-primitives'
 import { attachmentRailLabels, dropOverlayLabels, fileCardLabels, lightboxLabels } from './labels.ts'
 import { installDocumentDropEvents } from './drop-events.ts'
 import css from './ComposerAttachments.module.css'
@@ -87,7 +87,7 @@ export function ComposerAttachments({
                     aria-label={t('image.remove', { name: attachment.file.name })}
                     onClick={() => { onRemoveAttachment(attachment.id) }}
                   >
-                    <IconCloseFill14 size={12} />
+                    <IconCloseFillRegular size={12} />
                   </button>
                 </div>
               )

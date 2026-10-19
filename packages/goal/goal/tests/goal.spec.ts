@@ -3,6 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { agentEvents } from '@knyazevai/dsh-agent'
 import type { Agent } from '@knyazevai/dsh-agent'
 import { createUserMessage, HarnessError } from '@knyazevai/dsh-llm'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
 import SessionStore, { Session, SessionId, type UserMessage } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import GoalService, {
@@ -13,6 +14,14 @@ import GoalService, {
 } from '@knyazevai/dsh-goal'
 import type { GoalChangeMeta, GoalRef, GoalSnapshotChangeMeta } from '@knyazevai/dsh-goal'
 import { createInboxStub } from '@knyazevai/dsh-agent-loop-testkit'
+import { remoteMethods } from '@knyazevai/dsh-typert-protocol'
+
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+    'ordinary-user-message': { kind: 'ordinary-user-message' } & ContextFormed
+  }
+}
 
 interface StubAgent {
   agent: Agent
@@ -171,6 +180,16 @@ describe('GoalService creation and replay', () => {
     expect(goals.create(stub.agent, { objective: 'direct' })).toMatchObject({
       objective: 'direct', maxGoalRounds: 256,
     })
+  })
+
+  it('declares no resource readers on goals/get, leaving its Session resource to the Agent lookup', async () => {
+    const ctx = new Context()
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(SessionProjectionRegistry)
+    const goals = new GoalService(ctx)
+    const marker = remoteMethods(goals).find(method => method.method === 'get')
+    expect(marker).toMatchObject({ method: 'get' })
+    expect(marker?.resources).toBeUndefined()
   })
 
   it('rejects invalid direct configuration', async () => {
@@ -530,31 +549,6 @@ describe('GoalService mutations', () => {
     })
   })
 
-  it('rejects a corrupt append while preserving the valid prefix', async () => {
-    const { ctx, agent, session } = await harness()
-    expect(ctx.goals.get(agent)).toBeUndefined()
-    const change: GoalSnapshotChangeMeta = {
-      kind: 'goal/change',
-      version: 1,
-      operation: 'create',
-      goal: {
-        id: GoalId('goal-valid-prefix'),
-        revision: 1,
-        objective: 'valid prefix',
-        phase: 'active',
-        maxGoalRounds: 4,
-      },
-      roundsStarted: 0,
-      createdAt: 12,
-      updatedAt: 12,
-    }
-    session.append('goal/change', change)
-    expect(() => {
-      session.append('goal/change', { ...change, operation: 'edit', extra: true } as never)
-    }).toThrow('snapshot change must have exactly')
-
-    expect(ctx.goals.get(agent)).toMatchObject({ id: change.goal.id, objective: 'valid prefix' })
-  })
 })
 
 describe('goal replay validation', () => {
@@ -618,7 +612,7 @@ describe('goal replay validation', () => {
     expect(foldGoal(session.snapshotEvents())).toMatchObject({ goal: { id: change.goal.id, revision: 1 } })
     const message = createUserMessage({
       content: [{ type: 'text', text: 'unrelated pending context' }],
-      source: { kind: 'plugin', plugin: 'test' },
+      source: { kind: 'test' },
     })
     const inbox = stubAgentForSession(session).agent.inbox
     inbox.append('next-step', message)
@@ -639,10 +633,10 @@ describe('goal replay validation', () => {
     const session = Session.create(SessionId('unrelated'))
     appendInjection(session, createUserMessage({
       content: [{ type: 'text', text: 'other' }],
-      source: { kind: 'plugin', plugin: 'test' },
+      source: { kind: 'test' },
     }))
     expect(foldGoal(session.snapshotEvents())).toEqual({ roundsStarted: 0 })
-    const source = { kind: 'plugin', plugin: 'ordinary-user-message' } as const
+    const source = { kind: 'ordinary-user-message' } as const
     const turn = nextTurn(session)
     session.append('turn/start', { turn })
     session.append('user/message', createUserMessage({

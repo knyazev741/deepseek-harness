@@ -35,9 +35,11 @@ kind: "package-reference"
 
 Chat 中的一条用户消息把文件与图片放在同一个靠右、可换行的排列中，并保持来源顺序。消息仅有一张图片且没有其他附件时，图片按长边 240px 渲染（宽高比钳制在 [0.25, 4]，从不放大）；消息有多个附件时，每张图片显示为固定 64px 方块，与 240×64px 文件卡同排。加载完成的图片单击打开文档级灯箱；加载失败则显示重试控件。灯箱按 Escape、按下遮罩或点关闭按钮关闭，并把焦点还给打开者。
 
+Trajectory 附件行使用 48px 方形缩略图，完整缩放图片而不裁剪。加载与重试图标保持相同尺寸，提供本地化的工具提示和可访问名称；图片打开同一个灯箱。插槽持有方可以为缩略图与灯箱提供仅用于展示的图片名称，而不改变持久化引用或缓存查询。
+
 ### 拖放遮罩
 
-文件拖到页面上方时，全视口遮罩显示拖放提示，包括插画和标题；接受拖放时还会显示一行限制说明。遮罩只呈现状态——是否接受由持有方的文档级监听器决定。
+文件拖到页面上方时，全视口遮罩显示拖放提示，包括插画和标题；接受拖放时还会显示一行限制说明。遮罩只呈现状态，是否接受由持有方的文档级监听器决定，拖放处理器通过 entry API 报告放下的成员中哪些是文件夹，以便持有方引用或拒绝它们。
 
 -----
 
@@ -47,7 +49,7 @@ Chat 中的一条用户消息把文件与图片放在同一个靠右、可换行
 <details>
 <summary>实现细节——点击展开</summary>
 
-插件通过 `ctx.slots.inject` 等待 `conversation.input.attachments`、`conversation.message.images`、`conversation.trajectory.images` 与 `tool.call.images`。随后它注册 composer rail、文档拖放目标、供 Chat、Trajectory 与工具结果共用的历史图片 gallery，以及原图灯箱。呈现组件仅依赖 props：slot 持有方提供附件数据、图片加载、回调与语言包翻译器；包入口不导出任何组件。
+插件提供 root 作用域的 `conversation.images.content` Factory。官方 `MessageImages` 条目通过 `ctx.slots.inject`，以优先级 100 填入 `conversation.chat.user.images`、`conversation.chat.message.images`、`conversation.trajectory.images` 和 `tool.call.images`。较低优先级的条目只替换自身所在位置，移除后恢复官方条目。各默认条目复用同一画廊，显式传入图片引用、授权 loader、布局参数和可选的完整 labels。Factory 负责画廊展示与默认文案，不拥有 Session 状态或读取授权。各领域拥有自己的 Slot 声明。Composer 附件栏仍为独立条目，包入口不导出任何组件。
 
 | 文件 | 职责 |
 |---|---|
@@ -56,7 +58,7 @@ Chat 中的一条用户消息把文件与图片放在同一个靠右、可换行
 | [`src/AttachmentRail.tsx`](src/AttachmentRail.tsx) | 附件横向溢出、滚轮转换、边缘箭头 |
 | [`src/client/MessageImages.tsx`](src/client/MessageImages.tsx) | 每消息画廊＋灯箱的组装 |
 | [`src/MessageImage.tsx`](src/MessageImage.tsx) | 单图尺寸、加载／重试、点击打开；本地提交回显预览直接显示其 object URL |
-| [`src/ImageLightbox.tsx`](src/ImageLightbox.tsx) | 铺在共享遮罩上的文档级模态预览 |
+| [`ImageLightbox`](../ui-primitives/src/ImageLightbox.tsx) | 铺在共享遮罩上的文档级模态预览 |
 | [`src/DropOverlay.tsx`](src/DropOverlay.tsx) | 不接收指针事件的拖放提示 portal |
 
 </details>
@@ -69,7 +71,7 @@ Chat 中的一条用户消息把文件与图片放在同一个靠右、可换行
 如果附件界面本身还不够，请阅读以下页面。这些页面从本包填充的 slot 讲到负责输入流程的会话外壳。
 
 - [ui-conversation](../ui-conversation/README.zh.md)——声明附件 slot，并负责 composer 与图片接收。
-- [Web 客户端架构](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.zh.md)——浏览器插件行如何加载并注册 slot。
+- [Web 客户端架构](../../../docs/subsystems/web-client.zh.md)——浏览器插件行如何加载并注册 slot。
 - [客户端包映射](../README.zh.md)——相邻的浏览器 UI 包。
 
 -----
@@ -102,5 +104,3 @@ Chat 中的一条用户消息把文件与图片放在同一个靠右、可换行
 无。
 
 </details>
-
-**运行时不变式：** 不发布伴生入口。本包只贡献由 effect 持有的 slot entry；slot 注册表负责其生命周期并校验声明。

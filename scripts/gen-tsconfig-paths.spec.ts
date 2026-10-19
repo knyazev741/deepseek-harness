@@ -20,7 +20,6 @@ describe('generated tsconfig package aliases', () => {
     expect(session).toEqual({
       specifier: '@knyazevai/dsh-session',
       source: './packages/core/session/src',
-      hasInvariant: true,
     })
     // Sorted, so a package added anywhere lands in a stable spot in the diff.
     expect([...aliases].sort((a, b) => a.specifier.localeCompare(b.specifier))).toEqual(aliases)
@@ -31,15 +30,15 @@ describe('generated tsconfig package aliases', () => {
 
   it('yields to a hand-written alias and closes without a trailing comma', () => {
     const aliases = [
-      { specifier: '@knyazevai/dsh-a', source: './packages/g/a/src', hasInvariant: true },
-      { specifier: '@knyazevai/dsh-b', source: './packages/g/b/src', hasInvariant: false },
+      { specifier: '@knyazevai/dsh-a', source: './packages/g/a/src' },
+      { specifier: '@knyazevai/dsh-b', source: './packages/g/b/src' },
+      { specifier: '@knyazevai/dsh-c', source: './packages/g/c/src' },
     ]
     const body = renderAliases(aliases, new Set(['@knyazevai/dsh-a']))
 
-    // The hand-written bare alias is skipped; its /invariant sibling is not.
     expect(body).toBe([
-      '      "@knyazevai/dsh-a/invariant": ["./packages/g/a/src/invariant.ts"]',
       '      "@knyazevai/dsh-b": ["./packages/g/b/src"]',
+      '      "@knyazevai/dsh-c": ["./packages/g/c/src"]',
     ].join(',\n'))
     expect(body.endsWith(',')).toBe(false)
   })
@@ -72,7 +71,7 @@ describe('generated tsconfig package aliases', () => {
     // resolve through the workspace symlink to built lib/types instead.
     expect(uncoveredPackages(
       ['@knyazevai/dsh-a', '@knyazevai/dsh-b'],
-      new Set(['@knyazevai/dsh-a', '@knyazevai/dsh-a/invariant']),
+      new Set(['@knyazevai/dsh-a']),
     )).toEqual(['@knyazevai/dsh-b'])
 
     expect(uncoveredPackages(['@knyazevai/dsh-a'], new Set(['@knyazevai/dsh-a']))).toEqual([])
@@ -89,10 +88,9 @@ describe('generated tsconfig package aliases', () => {
 
   it('leaves no wildcard that probes every package group', () => {
     const config = readFileSync(resolve(root, 'tsconfig.base.json'), 'utf8')
-    // These two listed one candidate per group, so resolving a package late in
-    // the list cost a filesystem probe — and under tsx a decorated module
+    // A wildcard lists one candidate per group, so resolving a package late in
+    // the list costs a filesystem probe — and under tsx a decorated module
     // error — for every group before it.
     expect(config).not.toContain('"@knyazevai/dsh-*":')
-    expect(config).not.toContain('"@knyazevai/dsh-*/invariant":')
   })
 })

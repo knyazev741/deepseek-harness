@@ -5,7 +5,7 @@ import { scheduler } from 'node:timers/promises'
 import { Context } from '@deepseek-ai/cordis'
 import AgentLoop, { turnBoundaryProjectionDefinition } from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
-import { agentPresetProjectionDefinition } from '@knyazevai/dsh-agent-presets'
+import { agentPresetProjectionDefinition } from '@knyazevai/dsh-agent-preset-registry'
 import SessionStore, {
   interruptedTurnClosers,
   SessionId,
@@ -13,7 +13,7 @@ import SessionStore, {
   SessionPreparation,
 } from '@knyazevai/dsh-session'
 import type { AgentHandle } from '@knyazevai/dsh-agent'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import SessionQueryEngine from '@knyazevai/dsh-session-query'
 import type {

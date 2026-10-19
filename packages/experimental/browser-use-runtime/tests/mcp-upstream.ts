@@ -19,6 +19,8 @@ import Sessions, { SessionId } from '@knyazevai/dsh-session'
 import Agents from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import Projections from '@knyazevai/dsh-session-projection'
+import LocalFileSystem from '@knyazevai/dsh-fs-local'
+import WorkingDirectory from '@knyazevai/dsh-working-directory'
 import { expect, vi } from 'vitest'
 import type { BrowserMcpConfig } from '../src/mcp.ts'
 
@@ -58,6 +60,7 @@ export async function verifyMcpBrowser(
     const modules = new Map<string, unknown>([
       ['browserUse', BrowserUse], ['prompt', SystemPrompt], ['tools', Tools], ['llm', Llm],
       ['sessions', Sessions], ['agents', Agents], ['loop', AgentLoop], ['projections', Projections], ['browser', provider],
+      ['fs', LocalFileSystem], ['workingDirectory', WorkingDirectory],
     ])
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, JSON.stringify([...modules.keys()].map(name => ({ id: name, name, config: name === 'loop' ? { agents: [] } : name === 'browser' ? browserConfig : {} }))))

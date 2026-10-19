@@ -13,12 +13,19 @@ import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { agentEvents } from '@knyazevai/dsh-agent'
 import type { Agent, AgentStatus } from '@knyazevai/dsh-agent'
 import { createUserMessage } from '@knyazevai/dsh-llm'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
 import SessionStore from '@knyazevai/dsh-session'
 import type { Session } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import GoalService, { GoalId, applyGoalProjection, foldGoal, goalProjectionDefinition } from '@knyazevai/dsh-goal'
 import type { GoalProjection, GoalProjectionState, GoalRef } from '@knyazevai/dsh-goal'
 import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
+
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+  }
+}
 
 interface Bench {
   ctx: Context
@@ -132,9 +139,10 @@ describe('goal projection unit', () => {
       start: 0,
       inserted: [createUserMessage({
         content: [{ type: 'text', text: 'unrelated pending context' }],
-        source: { kind: 'plugin', plugin: 'test' },
+        source: { kind: 'test' },
       })],
     })
+
 
     expect(bench.tailValues().goal).toBeNull()
     expect(foldGoal(bench.session.snapshotEvents()).goal).toBeUndefined()

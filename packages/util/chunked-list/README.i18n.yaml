@@ -1,6 +1,37 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/util/chunked-list/README.md
-README.md: b2fa27d8ea67963a8495a2ed1727c6da89e684c2
-README.zh.md: 996a7fbf4b9195466fd113447d6c5552d5fc220c
+/:
+  en: e29affc07acbcf4f
+  zh: 10e2da625e145a68
+/knyazevai-dsh-chunked-list:
+  en: 374e17f49c995ec3
+  zh: c96b3b523cc76be8
+/knyazevai-dsh-chunked-list/summary:
+  en: 15a30013f54b2076
+  zh: b287f44dfd029f20
+/knyazevai-dsh-chunked-list/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 75f067b4c4218355
+/knyazevai-dsh-chunked-list/use-this-package:
+  en: 6808bfba89c5ffbf
+  zh: f80761fdcd3db317
+/knyazevai-dsh-chunked-list/understand-the-implementation:
+  en: 7cd6e9d9367246f3
+  zh: 127a64392a7dd976
+/knyazevai-dsh-chunked-list/further-exploration:
+  en: dc2a6afae1585ff7
+  zh: 133604f9e6f08072
+/knyazevai-dsh-chunked-list/model-experience:
+  en: bc7e4d8a0c8b8ebb
+  zh: e11fe3bd45d4354a
+/knyazevai-dsh-chunked-list/model-experience/kv-cache-effect:
+  en: e7ba08477bf22c4e
+  zh: c38c528fe563bb51
+/knyazevai-dsh-chunked-list/known-limitations-and-deferred-work:
+  en: fdc87d52574748eb
+  zh: e1e7cbd86cd2bde0
+/knyazevai-dsh-chunked-list/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

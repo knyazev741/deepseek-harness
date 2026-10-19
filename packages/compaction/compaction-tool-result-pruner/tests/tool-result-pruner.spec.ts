@@ -3,14 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId , createMessage, createToolResultMessage } from '@knyazevai/dsh-llm'
 import type { ContentBlock } from '@knyazevai/dsh-llm'
-import SessionStore, {
+import {
   Session,
   SessionId,
   SessionSeq,
 } from '@knyazevai/dsh-session'
 import type { SurfaceEvent } from '@knyazevai/dsh-session'
-import * as SessionInvariant from '@knyazevai/dsh-session/invariant'
-import InvariantRegistry from '@knyazevai/dsh-invariants'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import TokenMeter from '@knyazevai/dsh-token-meter'
 import ToolResultPruner, {
@@ -212,10 +210,7 @@ describe('ToolResultPruner session transaction', () => {
       type: 'tool/result',
       data: {
         message: {
-          content: [{
-            type: 'tool-result',
-            content: [{ type: 'text', text: 'x'.repeat(100) }],
-          }],
+          content: [{ type: 'text', text: 'x'.repeat(100) }],
         },
       },
     })
@@ -227,7 +222,9 @@ describe('ToolResultPruner session transaction', () => {
         isError: true,
         message: {
           source: { kind: 'tool', callId: ToolCallId('one') },
-          content: [{ type: 'tool-result', isError: true }],
+          role: 'tool',
+          toolCallId: ToolCallId('one'),
+          isError: true,
         },
         error: { name: 'ExitError', code: 'EXIT_1' },
         meta: { diff: ['a', 'b'] },
@@ -279,22 +276,5 @@ describe('ToolResultPruner session transaction', () => {
     const replay = Session.create(session.id, session.snapshotEvents())
     expect(replay.deriveMessages()).toEqual(session.deriveMessages())
     expect(replay.surface.replaceGeneration).toBe(session.surface.replaceGeneration)
-  })
-
-  it('runs under real invariants between closed steps but not outside a turn', async () => {
-    const ctx = new Context()
-    await ctx.plugin(SessionStore)
-    await ctx.plugin(SessionProjectionRegistry)
-    await ctx.plugin(InvariantRegistry)
-    await ctx.plugin(SessionInvariant)
-    await ctx.plugin(TokenMeter)
-    const prune = new ToolResultPruner(ctx, SMALL)
-    const session = ctx.sessions.create(SessionId('invariants'))
-    appendToolStep(session, 1, 'a', [{ type: 'text', text: 'A'.repeat(100) }])
-    expect(() => prune.pruneSession(session)).toThrow(/outside any open turn/)
-    session.append('turn/start', {
-      turn: 2,
-    })
-    expect(() => prune.pruneSession(session)).not.toThrow()
   })
 })

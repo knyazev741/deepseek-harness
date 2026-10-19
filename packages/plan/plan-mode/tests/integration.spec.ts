@@ -8,6 +8,7 @@ import ToolRuntime, { defineContentToolFixture } from '@knyazevai/dsh-tools'
 import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import PlanModeController from '@knyazevai/dsh-plan-mode'
+import UserQuestionService, { UserQuestionError } from '@knyazevai/dsh-user-questions'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 
 const PLAN_CONFIG = { section: 'Test plan mode instructions.' }
@@ -122,9 +123,9 @@ describe('plan mode through the agent loop', () => {
     // guidance alone (enforcement lives on the independent sandbox/approval
     // axes). The mode itself stays plan throughout.
     const result = findEvent(log, 'tool/result')
-    expect(result.data.message.content[0].isError).toBe(false)
+    expect(result.data.message.isError).toBe(false)
     expect(planActive(ctx, agent)).toBe(true)
-    expect(log.some(event => event.type === 'user/message' && event.data.source.kind === 'plugin')).toBe(false)
+    expect(log.some(event => event.type === 'user/message' && event.data.source.kind !== 'user')).toBe(false)
   })
 
   it('a user flip between turns lands at the boundary: one notice and a replaced system node with stable tool schemas', async () => {
@@ -149,7 +150,7 @@ describe('plan mode through the agent loop', () => {
 
     const log = agent.session.snapshotEvents()
     expect(planActive(ctx, agent)).toBe(true)
-    const notices = log.filter(event => event.type === 'user/message' && event.data.source.kind === 'plugin')
+    const notices = log.filter(event => event.type === 'user/message' && event.data.source.kind !== 'user')
     expect(notices).toHaveLength(1)
     expect(notices[0]?.type === 'user/message' && notices[0].data.content).toEqual([
       { type: 'text', text: 'The user switched this session to plan mode.' },
@@ -218,9 +219,34 @@ describe('plan mode through the agent loop', () => {
     expect(systemNodes[1]?.sourceEventSeqs).toEqual([systemNodes[0]?.seq])
     expect(nextStart?.seq).toBeLessThan(systemNodes[1]?.seq ?? 0)
     expect(systemText(agent)).toContain(PLAN_CONFIG.section)
-    const notice = log.find(event => event.type === 'user/message' && event.data.source.kind === 'plugin')
+    const notice = log.find(event => event.type === 'user/message' && event.data.source.kind !== 'user')
     expect(notice?.type === 'user/message' && notice.data.content).toEqual([
       { type: 'text', text: 'The user switched this session to plan mode.' },
     ])
+  })
+
+  it('a dismissed plan review ends the turn without another model request', async () => {
+    const adapter = new MockAdapter([
+      toolCallResponse('call-exit', 'exit_plan_mode', { plan: '# Plan\n\ndo things' }),
+      // Consumed only if the dismissal regresses to another model request.
+      textResponse('Waiting for your message.'),
+    ])
+    const ctx = await harness(adapter)
+    await ctx.plugin(UserQuestionService)
+    ctx.on('user-questions/request', () => Promise.reject(new UserQuestionError('the user cancelled ask_user_question', 'ASK_CANCELLED')))
+    const agent = await ctx.agentLoop.create(SessionId('it-plan-dismiss'), { provider: 'mock', model: 'mock' })
+    ctx.planMode.set(agent, true)
+
+    const idle = waitForIdle(ctx, agent)
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'plan it' }], source: { kind: 'user' } }))
+    await idle
+
+    expect(adapter.requests).toHaveLength(1)
+    const log = agent.session.snapshotEvents()
+    const result = findEvent(log, 'tool/result')
+    expect(result.data.message.isError).toBe(false)
+    expect(result.data.message.content).toEqual([{ type: 'text', text: 'The user dismissed the plan review to reply in their own words; plan mode remains active.' }])
+    expect(findEvent(log, 'turn/end').data.reason).toEqual({ kind: 'completed' })
+    expect(planActive(ctx, agent)).toBe(true)
   })
 })

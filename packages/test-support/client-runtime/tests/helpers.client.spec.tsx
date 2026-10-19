@@ -5,10 +5,12 @@ import { createSnapshotStore } from '@knyazevai/dsh-client-store'
 import { EMPTY_CHAT_SNAPSHOT } from '@knyazevai/dsh-client-ui-chat/client'
 import { EMPTY_CONVERSATION_SNAPSHOT } from '@knyazevai/dsh-client-ui-conversation/client'
 import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { WorkspaceId } from '@knyazevai/dsh-api-workspace-controller/client'
 import type { MainPanelId, PanelInfo } from '@knyazevai/dsh-client-ui-layout/client'
 import type { PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  allowAllAccess,
   bindSnapshotSelector,
   chatSnapshot,
   conversationSnapshot,
@@ -46,20 +48,36 @@ function entry(seq: number): SessionLiveEventEntry {
 }
 
 describe('fixture helpers', () => {
-  it.each([false, true])('retracts default root sources without removing replacements (release first: %s)', async (releaseFirst) => {
+  it('allows every action on every resource through the hand-built access Hooks', () => {
+    expect(allowAllAccess.useRemoteAccess('session/list')).toBe(true)
+    expect(allowAllAccess.useAccess('session/fork')).toBe(true)
+    expect(allowAllAccess.useSessionAccess('s1' as SessionId, 'session/fork')).toBe(true)
+    expect(allowAllAccess.useWorkspaceAccess('w1' as WorkspaceId, 'workspace/follow')).toBe(true)
+  })
+
+  it('installs an allow-all remoteAccess service whose sources never change', async () => {
+    const runtime = await SlotTestRuntime.create()
+    try {
+      const source = runtime.ctx.remoteAccess.source('session', 's1', 'session/fork')
+      expect(source.getSnapshot()).toBe(true)
+      const unsubscribe = source.subscribe(() => {})
+      unsubscribe()
+      expect(source.getSnapshot()).toBe(true)
+    } finally {
+      await runtime.dispose()
+    }
+  })
+
+  it('retracts default root sources without removing their live replacements', async () => {
     const runtime = await SlotTestRuntime.create()
     const hooks = { workspaces: runtime.workspaces.list, panelInfo: runtime.panelInfo }
     let releaseReplacement: (() => void) | undefined
     try {
-      if (releaseFirst) {
-        runtime.releaseWorkspaceSource()
-        runtime.releasePanelInfoSource()
-      } else {
-        await runtime.dispose()
-      }
+      runtime.releaseWorkspaceSource()
+      runtime.releasePanelInfoSource()
       releaseReplacement = runtime.slots.provideRoot({ hooks })
-      await runtime.dispose()
-      await runtime.dispose()
+      runtime.releaseWorkspaceSource()
+      runtime.releasePanelInfoSource()
       for (const key of ['workspaces', 'panelInfo'] as const) {
         expect(() => runtime.slots.provideRoot({ hooks: { [key]: hooks[key] } }))
           .toThrow(`duplicate root standard hook '${key}'`)
@@ -146,14 +164,14 @@ describe('Session fixture lifecycle', () => {
     const older = entry(0)
     const live = entry(2)
 
-    await runtime.sessions.add({ id: 'events', events: [first] }, { current: false })
+    await runtime.sessions.add({ id: 'events', events: [first] })
     expect(runtime.sessions.behavior('events').eventSource.getSnapshot()).toMatchObject({
       entries: [first],
       hasMore: false,
       change: { kind: 'replace', entries: [first] },
     })
 
-    await runtime.sessions.add({ id: 'has-more', hasMore: true }, { current: false })
+    await runtime.sessions.add({ id: 'has-more', hasMore: true })
     expect(runtime.sessions.behavior('has-more').eventSource.getSnapshot()).toMatchObject({
       entries: [],
       hasMore: true,
@@ -173,7 +191,7 @@ describe('Session fixture lifecycle', () => {
   it('requires an explicit create stub and records successful create and refresh calls', async () => {
     const runtime = await SlotTestRuntime.create()
     await expect(runtime.sessions.create()).rejects.toThrow(/create is not stubbed/)
-    await runtime.sessions.add({ id: 'created' }, { current: false })
+    await runtime.sessions.add({ id: 'created' })
     const create = vi.fn(() => Promise.resolve('created' as SessionId))
     runtime.sessions.stubCreate(create)
 
@@ -187,9 +205,12 @@ describe('Session fixture lifecycle', () => {
     await runtime.dispose()
   })
 
-  it('disposes a scope without materializing a binding', async () => {
+  it('borrows only retained scopes and disposes their generation with the runtime', async () => {
     const runtime = await SlotTestRuntime.create()
-    await runtime.sessions.add({ id: 'scope-only' }, { current: false })
+    await runtime.sessions.add({ id: 'scope-only' })
+    expect(runtime.sessions.scope('scope-only')).toBeUndefined()
+    const reference = runtime.sessions.retain('scope-only' as SessionId)
+    await reference.ready
     const scope = runtime.sessions.scope('scope-only')
     expect(scope).toBeDefined()
     const release = vi.fn()
@@ -198,5 +219,6 @@ describe('Session fixture lifecycle', () => {
     runtime.releaseWorkspaceSource()
     await runtime.dispose()
     expect(release).toHaveBeenCalledOnce()
+    expect(() => reference.binding).toThrow('released')
   })
 })

@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-03-npm-cli-resolution.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-09-03-npm-cli-resolution.md
-2026-09-03-npm-cli-resolution.md: 20b66ff62f29677e7aaedac88f8e35f736f911ba
-2026-09-03-npm-cli-resolution.zh.md: a8181622bca6c758fc0c49c244335e5ae0cfef28
+/agent-note-npm-resolves-the-repository-cli-from-repository-checkouts:
+  en: d9041c174a62cbf9
+  zh: ecd4699aa389a351
+/agent-note-npm-resolves-the-repository-cli-from-repository-checkouts/problem:
+  en: 2b7aed614fd0a533
+  zh: 64bb567c4b692046
+/agent-note-npm-resolves-the-repository-cli-from-repository-checkouts/decision:
+  en: 8ba91446433bd691
+  zh: b8be498df0887e08
+/agent-note-npm-resolves-the-repository-cli-from-repository-checkouts/alternatives-considered:
+  en: a62f8970b0ec81df
+  zh: 59132032e6c7abae
+/agent-note-npm-resolves-the-repository-cli-from-repository-checkouts/consequences:
+  en: 7565533307893489
+  zh: 8b59da2ca695fb92
+/agent-note-npm-resolves-the-repository-cli-from-repository-checkouts/testing:
+  en: 00b82cd7861d3b47
+  zh: 7076998784c6638b

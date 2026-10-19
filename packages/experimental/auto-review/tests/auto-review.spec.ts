@@ -1,4 +1,6 @@
+import { externalTestParent } from '../../../subagent/subagent/tests/external-activation-helpers.ts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { provideWorkingDirectoryFixture } from '@knyazevai/dsh-agent-loop-testkit'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@knyazevai/dsh-agent'
 import type {} from '@knyazevai/dsh-agent-instructions'
@@ -27,9 +29,8 @@ import SessionStore, {
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import SubagentRuntime, {
   NO_START_CAPABILITIES,
-  resolveChildCwd,
-  snapshotSubagentDescriptor,
-  type ResolvedSubagentStartRequest,
+  SUBAGENT_DESCRIPTOR_VERSION,
+  type SubagentStartRequest,
 } from '@knyazevai/dsh-subagent'
 import type {} from '@knyazevai/dsh-shell'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
@@ -41,7 +42,7 @@ import ToolRuntime, {
   type PreToolDecision,
   type ToolExecutionToken,
 } from '@knyazevai/dsh-tools'
-import type {} from '@knyazevai/dsh-user-approval'
+import ApprovalService, { setApprovalPolicy, type ApprovalOutcome } from '@knyazevai/dsh-user-approval'
 import * as AutoReview from '@knyazevai/dsh-experimental-auto-review'
 
 const EXPECTED_REVIEW_POLICY = `REVIEW_POLICY
@@ -128,9 +129,10 @@ function reasoningDecisionChunks(text: string): StreamChunk[] {
 
 async function harness(
   script: ReviewScript[],
-  permissionConfig: PermissionConfig = { presets: PRESETS, defaultPreset: 'workspace-write' },
+  permissionConfig: NonNullable<Parameters<typeof PermissionPresetService.Config>[0]> = { presets: PRESETS, defaultPreset: 'workspace-write' },
 ): Promise<{ ctx: Context; adapter: RecordingAdapter; auto: PluginFiber }> {
   const ctx = new Context()
+  provideWorkingDirectoryFixture(ctx)
   contexts.push(ctx)
   await ctx.plugin(LlmRuntime)
   await ctx.plugin(SessionStore)
@@ -143,7 +145,7 @@ async function harness(
     run() { throw new Error('auto-review tests do not execute shell requests') },
     start() { throw new Error('auto-review tests do not execute shell requests') },
   })
-  ctx.provide('approval', { config: { policy: 'ask' } })
+  await ctx.plugin(ApprovalService, { policy: 'ask' })
   await ctx.plugin(PermissionPresetService, permissionConfig)
   const adapter = new RecordingAdapter(script)
   ctx.llm.registerAdapter(['review'], adapter)
@@ -243,6 +245,14 @@ function requestSections(request: GenerateOptions): Record<string, unknown> {
   return sections
 }
 
+function expectReviewFailure(result: Awaited<ReturnType<Context['tools']['execute']>>, cause?: string): void {
+  if (!result.isError) throw new Error('the reviewed call executed')
+  expect(result.error.info).toBeUndefined()
+  const prefix = 'Auto review of tool "probe" failed; its body was not executed: auto-review: '
+  expect(result.error.message.startsWith(prefix)).toBe(true)
+  if (cause !== undefined) expect(result.error.message).toBe(`${prefix}${cause.slice('auto-review: '.length)}`)
+}
+
 async function until(predicate: () => boolean): Promise<void> {
   for (let attempt = 0; attempt < 1_000 && !predicate(); attempt += 1) {
     await new Promise(resolve => setTimeout(resolve, 0))
@@ -278,7 +288,7 @@ describe('native review request', () => {
     })
     appendHeader(session, [loggedSchema])
     session.append('system/message', {
-      turn: 1, step: 1, message: createSystemMessage('main-system secret', 'main'),
+      turn: 1, step: 1, message: createSystemMessage('main-system secret'),
     }, { surfaceOp: 'append' })
     session.append('user/message', createUserMessage({
       content: [
@@ -297,37 +307,15 @@ describe('native review request', () => {
     } as never)
     appendUser(session, 'parent-authored evidence', { kind: 'user' })
     session.append('user/message', createUserMessage({
-      content: [
-        { type: 'text', text: 'plugin evidence' },
-        {
-          type: 'tool-result',
-          toolCallId: ToolCallId('result-source'),
-          content: [{ type: 'text', text: 'tool result secret' }],
-          isError: false,
-        },
-      ],
-      source: { kind: 'plugin', plugin: 'evidence' },
-    }), { surfaceOp: 'append' })
-    session.append('user/message', createUserMessage({
-      content: [{
-        type: 'tool-result',
-        toolCallId: ToolCallId('result-only-source'),
-        content: [{ type: 'text', text: 'tool-result-only secret' }],
-        isError: false,
-      }],
-      source: { kind: 'plugin', plugin: 'tool-result-only' },
+      content: [{ type: 'text', text: 'plugin evidence' }],
+      source: { kind: 'test' },
     }), { surfaceOp: 'append' })
     appendUser(session, 'checkpoint authority', compactCheckpointSource(CompactionId('checkpoint-1')))
     appendUser(session, 'project authority', {
       kind: 'agent-instructions', form: 'instructions', changes: [],
     })
     session.append('user/message', createUserMessage({
-      content: [{
-        type: 'tool-result',
-        toolCallId: ToolCallId('project-result-only'),
-        content: [{ type: 'text', text: 'project-tool-result-only secret' }],
-        isError: false,
-      }],
+      content: [],
       source: { kind: 'agent-instructions', form: 'instructions', changes: [] },
     }), { surfaceOp: 'append' })
     appendUser(session, 'tool-source secret', { kind: 'tool', callId: ToolCallId('result-source') })
@@ -342,6 +330,22 @@ describe('native review request', () => {
     appendNativeCall(session, oldCallId, 'old_probe', '{ "old": true }')
     appendNativeCall(session, outerCallId, RUN_CODE_NAME, '{"code":"call probe"}')
     appendNativeCall(session, currentCallId, 'probe', '{"path":"target"}')
+    for (const [callId, text] of [
+      ['result-source', 'tool result secret'],
+      ['result-only-source', 'tool-result-only secret'],
+      ['project-result-only', 'project-tool-result-only secret'],
+    ] as const) {
+      appendNativeCall(session, ToolCallId(callId), 'probe', '{"path":"target"}')
+      session.append('tool/result', {
+        turn: 1,
+        step: 1,
+        message: createToolResultMessage({
+          callId: ToolCallId(callId),
+          content: [{ type: 'text', text }],
+          isError: false,
+        }),
+      }, { surfaceOp: 'append' })
+    }
     session.append('tool/result', {
       turn: 1,
       step: 1,
@@ -388,7 +392,9 @@ describe('native review request', () => {
     expect(request.maxTokens).toBeUndefined()
     expect(request.tools).toBeUndefined()
     expect(request.messages).toHaveLength(1)
-    expect(request.messages[0]?.source).toEqual({ kind: 'plugin', plugin: 'dsh-experimental-auto-review' })
+    expect(request.messages[0]).not.toHaveProperty('source')
+    expect(request.messages[0]).not.toHaveProperty('id')
+    expect(Object.isFrozen(request.messages[0]?.content[0])).toBe(true)
     expect(Object.isFrozen(request)).toBe(true)
 
     const sections = requestSections(request)
@@ -426,7 +432,7 @@ describe('native review request', () => {
         source: compactCheckpointSource(CompactionId('checkpoint-1')),
       }),
       expect.objectContaining({
-        kind: 'user-message', role: 'fact', source: { kind: 'plugin', plugin: 'evidence' },
+        kind: 'user-message', role: 'fact', source: { kind: 'test' },
         content: [{ type: 'text', text: 'plugin evidence' }],
       }),
       expect.objectContaining({
@@ -541,12 +547,14 @@ describe('native review request', () => {
       },
     })
     ctx.permissionPresets.set(session, AUTO_PRESET)
+    setApprovalPolicy(session, 'never')
     const agent = agentFor(session)
     appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
-    session.append('subagent/descriptor', snapshotSubagentDescriptor({
+    session.append('subagent/descriptor', {
+      version: SUBAGENT_DESCRIPTOR_VERSION,
       mode: 'one-shot',
       provider: 'in-process',
-    }))
+    })
     appendUser(session, 'Delete target as the delegated child task.', { kind: 'user' })
     appendUser(session, 'A later unattributed user-role fact.', { kind: 'user' })
     appendUser(session, 'Do not delete target.', {
@@ -619,6 +627,7 @@ describe('native review request', () => {
     ])
     const probe = registerProbe(ctx)
     const { session, agent } = autoSession(ctx, 'compacted-authorization')
+    setApprovalPolicy(session, 'never')
     appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
     const authorization = session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'durable authorization to delete target' }],
@@ -773,10 +782,18 @@ describe('native review request', () => {
     ] as const
     const { ctx, adapter } = await harness(cases.map(item => decisionChunks(item.response)))
     const probe = registerProbe(ctx)
+    const approvalReasons: Array<string | undefined> = []
+    const displayReasons: unknown[] = []
+    ctx.on('approval/request', (request) => {
+      approvalReasons.push(request.reason)
+      displayReasons.push(request.displayReason)
+      return Promise.resolve<ApprovalOutcome>('rejected')
+    })
 
     for (const item of cases) {
       const { session, agent } = autoSession(ctx, `legal-${item.id}`)
       appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
+      session.append('turn/start', { turn: 1 })
       const callId = ToolCallId(`legal-${item.id}-call`)
       appendAssistant(session, [{ type: 'tool-call', id: callId, name: 'probe', arguments: '{}' }])
       appendNativeCall(session, callId, 'probe', '{}')
@@ -791,19 +808,72 @@ describe('native review request', () => {
       expect(result.isError).toBe(!item.allowed)
       expect(JSON.stringify(result)).not.toContain('"risk"')
       if (item.allowed) continue
-      expect(result).toMatchObject({ error: { info: { code: 'AUTO_REVIEW_DENIED' } } })
-      if (item.expectedReason === undefined) {
-        expect(result.isError && result.error.info).not.toHaveProperty('reason')
-      } else {
-        expect(result).toMatchObject({ error: { info: { reason: item.expectedReason } } })
-      }
+      expect(result).toMatchObject({ error: { message: 'the user rejected tool "probe"' } })
+      expect(approvalReasons.at(-1)).toBe(item.expectedReason === undefined
+        ? 'Auto review denied tool "probe"'
+        : `Auto review denied tool "probe": ${item.expectedReason}`)
+      expect(displayReasons.at(-1)).toEqual(item.expectedReason === undefined
+        ? { en: 'Auto review denied this call.', zh: 'Auto review 拒绝了此调用。' }
+        : { en: `Auto review denied this call: ${item.expectedReason}`, zh: `Auto review 拒绝了此调用：${item.expectedReason}` })
     }
 
     expect(probe.runs()).toBe(2)
+    expect(approvalReasons).toHaveLength(4)
     expect(adapter.requests).toHaveLength(cases.length)
   })
 
-  it('fail-closes every non-protocol result without retaining technical details', async () => {
+  it.each([
+    { outcome: 'allowed-once', runs: 1, error: undefined },
+    { outcome: 'rejected', runs: 0, error: 'the user rejected tool "probe"' },
+    { outcome: 'cancelled', runs: 0, error: 'approval for tool "probe" was cancelled' },
+  ] as const)('executes a reviewer-denied call only when the user answers $outcome with a grant', async ({ outcome, runs, error }) => {
+    const { ctx } = await harness([decisionChunks('{"risk":"medium","decision":"deny","reason":"not authorized"}')])
+    const probe = registerProbe(ctx)
+    ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>(outcome))
+    const { session, agent } = autoSession(ctx, `ask-${outcome}`)
+    appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
+    session.append('turn/start', { turn: 1 })
+    const callId = ToolCallId(`ask-${outcome}-call`)
+    appendAssistant(session, [{ type: 'tool-call', id: callId, name: 'probe', arguments: '{}' }])
+    appendNativeCall(session, callId, 'probe', '{}')
+
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal, callId, name: 'probe', arguments: {}, agent,
+    })
+
+    expect(probe.runs()).toBe(runs)
+    expect(result).toMatchObject(error === undefined ? { isError: false } : { isError: true, error: { message: error } })
+    expect(session.snapshotEvents().filter(event => event.type === 'approval/asked').map(event => event.data)).toEqual([
+      expect.objectContaining({ toolName: 'probe', callId, reason: 'Auto review denied tool "probe": not authorized' }),
+    ])
+  })
+
+  it('keeps a downstream denial ahead of asking the user', async () => {
+    const { ctx } = await harness([decisionChunks('{"risk":"medium","decision":"deny"}')])
+    const probe = registerProbe(ctx)
+    let asked = false
+    ctx.on('approval/request', () => {
+      asked = true
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    ctx.on('tools/pre-execute', () => Promise.resolve<PreToolDecision>({ kind: 'deny', reason: 'downstream guard' }))
+    const { session, agent } = autoSession(ctx, 'ask-downstream-deny')
+    appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
+    session.append('turn/start', { turn: 1 })
+    const callId = ToolCallId('ask-downstream-deny-call')
+    appendAssistant(session, [{ type: 'tool-call', id: callId, name: 'probe', arguments: '{}' }])
+    appendNativeCall(session, callId, 'probe', '{}')
+
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal, callId, name: 'probe', arguments: {}, agent,
+    })
+
+    expect(result).toMatchObject({ isError: true, error: { message: 'downstream guard' } })
+    expect(asked).toBe(false)
+    expect(probe.runs()).toBe(0)
+  })
+
+  it('fails every non-protocol result with its specific error instead of a denial', async () => {
     const providerFailure = async function* (): AsyncIterable<StreamChunk> {
       throw new Error('provider secret')
     }
@@ -876,12 +946,10 @@ describe('native review request', () => {
         { type: 'usage', usage: { inputTokens: 1, outputTokens: 1 } },
       ],
     ]
-    const { ctx, adapter } = await harness([
-      decisionChunks('{"risk":"high","decision":"deny"}'),
-      ...invalidResponses,
-    ])
+    const { ctx, adapter } = await harness(invalidResponses)
     const probe = registerProbe(ctx)
-    const cases = ['valid-deny', ...invalidResponses.map((_, index) => `invalid-${String(index)}`)]
+    const cases = invalidResponses.map((_, index) => `invalid-${String(index)}`)
+    const messages: string[] = []
 
     for (const id of cases) {
       const { session, agent } = autoSession(ctx, id)
@@ -899,33 +967,53 @@ describe('native review request', () => {
         arguments: {},
         agent,
       })
-      expect(result).toMatchObject({
-        isError: true,
-        error: {
-          message: 'Auto review rejected tool "probe"; its body was not executed',
-          info: {
-            name: 'AutoReviewDeniedError',
-            code: 'AUTO_REVIEW_DENIED',
-          },
-        },
-      })
-      expect(result.isError && result.error.info).not.toHaveProperty('reason')
-      expect(JSON.stringify(result)).not.toContain('provider secret')
+      if (!result.isError) throw new Error(`${id} executed`)
+      expect(result.error.info).toBeUndefined()
+      messages.push(result.error.message)
     }
 
+    const prefix = 'Auto review of tool "probe" failed; its body was not executed: '
+    expect(messages[0]).toBe(`${prefix}auto-review: reviewer ended with error UNKNOWN: provider secret`)
+    expect(messages[1]).toBe(`${prefix}auto-review: reviewer output must be one JSON object`)
+    expect(messages[12]).toBe(`${prefix}auto-review: reviewer output repeats a JSON member`)
+    expect(messages[19]).toBe(`${prefix}auto-review: reviewer ended with max-tokens`)
+    for (const message of messages) expect(message.startsWith(prefix)).toBe(true)
     expect(probe.runs()).toBe(0)
     expect(adapter.requests).toHaveLength(cases.length)
+  })
+  it('reports a non-Error reviewer failure by its string value', async () => {
+    const { ctx } = await harness([])
+    const probe = registerProbe(ctx)
+    ctx.on('llm/stream', () => {
+      throw 'middleware refused'
+    })
+    const { session, agent } = autoSession(ctx, 'non-error-failure')
+    appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
+    const callId = ToolCallId('non-error-failure-call')
+    appendAssistant(session, [{ type: 'tool-call', id: callId, name: 'probe', arguments: '{}' }])
+    appendNativeCall(session, callId, 'probe', '{}')
+
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal, callId, name: 'probe', arguments: {}, agent,
+    })
+
+    expect(result).toMatchObject({
+      isError: true,
+      error: { message: 'Auto review of tool "probe" failed; its body was not executed: middleware refused' },
+    })
+    expect(probe.runs()).toBe(0)
   })
 })
 
 describe('PTC and bypass semantics', () => {
-  it('reviews one started inner call from its binding schema and preserves the raw deny reason', async () => {
+  it('reviews one started inner call from its binding schema and preserves the raw final deny reason', async () => {
     const rawReason = '  exact "scope" was not authorized\nretry with a narrower target  '
     const { ctx, adapter } = await harness([
       decisionChunks(JSON.stringify({ risk: 'medium', decision: 'deny', reason: rawReason })),
     ])
     const probe = registerProbe(ctx)
     const { session, agent } = autoSession(ctx, 'ptc-inner')
+    setApprovalPolicy(session, 'never')
     appendHeader(session)
     appendUser(session, 'inspect only', { kind: 'user' })
     const outerCallId = ToolCallId('outer')
@@ -1124,7 +1212,7 @@ describe('out-of-process delegation boundary', () => {
       scriptedDecision('allow', 'allow'),
     ])
     await ctx.plugin(SubagentRuntime)
-    let providerRequest: ResolvedSubagentStartRequest | undefined
+    let providerRequest: SubagentStartRequest | undefined
     ctx.subagents.registerProvider({
       name: 'remote-boundary',
       capabilities: NO_START_CAPABILITIES,
@@ -1134,7 +1222,6 @@ describe('out-of-process delegation boundary', () => {
         providerRequest = request
         return {
           id: SessionId('remote-boundary-child'),
-          localAgent: undefined,
           result: Promise.resolve({
             output: [{ type: 'text', text: 'remote child completed' }],
             stopReason: 'completed',
@@ -1146,11 +1233,13 @@ describe('out-of-process delegation boundary', () => {
     await ctx.plugin(ToolSubagent, {
       provider: 'remote-boundary',
       toolName: 'delegate_remote',
-      enableRunInBackground: false,
       maxDepth: 'provider-managed',
     })
 
-    const { session, agent } = autoSession(ctx, 'remote-delegation', process.cwd())
+    const agent = await externalTestParent(ctx, process.cwd())
+    const session = agent.session
+    ctx.permissionPresets.set(session, AUTO_PRESET)
+    setApprovalPolicy(session, 'never')
     const schema = ctx.tools.schemas(agent).find(item => item.name === 'delegate_remote')
     if (schema === undefined) throw new Error('remote delegation tool schema is missing')
     appendHeader(session, [schema])
@@ -1205,15 +1294,9 @@ describe('out-of-process delegation boundary', () => {
     expect(timeline).toEqual(['review:deny', 'review:allow', 'provider:start'])
     expect(adapter.requests).toHaveLength(2)
     expect(providerRequest?.parent).toBe(agent)
-    expect(resolveChildCwd(
-      'remote-boundary',
-      undefined,
-      providerRequest?.parent.session.header.cwd,
-    )).toBe(process.cwd())
+    expect(providerRequest?.cwd).toBe(process.cwd())
     expect(providerRequest?.agentOptions).toBeUndefined()
     expect(providerRequest?.maxDepth).toBeUndefined()
-    expect(providerRequest?.persona).toBeUndefined()
-    expect(providerRequest?.toolFilter).toBeUndefined()
     expect(providerRequest).not.toHaveProperty('permission')
     expect(providerRequest).not.toHaveProperty('sandboxMode')
     expect(providerRequest).not.toHaveProperty('approvalPolicy')
@@ -1222,10 +1305,13 @@ describe('out-of-process delegation boundary', () => {
 
 describe('cancellation and integration teardown', () => {
   it.each([
-    { outcome: 'allow', expectedCode: TOOL_ABORTED_BEFORE_DISPATCH },
-    { outcome: 'deny', expectedCode: 'AUTO_REVIEW_DENIED' },
-    { outcome: 'failure', expectedCode: 'AUTO_REVIEW_DENIED' },
-  ] as const)('preserves caller-cancellation priority after a late $outcome', async ({ outcome, expectedCode }) => {
+    { outcome: 'allow', expected: { info: { code: TOOL_ABORTED_BEFORE_DISPATCH } } },
+    { outcome: 'deny', expected: { info: { code: TOOL_ABORTED_BEFORE_DISPATCH } } },
+    {
+      outcome: 'failure',
+      expected: { message: 'Auto review of tool "probe" failed; its body was not executed: auto-review: reviewer ended with aborted UNKNOWN: provider failed after cancellation' },
+    },
+  ] as const)('preserves caller-cancellation priority after a late $outcome', async ({ outcome, expected }) => {
     const entered = Promise.withResolvers<undefined>()
     const release = Promise.withResolvers<undefined>()
     const controlled = async function* (): AsyncIterable<StreamChunk> {
@@ -1238,6 +1324,7 @@ describe('cancellation and integration teardown', () => {
     const probe = registerProbe(ctx)
     const { session, agent } = autoSession(ctx, `caller-cancel-${outcome}`)
     appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
+    session.append('turn/start', { turn: 1 })
     const callId = ToolCallId(`caller-cancel-${outcome}-call`)
     appendAssistant(session, [{ type: 'tool-call', id: callId, name: 'probe', arguments: '{}' }])
     appendNativeCall(session, callId, 'probe', '{}')
@@ -1251,10 +1338,7 @@ describe('cancellation and integration teardown', () => {
     const result = await pending
 
     expect(probe.runs()).toBe(0)
-    expect(result).toMatchObject({
-      isError: true,
-      error: { info: { code: expectedCode } },
-    })
+    expect(result).toMatchObject({ isError: true, error: expected })
   })
 
   it.each(['allow', 'deny', 'failure'] as const)(
@@ -1433,6 +1517,7 @@ describe('cancellation and integration teardown', () => {
 
   it('publishes Auto without validating the preset table at load', async () => {
     const invalid = new Context()
+    provideWorkingDirectoryFixture(invalid)
     contexts.push(invalid)
     await invalid.plugin(LlmRuntime)
     await invalid.plugin(SessionStore)
@@ -1603,28 +1688,33 @@ describe('logged-fact failures', () => {
         arguments: {},
         agent,
       })
-      expect(result).toMatchObject({
-        isError: true,
-        error: { info: { code: 'AUTO_REVIEW_DENIED' } },
-      })
+      expectReviewFailure(result)
     }
-
-    const missingCwd = ctx.sessions.create(SessionId('missing-cwd'))
-    ctx.permissionPresets.set(missingCwd, AUTO_PRESET)
-    appendHeader(missingCwd, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
-    const missingCwdId = ToolCallId('missing-cwd-call')
-    appendAssistant(missingCwd, [{ type: 'tool-call', id: missingCwdId, name: 'probe', arguments: '{}' }])
-    appendNativeCall(missingCwd, missingCwdId, 'probe', '{}')
-    await expect(ctx.tools.execute({
-      signal: new AbortController().signal,
-      callId: missingCwdId,
-      name: 'probe',
-      arguments: {},
-      agent: agentFor(missingCwd),
-    })).resolves.toMatchObject({ isError: true, error: { info: { code: 'AUTO_REVIEW_DENIED' } } })
 
     expect(probe.runs()).toBe(0)
     expect(adapter.requests).toHaveLength(0)
+  })
+
+  it('reviews a Session without a header directory using the deployment fallback', async () => {
+    const { ctx, adapter } = await harness([decisionChunks('{"risk":"low","decision":"allow"}')])
+    const probe = registerProbe(ctx)
+    const session = ctx.sessions.create(SessionId('missing-cwd'))
+    ctx.permissionPresets.set(session, AUTO_PRESET)
+    appendHeader(session, [{ name: 'probe', description: 'probe', parameters: { type: 'object' } }])
+    const callId = ToolCallId('missing-cwd-call')
+    appendAssistant(session, [{ type: 'tool-call', id: callId, name: 'probe', arguments: '{}' }])
+    appendNativeCall(session, callId, 'probe', '{}')
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId,
+      name: 'probe',
+      arguments: {},
+      agent: agentFor(session),
+    })
+    expect(result.isError).toBe(false)
+    expect(probe.runs()).toBe(1)
+    expect(adapter.requests).toHaveLength(1)
+    expect(requestSections(adapter.requests[0]!).ENVIRONMENT).toEqual({ cwd: process.cwd() })
   })
 
   it('fails closed for missing, ambiguous, or conflicting PTC facts', async () => {
@@ -1733,10 +1823,7 @@ describe('logged-fact failures', () => {
         arguments: item.execute?.arguments ?? {},
         agent,
       })
-      expect(result).toMatchObject({
-        isError: true,
-        error: { info: { code: 'AUTO_REVIEW_DENIED' } },
-      })
+      expectReviewFailure(result)
     }
 
     expect(probe.runs()).toBe(0)

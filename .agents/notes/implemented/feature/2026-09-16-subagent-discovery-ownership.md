@@ -10,7 +10,7 @@ The fork presets enable model selection for both spawn and fork. Each instance r
 
 ## Decision
 
-`modelSelectionDiscovery` defaults to true. The primary delegation tool owns discovery; sibling fork tools set it to false while retaining the same recorded route policy and model-selection arguments. The registry still rejects two discovery owners. This supersedes the shipped fork-selection restriction in [model-selected routes](2026-08-18-model-selected-subagent-routes.md).
+`modelSelectionDiscovery` defaults to true. The primary delegation tool owns discovery; sibling fork tools set it to false while retaining the same recorded route policy and model-selection arguments. The registry still rejects two discovery owners. This supersedes the shipped fork-selection restriction in [model-selected routes](../../archived/feature/2026-08-18-model-selected-subagent-routes.md).
 
 ## Alternatives considered
 

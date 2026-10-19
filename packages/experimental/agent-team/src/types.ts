@@ -1,5 +1,6 @@
 /** Public Agent Teams identities, durable records, and service request values. */
 
+import type { MessageId } from '@knyazevai/dsh-llm/brand'
 import type { Branded } from '@knyazevai/dsh-brand'
 import type { ContentBlock } from '@knyazevai/dsh-llm/types'
 import type { SessionId } from '@knyazevai/dsh-session/types'
@@ -59,7 +60,7 @@ export interface TeamMemberView {
   readonly id: SessionId
   readonly name: string
   readonly role: 'lead' | 'teammate'
-  readonly status: 'running' | 'idle' | 'inactive' | 'provisioning' | 'failed'
+  readonly status: 'running' | 'inactive' | 'provisioning' | 'failed'
   readonly description?: string
   readonly provider?: string
   readonly context?: 'fresh' | 'fork'
@@ -96,13 +97,35 @@ export interface TeamTaskView {
   readonly writeScopeWarnings: string[]
 }
 
-/** Point-in-time roster and task-board projection returned to browser clients. */
-export interface TeamView {
-  readonly members: TeamMemberView[]
-  readonly tasks: TeamTaskView[]
+/** One durable roster row published through the `agentTeam` Session projection. */
+export interface TeamMemberProjection {
+  readonly id: SessionId
+  readonly name: string
+  readonly role: 'lead' | 'teammate'
+  /** Durable lifecycle; the Lead row is always `active`. Turn activity comes from Session status. */
+  readonly phase: TeamMemberPhase
+  readonly error?: string
 }
 
-/** One peer message retained until its target Session records it. */
+/**
+ * Durable Team state published to browser clients through the Lead Session's
+ * `agentTeam` projection. `failure` names the first rejected persisted Team
+ * record; members and tasks then stay at the last valid state.
+ */
+export interface TeamProjection {
+  readonly members: TeamMemberProjection[]
+  readonly tasks: TeamTaskView[]
+  readonly failure?: string
+}
+
+declare module '@knyazevai/dsh-session-projection/types' {
+  interface SessionProjectionMap {
+    /** Durable roster and non-deleted task board of the Team rooted at the projected Session. */
+    agentTeam: TeamProjection
+  }
+}
+
+/** One peer message recorded by the historical Team mailbox. */
 export interface TeamMessageSnapshot {
   readonly id: TeamMessageId
   readonly senderId: SessionId
@@ -111,7 +134,7 @@ export interface TeamMessageSnapshot {
   readonly content: ContentBlock[]
 }
 
-/** Source retained by the target Session for durable mailbox de-duplication. */
+/** Source recorded by a target Session for one historical Team mailbox delivery. */
 export interface TeamMessageSource {
   readonly kind: 'team-message'
   readonly teamId: TeamId
@@ -132,11 +155,9 @@ export interface Config {
   readonly maxMembers?: number
   /** Maximum non-deleted tasks retained by one Team. */
   readonly maxTasks?: number
-  /** Maximum queued-minus-delivered messages for one target member. */
-  readonly maxPendingMessagesPerMember?: number
   /** Maximum UTF-8 bytes in one complete sender-framed delivery. */
   readonly maxMessageBytes?: number
-  /** Maximum milliseconds allowed for Team-owned runtime disposal. */
+  /** Maximum milliseconds for shared operation settlement and for each Team child drain. */
   readonly disposalTimeoutMs?: number
 }
 
@@ -155,17 +176,16 @@ export interface SpawnTeammateResult {
   readonly member: TeamMemberView
 }
 
-/** Input for one durable peer message. */
+/** Input for one direct peer-message attempt. */
 export interface SendTeamMessageRequest {
   readonly target: string
   readonly content: ContentBlock[]
   readonly signal: AbortSignal
 }
 
-/** Result after a peer message enters the durable mailbox. */
+/** Target inbox acceptance under ordinary Agent persistence; no Team retry or deduplication. */
 export interface SendTeamMessageResult {
-  readonly messageId: TeamMessageId
-  readonly status: 'accepted' | 'queued'
+  readonly messageId: MessageId
 }
 
 /** Input for creating one shared task. */
@@ -199,17 +219,6 @@ export interface UpdateTeamTaskRequest {
   readonly owner?: string
 }
 
-/** Browser task mutation result with stale revisions kept distinct from other Team rejections. */
-export type TeamTaskMutationResult =
-  | { readonly ok: true; readonly value: TeamTaskView }
-  | {
-    readonly ok: false
-    readonly error: {
-      readonly code: 'team-task-conflict' | 'team-rejected'
-      readonly message: string
-    }
-  }
-
 /** Result of waiting for Team activity. */
 export interface TeamWaitResult {
   readonly timedOut: boolean
@@ -221,9 +230,9 @@ declare module '@knyazevai/dsh-session/types' {
     'team/member': { version: 2; teamId: TeamId; member: TeamMemberSnapshot }
     /** Whole shared-task value, stored only in the Team Lead Session. */
     'team/task': { version: 2; teamId: TeamId; task: TeamTaskSnapshot }
-    /** Durable mailbox enqueue, stored before delivery is attempted. */
+    /** Historical mailbox enqueue; new sends use the target Agent inbox. */
     'team/message/queued': { version: 2; teamId: TeamId; message: TeamMessageSnapshot }
-    /** Durable acknowledgement that the target Session recorded the message. */
+    /** Historical acknowledgement that the target Session recorded a queued message. */
     'team/message/delivered': {
       version: 2
       teamId: TeamId

@@ -1,18 +1,18 @@
 // @vitest-environment jsdom
 
-import type { GlobalStandardProps } from '@knyazevai/dsh-client-ui-slots'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { useState } from 'react'
+import type { PropsRenderFactories, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { AttachmentId } from '@knyazevai/dsh-attachment'
-import { EMPTY_CHAT_SNAPSHOT, type MessageImagesProps } from '@knyazevai/dsh-client-ui-chat/client'
-import { EMPTY_CONVERSATION_SNAPSHOT } from '@knyazevai/dsh-client-ui-conversation/client'
+import { SessionId } from '@knyazevai/dsh-session/types'
+import { SlotTestRuntime } from '@knyazevai/dsh-client-test-runtime'
+import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
+import { en, zh } from '@knyazevai/dsh-client-ui-conversation/src/client/locales.ts'
+import { UiConversation } from '@knyazevai/dsh-client-ui-conversation/src/client/conversation/assembly.ts'
 import { ImageGallery, MessageImage } from '../src/MessageImage.tsx'
 import type { MessageImageLabels } from '../src/MessageImage.tsx'
-import { MessageImages } from '../src/client/MessageImages.tsx'
-
-// Every session-scope fixture carries the resource hook the resources plugin merges into GlobalStandardProps.
-const useResource = (() => ({ status: 'none' as const, value: undefined, failure: undefined, reload: () => {} })) as GlobalStandardProps['useResource']
-const usePanelInfo: GlobalStandardProps['usePanelInfo'] = selector => selector({ activePanelId: null })
+import * as attachmentPlugin from '../src/client/index.ts'
 
 afterEach(cleanup)
 
@@ -33,23 +33,6 @@ const attachment = {
   height: 320,
   name: 'history.png',
 }
-
-type AttentionSnapshot = Parameters<Parameters<MessageImagesProps['useSessionPendingInteraction']>[0]>[0]
-type TrajectorySnapshot = Parameters<Parameters<MessageImagesProps['useTrajectory']>[0]>[0]
-
-const noAttention: AttentionSnapshot = new Map()
-const emptyTrajectory: TrajectorySnapshot = {
-  eventNodes: [],
-  eventLocations: new Map(),
-  requests: [],
-  callSchemas: new Map(),
-  partial: null,
-  runningCalls: [],
-}
-const useSessionPendingInteraction: MessageImagesProps['useSessionPendingInteraction'] = selector => selector(noAttention)
-const useConversation: MessageImagesProps['useConversation'] = selector => selector(EMPTY_CONVERSATION_SNAPSHOT)
-const useChat: MessageImagesProps['useChat'] = selector => selector(EMPTY_CHAT_SNAPSHOT)
-const useTrajectory: MessageImagesProps['useTrajectory'] = selector => selector(emptyTrajectory)
 
 describe('MessageImage', () => {
   it('renders a cached URL on the first frame while refreshing it', () => {
@@ -144,11 +127,56 @@ describe('MessageImage', () => {
     expect(frame.getAttribute('style')).toBeNull()
   })
 
-  it('keeps the tile variant on the failed-load retry control', async () => {
+  it.each(['tile', 'thumbnail'] as const)('keeps the %s variant on the failed-load retry control', async (variant) => {
     const load = vi.fn().mockRejectedValue(new Error('offline'))
-    const view = render(<MessageImage image={{ attachment }} load={load} variant="tile" labels={labels} />)
+    const view = render(<MessageImage image={{ attachment }} load={load} variant={variant} labels={labels} />)
     const retry = await view.findByRole('button', { name: '图片加载失败，点击重试' })
-    expect(retry.getAttribute('data-variant')).toBe('tile')
+    expect(retry.getAttribute('data-variant')).toBe(variant)
+  })
+
+  it.each([
+    ['Chinese', labels],
+    ['English', { ...labels, loading: 'Loading image…', loadFailed: 'Image failed to load; click to retry' }],
+  ] as const)('labels thumbnail status icons and retries a failed read in %s', async (_locale, statusLabels) => {
+    const pending = Promise.withResolvers<string>()
+    const load = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue('blob:retry')
+    const view = render(<MessageImage image={{ attachment }} load={load} variant="thumbnail" labels={statusLabels} />)
+    const loading = view.getByRole('button', { name: statusLabels.loading })
+    expect(loading.getAttribute('title')).toBe(statusLabels.loading)
+    expect(loading.getAttribute('aria-busy')).toBe('true')
+    expect(loading.textContent).toBe('')
+    expect(loading.querySelector('svg')).not.toBeNull()
+
+    await act(async () => { pending.reject(new Error('offline')) })
+    const retry = view.getByRole('button', { name: statusLabels.loadFailed })
+    expect(retry.getAttribute('title')).toBe(statusLabels.loadFailed)
+    expect(retry.textContent).toBe('')
+    expect(retry.querySelector('svg')).not.toBeNull()
+    fireEvent.click(retry)
+    await view.findByAltText(attachment.name)
+    const opener = view.getByRole('button', { name: statusLabels.openNamed(attachment.name) })
+    expect(opener.getAttribute('aria-busy')).toBeNull()
+    expect(opener.getAttribute('title')).toBe(statusLabels.open)
+    expect(load).toHaveBeenCalledTimes(2)
+    expect(load).toHaveBeenLastCalledWith(attachment)
+  })
+
+  it('uses the owner display name for an unnamed thumbnail and its original-image viewer', async () => {
+    const { name: _name, ...unnamed } = attachment
+    const load = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue('blob:thumbnail')
+    const view = render(<ImageGallery images={[{ attachment: unnamed, label: 'Image 2' }]} load={load} align="start" thumbnail labels={labels} />)
+    fireEvent.click(await view.findByRole('button', { name: labels.loadFailed }))
+    const image = await view.findByAltText('Image 2')
+    expect(image.closest('button')?.getAttribute('data-variant')).toBe('thumbnail')
+    const opener = view.getByRole('button', { name: 'Image 2，点击查看原图' })
+    opener.focus()
+    fireEvent.click(opener)
+    expect(view.getByRole('dialog')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(view.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(opener)
+    expect(load).toHaveBeenLastCalledWith(unnamed)
+    expect(unnamed).not.toHaveProperty('name')
   })
 
   it('ignores a load settling after unmount', async () => {
@@ -240,62 +268,77 @@ describe('ImageGallery', () => {
     expect(several.container.querySelectorAll('[data-variant="tile"]')).toHaveLength(3)
   })
 
+  it('uses complete Factory labels unchanged and restores defaults without remounting the image', async () => {
+    const runtime = await SlotTestRuntime.create()
+    onTestFinished(() => runtime.dispose())
+    const locale = new LocaleRuntime(runtime.ctx)
+    locale.register('conversation', { en, zh })
+    locale.setLocale('en')
+    runtime.ctx.provide('locale', locale)
+    runtime.slots.installLocale(locale)
+    await runtime.mount(attachmentPlugin)
+    const images = [{ preview: { url: 'blob:labels', name: 'preview.png' } }]
+    const loadImage = vi.fn(async () => 'blob:unused')
+    await runtime.root.declare({}, ({ renderFactorySlot }: PropsRuntime<'root'> & PropsRenderFactories) => {
+      const [custom, setCustom] = useState(true)
+      return <>
+        <button onClick={() => { setCustom(false) }}>Default labels</button>
+        {renderFactorySlot('conversation.images.content', {
+          images, loadImage, align: 'start', ...(custom ? { labels } : {}),
+        })}
+      </>
+    })
+    const view = runtime.renderRoot()
+    const image = view.getByAltText('preview.png')
+    const frame = view.getByRole('button', { name: 'preview.png，点击查看原图' })
+    expect(frame.getAttribute('title')).toBe(labels.open)
+    fireEvent.click(frame)
+    expect(view.getByRole('dialog', { name: labels.lightbox.dialog })).toBeTruthy()
+    fireEvent.click(view.getByRole('button', { name: labels.lightbox.close }))
+    fireEvent.click(view.getByRole('button', { name: 'Default labels' }))
+    const defaultFrame = view.getByRole('button', { name: 'preview.png, click to view original' })
+    expect(defaultFrame).toBe(frame)
+    expect(view.getByAltText('preview.png')).toBe(image)
+    expect(defaultFrame.getAttribute('title')).toBe('View original')
+    fireEvent.click(defaultFrame)
+    expect(view.getByRole('dialog', { name: 'Original image preview' })).toBeTruthy()
+    fireEvent.click(view.getByRole('button', { name: 'Close original image preview' }))
+    expect(loadImage).not.toHaveBeenCalled()
+  })
+
   it('renders the conversation slot entry with translated labels', async () => {
-    const t = ((key: string, params?: Readonly<Record<string, unknown>>) => {
-      const translated: Record<string, string> = {
-        'image.label': '图片',
-        'image.openOriginal': '查看原图',
-        'image.loading': '图片加载中…',
-        'image.loadFailed': '图片加载失败，点击重试',
-        'image.preview': '原图预览',
-        'image.closePreview': '关闭原图预览',
-      }
-      if (key === 'image.openOriginalLabel') {
-        const label = params?.label
-        return `${typeof label === 'string' ? label : ''}，点击查看原图`
-      }
-      return translated[key] ?? key
-    }) as MessageImagesProps['t']
+    const runtime = await SlotTestRuntime.create()
+    onTestFinished(() => runtime.dispose())
+    const locale = new LocaleRuntime(runtime.ctx)
+    locale.register('conversation', { en, zh })
+    locale.setLocale('zh')
+    runtime.ctx.provide('locale', locale)
+    new UiConversation(runtime.ctx, runtime.sessions)
+    runtime.slots.installLocale(locale)
+    await runtime.declare({ 'conversation.chat.message.images': { kind: 'single', scope: 'session' } })
+    await runtime.mount(attachmentPlugin)
+    await runtime.sessions.add({ id: 'message-images-test' })
+    const session = runtime.sessions.retainFor(runtime.ctx, SessionId('message-images-test'))
     const loadImage = vi.fn().mockResolvedValue('blob:slot-image')
-    const useSession: MessageImagesProps['useSession'] = () => {
-      throw new Error('MessageImages does not read the session snapshot')
-    }
-    const useInput: MessageImagesProps['useInput'] = () => {
-      throw new Error('MessageImages does not read the input snapshot')
-    }
-    const useSessions: MessageImagesProps['useSessions'] = () => {
-      throw new Error('MessageImages does not read the session list snapshot')
-    }
-    const useWorkspaces: MessageImagesProps['useWorkspaces'] = () => {
-      throw new Error('MessageImages does not read the workspace list snapshot')
-    }
-    const props: MessageImagesProps = {
-      sessionId: 'message-images-test' as MessageImagesProps['sessionId'],
-      useSession,
-      useSessions,
-      usePanelInfo, useResource,
-      useSessionPendingInteraction,
-      useWorkspaces,
-      useProjection: () => undefined,
-      useConversation,
-      useChat,
-      useTrajectory,
-      useInput,
-      inputActions: {
-        setDraft: vi.fn(),
-        addAttachments: vi.fn(() => true),
-        removeAttachment: vi.fn(),
-        pruneAttachments: vi.fn(),
-        submit: vi.fn(),
-      },
-      images: [{ attachment }],
-      loadImage,
-      align: 'end',
-      t,
-    }
-    const view = render(<MessageImages {...props} />)
+    const slot = runtime.renderSlot('conversation.chat.message.images', {
+      images: [{ attachment }], loadImage, align: 'end',
+    }, { session })
+    const { view, container } = slot
     await waitFor(() => { expect(view.getByAltText('history.png')).toBeTruthy() })
     expect(view.getByRole('button', { name: 'history.png，点击查看原图' })).toBeTruthy()
-    expect(view.container.querySelector('[data-align="end"]')).not.toBeNull()
+    expect(container.querySelector('[data-align="end"]')).not.toBeNull()
+    expect(loadImage).toHaveBeenCalledWith(attachment)
+    expect(view.getByRole('button', { name: 'history.png，点击查看原图' }).getAttribute('data-variant')).toBe('single')
+    for (const [compact, thumbnail, variant] of [
+      [true, false, 'tile'],
+      [false, true, 'thumbnail'],
+      [false, false, 'single'],
+    ] as const) {
+      slot.update({ images: [{ attachment }], loadImage, align: 'end', compact, thumbnail })
+      expect(view.getByRole('button', { name: 'history.png，点击查看原图' }).getAttribute('data-variant')).toBe(variant)
+      expect(view.getByAltText('history.png').getAttribute('src')).toBe('blob:slot-image')
+      expect(container.querySelector('[data-align="end"]')).not.toBeNull()
+    }
+    expect(loadImage).toHaveBeenCalledOnce()
   })
 })

@@ -1,3 +1,4 @@
+import { createSnapshotStore } from '@knyazevai/dsh-client-store'
 import { toolSessionEvents } from './tool-fixtures.client.ts'
 // @vitest-environment jsdom
 /** Tool assembly acceptance through the real ui-conversation host. */
@@ -12,8 +13,9 @@ import {
   apply as applyChat, inject as injectChat, type ToolResultNode,
 } from '@knyazevai/dsh-client-ui-chat/client'
 import type { PropsRenderSlots } from '@knyazevai/dsh-client-ui-slots'
-import { SlotTestRuntime, TestRemote, usePinnedBrowserLanguages, stubSettingsScope } from '@knyazevai/dsh-client-test-runtime'
+import { SlotTestRuntime, usePinnedBrowserLanguages, stubConfigForm } from '@knyazevai/dsh-client-test-runtime'
 import { apply as applyConversation, inject as injectConversation } from '@knyazevai/dsh-client-ui-conversation/client'
+import { PartialArguments } from '@knyazevai/dsh-util-values'
 import { apply as applyTool, inject as injectTool } from '../src/client/apply.ts'
 
 // The service reads its initial locale from the browser; these specs assert
@@ -21,6 +23,8 @@ import { apply as applyTool, inject as injectTool } from '../src/client/apply.ts
 usePinnedBrowserLanguages('zh-CN')
 
 const SID = 's1' as SessionId
+// jsdom omits font loading events used by the resident composer.
+const fonts = Object.getOwnPropertyDescriptor(document, 'fonts')
 
 /** jsdom has no ResizeObserver; the composer seat publishes its height through one. */
 class ResizeObserverStub {
@@ -32,10 +36,13 @@ class ResizeObserverStub {
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  if (fonts === undefined) Reflect.deleteProperty(document, 'fonts')
+  else Object.defineProperty(document, 'fonts', fonts)
 })
 beforeEach(() => {
   localStorage.clear()
   vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+  Object.defineProperty(document, 'fonts', { configurable: true, value: new EventTarget() })
 })
 const TODOS: TodoItem[] = [
   { content: '梳理需求', status: 'completed' },
@@ -45,19 +52,24 @@ const TODOS: TodoItem[] = [
 
 const todoResult = (seq: number): ToolResultNode => ({
   kind: 'tool-result', seq, time: seq * 1_000, callId: `todo-${seq}`,
+  name: 'todo_write', args: PartialArguments.fromText(JSON.stringify({ todos: TODOS })),
   call: { name: 'todo_write', argsRaw: JSON.stringify({ todos: TODOS }) },
   callTime: seq * 1_000 - 500,
   content: [], isError: false, subCalls: [],
 })
 
-const bashResult = (seq: number, callId: string, over?: Partial<ToolResultNode>): ToolResultNode => ({
-  kind: 'tool-result', seq, time: seq * 1_000, callId,
-  call: { name: 'bash', argsRaw: '{"command":"ls -la","description":"List files"}' },
-  callTime: seq * 1_000 - 500,
-  content: [{ type: 'text', text: 'total 2\ndemo.txt\n' }], isError: false,
-  subCalls: [],
-  ...over,
-})
+const bashResult = (seq: number, callId: string, over?: Partial<ToolResultNode>): ToolResultNode => {
+  const call = over?.call === undefined ? { name: 'bash', argsRaw: '{"command":"ls -la","description":"List files"}' } : over.call
+  return {
+    kind: 'tool-result', seq, time: seq * 1_000, callId,
+    name: call?.name ?? '', args: call === null ? PartialArguments.EMPTY : PartialArguments.fromText(call.argsRaw),
+    call,
+    callTime: seq * 1_000 - 500,
+    content: [{ type: 'text', text: 'total 2\ndemo.txt\n' }], isError: false,
+    subCalls: [],
+    ...over,
+  }
+}
 
 /** Test-owned AppFrame role: declares and renders the resident conversation area. */
 type AppRootProps = PropsRenderSlots<'main'>
@@ -71,20 +83,19 @@ const LAYOUT_CHILDREN = {
 
 async function bench(nodes: ToolResultNode[]) {
   const runtime = await SlotTestRuntime.create()
-  new TestRemote(runtime.ctx, {
+  runtime.remote.provideNamespaces({
     session: {
       openWorkspacePath: vi.fn(async () => ({ ok: true, value: { opened: true } })),
     },
   })
-  runtime.ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+  runtime.ctx.provide('configForms', { developerTools: { enabled: createSnapshotStore(true) }, get: () => stubConfigForm().scope } as never)
   runtime.ctx.provide('layout', { openDetails: vi.fn(), closeDetails: vi.fn() })
   runtime.ctx.provide('sidebarRight', { openResource: vi.fn() } as never)
   runtime.ctx.provide('uiWorkspace', {
     openWorkspace: vi.fn(async (_workspaceId: WorkspaceId, beforeOpen: (id: SessionId) => void) => {
       beforeOpen(SID)
-      runtime.sessions.open(SID)
     }),
-    openSession: (id: SessionId) => { runtime.sessions.open(id) },
+    openSession: vi.fn(),
   } as never)
   const locale = new LocaleRuntime(runtime.ctx)
   runtime.ctx.provide('locale', locale)
@@ -98,6 +109,7 @@ async function bench(nodes: ToolResultNode[]) {
       prompt: vi.fn<ISession['prompt']>(async () => ({ ok: true, value: { accepted: true } })),
     },
   })
+  await runtime.sessions.retainFor(runtime.ctx, SID, { source: 'mainView' }).ready
   await runtime.root.declare(LAYOUT_CHILDREN, AppRoot)
   await runtime.mount({ inject: [...injectConversation], apply: applyConversation })
   await runtime.mount({ inject: [...injectChat], apply: applyChat })
@@ -115,7 +127,7 @@ describe('todo_write assembly (product registrations, no outlet twins)', () => {
     // Keyed toolview registration took the row (summary derived from args).
     const row = view.container.querySelector('[data-tool="todo_write"]')
     expect(row).not.toBeNull()
-    expect(row!.textContent).toContain('1/3 已完成 · 实现 fixture 样本')
+    expect(row!.textContent).toContain('新增 3')
 
     // The plan strip sits in the input dock, fed by the projection
     // (default-collapsed: the header summary shows; rows appear on expand).

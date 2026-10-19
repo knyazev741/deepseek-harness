@@ -5,7 +5,8 @@
  * the source behavior contract driven directly on the captured source with
  * real ClientSessionContext projections — sessionId addressing, the
  * session-keyed catalog cache (single-flight per key, scope-birth warm
- * prewarm, connection/reset clear), shared fuzzy name ranking, RPC-failure
+ * prewarm, plugin-manager/changed and connection/reset clears), shared fuzzy
+ * name ranking, RPC-failure
  * rejection, pick → plain-text outcome (the plain-text-reference decision:
  * .agents/notes/archived/architecture/2026-07-25-web-input-machine-and-slash-pipeline.md),
  * the synchronous
@@ -18,11 +19,15 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import { SlotRegistry } from '@knyazevai/dsh-client-ui-renderer/client'
 import { InputTriggerService } from '@knyazevai/dsh-client-ui-input-trigger/client'
-import { RemoteError, TestRemote } from '@knyazevai/dsh-client-test-runtime'
+import { RemoteError, TestRemote, TestSessions } from '@knyazevai/dsh-client-test-runtime'
+import type { SessionFixture } from '@knyazevai/dsh-client-test-runtime'
+import type { InjectParams } from '@knyazevai/dsh-client-ui-slots'
 import type { RemoteFailure } from '@knyazevai/dsh-api-remotes/client'
 import type { ClientSessionContext, InputTriggerSource } from '@knyazevai/dsh-client-ui-input-trigger/client'
 import { apply, inject } from '../src/client/index.ts'
 import { SkillRow as SkillToolRow } from '../src/client/SkillRow.tsx'
+import { SkillReference, type SkillReferenceInjected } from '../src/client/SkillReference.tsx'
+import { UserTextRegistry } from '../../ui-conversation/src/client/conversation/user-text-registry.ts'
 
 type SkillRow = { name: string; description: string; whenToUse?: string; path?: string; modelInvocable?: boolean }
 type ListResult =
@@ -39,9 +44,14 @@ interface PresentationCapture {
 /** Provide the presentation registries and capture the plugin's registrations. */
 function providePresentation(ctx: Context): PresentationCapture {
   const slots = new SlotRegistry(ctx)
+  const userText = new UserTextRegistry(ctx)
+  ctx.provide('uiConversation', { userText } as never)
   slots.register({
     name: 'root',
-    children: { 'tool.call.toolview': { kind: 'keyed', scope: 'session' } },
+    children: {
+      'tool.call.toolview': { kind: 'keyed', scope: 'session' },
+      'conversation.user.text.node': { kind: 'keyed', scope: 'session', inline: true },
+    },
   } as never, () => null)
   const capture: PresentationCapture = {
     slots,
@@ -60,24 +70,30 @@ function providePresentation(ctx: Context): PresentationCapture {
 }
 
 /** Boot the plugin over fake slash/connection faces; returns the captured source and its ctx. */
-async function bench(list: ListFn, addressed?: SessionId) {
+async function bench(list: ListFn, addressed?: SessionId, opening: Pick<SessionFixture, 'initialOpen' | 'snapshot'> = {}) {
   const ctx = new Context()
   const openResource = vi.fn()
   ctx.provide('sidebarRight', { openResource })
   let captured: InputTriggerSource | undefined
   ctx.provide('inputTriggers', { registerSource: (src: InputTriggerSource) => { captured = src; return () => {} } })
-  ctx.provide('sessions', {
-    list: { getSnapshot: () => ({ byId: {} }) },
-    subagentAddress: (id: SessionId) => id === addressed
-      ? { parentSessionId: sid('parent'), childSessionId: id, mode: 'continuable' as const }
-      : undefined,
+  const sessions = new TestSessions(async (action) => { await action() }, ctx)
+  ctx.provide('sessions', sessions)
+  onTestFinished(async () => {
+    await sessions.disposeScopes()
+    await ctx.fiber.dispose()
   })
+  for (const id of ['s1', 's2', 'preview', 'first', 'second', 'child']) {
+    await sessions.add({ id, ...opening })
+    sessions.retainFor(ctx, id === addressed
+      ? { parentSessionId: sid('parent'), childSessionId: addressed, mode: 'continuable' }
+      : sid(id))
+  }
   const remote = new TestRemote(ctx, { skills: { list } })
-  providePresentation(ctx)
+  const presentation = providePresentation(ctx)
   const fiber = ctx.plugin({ inject: [...inject], apply })
   onTestFinished(async () => { await fiber.dispose() })
   await fiber.await()
-  return { ctx, source: captured!, remote, fiber, openResource }
+  return { ctx, source: captured!, remote, fiber, openResource, sessions, presentation }
 }
 
 const CATALOG: SkillRow[] = [
@@ -107,11 +123,12 @@ const req = (query: string, signal?: AbortSignal) =>
 
 describe('apply', () => {
   it('declares the services it binds', () => {
-    expect(inject).toEqual(['inputTriggers', 'sessions', 'slots', 'locale', 'remote', 'remote.skills', 'sidebarRight'])
+    expect(inject).toEqual(['inputTriggers', 'sessions', 'slots', 'locale', 'remote', 'remote.skills', 'sidebarRight', 'uiConversation'])
   })
 
   it('registers the dedicated skill row and its locale dictionaries', async () => {
     const ctx = new Context()
+    onTestFinished(async () => { await ctx.fiber.dispose() })
     ctx.provide('sidebarRight', { openResource: vi.fn() })
     ctx.provide('inputTriggers', { registerSource: () => () => {} })
     ctx.provide('sessions', { subagentAddress: () => undefined })
@@ -125,8 +142,9 @@ describe('apply', () => {
     expect(presentation.dictionaries).toEqual([{
       namespace: 'skill', dictionaries: {
         zh: {
-          'row.title': 'Skill',
+          'row.title': '加载技能',
           'row.running': '正在加载 skill',
+          'row.preparing': '准备加载技能',
           'row.failed': 'skill 加载失败',
           'row.stopped': 'skill 加载已中止',
           'row.instructions': '说明',
@@ -136,6 +154,7 @@ describe('apply', () => {
         en: {
           'row.title': 'Skill',
           'row.running': 'Loading skill',
+          'row.preparing': 'Preparing to load a skill',
           'row.failed': 'Skill load failed',
           'row.stopped': 'Skill load stopped',
           'row.instructions': 'Instructions',
@@ -148,6 +167,7 @@ describe('apply', () => {
 
   it('registers the "/" skill source; disposal frees the name (HMR safety)', async () => {
     const ctx = new Context()
+    onTestFinished(async () => { await ctx.fiber.dispose() })
     ctx.provide('sidebarRight', { openResource: vi.fn() })
     // InputTriggerService itself injects 'sessions'; the stub unblocks its fiber.
     ctx.provide('sessions', {})
@@ -174,6 +194,60 @@ describe('apply', () => {
 })
 
 describe('candidates: sessionId addressing', () => {
+  it('waits for history and retains the Session until the shared skill RPC settles', async () => {
+    const opened = Promise.withResolvers<undefined>()
+    const response = Promise.withResolvers<ListResult>()
+    const list = vi.fn(() => response.promise)
+    const b = await bench(list, undefined, { initialOpen: () => opened.promise })
+    try {
+      const pending = b.source.candidates(proj('s1'), req(''))
+      expect(b.sessions.retainInfo(sid('s1')).getSnapshot().retainedBy.skillCatalog).toBe(1)
+      expect(list).not.toHaveBeenCalled()
+      opened.resolve(undefined)
+      await vi.waitFor(() => { expect(list).toHaveBeenCalledOnce() })
+      expect(b.sessions.retainInfo(sid('s1')).getSnapshot().referenceCount).toBe(2)
+      response.resolve({ ok: true, value: { skills: CATALOG } })
+      await pending
+      expect(b.sessions.retainInfo(sid('s1')).getSnapshot().referenceCount).toBe(1)
+    } finally {
+      opened.resolve(undefined)
+      response.resolve({ ok: true, value: { skills: CATALOG } })
+    }
+  })
+
+  it.each([true, false])('refuses an unsuccessful history open (reported error: %s)', async (reported) => {
+    const error = new RemoteError('gateway/internal', 'history unavailable', {})
+    const list = vi.fn(listOk(CATALOG))
+    const b = await bench(list, undefined, { snapshot: { openState: 'error', openError: reported ? error : null } })
+    await expect(b.source.candidates(proj('s1'), req(''))).rejects.toThrow(reported ? 'history unavailable' : 'is not open')
+    expect(list).not.toHaveBeenCalled()
+    expect(b.sessions.retainInfo(sid('s1')).getSnapshot().referenceCount).toBe(1)
+  })
+
+  it('does not reopen a released Session for skill discovery', async () => {
+    const list = vi.fn(listOk(CATALOG))
+    const b = await bench(list)
+    await b.sessions.binding(sid('s1'))!.ctx.fiber.dispose()
+    await expect(b.source.candidates(proj('s1'), req(''))).rejects.toThrow('requires a retained session')
+    expect(list).not.toHaveBeenCalled()
+    expect(b.sessions.binding(sid('s1'))).toBeUndefined()
+  })
+
+  it('releases the shared read when the plugin unloads before history is ready', async () => {
+    const opened = Promise.withResolvers<undefined>()
+    const list = vi.fn(listOk(CATALOG))
+    const b = await bench(list, undefined, { initialOpen: () => opened.promise })
+    try {
+      const pending = expect(b.source.candidates(proj('s1'), req(''))).rejects.toThrow()
+      await b.fiber.dispose()
+      await pending
+      expect(list).not.toHaveBeenCalled()
+      expect(b.sessions.retainInfo(sid('s1')).getSnapshot().referenceCount).toBe(1)
+    } finally {
+      opened.resolve(undefined)
+    }
+  })
+
   it('lists via {sessionId} and ranks case-insensitive subsequence matches with prefixes first', async () => {
     const { list, payloads } = countingList()
     const { source } = await bench(list)
@@ -302,6 +376,19 @@ describe('catalog cache', () => {
     await source.candidates(proj('s2'), req(''))
     expect(payloads).toHaveLength(4)
   })
+
+  it('plugin-manager/changed clears every cached session', async () => {
+    const { list, payloads } = countingList()
+    const { source, remote } = await bench(list)
+    await source.candidates(proj('s1'), req(''))
+    await source.candidates(proj('s2'), req(''))
+    expect(payloads).toHaveLength(2)
+    // A switched plugin may register into the global layer every session reads.
+    remote.emit('plugin-manager/changed', [{ reason: 'bundle' }])
+    await source.candidates(proj('s1'), req(''))
+    await source.candidates(proj('s2'), req(''))
+    expect(payloads).toHaveLength(4)
+  })
 })
 
 describe('lexicon', () => {
@@ -397,6 +484,31 @@ describe('reference preview', () => {
     { name: 'virtual', description: 'Virtual' },
   ]
 
+  it('routes sent skill previews through the reference entry’s own Session and ignores an absent scope', async () => {
+    const b = await bench(listOk(rows))
+    const entry = b.presentation.slots.entries('conversation.user.text.node').find(row => row.options.key === 'skill')
+    expect(entry?.component).toBe(SkillReference)
+    if (entry?.inject === undefined) throw new Error('Skill reference injector was not registered')
+    const injectReference = entry.inject as (
+      ...params: InjectParams<'conversation.user.text.node', undefined>
+    ) => Pick<SkillReferenceInjected, 'openSkill'>
+    const openReference = vi.spyOn(b.source, 'openReference')
+    const first = injectReference(sid('first'))
+    const second = injectReference(sid('second'))
+    first.openSkill('review')
+    await b.source.candidates(proj('first'), req(''))
+    expect(openReference).toHaveBeenLastCalledWith(proj('first'), { ref: '/review' })
+    expect(b.openResource).toHaveBeenLastCalledWith('dsh-resource://file/session/first//skills/review/SKILL.md')
+    second.openSkill('review')
+    await b.source.candidates(proj('second'), req(''))
+    expect(openReference).toHaveBeenLastCalledWith(proj('second'), { ref: '/review' })
+    expect(b.openResource).toHaveBeenLastCalledWith('dsh-resource://file/session/second//skills/review/SKILL.md')
+    vi.spyOn(b.sessions, 'scope').mockReturnValueOnce(undefined)
+    first.openSkill('review')
+    expect(openReference).toHaveBeenCalledTimes(2)
+    expect(b.openResource).toHaveBeenCalledTimes(2)
+  })
+
   it('finishes the first click after a shared warm fetch and reloads after reconnect', async () => {
     const gate = Promise.withResolvers<ListResult>()
     const list = vi.fn<ListFn>().mockReturnValueOnce(gate.promise).mockImplementation(listOk(rows))
@@ -406,7 +518,7 @@ describe('reference preview', () => {
     expect(source.openReference!(session, { ref: '/review' })).toBe(true)
     const candidates = source.candidates(session, req(''))
     expect(openResource).not.toHaveBeenCalled()
-    expect(list).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => { expect(list).toHaveBeenCalledTimes(1) })
     gate.resolve({ ok: true, value: { skills: rows } })
     await candidates
     expect(openResource).toHaveBeenCalledExactlyOnceWith('dsh-resource://file/session/preview//skills/review/SKILL.md')
@@ -438,7 +550,7 @@ describe('reference preview', () => {
     expect(list.mock.calls.map(([payload]) => payload)).toEqual([{ sessionId: 'first' }, { sessionId: 'second' }])
   })
 
-  it.each(['reset', 'preset', 'dispose'] as const)('cancels a pending preview on %s even if the RPC completes late', async (reason) => {
+  it.each(['reset', 'preset', 'plugin', 'dispose'] as const)('cancels a pending preview on %s even if the RPC completes late', async (reason) => {
     const gate = Promise.withResolvers<ListResult>()
     const { ctx, source, remote, fiber, openResource } = await bench(() => gate.promise)
     const session = proj('preview')
@@ -448,6 +560,7 @@ describe('reference preview', () => {
     const completion = expect(source.candidates(session, req(''))).rejects.toThrow()
     if (reason === 'reset') ctx.emit('connection/reset')
     else if (reason === 'preset') remote.emit('agent-preset/selected', [session.sessionId, 'minimal'])
+    else if (reason === 'plugin') remote.emit('plugin-manager/changed', [{ reason: 'plugin' }])
     else await fiber.dispose()
     expect(listener).toHaveBeenCalledTimes(1)
     gate.resolve({ ok: true, value: { skills: rows } })

@@ -1,6 +1,6 @@
 # Minimal keyless composition: real app, bash, and search tool; replayed model.
 - id: llm-deepseek
-  name: '@knyazevai/dsh-llm-deepseek'
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
   disabled: true
 
 - insert:
@@ -35,7 +35,7 @@
 - id: system-prompt
   name: '@knyazevai/dsh-system-prompt'
   config:
-    personaPrefix: You are a concise snapshot agent working in {{cwd}}.
+    personaPrefix: You are a concise snapshot agent.
 
 - id: tool-jobs
   name: '@knyazevai/dsh-tool-jobs'

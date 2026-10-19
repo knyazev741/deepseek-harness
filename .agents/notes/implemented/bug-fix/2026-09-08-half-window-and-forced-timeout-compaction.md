@@ -10,6 +10,8 @@ The default `0.8` pressure threshold lets a 400k-context conversation grow to 32
 
 ## Decision
 
+The [upstream integration](../architecture/2026-09-16-knyazev-upstream-integration.md) replaces the global half-window default with explicit Gonka model policies; the service default is `0.8`. The forced timeout trigger remains active.
+
 `compaction-basic` defaults `thresholdRatio` to `0.5`, so automatic step-boundary compaction begins at 200k tokens for a 400k-context model unless configuration supplies another ratio. Exact provider/model policies still override the service default.
 
 The opt-in `fork-llm-first-chunk-timeout` recovery remains independent of ordinary pressure. Every `FIRST_CHUNK_TIMEOUT` asks the selected compaction service for forced `context-overflow` compaction. Durable replacement ends the failed turn and queues the plugin-authored `continue` message after the agent reaches `idle`, as specified by the [first-chunk recovery decision](../feature/2026-08-27-fork-llm-first-chunk-compaction.md). No durable replacement delegates to downstream retry and cooldown policy.

@@ -10,7 +10,7 @@
  *
  * Neither path is a catalog refresh. Nothing here is stored: the request
  * carries a draft the user is still editing, and the reply is candidate
- * metadata the surface offers for adoption. `settings.yaml` remains the only
+ * metadata the surface offers for adoption. `cordis.patch.yml` remains the only
  * thing that decides what a route serves.
  *
  * OpenAI-compatible and Anthropic Messages protocols are interrogated through
@@ -126,7 +126,7 @@ function discoveredReasoningEfforts(
   if (levels.length === 0) return undefined
   const nonOff = levels.filter(level => level !== 'off')
   if (nonOff.length === 0 && levels.includes('off')) return false
-  const defaultLevel = typeof reasoning?.default === 'string' ? reasoning.default : undefined
+  const defaultLevel = typeof reasoning.default === 'string' ? reasoning.default : undefined
   return Object.fromEntries(levels.map(level => [
     level,
     level === 'off' ? (defaultLevel === undefined || defaultLevel === 'off' ? null : 'off') : level,
@@ -312,6 +312,7 @@ export async function discoverModels(
         name: model.name,
         contextWindow: model.contextWindow,
         maxTokens: model.maxTokens,
+        inputModalities: [...model.input],
       }))
     }
   }

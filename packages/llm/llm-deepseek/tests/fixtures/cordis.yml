@@ -1,0 +1,24 @@
+- name: '@knyazevai/dsh-llm'
+- name: '@knyazevai/dsh-session'
+- name: '@knyazevai/dsh-session-projection'
+- name: '@knyazevai/dsh-system-prompt'
+- name: '@knyazevai/dsh-tools'
+- name: '@knyazevai/dsh-agent'
+- name: '@knyazevai/dsh-agent-loop'
+  config:
+    agents: []
+- name: '@knyazevai/dsh-credentials-local'
+  config:
+    path: {{credentials}}
+    watch: false
+- name: '@knyazevai/dsh-llm-deepseek-api-key'
+  config:
+    apiKeyEnv: DEEPSEEK_API_KEY
+    baseURL: {{endpoint}}
+    thinking: enabled
+    reasoningEffort: high
+    maxTokens: 256000
+    streamIdleTimeoutMs: 300000
+- name: '@knyazevai/dsh-llm-deepseek-account'
+  config:
+    baseURL: {{endpoint}}

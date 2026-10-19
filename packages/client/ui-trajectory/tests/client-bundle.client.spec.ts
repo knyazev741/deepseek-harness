@@ -6,11 +6,12 @@
  * registers the view tab into a real SlotRegistry ring. Skips when dist/ is
  * not built (`pnpm --filter @knyazevai/dsh-client-ui-trajectory bundle`).
  */
+import { createSnapshotStore } from '@knyazevai/dsh-client-store'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import { stubSettingsScope } from '@knyazevai/dsh-client-test-runtime'
-import { afterEach, describe, expect, it } from 'vitest'
+import { stubConfigForm } from '@knyazevai/dsh-client-test-runtime'
+import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 import { UiConversation } from '@knyazevai/dsh-client-ui-conversation/client'
 import { SlotRegistry } from '@knyazevai/dsh-client-ui-renderer/client'
 
@@ -49,6 +50,7 @@ describe('tsdown client artifact', () => {
       ['react', await import('react')],
       ['react/jsx-runtime', await import('react/jsx-runtime')],
       ['react-dom', await import('react-dom')],
+      ['@tanstack/react-virtual', await import('@tanstack/react-virtual')],
       ['@knyazevai/dsh-client-store', await import('@knyazevai/dsh-client-store')],
       ['@knyazevai/dsh-client-ui-conversation/client', await import('@knyazevai/dsh-client-ui-conversation/client')],
       ['@knyazevai/dsh-client-ui-primitives', await import('@knyazevai/dsh-client-ui-primitives')],
@@ -72,6 +74,7 @@ describe('tsdown client artifact', () => {
   it.skipIf(code === undefined)('mounted as an object plugin, apply registers the view tab on the real ring', async () => {
     const { exports } = await loadArtifact()
     const ctx = new Context()
+    onTestFinished(() => ctx.fiber.dispose())
     const slots = new SlotRegistry(ctx)
     ctx.provide('uiSession', { provide: () => () => {} } as never)
     // The conversation entry's role: the ring must be declared before riders land.
@@ -89,9 +92,9 @@ describe('tsdown client artifact', () => {
     const { events, views } = uiConversation
     ctx.provide('connection', { api: { settings: {} }, isLoopback: false } as never)
     ctx.provide('remote', { $on: () => () => {} } as never)
-    ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+    ctx.provide('configForms', { developerTools: { enabled: createSnapshotStore(true) }, get: () => stubConfigForm().scope } as never)
     const locale = await import('@knyazevai/dsh-client-locale/client')
-    ctx.plugin({ inject: [...locale.inject], apply: locale.apply })
+    await ctx.plugin({ inject: [...locale.inject], apply: locale.apply })
     const fiber = ctx.plugin(exports as { apply: (ctx: Context) => void })
     await fiber.await()
     expect(slots.entries('conversation.view').map(e => e.options.id)).toEqual(['trajectory'])

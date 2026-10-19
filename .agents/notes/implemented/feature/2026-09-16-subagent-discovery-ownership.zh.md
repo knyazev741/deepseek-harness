@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-`modelSelectionDiscovery` 默认为 true。主委派工具持有发现工具；同级 fork 工具将其设为 false，同时保留相同的已记录路由策略和模型选择参数。注册表仍拒绝两个发现工具持有者。这取代了[模型选择路由](2026-08-18-model-selected-subagent-routes.zh.md)中随附 fork 的选择限制。
+`modelSelectionDiscovery` 默认为 true。主委派工具持有发现工具；同级 fork 工具将其设为 false，同时保留相同的已记录路由策略和模型选择参数。注册表仍拒绝两个发现工具持有者。这取代了[模型选择路由](../../archived/feature/2026-08-18-model-selected-subagent-routes.md)中随附 fork 的选择限制。
 
 ## 考虑过的替代方案
 

@@ -3,7 +3,7 @@
  * its child log and confines a real write under a wider deployment default.
  */
 
-import { readFile, readdir, writeFile } from 'node:fs/promises'
+import { readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
@@ -16,12 +16,13 @@ import {
 import { LOADER_SMOKE_TEST_TIMEOUT_MS, runLoaderSmoke } from '@knyazevai/dsh-loader-smoke'
 import { createMessage, createUserMessage, ReasoningEffortId } from '@knyazevai/dsh-llm'
 import { SessionSeq, SESSION_FORMAT_VERSION, SessionId, type SessionEvent, type SessionHeader } from '@knyazevai/dsh-session'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { describe, expect, it } from 'vitest'
 
 const fixtureDir = fileURLToPath(new URL('./expected/subagent-inheritance', import.meta.url))
 const replayOverride = join(fixtureDir, 'replay.override.json')
-// Native replay preserves the V0 script's model outputs without migrating its pre-step user event.
+// The released V3 child fixture replays through the V3-to-V4 migration, so its
+// tool results lift and its plugin sources move onto producer kinds.
 const childReplay = join(fixtureDir, 'child.replay.v3.jsonl')
 const parentExpected = join(fixtureDir, 'parent.expected.jsonl')
 const childExpected = join(fixtureDir, 'child.expected.jsonl')
@@ -59,7 +60,7 @@ async function seedReadOnlyParent(root: string, cwd: string): Promise<void> {
     { type: 'step/start', seq: SessionSeq(1), time: 11, data: { turn: 1, step: 1 } },
     {
       type: 'system/message', seq: SessionSeq(2), time: 12,
-      data: { turn: 1, step: 1, message: createMessage({ role: 'system', content: [], source: { kind: 'plugin', plugin: '@knyazevai/dsh-system-prompt' } }) },
+      data: { turn: 1, step: 1, message: createMessage({ role: 'system', content: [], source: { kind: 'system-prompt' } }) },
       surfaceOp: 'append',
     },
     { type: 'user/message', seq: SessionSeq(3), time: 13, data: createUserMessage({ content: [{ type: 'text', text: 'Tighten this session to read-only.' }], source: { kind: 'user' } }), surfaceOp: 'append' },
@@ -110,8 +111,8 @@ describe('parent-only override inheritance snapshot', () => {
         DSH_SNAPSHOT_CHILD_FILES: childReplay,
       },
       prepare: async (runCwd) => {
-        cwd = runCwd
-        await seedReadOnlyParent(join(runCwd, '.sessions'), runCwd)
+        cwd = await realpath(runCwd)
+        await seedReadOnlyParent(join(cwd, '.sessions'), cwd)
       },
       inspect: async (runCwd) => {
         // THE physical fact: the child's write never reached the disk. Under
@@ -131,20 +132,20 @@ describe('parent-only override inheritance snapshot', () => {
         const childRecords = child.trimEnd().split('\n').map(
           line => JSON.parse(line) as Record<string, unknown>,
         )
-        expect(childRecords[1]).toMatchObject({
+        expect(childRecords.find(record => record.type === 'sandbox/mode')).toMatchObject({
           type: 'sandbox/mode',
-          seq: SessionSeq(0),
           data: { mode: 'read-only', source: 'delegation' },
         })
+        expect(childRecords.findIndex(record => record.type === 'sandbox/mode'))
+          .toBeLessThan(childRecords.findIndex(record => record.type === 'turn/start'))
 
         const runtimeContexts = (content: string): string[] => content.trimEnd().split('\n').flatMap((line) => {
           const record = JSON.parse(line) as {
             type?: string
-            data?: { source?: { kind?: string; plugin?: string }; content?: Array<{ type?: string; text?: unknown }> }
+            data?: { source?: { kind?: string }; content?: Array<{ type?: string; text?: unknown }> }
           }
           if (record.type !== 'user/message'
-            || record.data?.source?.kind !== 'plugin'
-            || record.data.source.plugin !== '@knyazevai/dsh-system-prompt') return []
+            || record.data?.source?.kind !== 'runtime-context') return []
           return record.data.content?.flatMap(block => block.type === 'text' && typeof block.text === 'string' ? [block.text] : []) ?? []
         })
         const policyContexts = [...runtimeContexts(parent), ...runtimeContexts(child)]

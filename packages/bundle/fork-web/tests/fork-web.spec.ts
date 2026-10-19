@@ -59,10 +59,10 @@ describe('dsh-fork-web bundle', () => {
     expect(manifest.publishConfig?.access).toBe('public')
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.dependencies).toMatchObject({
-      '@knyazevai/dsh-base': 'workspace:^',
-      '@knyazevai/dsh-web-app': 'workspace:^',
-      '@knyazevai/dsh-fork-base': 'workspace:^',
-      '@knyazevai/dsh-fork-ui-workspace-overlay': 'workspace:^',
+      '@knyazevai/dsh-base': 'workspace:*',
+      '@knyazevai/dsh-web-app': 'workspace:*',
+      '@knyazevai/dsh-fork-base': 'workspace:*',
+      '@knyazevai/dsh-fork-ui-workspace-overlay': 'workspace:*',
     })
   })
 
@@ -75,6 +75,7 @@ describe('dsh-fork-web bundle', () => {
         { provider: 'knyazev-ai', model: 'deepseek-v4-flash' },
         { provider: 'knyazev-ai', model: 'glm-5.3-flash' },
         { provider: 'knyazev-ai', model: 'minimax-2.7' },
+        { provider: 'deepseek-official', model: 'deepseek-flash' },
       ] },
     })
     expect(Object.keys(patches[0] ?? {})).toEqual(['insert'])

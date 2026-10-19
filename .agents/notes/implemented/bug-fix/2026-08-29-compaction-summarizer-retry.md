@@ -10,6 +10,8 @@ The basic compaction backend invokes the LLM seam directly for its auxiliary sum
 
 ## Decision
 
+Current stopping conditions and retry logging are superseded by [persistent provider recovery](2026-10-08-persistent-provider-recovery.md); the service ownership and continuation rationale remain applicable.
+
 `compaction-basic` resolves the selected provider route's captured `ResolvedRetryPolicy` and applies it to every auxiliary stream attempt. A normal route uses its fast backoff for `maxRetries`; after that finite budget, `summarizerCooldownMs` (default `600000`) waits and retries eligible transient failures without resetting the fast counter. An always route uses local backoff without a cap. Valid provider `Retry-After` values within the route limit are honored; an over-cap value fails a normal route and falls back to local delay for an always route. Cancellation and non-retryable failures remain authoritative, and each attempt builds a fresh block assembler.
 
 The first-chunk recovery listener resolves `ctx.agentPresets.serviceFor(agent, 'compaction')` before falling back to the host compaction service. It stages the plugin-authored `continue` follow-up only after durable compaction progress, so a `FIRST_CHUNK_TIMEOUT` remains in the recovery operation while the summarizer retries or waits for cooldown.

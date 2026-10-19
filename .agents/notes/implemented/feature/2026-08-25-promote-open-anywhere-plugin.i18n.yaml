@@ -1,6 +1,0 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-25-promote-open-anywhere-plugin.md
-2026-08-25-promote-open-anywhere-plugin.md: 293e7347ecb7b7e6408cc1ef3028c4b59a0b7810
-2026-08-25-promote-open-anywhere-plugin.zh.md: 5647aaf82662c2e8f0dca262f176b5e36282835c

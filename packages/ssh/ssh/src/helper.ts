@@ -6,7 +6,7 @@ import type { Readable, Writable } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import { FsError, type FsTarget, type FsWriteIntent, type FsVersion } from '@knyazevai/dsh-fs'
 import { SandboxedFileSystem } from '@knyazevai/dsh-fs-sandbox'
-import { SubprocessExecutableNotFoundError } from '@knyazevai/dsh-subprocess'
+import type {} from '@knyazevai/dsh-subprocess'
 import { LocalSubprocessRuntime } from '@knyazevai/dsh-subprocess-local'
 import { LocalSandboxProvider } from '@knyazevai/dsh-sandbox-local'
 import { SandboxPolicyService } from '@knyazevai/dsh-sandbox-policy'
@@ -42,6 +42,8 @@ export interface HelperTransport {
   output: Writable
   /** Installed entry whose digest is compared by the client. */
   entryPath: string
+  /** Whether the installed entry includes its own Node and worker runtime. */
+  kind: 'node-script' | 'executable'
   /** Process termination joins the same cleanup as transport loss. */
   signal: AbortSignal
 }
@@ -97,13 +99,14 @@ export async function runSshHelper(transport: HelperTransport): Promise<void> {
         protocol: z.literal(SSH_PROTOCOL_VERSION), workspace: remotePath, leaseMs: z.number().int().min(3000).max(600_000),
         bootstrapPath: remotePath.optional(),
       }).strict().parse(raw)
+      if (transport.kind === 'executable' && input.bootstrapPath !== undefined) throw new Error('Executable SSH helper uses its embedded PTC bootstrap')
       workspace = ctx.fs.processPath(await ctx.fs.resolve(input.workspace, { signal }))
       leaseMs = input.leaseMs
       initialized = true
       touchLease()
       return {
         protocol: SSH_PROTOCOL_VERSION, hash: createHash('sha256').update(readFileSync(transport.entryPath)).digest('hex'),
-        platform: process.platform, nodeVersion: process.version, node: process.execPath, root, workspace,
+        kind: transport.kind, platform: process.platform, nodeVersion: process.version, executable: process.execPath, root, workspace,
         ...(input.bootstrapPath === undefined ? {} : { bootstrapHash: createHash('sha256').update(readFileSync(input.bootstrapPath)).digest('hex') }),
       }
     }
@@ -123,9 +126,9 @@ export async function runSshHelper(transport: HelperTransport): Promise<void> {
       await processes.resizeTerminal(input.id, input.cols, input.rows)
       return null
     }
-    if (method === 'terminal.write' || method === 'terminal.inspect' || method === 'terminal.signal') {
+    if (method === 'terminal.write' || method === 'terminal.inspect' || method === 'terminal.activity' || method === 'terminal.signal') {
       const input = z.object({ id: processIdSchema, value: z.string().optional() }).strict().parse(raw)
-      return processes.terminal(input.id, method === 'terminal.write' ? 'write' : method === 'terminal.inspect' ? 'inspect' : 'signal', input.value)
+      return processes.terminal(input.id, method === 'terminal.write' ? 'write' : method === 'terminal.inspect' ? 'inspect' : method === 'terminal.activity' ? 'activity' : 'signal', input.value)
     }
     if (method === 'executable') {
       const input = z.object({ command: z.string(), env: environmentSchema.optional() }).strict().parse(raw)
@@ -135,7 +138,11 @@ export async function runSshHelper(transport: HelperTransport): Promise<void> {
       try {
         return await ctx.subprocess.resolveExecutable(input.command, env, signal)
       } catch (error) {
-        if (error instanceof SubprocessExecutableNotFoundError) throw new RemoteOperationError(error.message, 'SUBPROCESS_EXECUTABLE_NOT_FOUND')
+        if (typeof error === 'object' && error !== null
+          && 'name' in error && error.name === 'SubprocessExecutableNotFoundError'
+          && 'message' in error && typeof error.message === 'string') {
+          throw new RemoteOperationError(error.message, 'SUBPROCESS_EXECUTABLE_NOT_FOUND')
+        }
         throw error
       }
     }

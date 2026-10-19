@@ -6,7 +6,7 @@ English | [中文](2026-08-18-external-interactive-agent-sessions.zh.md)
 
 ## Problem
 
-The harness runs its own agent loop; console coding agents (Codex, Claude Code, ACP-speaking clients) exist here only as one-shot subagent providers ([the Codex and Claude Code backends](../../implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md)) that collapse a child run into one final tool result. A user cannot open a session in this GUI that is driven by an external agent, and later an agent cannot host one either: multi-turn continuation, live streaming, agent-native compaction, slash commands, native model catalogs, and permission prompts have no surface. The subagent seam's continuation manager is in-process by construction — a foreign process cannot enter its inbox contract — so interactivity cannot be retrofitted onto `SubagentProvider.start()`.
+The harness runs its own agent loop; console coding agents (Codex, Claude Code, ACP-speaking clients) exist here only as one-shot subagent providers ([the Codex and Claude Code backends](../../../../packages/fork/external-session/README.md)) that collapse a child run into one final tool result. A user cannot open a session in this GUI that is driven by an external agent, and later an agent cannot host one either: multi-turn continuation, live streaming, agent-native compaction, slash commands, native model catalogs, and permission prompts have no surface. The subagent seam's continuation manager is in-process by construction — a foreign process cannot enter its inbox contract — so interactivity cannot be retrofitted onto `SubagentProvider.start()`.
 
 ## Proposal
 

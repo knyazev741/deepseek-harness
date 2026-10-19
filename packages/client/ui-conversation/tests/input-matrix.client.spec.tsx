@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 /**
  * Impact-matrix projection tests (row by row): what each
- * phase projects onto the InputBar — enter routing, visuals (token color /
+ * phase projects onto the InputBar — enter routing, visuals (command chip /
  * hint / pending), edit freedom, and the published currency's claim seat.
  * React over jsdom per the client testing discipline; the machine is real.
  */
+import './control-row-dom.ts'
 import type { GlobalStandardProps } from '@knyazevai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
@@ -12,9 +13,9 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { SessionSnapshot } from '@knyazevai/dsh-api-session-controller/client'
 import { createSnapshotStore } from '@knyazevai/dsh-client-store'
 import {
-  bindSnapshotSelector, conversationSnapshot, sessionSnapshot,
+  allowAllAccess, bindSnapshotSelector, conversationSnapshot, sessionSnapshot,
 } from '@knyazevai/dsh-client-test-runtime'
-import type { SessionPendingInteractionSnapshot } from '@knyazevai/dsh-client-ui-session/client'
+import type { SessionStatusSnapshot } from '@knyazevai/dsh-client-ui-session/client'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { SubmitAttachment, SubmitOutcome } from '../src/client/contract/input.ts'
 import { makeTranslate } from '@knyazevai/dsh-client-test-runtime'
@@ -54,16 +55,18 @@ function mountBar(shell: SessionInputShell, over?: { running?: boolean; disabled
     useSession: bindSnapshotSelector(session),
     useSessions: bindSnapshotSelector(createSnapshotStore({
       ids: [], byId: {}, current: undefined, phase: 'ready',
-      subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+      projectionsBySession: {}, currentAddress: undefined,
     })),
-    useSessionPendingInteraction: bindSnapshotSelector(
-      createSnapshotStore<SessionPendingInteractionSnapshot>(new Map()),
+    useSessionStatus: bindSnapshotSelector(
+      createSnapshotStore<SessionStatusSnapshot>(new Map()),
     ),
+    useSessionRetainInfo: () => undefined,
     useResource,
     useWorkspaces: bindSnapshotSelector(createSnapshotStore({
-      items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+      items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
       baselinesReady: true, recentWorkspaceId: undefined,
     })),
+    ...allowAllAccess,
     useProjection: (() => undefined),
     useConversation: bindSnapshotSelector(createSnapshotStore(conversationSnapshot())),
     useInput: bindSnapshotSelector(shell.state),
@@ -81,6 +84,7 @@ function mountBar(shell: SessionInputShell, over?: { running?: boolean; disabled
     })),
     toggleCommandMenu: vi.fn(),
     useBusyEnter: bindSnapshotSelector(createSnapshotStore<'queue' | 'steer'>('queue')),
+    useStopShortcut: bindSnapshotSelector(createSnapshotStore<readonly string[]>([])),
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(createSnapshotStore<string | null>(null)),
@@ -118,10 +122,33 @@ function bench(over?: {
       )
     })
   }
-  return { view, textarea, shell, wiring, sink, claim, serialize, release }
+  /** Type at the live caret, as keyboard input after the claimed chip does. */
+  const typeAtCaret = (text: string) => {
+    act(() => { shell.actions.insertText(text, shell.actions.captureInsertion()) })
+  }
+  return { view, textarea, shell, wiring, sink, claim, typeAtCaret, serialize, release }
 }
 
 describe('matrix row: plain', () => {
+  it('unsubscribes from the Inbox projection when disposed', () => {
+    const unsubscribe = vi.fn()
+    const subscribe = vi.fn(() => unsubscribe)
+    const shell = new SessionInputShell({
+      actx: SCTX,
+      defaultSink: () => Promise.resolve({ kind: 'success' }),
+      inbox: { getSnapshot: () => undefined, subscribe },
+      commandAttachments: {
+        serialize: () => Promise.resolve([]),
+        release: () => {},
+        unsupportedNotice: token => `${token.trim()} attachments-unsupported`,
+      },
+    })
+
+    expect(subscribe).toHaveBeenCalledOnce()
+    shell.dispose()
+    expect(unsubscribe).toHaveBeenCalledOnce()
+  })
+
   it('enter falls to the default sink; no claim on the currency; edits free', async () => {
     const { textarea, shell, sink } = bench()
     act(() => { shell.setDraft('普通消息') })
@@ -136,26 +163,29 @@ describe('matrix row: plain', () => {
 })
 
 describe('matrix row: claimed', () => {
-  it('publishes the claim currency, colors the token, hints while args are blank, and edits stay free', () => {
-    const { view, textarea, shell, claim } = bench()
+  it('publishes the claim currency, renders the command chip, hints while args are blank, and edits stay free', () => {
+    const { view, textarea, shell, claim, typeAtCaret } = bench()
     claim()
-    act(() => { shell.editor.update(() => {}, { discrete: true }) }) // flush the queued decoration refresh
     expect(shell.snapshot.claim).toEqual({ name: 'goal', token: '/goal ', hint: '目标' })
-    expect(view.container.querySelector('[data-lexical-text][style*="warn-label"]')?.textContent).toBe('/goal ')
+    const chip = view.container.querySelector('[data-composer-command="goal"]')
+    expect(chip?.textContent).toBe('/goal')
+    expect(chip?.getAttribute('contenteditable')).toBe('false')
+    expect(shell.snapshot.draft).toBe('/goal ')
     // The zh dictionary owns a hint.goal entry, which overrides the raw claim hint (production behavior).
     expect(textarea.style.getPropertyValue('--dsh-composer-hint')).toBe(JSON.stringify('输入目标，智能体将持续执行'))
     expect(textarea.getAttribute('contenteditable')).toBe('true')
-    // Free editing beyond the token: hint drops, claim holds.
-    act(() => { shell.setDraft('/goal 发布版本') })
+    // Free editing after the chip: hint drops, claim holds.
+    typeAtCaret('发布版本')
+    expect(shell.snapshot.draft).toBe('/goal 发布版本')
     expect(shell.snapshot.phase).toBe('claimed')
     expect(textarea.style.getPropertyValue('--dsh-composer-hint')).toBe('')
   })
 
   it('enter routes to claim.submit (command lane, never the queue sink)', async () => {
     const submit = vi.fn(() => Promise.resolve({ kind: 'success' as const, text: '完成', source: 'command', name: 'goal' }))
-    const { view, textarea, shell, sink, claim } = bench({ submit })
+    const { view, textarea, shell, sink, claim, typeAtCaret } = bench({ submit })
     claim()
-    act(() => { shell.setDraft('/goal 发布') })
+    typeAtCaret('发布')
     fireEvent.keyDown(textarea, { key: 'Enter' })
     expect(sink).not.toHaveBeenCalled()
     await vi.waitFor(() => { expect(submit).toHaveBeenCalledWith('发布', SCTX, []) })
@@ -164,14 +194,13 @@ describe('matrix row: claimed', () => {
     expect(view.getByText('完成')).toBeTruthy()
   })
 
-  it('backspacing the token auto-releases to plain and the visuals vanish (scenario H)', () => {
+  it('replacing the whole draft removes the chip and releases to plain', () => {
     const { view, shell, claim } = bench()
     claim()
-    act(() => { shell.setDraft('/goa 发布') }) // token broken
+    act(() => { shell.setDraft('/goal 发布') })
     expect(shell.snapshot.phase).toBe('plain')
     expect(shell.snapshot.claim).toBeUndefined()
-    act(() => { shell.editor.update(() => {}, { discrete: true }) }) // flush the queued decoration refresh
-    expect(view.container.querySelector('[data-lexical-text][style*="warn-label"]')).toBeNull()
+    expect(view.container.querySelector('[data-composer-command]')).toBeNull()
   })
 })
 
@@ -263,6 +292,11 @@ describe('matrix row: claimed with attachments', () => {
     act(() => { shell.addAttachments([img]) })
     fireEvent.keyDown(textarea, { key: 'Enter' })
     expect(shell.snapshot.phase).toBe('submitting')
+    const draft = shell.snapshot.draft
+    expect(shell.addFiles([{
+      source: 'reference', ref: '@note.txt', label: 'note.txt', clipboardText: '@note.txt',
+    }], ['new-file' as DraftAttachmentId])).toBe(false)
+    expect(shell.snapshot.draft).toBe(draft)
     let removed = true
     act(() => { removed = shell.removeAttachment(img) })
     expect(removed).toBe(false)

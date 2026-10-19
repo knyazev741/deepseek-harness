@@ -1,6 +1,82 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/subagent/subagent-fork-in-process/README.md
-README.md: 95707f7b1815b143690cb6bb01c0fabec2949d8c
-README.zh.md: e20f89c22fb1ab641886b6c1f550d29eb9a4f757
+/:
+  en: a4a75d423f70c4de
+  zh: a60816274b877a80
+/knyazevai-dsh-subagent-fork-in-process:
+  en: 17bec319ef594112
+  zh: 2faab262a054374b
+/knyazevai-dsh-subagent-fork-in-process/summary:
+  en: 97309f84ffe50ba9
+  zh: ce4121b0823b7c7f
+/knyazevai-dsh-subagent-fork-in-process/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-subagent-fork-in-process/use-this-package:
+  en: 71affc798c840594
+  zh: 258a2932c3c04841
+/knyazevai-dsh-subagent-fork-in-process/use-this-package/when-to-choose-it:
+  en: 05090df7cc302c6a
+  zh: bd988019ba062e0a
+/knyazevai-dsh-subagent-fork-in-process/use-this-package/seed-boundary:
+  en: f4dfd1ce652f019b
+  zh: 9bb75239491f07cc
+/knyazevai-dsh-subagent-fork-in-process/use-this-package/minimal-configuration:
+  en: 7dcac9f48bfa0e02
+  zh: b3d99f2dca76fca3
+/knyazevai-dsh-subagent-fork-in-process/use-this-package/what-a-fork-delegation-does:
+  en: 461063deda821a1b
+  zh: 18d2d41d64884f22
+/knyazevai-dsh-subagent-fork-in-process/understand-the-implementation:
+  en: 6a0fe4b9cc780aaa
+  zh: 50cd69ceb8296827
+/knyazevai-dsh-subagent-fork-in-process/understand-the-implementation/design-concept:
+  en: 49c8725fee5330ed
+  zh: 9050680f2011820a
+/knyazevai-dsh-subagent-fork-in-process/understand-the-implementation/source-map:
+  en: f1f45255fd9f71c1
+  zh: 9a3f016b8fe9754a
+/knyazevai-dsh-subagent-fork-in-process/understand-the-implementation/run-flow:
+  en: cca92ec964b4314b
+  zh: edd8ecd4b59dbe8f
+/knyazevai-dsh-subagent-fork-in-process/understand-the-implementation/lifecycle-binding:
+  en: 8dad0155ed1b32d2
+  zh: f4d82d5ede03c4d7
+/knyazevai-dsh-subagent-fork-in-process/further-exploration:
+  en: 32ad7ed851d1c349
+  zh: 744bab44c7ae2605
+/knyazevai-dsh-subagent-fork-in-process/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-subagent-fork-in-process/model-experience/child-agent-history-and-envelope:
+  en: 91a5bd22001586e9
+  zh: 456e5bf20881a70d
+/knyazevai-dsh-subagent-fork-in-process/model-experience/child-agent-history-and-envelope/what-the-model-sees:
+  en: d4d51c5937bab67c
+  zh: e7c07b5a38d68d8e
+/knyazevai-dsh-subagent-fork-in-process/model-experience/child-agent-history-and-envelope/token-effect:
+  en: 19b588baaa87126b
+  zh: 7010e93bbe7d71ba
+/knyazevai-dsh-subagent-fork-in-process/model-experience/child-agent-history-and-envelope/kv-cache-effect:
+  en: 1e8f8bbab3052b39
+  zh: 1efff4da78d60ef9
+/knyazevai-dsh-subagent-fork-in-process/model-experience/parent-tool-result-indirectly:
+  en: 75d061c2151624a7
+  zh: 71e58e020b60ff90
+/knyazevai-dsh-subagent-fork-in-process/model-experience/parent-tool-result-indirectly/what-the-model-sees:
+  en: 54d10ba4da6cdece
+  zh: bb9cb4d685098483
+/knyazevai-dsh-subagent-fork-in-process/model-experience/parent-tool-result-indirectly/token-effect:
+  en: 8c81bab3c5d6a38a
+  zh: 44c798432a4bfdfb
+/knyazevai-dsh-subagent-fork-in-process/model-experience/parent-tool-result-indirectly/kv-cache-effect:
+  en: f5d5f97a153f7c70
+  zh: 3d6bc05b9eadfbc2
+/knyazevai-dsh-subagent-fork-in-process/known-limitations-and-deferred-work:
+  en: 193d3fea02c7ec47
+  zh: 8a616bcfb97a99c1
+/knyazevai-dsh-subagent-fork-in-process/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

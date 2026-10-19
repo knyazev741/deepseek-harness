@@ -44,7 +44,7 @@ ACP v1 SDK 客户端先初始化 `dsh --profile acp`，再用绝对 `cwd` 与可
 
 #### 模型看到什么
 
-profile 在第一方指导之前提供 `You are a coding agent powered by the {{model}} model.`，并在独立的 persona 后缀中提供 `Your working directory is {{cwd}}.`。ACP 配置项的路由与每个 `session/new` 的 cwd 会解析其中的占位符。
+profile 在第一方指导之前提供 `You are a coding agent powered by the {{model}} model.`；ACP 路由解析 `{{model}}`。每个 Session 通过 [`dsh-working-directory`](../../session/working-directory/README.zh.md) 提供的必需 user-role 上下文接收当前目录。
 
 #### Token 影响
 
@@ -60,7 +60,7 @@ profile 在第一方指导之前提供 `You are a coding agent powered by the {{
 
 - **profile 可以省略 ACP bridge**：自定义 ACP 启动 profile 必须保留本组合包或另一个 `dsh-acp` 配置项；否则没有 peer 响应 client。
 - **用户插件可能破坏 stdout 纯净性**：profile 与单次启动 patch 属于受信任的应用组合。随附组合包不会向 stdout 写入非协议内容，但无法约束任意插入的插件。
-- **配置更改需要重启**：随附 `acp` profile 使用 `patchReload: startup`，确保一条 stdio 连接不会观察到 bridge 或 Agent 依赖被替换。
+- **配置更改需要重启**：`acp-app` 组合包在 YAML 中禁用 HMR，确保一条 stdio 连接不会观察到 bridge 或 Agent 依赖被替换。
 
 
 <a id="dev-note"></a>
@@ -72,5 +72,3 @@ profile 在第一方指导之前提供 `You are a coding agent powered by the {{
 无。
 
 </details>
-
-**运行时不变式：** 不发布伴生入口。该 bundle 只增加进程传输与启动 latch；帧纯度、help 排除和关闭行为由源码及构建产物的 stdio 测试负责。

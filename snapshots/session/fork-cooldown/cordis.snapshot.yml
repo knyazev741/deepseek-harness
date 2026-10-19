@@ -1,0 +1,57 @@
+# Keyless replay for the retry overlay: disable the key-requiring DeepSeek
+# adapter, insert `llm-replay`, and give its provider the same deterministic
+# 1 ms zero-jitter retry policy as the live sibling. The app patch still
+# restates its whole config for raw JSONL persistence and the recorded model.
+- id: llm-deepseek
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- id: agent-default-model
+  name: '@knyazevai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-flash
+
+- id: session-persistence-jsonl
+  name: '@knyazevai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+
+- id: agent-instructions
+  name: '@knyazevai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: system-prompt
+  name: '@knyazevai/dsh-system-prompt'
+  config:
+    personaPrefix: |
+      You are a coding assistant powered by the {{model}} model. Your working directory is {{cwd}}. Your bash tool runs under a file sandbox — a `[sandbox: file access denied …]` result is policy, not a command bug.
+
+      Verify your work by running the code or tests. Keep answers brief and factual.
+
+- insert:
+    - id: llm-replay
+      name: '@knyazevai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            retryPolicy:
+              mode: normal
+              maxRetries: 20
+              backoff:
+                initialDelayMs: 1
+                maxDelayMs: 1
+                jitterRatio: 0
+            models:
+              - id: deepseek-v4-flash
+              - id: deepseek-v4-pro
+
+- insert:
+    - id: fork-llm-rate-limit-cooldown
+      name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
+      config:
+        cooldownMs: 1
+        retryableCodes: ['*']

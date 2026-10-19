@@ -3,12 +3,7 @@ import { appendFileSync } from 'node:fs'
 import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@knyazevai/dsh-llm'
 import { ToolCallId, LlmAdapter, ReasoningEffortId } from '@knyazevai/dsh-llm'
 
-/**
- * Test adapter for the `mock-delegate` model: the first request calls the
- * `subagent` tool once, and the follow-up streams the tool result text back
- * verbatim — so the SDK child runtime's answer (the scripted child model's
- * cwd echo) reaches the parent session log for the driving e2e to assert.
- */
+/** Script one delegation, then acknowledge the receipt and the completion notice. */
 class MockDelegatingAdapter extends LlmAdapter {
   override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
     if (process.env.DSH_TEST_PARENT_MODEL_RECORD !== undefined) {
@@ -25,14 +20,15 @@ class MockDelegatingAdapter extends LlmAdapter {
   }
 
   async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
-    const toolResultText = options.messages.at(-1)?.content
-      .filter(block => block.type === 'tool-result')
-      .flatMap(block => block.content)
-      .filter(block => block.type === 'text')
-      .map(block => block.text)
-      .join('') ?? ''
+    const last = options.messages.at(-1)
+    const toolResultText = last?.role === 'tool'
+      ? last.content
+        .filter(block => block.type === 'text')
+        .map(block => block.text)
+        .join('')
+      : ''
 
-    if (toolResultText.length === 0) {
+    if (!options.messages.some(message => message.role === 'tool')) {
       const selectedRoute = process.env.DSH_TEST_CHILD_DEFAULT_ROUTE === '1'
         ? { reasoning_effort: 'max' }
         : { provider: 'mock', model: 'mock-routed', reasoning_effort: 'max' }

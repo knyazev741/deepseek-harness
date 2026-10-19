@@ -9,7 +9,7 @@
         maxOutputChars: 16000
 
 - id: llm-deepseek
-  name: '@knyazevai/dsh-llm-deepseek'
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
   config:
     apiKeyEnv: DEEPSEEK_API_KEY
     streamIdleTimeoutMs: 172800000
@@ -106,10 +106,6 @@
 
 - id: tool-goal
   name: '@knyazevai/dsh-tool-goal'
-  disabled: true
-
-- id: tool-ralph
-  name: '@knyazevai/dsh-tool-ralph'
   disabled: true
 
 - id: tool-web

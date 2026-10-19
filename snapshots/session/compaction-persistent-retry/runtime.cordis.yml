@@ -1,0 +1,19 @@
+# A checkpoint blocks repeated compaction while provider recovery continues.
+- id: llm-replay
+  config:
+    providers:
+      - id: deepseek-official
+        name: DeepSeek
+        retryPolicy:
+          mode: always
+          backoff:
+            initialDelayMs: 1
+            maxDelayMs: 1
+            jitterRatio: 0
+        models:
+          - id: deepseek-v4-flash
+            contextWindow: 128000
+
+- insert:
+    - id: fork-llm-first-chunk-timeout
+      name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'

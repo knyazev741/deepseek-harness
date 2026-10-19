@@ -1,0 +1,8 @@
+version: 1
+scenario: compaction-persistent-retry
+profile: headless
+composition: compaction-recovery
+recording: authored
+header:
+  class: compaction-recovery
+  changes: 1

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
-import { load } from 'js-yaml'
+import { dump, load } from 'js-yaml'
 import type { DesktopPackageTargetName } from './package-target.ts'
 import {
   desktopBuildRecordFilename,
@@ -12,6 +12,7 @@ import {
   resolveDesktopUploadConfig,
 } from './desktop-auto-update-environment.mjs'
 import { desktopTargetBuildPaths } from './desktop-build-paths.mjs'
+import { validateDesktopBuildVersion } from './desktop-build-version.mjs'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
@@ -31,28 +32,38 @@ export interface DesktopUploadArtifact {
   readonly filename: string
   readonly key: string
   readonly contentType: string
-  readonly cacheControl: string
   readonly channelMetadata: boolean
+  /** Published YAML with normalized artifact URLs; binary bytes remain file-backed. */
+  readonly contents?: string
 }
 
-/** A fully validated upload operation with channel metadata ordered last. */
+/** A validated installer or update upload, with any channel metadata ordered last. */
 export interface DesktopUploadPlan {
   readonly environment: 'test' | 'production'
   readonly target: DesktopPackageTargetName
   readonly version: string
+  /** Update feed directory URL, or the single installer URL for a fixed download. */
   readonly publicUrl: string
   readonly bucket: string
   readonly secretIdEnvName: string
   readonly secretKeyEnvName: string
   readonly artifacts: readonly DesktopUploadArtifact[]
+  /** Commit the artifacts were packaged from, absent for a package built before builds recorded it. */
+  readonly commit?: string
+  /** Whether that checkout carried uncommitted changes. */
+  readonly dirty?: boolean
 }
 
 /** Filesystem and environment inputs used to validate one upload. */
 export interface DesktopUploadPlanOptions {
+  /** Publish only the installer at its fixed download URL, replacing the previous object. */
+  readonly latest?: boolean
   readonly environment?: NodeJS.ProcessEnv
   readonly repositoryRoot?: string
   readonly appRoot?: string
   readonly artifactsRoot?: string
+  /** Original product version from a verified retained build; absent reads the checkout manifests. */
+  readonly packagedProductVersion?: string
 }
 
 interface UpdateFileInfo {
@@ -156,9 +167,6 @@ function uploadArtifact(
     filename,
     key: `${keyPrefix}/${filename}`,
     contentType,
-    cacheControl: channelMetadata
-      ? 'no-cache'
-      : 'public, max-age=31536000, immutable',
     channelMetadata,
   }
 }
@@ -167,7 +175,7 @@ function uploadArtifact(
  * Validate the completed package record, dsh version, update metadata, hashes, and target files.
  * @param targetName - Fixed platform and architecture selected by the upload command.
  * @param options - Optional filesystem roots and environment for tests or release automation.
- * @returns An upload plan whose mutable channel metadata is the final entry.
+ * @returns A fixed installer upload or an update plan with channel metadata ordered last.
  */
 export async function createDesktopUploadPlan(
   targetName: DesktopPackageTargetName,
@@ -181,8 +189,8 @@ export async function createDesktopUploadPlan(
   const repositoryRoot = options.repositoryRoot ?? REPOSITORY_ROOT
   const appRoot = options.appRoot ?? APP_ROOT
   const artifactsRoot = options.artifactsRoot ?? desktopTargetBuildPaths(targetName).artifacts
-  const dshVersion = await manifestVersion(join(repositoryRoot, 'package.json'), 'dsh package')
-  const desktopVersion = await manifestVersion(join(appRoot, 'package.json'), 'desktop package')
+  const dshVersion = options.packagedProductVersion ?? await manifestVersion(join(repositoryRoot, 'package.json'), 'dsh package')
+  const desktopVersion = options.packagedProductVersion ?? await manifestVersion(join(appRoot, 'package.json'), 'desktop package')
   if (dshVersion !== desktopVersion) {
     throw new Error(`desktop upload: desktop version ${desktopVersion} does not match current dsh version ${dshVersion}`)
   }
@@ -192,15 +200,26 @@ export async function createDesktopUploadPlan(
     join(artifactsRoot, desktopBuildRecordFilename(targetName)),
     `${targetName} package completion record`,
   )
+  // Packaging wrote the version it published; reading it back keeps release settings out of shell variables.
+  const recordedVersion = stringField(buildRecord.version, `${targetName} package completion record.version`)
+  let buildVersion: string
+  try {
+    buildVersion = validateDesktopBuildVersion(recordedVersion, dshVersion)
+  }
+  catch (error) {
+    throw new Error(`desktop upload: ${targetName} package completion record holds ${recordedVersion}, which is not a build of dsh ${dshVersion}: ${
+      error instanceof Error ? error.message : String(error)}`)
+  }
   if (buildRecord.schemaVersion !== 1
     || buildRecord.target !== targetName
-    || buildRecord.version !== dshVersion
+    || (buildRecord.channel ?? 'nightly') !== update.channel
     || buildRecord.environment !== update.environment
     || buildRecord.publicUrl !== update.publicUrl) {
-    throw new Error(`desktop upload: ${targetName} package completion record does not match dsh ${dshVersion} and ${update.environment} update destination`)
+    throw new Error(`desktop upload: ${targetName} package completion record for ${buildVersion} does not match the ${update.environment} update destination`)
   }
 
-  const metadataFilename = desktopUpdateMetadataFilename(dshVersion, target.platform)
+  if (update.channel === 'latest' && buildVersion.includes('-')) throw new Error('desktop upload: latest requires a stable version')
+  const metadataFilename = desktopUpdateMetadataFilename(buildVersion, target.platform, update.channel)
   const metadataPath = join(artifactsRoot, metadataFilename)
   let metadataValue: unknown
   try {
@@ -211,47 +230,65 @@ export async function createDesktopUploadPlan(
   }
   const metadata = object(metadataValue, metadataFilename)
   const metadataVersion = stringField(metadata.version, `${metadataFilename}.version`)
-  if (metadataVersion !== dshVersion) {
-    throw new Error(`desktop upload: ${metadataFilename} version ${metadataVersion} does not match current dsh version ${dshVersion}`)
+  if (metadataVersion !== buildVersion) {
+    throw new Error(`desktop upload: ${metadataFilename} version ${metadataVersion} does not match published version ${buildVersion}`)
   }
   if (!Array.isArray(metadata.files) || metadata.files.length !== 1) {
     throw new Error(`desktop upload: ${metadataFilename}.files must contain exactly one target update file`)
   }
 
-  const base = `deepseek-harness-${dshVersion}-${target.os}-${target.arch}`
+  const base = `deepseek-harness-${buildVersion}-${target.os}-${target.arch}`
   const updaterExtension = target.platform === 'darwin' ? 'zip' : 'exe'
   const updaterInfo = updateFileInfo(metadata.files[0], `${metadataFilename}.files[0]`, `${base}.${updaterExtension}`)
   const updaterPath = await verifyChecksummedArtifact(artifactsRoot, updaterInfo)
   const artifacts: DesktopUploadArtifact[] = []
+  const binaryPrefix = update.binaryKeyPrefix
+  let installerArtifact: DesktopUploadArtifact
 
   if (target.platform === 'darwin') {
     const dmgPath = await requireArtifact(artifactsRoot, `${base}.dmg`)
     const blockmapPath = await requireArtifact(artifactsRoot, `${base}.zip.blockmap`)
+    installerArtifact = uploadArtifact(dmgPath, binaryPrefix, 'application/x-apple-diskimage')
     artifacts.push(
-      uploadArtifact(dmgPath, update.keyPrefix, 'application/x-apple-diskimage'),
-      uploadArtifact(updaterPath, update.keyPrefix, 'application/zip'),
-      uploadArtifact(blockmapPath, update.keyPrefix, 'application/octet-stream'),
+      installerArtifact,
+      uploadArtifact(updaterPath, binaryPrefix, 'application/zip'),
+      uploadArtifact(blockmapPath, binaryPrefix, 'application/octet-stream'),
     )
   }
   else {
-    const blockMapSize = object(metadata.files[0], `${metadataFilename}.files[0]`).blockMapSize
-    numberField(blockMapSize, `${metadataFilename}.files[0].blockMapSize`)
-    artifacts.push(uploadArtifact(
+    const blockmapPath = await requireArtifact(artifactsRoot, `${base}.exe.blockmap`)
+    installerArtifact = uploadArtifact(
       updaterPath,
-      update.keyPrefix,
+      binaryPrefix,
       'application/vnd.microsoft.portable-executable',
-    ))
+    )
+    artifacts.push(installerArtifact)
+    artifacts.push(uploadArtifact(blockmapPath, binaryPrefix, 'application/octet-stream'))
   }
 
-  artifacts.push(uploadArtifact(metadataPath, update.keyPrefix, 'application/yaml', true))
+  const payloadUrl = `${update.origin}/${binaryPrefix}/${updaterInfo.filename}`
+  const published = {
+    ...metadata,
+    files: [{ ...object(metadata.files[0], `${metadataFilename}.files[0]`), url: payloadUrl }],
+    ...(metadata.path === undefined ? {} : { path: payloadUrl }),
+  }
+  const channelArtifact = {
+    ...uploadArtifact(metadataPath, update.keyPrefix, 'application/yaml', true),
+    contents: dump(published),
+  }
+  artifacts.push(channelArtifact)
+  const latestFilename = `dsh-latest-${target.platform === 'darwin' ? 'macos' : 'windows'}-${target.arch}.${target.platform === 'darwin' ? 'dmg' : 'exe'}`
+  const latestKey = `desktop/${latestFilename}`
   return {
     environment: update.environment,
     target: targetName,
-    version: dshVersion,
-    publicUrl: update.publicUrl,
+    version: buildVersion,
+    publicUrl: options.latest ? `${update.origin}/${latestKey}` : update.publicUrl,
     bucket: update.bucket,
     secretIdEnvName: update.secretIdEnvName,
     secretKeyEnvName: update.secretKeyEnvName,
-    artifacts,
+    artifacts: options.latest ? [{ ...installerArtifact, filename: latestFilename, key: latestKey }] : artifacts,
+    ...typeof buildRecord.commit === 'string' ? { commit: buildRecord.commit } : {},
+    ...typeof buildRecord.dirty === 'boolean' ? { dirty: buildRecord.dirty } : {},
   }
 }

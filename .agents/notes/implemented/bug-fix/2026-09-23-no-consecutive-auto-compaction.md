@@ -14,7 +14,7 @@ The basic backend permits an automatic compaction only when no earlier compactio
 
 Pressure compaction performs one bounded pass and returns to the model even if pressure remains above threshold. The legacy `compactionRetries` setting remains accepted but cannot authorize consecutive automatic passes. Explicit `/compact` maintenance retains its bounded multi-pass behavior because the user requested that operation directly.
 
-The [first-chunk recovery](../feature/2026-08-27-fork-llm-first-chunk-compaction.md) still compacts once and follows up after durable progress. When the backend declines another compaction, the timeout delegates to normal retries and cooldown. Reaching the first-chunk plugin's own compaction ceiling also delegates instead of vetoing recovery. The [half-window pressure policy](2026-09-08-half-window-and-forced-timeout-compaction.md) remains unchanged; these earlier decisions are only partially superseded.
+The [first-chunk recovery](../feature/2026-08-27-fork-llm-first-chunk-compaction.md) still compacts once and follows up after durable progress. When the backend declines another compaction, the timeout delegates to normal retries and cooldown. Reaching the first-chunk plugin's own compaction ceiling also delegates instead of vetoing recovery. Pressure thresholds follow the configured target policy; these earlier decisions are only partially superseded.
 
 ## Alternatives considered
 
@@ -28,4 +28,4 @@ The [first-chunk recovery](../feature/2026-08-27-fork-llm-first-chunk-compaction
 
 Automatic compaction cannot repeatedly rewrite the same checkpoint without an intervening assistant response. A still-oversized request may need explicit manual compaction, rather than silently performing several automatic passes. Provider retries inside a single compaction remain cancellable and unbounded after cooldown; this change does not impose a total compaction deadline.
 
-Regression coverage checks pressure and forced overflow, direct region execution, restored sessions, failed compactions, continuation messages, and re-enabling after a committed response. The headless recorded-session scenario exercises one compaction followed by twenty first-chunk retries, cooldown, and a successful answer without another compaction.
+Regression coverage checks pressure and forced overflow, direct region execution, restored sessions, failed compactions, continuation messages, and re-enabling after a committed response. The headless recorded-session scenario exercises one compaction followed by repeated first-chunk retries and a successful answer without another compaction.

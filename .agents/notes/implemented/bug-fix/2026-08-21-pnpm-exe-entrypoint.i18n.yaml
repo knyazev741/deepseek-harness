@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-21-pnpm-exe-entrypoint.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-21-pnpm-exe-entrypoint.md
-2026-08-21-pnpm-exe-entrypoint.md: cd7f4fe4ef9dd339caebf04b8ad49af10d72b4cf
-2026-08-21-pnpm-exe-entrypoint.zh.md: b879c8d24963281af5b0ab1b22bdd8c070a814ce
+/agent-note-pnpm-11-native-entrypoint-spawn:
+  en: d34daf43971897d1
+  zh: 13e412e9a05ab27e
+/agent-note-pnpm-11-native-entrypoint-spawn/problem:
+  en: c40a06eedaea5908
+  zh: 7e2f25df143124cf
+/agent-note-pnpm-11-native-entrypoint-spawn/decision:
+  en: a44c54ddc25f6106
+  zh: fce2c4d9ac2ed3f3
+/agent-note-pnpm-11-native-entrypoint-spawn/alternatives-considered:
+  en: 0e4b33e217f1eab8
+  zh: 761ed24d5b4d0a92
+/agent-note-pnpm-11-native-entrypoint-spawn/consequences:
+  en: 52f83ce65a902c25
+  zh: 9525180ca7a10b34
+/agent-note-pnpm-11-native-entrypoint-spawn/testing:
+  en: 27c9f81fe7b10561
+  zh: 7526a25e45477247

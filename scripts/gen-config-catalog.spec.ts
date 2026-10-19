@@ -4,7 +4,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { collectConfigCatalog } from './gen-config-catalog.ts'
+import { collectConfigCatalog, render, type CatalogEntry } from './gen-config-catalog.ts'
+import { computeTranslationPairingRecord, translationPairPaths } from './translation-pairing-record.ts'
+import { generatedRegions } from './translation-pairing.ts'
 
 const roots: string[] = []
 const sharedSchema = `
@@ -66,6 +68,22 @@ describe('shared config schema catalog', () => {
     expect(new Set(provider?.schemaKeys)).toEqual(new Set(['mode', 'headless', 'endpoint']))
     expect(provider?.configTypeName).toBe('Config')
     expect(provider?.pastes?.[0]?.text).toBe('export type Config = BrowserConfig')
+  })
+
+  it.each([false, true])('checks package-local schema imports and undeclared fields (invalid=%s)', (invalid) => {
+    const { root, write } = fixture()
+    write('packages/test/provider/src/config.ts', invalid
+      ? sharedSchema.replace('headless: Schema.boolean()', 'headless: Schema.boolean(), hidden: Schema.string()')
+      : sharedSchema)
+    write('packages/test/provider/src/index.ts', `
+import { Shared, type BrowserConfig } from './config.ts'
+export type Config = BrowserConfig
+export const Config = Shared
+export function apply(ctx: unknown, config: Config): void {}
+`)
+    if (invalid) expect(() => collectConfigCatalog(root)).toThrow("schema validates key 'hidden'")
+    else expect(new Set(collectConfigCatalog(root).find(entry => entry.pkg === '@test/provider')?.schemaKeys))
+      .toEqual(new Set(['mode', 'headless', 'endpoint']))
   })
 
   it('rejects a schema field absent from the shared config type', () => {
@@ -135,5 +153,43 @@ export const Shared = makeSchema()
 export const Shared = Schema.union([MissingSchema])
 `)
     expect(() => collectConfigCatalog(root)).toThrow("schema alias 'MissingSchema' must name a const or named value import")
+  })
+})
+
+describe('config catalog rendering', () => {
+  const entries = (inject: string[]): CatalogEntry[] => [
+    {
+      pkg: '@knyazevai/dsh-demo',
+      dir: 'packages/demo/demo',
+      entry: 'packages/demo/demo/src/index.ts',
+      kind: 'config',
+      inject,
+      pastes: [{ text: 'export interface DemoConfig {}', source: 'packages/demo/demo/src/index.ts:3' }],
+    },
+    { pkg: '@knyazevai/dsh-plain', dir: 'packages/demo/plain', entry: 'packages/demo/plain/src/index.ts', kind: 'no-config', inject },
+  ]
+  const paths = translationPairPaths('docs/config-catalog.md')
+  const record = (inject: string[]) => computeTranslationPairingRecord(
+    paths,
+    render(entries(inject), 'en'),
+    render(entries(inject), 'zh'),
+    { repoRoot: process.cwd(), isTranslationPairSource: () => false },
+  )
+
+  it('keeps package data in generated regions shared by both languages', () => {
+    const en = generatedRegions(render(entries(['jobs']), 'en')).map(region => region.text)
+    expect(en.map(region => region.split('\n')[0])).toEqual([
+      '<!-- BEGIN GENERATED config-catalog:@knyazevai/dsh-demo -->',
+      '<!-- BEGIN GENERATED config-catalog:no-config -->',
+      '<!-- BEGIN GENERATED config-catalog:seam -->',
+      '<!-- BEGIN GENERATED config-catalog:library -->',
+    ])
+    expect(generatedRegions(render(entries(['jobs']), 'zh')).map(region => region.text)).toEqual(en)
+    expect(en[0]).toContain('- `inject`: `jobs`')
+  })
+
+  it('leaves the consistency record unchanged when only package data changes', () => {
+    expect(record(['jobs', 'typert'])).toEqual(record(['jobs']))
+    expect([...record(['jobs']).keys()].some(key => key.includes('dsh-demo'))).toBe(false)
   })
 })

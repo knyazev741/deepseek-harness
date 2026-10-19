@@ -4,6 +4,7 @@
  *
  * @module @knyazevai/dsh-agent-loop
  */
+import type { Volatile } from '@deepseek-ai/cosmokit'
 
 import { Context, FiberState, Service } from '@deepseek-ai/cordis'
 import { randomUUID } from 'node:crypto'
@@ -22,7 +23,6 @@ import type {
   TurnBoundaryProjection,
 } from '@knyazevai/dsh-agent'
 import { errorChain, ReasoningEffortId } from '@knyazevai/dsh-llm'
-import type {} from '@knyazevai/dsh-settings'
 import { interruptedTurnClosers, SessionLogOffset, SessionPreparation, SessionSeq } from '@knyazevai/dsh-session'
 import type { Session, SessionHeader, SessionId } from '@knyazevai/dsh-session'
 import type {} from '@knyazevai/dsh-system-prompt'
@@ -32,7 +32,9 @@ import type { ProjectionDefinition } from '@knyazevai/dsh-session-projection'
 import { SessionPersistenceNotFoundError } from '@knyazevai/dsh-session-persistence'
 import type { SessionHandle, SessionPersistence } from '@knyazevai/dsh-session-persistence'
 import { ReactLoopAgent } from './agent.ts'
+import { inboxProjectionDefinition } from './inbox.ts'
 import { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from './constants.ts'
+import type {} from './runtime-context.ts'
 
 /** Fiber states that cannot own or serve a new lifecycle. */
 const INACTIVE_STATES: ReadonlySet<FiberState> = new Set([
@@ -92,6 +94,12 @@ export const turnBoundaryProjectionDefinition = {
   },
 } satisfies ProjectionDefinition<'turnBoundary', TurnBoundaryProjection>
 
+/** Re-throw one collected failure as itself, or several as one `AggregateError`. */
+function throwCollectedFailures(failures: readonly unknown[], message: string): void {
+  if (failures.length === 1) throw failures[0]
+  if (failures.length > 1) throw new AggregateError(failures, message)
+}
+
 /** Factory-level ownership: live agent teardowns plus config startup work. */
 class FactoryOwnership {
   private accepting = true
@@ -138,10 +146,15 @@ class FactoryOwnership {
     this.accepting = false
     this.teardown.abort(new Error('agent loop is not active'))
     this.inactive.resolve()
-    await Promise.all([
+    const settlements = await Promise.allSettled([
       ...[...this.liveAgents].map(dispose => dispose()),
       ...this.startupTasks,
     ])
+    const failures: unknown[] = []
+    for (const result of settlements) {
+      if (result.status === 'rejected') failures.push(result.reason)
+    }
+    throwCollectedFailures(failures, 'agent loop disposal failed')
   }
 }
 
@@ -183,15 +196,6 @@ async function raceAbortCall<T>(
     }
     throw error
   }
-}
-
-/** Resolve the deployment-wide scheduler cap at the owning config boundary. */
-function resolveMaxParallelToolCalls(value: number | undefined): number {
-  const maxParallelToolCalls = value ?? DEFAULT_MAX_PARALLEL_TOOL_CALLS
-  if (!Number.isInteger(maxParallelToolCalls) || maxParallelToolCalls < 1) {
-    throw new Error('maxParallelToolCalls must be a positive integer')
-  }
-  return maxParallelToolCalls
 }
 
 /** Reject an output-token cap that cannot be represented exactly on the request wire. */
@@ -295,31 +299,13 @@ function applyLauncherIdentities(
   })
 }
 
-/** Settings namespace carrying the tool-call parallelism a user owns. */
-export const AGENT_LOOP_SETTINGS_NAMESPACE = 'agent-loop'
-
-/**
- * The agent-loop fields a user owns. Deliberately a strict subset of
- * {@link Config}: `agents` is a boot-time composition array consumed once when
- * the service starts, so a stored change could only look like it had an effect.
- */
-export interface AgentLoopSettings {
-  /** Maximum parallel-safe calls in flight per agent step. */
-  maxParallelToolCalls: number
-}
-
-/** Schema of the agent-loop settings section. */
-export const AGENT_LOOP_SETTINGS_SCHEMA: z<AgentLoopSettings> = z.object({
-  maxParallelToolCalls: z.number().step(1).min(1).default(DEFAULT_MAX_PARALLEL_TOOL_CALLS),
-})
-
 /** Agent-loop plugin configuration. */
 export interface Config {
   /**
    * Maximum parallel-safe calls in flight per agent step. `1` is serial;
    * omission defaults to {@link DEFAULT_MAX_PARALLEL_TOOL_CALLS}.
    */
-  maxParallelToolCalls?: number
+  maxParallelToolCalls: Volatile<number>
   /** Agents created or resumed at plugin startup. */
   agents: (AgentOptions & {
     /** Stable config label used in logs and as the fresh combined-id prefix. */
@@ -332,9 +318,6 @@ export interface Config {
     resumeSessionId?: SessionId
   })[]
 }
-
-/** Agent-loop configuration after defaults and load-time validation. */
-type ResolvedConfig = Config & { maxParallelToolCalls: number }
 
 /** Reject self-contained identity conflicts before any configured agent starts. */
 function validateConfiguredAgents(agents: Config['agents']): void {
@@ -359,8 +342,8 @@ export class AgentLoop extends Service implements AgentFactory {
   static inject = ['agents', 'sessions', 'llm', 'tools', 'systemPrompt', 'sessionProjections']
 
   /** Runtime schema for declarative agents. */
-  static Config = z.object({
-    maxParallelToolCalls: z.number().step(1).min(1).default(DEFAULT_MAX_PARALLEL_TOOL_CALLS),
+  static Config: z<{ agents?: Config['agents']; maxParallelToolCalls?: number }, Config> = z.object({
+    maxParallelToolCalls: z.number().step(1).min(1).default(DEFAULT_MAX_PARALLEL_TOOL_CALLS).volatile(),
     agents: z.array(z.object({
       id: z.string().required(),
       sessionId: z.string().min(1),
@@ -371,10 +354,10 @@ export class AgentLoop extends Service implements AgentFactory {
       cwd: z.string(),
       resumeSessionId: z.string(),
     })).default([]),
-  }) as z<Config>
+  }) as z<{ agents?: Config['agents']; maxParallelToolCalls?: number }, Config>
 
   /** Validated configuration owned by the agent-loop service. */
-  readonly config: ResolvedConfig
+  readonly config: Config
   private readonly ownership: FactoryOwnership
   /** Plain holder prevents Cordis from re-tracing the factory's dependency context through a caller shadow. */
   private readonly runtime: { ctx: Context }
@@ -382,44 +365,29 @@ export class AgentLoop extends Service implements AgentFactory {
   constructor(ctx: Context, config: Config) {
     super(ctx, 'agentLoop')
 
-    const entry: AgentLoopSettings = {
-      maxParallelToolCalls: resolveMaxParallelToolCalls(config.maxParallelToolCalls),
-    }
-    let source: () => AgentLoopSettings = () => entry
     this.config = {
-      ...config,
       agents: applyLauncherIdentities(config.agents, ctx.get(CONFIGURED_AGENT_IDENTITIES_KEY)),
-      // Read through on every scheduler decision: `tool-calls.ts` destructures
-      // this at the start of each group, so a committed change caps the next
-      // group without disturbing the one in flight.
-      get maxParallelToolCalls() {
-        return source().maxParallelToolCalls
-      },
+      maxParallelToolCalls: config.maxParallelToolCalls,
     }
-    ctx.inject(['settings'], (settingsCtx) => {
-      settingsCtx.settings.installSection(ctx, AGENT_LOOP_SETTINGS_NAMESPACE, AGENT_LOOP_SETTINGS_SCHEMA, entry, {
-        // The schema admits any integer above zero; `resolveMaxParallelToolCalls`
-        // owns the whole rule, so refusing here keeps the running scheduler on
-        // its last good cap instead of failing at the next tool group.
-        validate: value => void resolveMaxParallelToolCalls(value.maxParallelToolCalls),
-        setSource: (current) => {
-          source = current
-        },
-        // Nothing is derived from the cap: the getter above is the only reader.
-        onChange: () => {},
-      })
-    })
     validateConfiguredAgents(this.config.agents)
     // Register only after every config validation above has passed, so a
     // rejected constructor leaves no projection unit behind.
-    ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
-    this.ownership = new FactoryOwnership(ctx.fiber)
+    const ownership = this.ownership = new FactoryOwnership(ctx.fiber)
     this.runtime = { ctx }
-    ctx.effect(() => () => this.ownership.dispose(), 'agentLoop.transactions()')
+    ctx.effect(function* () {
+      const unregisterTurnBoundary = ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
+      yield unregisterTurnBoundary
+      const unregisterInbox = ctx.sessionProjections.register(inboxProjectionDefinition)
+      yield unregisterInbox
+      // Cordis skips later disposers after a rejection; finally still releases projections.
+      yield () => ownership.dispose().finally(() => {
+        unregisterInbox()
+        unregisterTurnBoundary()
+      })
+    }, 'agentLoop.transactions()')
     ctx.effect(() => ctx.agents.setFactory(this), 'agentLoop.setFactory()')
     ctx.systemPrompt.variable('provider', context => context.agent?.options.provider)
     ctx.systemPrompt.variable('model', context => context.agent?.options.model)
-    ctx.systemPrompt.variable('cwd', context => context.agent?.session.header.cwd)
 
     for (const { id, sessionId, cwd, resumeSessionId, ...options } of this.config.agents) {
       const meta = cwd === undefined ? {} : { cwd }
@@ -571,10 +539,12 @@ export class AgentLoop extends Service implements AgentFactory {
     let publication: ReturnType<typeof Promise.withResolvers<void>> | undefined
     const machineReady = Promise.withResolvers<void>()
     // Reverse teardown, memoized so every racing owner awaits one quiescence:
-    // stop the machine, drain and close the session's write path, leave the
-    // registries, unwind the scope, release bookkeeping.
-    const dispose = (ownerTriggered = false): Promise<void> => (disposing ??= (async () => {
-      abort.abort(new Error(`agent "${id}" lifecycle disposed`))
+    // stop the machine, unwind the scope, drain and close the session's write
+    // path, leave the registries, release bookkeeping.
+    const teardown = (): Promise<void> => (disposing ??= (async () => {
+      abort.abort(new Error(this.ownership.isActive()
+        ? `agent "${id}" lifecycle disposed`
+        : 'agent loop is not active'))
       callerSignal?.removeEventListener('abort', onCallerAbort)
       this.ownership.signal.removeEventListener('abort', onFactoryTeardown)
       // Teardown failures are collected, never swallowed: registry, scope,
@@ -593,15 +563,19 @@ export class AgentLoop extends Service implements AgentFactory {
         if (machine !== undefined) {
           machine.cancel({ kind: 'disposed' })
           await machine.whenIdle()
-          await machine.scope.dispose()
         }
       } catch (error: unknown) {
         failures.push(error)
       }
-      // The loop above committed its closing events synchronously into the
-      // session; handle close drains them durably before releasing the write
-      // path. The close drain can be the first operation that surfaces a
-      // durability failure, so its error is retained, not logged away.
+      try {
+        await machine?.scope.dispose()
+      } catch (error: unknown) {
+        failures.push(error)
+      }
+      // Close drains events already routed into the handle. The backend's
+      // live-event listeners must stay mounted through driver shutdown to
+      // receive all closing events. A failed final drain is retained here
+      // rather than logged away.
       try {
         await handle?.close()
       } catch (error: unknown) {
@@ -612,26 +586,38 @@ export class AgentLoop extends Service implements AgentFactory {
         detachSession?.()
       } finally {
         untrack()
-        if (!ownerTriggered) await unfollowOwner()
       }
-      if (failures.length === 1) throw failures[0]
-      if (failures.length > 1) {
-        throw new AggregateError(failures, `agent "${id}" disposal failed`)
-      }
+      throwCollectedFailures(failures, `agent "${id}" disposal failed`)
     })())
-    const untrack = this.ownership.track(dispose)
+    let unfollowScope: (() => Promise<void> | void) | undefined
     let unfollowOwner: () => Promise<void> | void
+    const dispose = async (): Promise<void> => {
+      try {
+        await teardown()
+      } finally {
+        await Promise.all([unfollowOwner(), unfollowScope?.()])
+      }
+    }
+    const untrack = this.ownership.track(dispose)
     try {
       unfollowOwner = ownerCtx.effect(function* () {
-        machine = new ReactLoopAgent(loopCtx, id, options, session)
+        const created = machine = new ReactLoopAgent(loopCtx, id, options, session)
         machineReady.resolve()
-        yield machine.scope.rawDispose
-        yield () => {
-          // Owner disposal owns the same quiescence boundary. Its teardown skips
-          // unregistering this already-running owner effect from inside itself.
-          if (disposing !== undefined) return
+        // Adopt the scope on its original fiber so it cannot unload before teardown.
+        // A loop already unloading during minting owns the provisional scope itself.
+        if (!INACTIVE_STATES.has(loopCtx.fiber.state)) {
+          unfollowScope = loopCtx.effect(function* () {
+            yield created.scope.rawDispose
+            yield () => teardown()
+          }, `agentLoop.scope(${id})`)
+        }
+        yield async () => {
           abort.abort(new Error(`agent "${id}" setup aborted: owner disposed during setup`))
-          return dispose(true)
+          try {
+            await teardown()
+          } finally {
+            await unfollowScope?.()
+          }
         }
       }, `agentLoop.lifecycle(${id})`)
       /* v8 ignore start -- ctx.effect throws only on an inactive fiber, which assertActive() above already rejected */

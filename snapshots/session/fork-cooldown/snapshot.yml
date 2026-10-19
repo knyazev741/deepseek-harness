@@ -1,0 +1,10 @@
+version: 1
+scenario: fork-cooldown
+profile: headless
+composition: fork-cooldown
+recording: authored
+header:
+  class: fork-cooldown
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn

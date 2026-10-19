@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { provideWorkingDirectoryFixture, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, ToolCallId, type Message } from '@knyazevai/dsh-llm'
+import type { ContextFormed, MessageSource } from '@knyazevai/dsh-llm'
 import { createScope, type Scope } from '@knyazevai/dsh-scope'
 import {
   SESSION_FORMAT_VERSION, Session, SessionId, type SessionEvent, type UserMessage,
@@ -14,7 +16,20 @@ import AgentRegistry, { agentEvents, type Agent, type PreStepDecision } from '@k
 import SkillRegistry from '@knyazevai/dsh-skill'
 import * as SkillFileSystem from '@knyazevai/dsh-skill-filesystem'
 import * as toolSkill from '@knyazevai/dsh-tool-skill'
-import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
+
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'dsh-tool-skill': { kind: 'dsh-tool-skill' } & ContextFormed
+    'later-contribution': { kind: 'later-contribution' } & ContextFormed
+  }
+}
+
+type CheckpointSource = Extract<MessageSource, { readonly kind: 'compact-checkpoint' }>
+
+/** Build a typed checkpoint source for a skill projection fixture. */
+function checkpointSource(compactionId: string): CheckpointSource {
+  return { kind: 'compact-checkpoint', compactionId: compactionId as CheckpointSource['compactionId'] }
+}
 
 const testToolSignal = new AbortController().signal
 
@@ -38,6 +53,7 @@ async function writeSkill(root: string, name: string, description: string, body:
 
 async function setup(home: string, config: toolSkill.Config = {}): Promise<Context> {
   const ctx = new Context()
+  provideWorkingDirectoryFixture(ctx, home)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(AgentRegistry)
@@ -173,6 +189,7 @@ async function mintAgentScope(ctx: Context, subject: string | Agent): Promise<{ 
 describe('dsh-tool-skill', () => {
   it('registers the skill tool schema and removes it on dispose', async () => {
     const ctx = new Context()
+    provideWorkingDirectoryFixture(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(AgentRegistry)
@@ -261,7 +278,7 @@ describe('dsh-tool-skill', () => {
           ...decision.messages,
           createUserMessage({
             content: [{ type: 'text', text: 'later contribution' }],
-            source: { kind: 'plugin', plugin: 'later-contribution' },
+            source: { kind: 'later-contribution' },
           }),
         ],
       }
@@ -274,7 +291,7 @@ describe('dsh-tool-skill', () => {
         id: expect.any(String) as unknown,
         role: 'user',
         content: [{ type: 'text', text: 'later contribution' }],
-        source: { kind: 'plugin', plugin: 'later-contribution' },
+        source: { kind: 'later-contribution' },
       },
       {
         id: expect.any(String) as unknown,
@@ -534,7 +551,7 @@ describe('dsh-tool-skill', () => {
     }), { surfaceOp: 'append' })
     session.append('user/message', createUserMessage({
       content: catalogContent(['- `resumed-skill`: Resumed skill']),
-      source: { kind: 'plugin', plugin: 'dsh-tool-skill' },
+      source: { kind: 'dsh-tool-skill' },
     }), { surfaceOp: 'append' })
 
     await fireStep(ctx, agent, 1, 1)
@@ -628,7 +645,7 @@ describe('dsh-tool-skill', () => {
     if (initial === undefined) throw new Error('expected initial catalog')
     session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'compacted history' }],
-      source: { kind: 'plugin', plugin: 'compact' },
+      source: checkpointSource('skill-compaction'),
     }), {
       surfaceOp: { op: 'replace', startSeq: initial.seq, endSeq: initial.seq },
       sourceEventSeqs: [initial.seq],
@@ -774,6 +791,7 @@ describe('dsh-tool-skill', () => {
   it('validates the catalog description cap', async () => {
     const home = await tempDir('tool-invalid-catalog-cap')
     const ctx = new Context()
+    provideWorkingDirectoryFixture(ctx, home)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(AgentRegistry)

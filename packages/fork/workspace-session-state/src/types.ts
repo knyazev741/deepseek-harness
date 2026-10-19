@@ -4,11 +4,11 @@
 
 import type { SessionId } from '@knyazevai/dsh-session/types'
 
-/** Ordered global pin list and its Settings descriptor revision. */
+/** Ordered global pin list and its process-local observed revision. */
 export interface ForkWorkspaceSessionStateView {
-  /** Monotonic revision of the raw Settings section used for this view. */
+  /** Process-local revision of the observed native pin list; resets on restart. */
   readonly revision: number
-  /** Session ids pinned in insertion order. */
+  /** Session ids in native Workspace pin order. */
   readonly pinnedSessionIds: readonly SessionId[]
 }
 
@@ -34,7 +34,7 @@ export interface ForkWorkspaceSessionStateSetPinnedInput {
   readonly sessionId: SessionId
   /** Whether the session should be present in the pin list. */
   readonly pinned: boolean
-  /** Settings descriptor revision observed by the caller. */
+  /** process-local observed revision observed by the caller. */
   readonly expectedRevision: number
 }
 

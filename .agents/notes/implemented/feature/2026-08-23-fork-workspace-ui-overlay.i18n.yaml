@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-23-fork-workspace-ui-overlay.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-23-fork-workspace-ui-overlay.md
-2026-08-23-fork-workspace-ui-overlay.md: 34b2b036a324540afeaef5a65e5d72257a986325
-2026-08-23-fork-workspace-ui-overlay.zh.md: cf8a15c6efa9274659713ecbc8bb722554569bbb
+/agent-note-fork-workspace-ui-overlay-state-and-lifecycle:
+  en: 50901b11ad00fddc
+  zh: a4c693133f27d00e
+/agent-note-fork-workspace-ui-overlay-state-and-lifecycle/problem:
+  en: dba1fa1b08264e79
+  zh: a0ea1e4dff982e64
+/agent-note-fork-workspace-ui-overlay-state-and-lifecycle/decision:
+  en: fce68324c3556621
+  zh: 93d0e8e097aec6e4
+/agent-note-fork-workspace-ui-overlay-state-and-lifecycle/alternatives-considered:
+  en: b11b9cfd24de793c
+  zh: c3cf9534cb8cbb50
+/agent-note-fork-workspace-ui-overlay-state-and-lifecycle/consequences:
+  en: 2f984e00248ef38b
+  zh: ead2c52817ecc5b0

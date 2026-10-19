@@ -19,7 +19,6 @@
       config:
         maxMembers: 8
         maxTasks: 256
-        maxPendingMessagesPerMember: 64
         maxMessageBytes: 65536
         disposalTimeoutMs: 5000
 
@@ -28,3 +27,6 @@
       config:
         freshProvider: spawn
         forkProvider: fork
+
+    - id: ui-agent-team
+      name: '@knyazevai/dsh-experimental-client-ui-agent-team'

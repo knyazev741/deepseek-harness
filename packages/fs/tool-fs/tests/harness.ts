@@ -1,11 +1,12 @@
 import { Context } from '@deepseek-ai/cordis'
+import WorkingDirectory from '@knyazevai/dsh-working-directory'
 import type { Agent } from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import LocalFileSystem from '@knyazevai/dsh-fs-local'
 import * as FsPolicy from '@knyazevai/dsh-fs-observation-policy'
 import * as ToolFs from '@knyazevai/dsh-tool-fs'
-import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek'
+import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
 
 /**
  * Build the real fs-tool stack for with-key e2e tests. Agents have no session
@@ -18,6 +19,7 @@ export async function fsHarness(fsCwd: string, persona = ''): Promise<Context> {
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LlmDeepSeek)
   await ctx.plugin(LocalFileSystem, { cwd: fsCwd })
+  await ctx.plugin(WorkingDirectory, { defaultDirectory: fsCwd })
   await ctx.plugin(FsPolicy)
   await ctx.plugin(ToolFs)
   return ctx

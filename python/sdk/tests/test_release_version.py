@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import runpy
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -23,6 +24,18 @@ def test_repository_version_matches_root_package_json() -> None:
 
 def test_release_tag_is_optional_for_non_release_builds() -> None:
     build_python_release.validate_release_tag(None, "1.2.3")
+
+
+def test_wheel_verification_uses_distribution_metadata_not_nested_libraries(tmp_path: Path) -> None:
+    wheel = tmp_path / "sdk.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("nested/library.dist-info/WHEEL", "Tag: cp312-cp312-linux_x86_64\n")
+        archive.writestr("nested/library.dist-info/METADATA", "Name: library\nVersion: 0.0.1\n")
+        archive.writestr("deepseek_harness_sdk-1.2.3.dist-info/WHEEL", "Tag: py3-none-any\n")
+        archive.writestr("deepseek_harness_sdk-1.2.3.dist-info/METADATA",
+                         "Name: deepseek-harness-sdk\nVersion: 1.2.3\nLicense-Expression: MIT\n"
+                         "License-File: LICENSE\nRequires-Dist: deepseek-harness-runtime-bin==1.2.3\n")
+    build_python_release.verify_wheel(wheel, "sdk", "1.2.3", None)
 
 
 def test_release_tag_must_match_repository_version() -> None:
@@ -95,6 +108,19 @@ def test_stage_sdk_keeps_distribution_module_and_runtime_pin_distinct(tmp_path: 
     assert (destination / "src" / "deepseek_harness" / "__init__.py").is_file()
 
 
+def test_copy_package_omits_generated_carriers_before_staging_one_target(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    module = source / "src/deepseek_harness_runtime"
+    for path in ("runtime/macos-arm64/primary-runtime/runtime.json", "runtime/node/package.json",
+                 "runtime/deepseek-harness-sdk-runtime-win-x64.exe", "__init__.py", "_resources.py"):
+        file = module / path
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.touch()
+    destination = tmp_path / "staged"
+    build_python_release.copy_package(source, destination)
+    assert sorted(path.name for path in (destination / "src/deepseek_harness_runtime").iterdir()) == ["__init__.py", "_resources.py"]
+
+
 @pytest.mark.parametrize(
     ("target", "with_helper"),
     [("linux-x64", False), ("macos-arm64", True), ("macos-x64", True), ("win-x64.exe", False)],
@@ -119,6 +145,14 @@ def test_stage_runtime_copies_platform_payload(
         spawn_helper.write_bytes(b"helper")
         spawn_helper.chmod(0o755)
         expected[spawn_helper.name] = b"helper"
+    office = executable.parent / f"{executable.name.removesuffix('.exe')}-office"
+    office_asset = office / "node_modules" / "@deepseek-ai" / "libreoffice-kit-wasm" / "assets" / "soffice.data"
+    office_asset.parent.mkdir(parents=True)
+    office_asset.write_bytes(b"office data")
+    resources = executable.with_name(executable.name.removeprefix("deepseek-harness-sdk-runtime-").removesuffix(".exe"))
+    resource = resources / "office-skills/office-docx/SKILL.md"
+    resource.parent.mkdir(parents=True)
+    resource.write_text("# Word documents\n")
     destination = tmp_path / "staging"
 
     build_python_release.stage_runtime(destination, "1.2.3", executable, executable.name)
@@ -127,7 +161,10 @@ def test_stage_runtime_copies_platform_payload(
     assert {
         path.name: path.read_bytes()
         for path in runtime_dir.glob("deepseek-harness-sdk-runtime-*")
+        if path.is_file()
     } == expected
+    assert not (runtime_dir / office.name).exists()
+    assert (runtime_dir / resources.name / resource.relative_to(resources)).read_text() == "# Word documents\n"
     pyproject = (destination / "pyproject.toml").read_text()
     assert 'license = "MIT"' in pyproject
     assert 'license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]' in pyproject
@@ -152,3 +189,11 @@ def test_stage_runtime_rejects_a_noncanonical_executable_name(tmp_path: Path) ->
             executable,
             "deepseek-harness-sdk-runtime-win-x64.exe",
         )
+
+
+def test_wheel_verification_rejects_oversized_artifacts(tmp_path: Path) -> None:
+    wheel = tmp_path / "oversized.whl"
+    with wheel.open("wb") as output:
+        output.truncate(100_000_001)
+    with pytest.raises(RuntimeError, match="PyPI single-file limit"):
+        build_python_release.verify_wheel(wheel, "runtime", "1.2.3", ("win_amd64", "runtime.exe"))

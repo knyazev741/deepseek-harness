@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-api-gateway",
   "description": "Typert Remote Host dispatcher and Client API endpoint",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -20,14 +20,21 @@
     },
     "./client": {
       "types": "./lib/types/client/index.d.ts",
-      "default": "./lib/client.js"
+      "node": "./lib/client.node.js",
+      "browser": "./lib/client.browser.js",
+      "default": "./lib/client.browser.js"
     },
     "./types": {
       "types": "./lib/types/types.d.ts",
       "default": "./lib/types/types.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./stream-protocol": {
+      "types": "./lib/types/stream-protocol.d.ts",
+      "default": "./lib/types/stream-protocol.js"
+    },
+    "./locale/*.json": "./locale/*.json"
   },
   "dsh": {
     "client": {
@@ -44,31 +51,35 @@
     "watch": "tsdown --watch"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
-    "lib/client.js",
+    "lib/client.browser.js",
+    "lib/client.node.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "dependencies": {
-    "@knyazevai/dsh-deque": "workspace:^",
-    "@knyazevai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^",
-    "ws": "^8.21.0",
-    "@knyazevai/dsh-typert-protocol": "workspace:^"
+    "@knyazevai/dsh-deque": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "ws": "^8.21.3",
+    "@knyazevai/dsh-typert-protocol": "workspace:*"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-brand": "workspace:^",
-    "@knyazevai/dsh-client-connection": "workspace:^",
-    "@knyazevai/dsh-host-webserver": "workspace:^",
-    "@knyazevai/dsh-remote-mock": "workspace:^",
-    "@knyazevai/dsh-typert-registry": "workspace:^",
-    "@knyazevai/dsh-util-crypto": "workspace:^",
+    "@knyazevai/dsh-api-remote-access": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-cmdline": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-host-webserver": "workspace:*",
+    "@knyazevai/dsh-remote-mock": "workspace:*",
+    "@knyazevai/dsh-typert-registry": "workspace:*",
+    "@knyazevai/dsh-util-crypto": "workspace:*",
     "@types/ws": "^8.18.1",
-    "@deepseek-ai/cordis": "workspace:^",
-    "zod": "^4.4.3"
+    "@deepseek-ai/cordis": "workspace:~",
+    "zod": "4.4.3"
   }
 }

@@ -10,11 +10,13 @@
  * Real-`rg` behavior is pinned separately in integration.spec.ts.
  */
 
+import { provideWorkingDirectoryFixture } from '@knyazevai/dsh-agent-loop-testkit'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createScope, type Scope } from '@knyazevai/dsh-scope'
 import { join, sep } from 'node:path'
 import { createUserMessage, ToolCallId } from '@knyazevai/dsh-llm'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
 import SystemPrompt, { renderPrompt } from '@knyazevai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH, type ToolExecution, type ToolExecutionToken } from '@knyazevai/dsh-tools'
 import { SubprocessRuntime } from '@knyazevai/dsh-subprocess'
@@ -39,6 +41,12 @@ import {
   sampleAcrossTopLevel,
   toWorkdirRelative,
 } from '@knyazevai/dsh-tool-fs-search'
+
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+  }
+}
 
 const testToolSignal = new AbortController().signal
 
@@ -191,6 +199,7 @@ const DEFAULT_CONFIG = { sampleOverCapGlobResults: true } satisfies ToolFsSearch
 
 async function setup(options: SetupOptions = {}) {
   const ctx = new Context()
+  provideWorkingDirectoryFixture(ctx)
   const warnings: string[] = []
   ctx.logger.warn = ((message: unknown) => { warnings.push(String(message)) }) as typeof ctx.logger.warn
   await ctx.plugin(SystemPrompt)
@@ -243,14 +252,13 @@ describe('registration', () => {
     const prompt = renderPrompt(await ctx.systemPrompt.assemble())
     expect(prompt).toContain('Use the glob tool')
     expect(prompt).toContain('Use the grep tool')
-    expect(prompt).toContain('sampled across top-level entries')
-    expect(prompt).not.toContain('sampled across top-level directories')
     const glob = ctx.tools.schemas().find(schema => schema.name === 'glob')
     expect(glob?.description).toContain('sampled across top-level entries')
   })
 
   it('stays pending until ctx.subprocess exists (inject)', async () => {
     const ctx = new Context()
+    provideWorkingDirectoryFixture(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(ToolFsSearch, DEFAULT_CONFIG) // no subprocess service
@@ -281,11 +289,8 @@ describe('registration', () => {
 
   it('describes the modification-time head when over-cap sampling is disabled', async () => {
     const { ctx } = await setup({ config: { sampleOverCapGlobResults: false } })
-    const prompt = renderPrompt(await ctx.systemPrompt.assemble())
-    expect(prompt).toContain('a larger one keeps the modification-time-ordered head')
-    expect(prompt).not.toContain('sampled across top-level entries')
     const glob = ctx.tools.schemas().find(schema => schema.name === 'glob')
-    expect(glob?.description).toContain('a larger result returns the first 100 paths in modification-time order')
+    expect(glob?.description).toContain('Returns up to 100 paths in modification-time order; a larger result keeps the first paths')
     expect(glob?.description).not.toContain('sampled across top-level entries')
   })
 })
@@ -309,6 +314,7 @@ describe('config validation', () => {
     ['timeoutMs', { timeoutMs: -100 }],
   ] as const)('rejects a non-positive or fractional %s at load', async (name, config) => {
     const ctx = new Context()
+    provideWorkingDirectoryFixture(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeSubprocess)
@@ -317,6 +323,7 @@ describe('config validation', () => {
 
   it('rejects a grace beyond the Node timer range at load', async () => {
     const ctx = new Context()
+    provideWorkingDirectoryFixture(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(FakeSubprocess)
@@ -765,7 +772,7 @@ describe('glob results', () => {
     ctx.on('tools/post-execute', async () => ({
       kind: 'accept',
       additionalContexts: [createUserMessage({
-        content: [{ type: 'text', text: 'glob context' }], source: { kind: 'plugin', plugin: 'test' },
+        content: [{ type: 'text', text: 'glob context' }], source: { kind: 'test' },
       })],
     }))
     subprocess.handler = () => runResult('a.ts\nb.ts\nc.ts\nd.ts\n')
@@ -977,7 +984,7 @@ describe('grep results', () => {
     ctx.on('tools/post-execute', async () => ({
       kind: 'accept',
       additionalContexts: [createUserMessage({
-        content: [{ type: 'text', text: 'grep context' }], source: { kind: 'plugin', plugin: 'test' },
+        content: [{ type: 'text', text: 'grep context' }], source: { kind: 'test' },
       })],
     }))
     subprocess.handler = () => runResult([
@@ -1155,7 +1162,7 @@ describe('presentation', () => {
     expect(view).toEqual({ card: 'search', shape: 'paths', paths: ['a.ts', 'b.ts'], truncated: true, total: 3 })
   })
 
-  it('nested Code dispatch computes no meta, so presentResult falls back to the generic card', async () => {
+  it('nested Code dispatch projects search metadata into the search card', async () => {
     const { ctx, subprocess } = await setup()
     subprocess.handler = () => runResult(`${matchLine('a.ts', 1, 'one')}\n`)
     const result = await call(ctx, 'grep', { pattern: 'o' }, {
@@ -1163,8 +1170,19 @@ describe('presentation', () => {
       parent: Symbol('run_code') as ToolExecutionToken,
     })
     if (result.isError) throw new Error('expected grep success')
-    expect(result.meta).toBeUndefined()
-    expect(presentGrepResult({ pattern: 'o' }, result)).toBeUndefined()
+    expect(result.meta).toEqual({
+      shape: 'matches',
+      files: [{ path: 'a.ts', matches: [{ lineNumber: 1, line: 'one' }] }],
+      truncated: false,
+      total: 1,
+    })
+    expect(presentGrepResult({ pattern: 'o' }, result)).toEqual({
+      card: 'search',
+      shape: 'matches',
+      files: [{ path: 'a.ts', matches: [{ lineNumber: 1, line: 'one' }] }],
+      truncated: false,
+      total: 1,
+    })
   })
 
   it('presentResult returns undefined for a failed result and for the other tool’s meta shape', () => {
@@ -1221,8 +1239,7 @@ async function guidanceScope(ctx: Context) {
 }
 
 const originalSearchGuidance = {
-  glob: 'Use the glob tool — not shell find — to discover files by path pattern. A pattern with no "/" matches basenames at any depth, so "*" matches every file in the tree rather than its top level. '
-      + 'Results are files only, never directories, and include hidden and ignored files: a result that fits comes back in modification-time order, while a larger one is sampled across top-level entries, so it spans the tree instead of one subtree.',
+  glob: 'Use the glob tool — not shell find — to discover files by path pattern.',
   grep: 'Use the grep tool — not shell grep or rg — to search file contents. Use read on a matched file when you need surrounding context.',
 }
 

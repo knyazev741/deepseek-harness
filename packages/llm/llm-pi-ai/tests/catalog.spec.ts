@@ -1,23 +1,29 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { createUserMessage, ReasoningEffortId } from '@knyazevai/dsh-llm'
 import type { StreamChunk } from '@knyazevai/dsh-llm'
-import FileSettingsProvider from '@knyazevai/dsh-settings-file'
+import { liveConfig } from '../../../settings/settings/tests/live-config.ts'
+const configurations = new WeakMap<Context, Awaited<ReturnType<typeof liveConfig>>>()
 import * as LlmPiAi from '@knyazevai/dsh-llm-pi-ai'
 import { PiAiAdapter } from '@knyazevai/dsh-llm-pi-ai'
-import { getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
-import { createModels, getSupportedThinkingLevels } from '@earendil-works/pi-ai'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
+import { getAllBuiltinModels, getBuiltinModels, getBuiltinProviders } from '@earendil-works/pi-ai/providers/all'
+import { AssistantMessageEventStream } from '@earendil-works/pi-ai/utils/event-stream'
+import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript'
 import type { Api, Model, OpenAICompletionsCompat, Provider } from '@earendil-works/pi-ai'
+import { catalogModels, catalogProvider } from '../src/catalog.ts'
 import { resolveProfiles } from '../src/config.ts'
+import { createModels, createProvider, getSupportedThinkingLevels } from '../src/models.ts'
 import { buildProvider, supportedProtocols } from '../src/provider.ts'
 import { assemble } from './assemble.ts'
 import { memoryAuth } from './auth-double.ts'
 import { closeMockServers, mockServer, textEvents } from './mock-server.ts'
 
-const homes: string[] = []
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+  }
+}
 
 // Routes name their credential by reference; the value lives in the
 // environment, which is the layer the adapter falls back to without a
@@ -31,28 +37,18 @@ beforeEach(() => {
 afterEach(async () => {
   vi.unstubAllEnvs()
   await closeMockServers()
-  await Promise.all(homes.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 
-/** A throwaway $DSH_HOME with an empty settings document. */
-async function home(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-catalog-'))
-  homes.push(dir)
-  await writeFile(join(dir, 'settings.yaml'), '')
-  return dir
-}
-
-/** The dormant composition plus a real settings service, as the product mounts it. */
-async function bootWithSettings(dir: string, config: LlmPiAi.Config): Promise<Context> {
+/** The dormant composition with Loader-managed live Config. */
+async function bootWithSettings(config: LlmPiAi.Options): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(LlmRuntime)
-  await ctx.plugin(FileSettingsProvider, { path: join(dir, 'settings.yaml'), watch: false })
-  await ctx.plugin(LlmPiAi, config)
+  configurations.set(ctx, await liveConfig(ctx, LlmPiAi, config))
   return ctx
 }
 
 /** A complete hand-declared route: nothing about it exists in pi-ai's catalog. */
-function gateway(baseURL: string, overrides: Record<string, unknown> = {}): LlmPiAi.Config {
+function gateway(baseURL: string, overrides: Record<string, unknown> = {}): LlmPiAi.Options {
   return {
     providers: {
       'acme-gateway': {
@@ -67,7 +63,7 @@ function gateway(baseURL: string, overrides: Record<string, unknown> = {}): LlmP
   }
 }
 
-async function harness(config: LlmPiAi.Config): Promise<Context> {
+async function harness(config: LlmPiAi.Options): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(LlmRuntime)
   await ctx.plugin(LlmPiAi, config)
@@ -84,7 +80,7 @@ describe('hand-declared providers', () => {
       model: 'acme-large',
       messages: [createUserMessage({
         content: [{ type: 'text', text: 'hi' }],
-        source: { kind: 'plugin', plugin: 'test' },
+        source: { kind: 'test' },
       })],
     })
 
@@ -224,9 +220,8 @@ describe('hand-declared providers', () => {
     // The resolver-level cases above cannot see a break between the settings
     // document and `LlmModelInfo`, so each rung is asserted once more through
     // a written section, the plugin's own registration, and `ctx.llm`.
-    const dir = await home()
-    const ctx = await bootWithSettings(dir, {})
-    await ctx.settings.update('llm-pi-ai', {
+    const ctx = await bootWithSettings({})
+    await configurations.get(ctx)!.update({
       providers: {
         'acme-gateway': {
           api: 'openai-completions',
@@ -355,6 +350,28 @@ describe('hand-declared providers', () => {
     expect(() => buildProvider(spec)).toThrow(/cannot serve; supported protocols are/)
   })
 
+  it('delegates both stream methods from a static provider', () => {
+    const [model] = getBuiltinModels('deepseek')
+    if (model === undefined) throw new Error('the installed catalog ships no deepseek model')
+    const direct = new AssistantMessageEventStream()
+    const simple = new AssistantMessageEventStream()
+    const stream = vi.fn(() => direct)
+    const streamSimple = vi.fn(() => simple)
+    const provider = createProvider({
+      id: 'local',
+      name: 'Local',
+      models: [model],
+      auth: { apiKey: { name: 'Local', resolve: () => Promise.resolve({ auth: {}, source: 'Local' }) } },
+      api: { stream, streamSimple },
+    })
+    const context = normalizeContext({ messages: [] })
+
+    expect(provider.stream(model, context)).toBe(direct)
+    expect(provider.streamSimple(model, context)).toBe(simple)
+    expect(stream).toHaveBeenCalledOnce()
+    expect(streamSimple).toHaveBeenCalledOnce()
+  })
+
   it('leaves an unauthenticated route to its protocol rather than inventing a credential', async () => {
     const server = await mockServer([{ events: textEvents }])
     // Naming no credential is the deliberately unauthenticated posture — a
@@ -423,6 +440,49 @@ describe('hand-declared providers', () => {
 })
 
 describe('catalog routes with per-model configuration', () => {
+  it('keeps both Azure protocols under the azure catalog route', () => {
+    const provider = resolveProfiles({ azure: {} }).get('azure')?.piProvider
+    if (provider === undefined) throw new Error('the installed catalog ships no azure provider')
+    const models = provider.getModels()
+    const protocols = new Set(models.map(model => model.api))
+
+    expect(provider.id).toBe('azure')
+    expect(protocols).toContain('azure-openai-responses')
+    expect(protocols).toContain('openai-completions')
+    expect(models.every(model => model.provider === 'azure')).toBe(true)
+    expect(catalogProvider('azure-openai-responses')).toBeUndefined()
+  })
+
+  it('requires a protocol for an uncataloged model on the mixed Azure route', () => {
+    expect(() => resolveProfiles({ azure: { models: [{ id: 'private-deployment' }] } }))
+      .toThrow(/needs an api/)
+  })
+
+  it.each(['azure-openai-responses', 'openai-completions'])(
+    'sends Azure %s requests with the configured deployment name',
+    async (api) => {
+      const events = api === 'openai-completions' ? textEvents : [
+        '{"type":"response.created","response":{"id":"resp_azure"}}',
+        '{"type":"response.completed","response":{"id":"resp_azure","status":"completed","output":[],"usage":{"input_tokens":3,"output_tokens":1,"total_tokens":4}}}',
+      ]
+      const server = await mockServer([{ events }])
+      const provider = resolveProfiles({ azure: {} }).get('azure')!.piProvider!
+      const model = provider.getModels().find(model => model.api === api)!
+      const stream = provider.streamSimple(model, normalizeContext({ messages: [] }), {
+        apiKey: 'test-key',
+        env: {
+          AZURE_OPENAI_BASE_URL: server.url,
+          AZURE_OPENAI_API_VERSION: 'v1',
+          AZURE_OPENAI_DEPLOYMENT_NAME_MAP: `${model.id}=private-deployment`,
+        },
+      })
+
+      expect(await stream.result()).toMatchObject({ provider: 'azure', stopReason: 'stop' })
+      expect(server.requests).toEqual([expect.objectContaining({ model: 'private-deployment' })])
+      expect(server.paths).toEqual([api === 'openai-completions' ? '/chat/completions' : '/responses?api-version=v1'])
+    },
+  )
+
   it('serves the installed catalog untouched when the profile lists no models', async () => {
     const server = await mockServer([])
     const ctx = await harness({ providers: { deepseek: { baseURL: server.url } } })
@@ -530,7 +590,7 @@ describe('catalog routes with per-model configuration', () => {
     if (built === undefined) throw new Error('the deepseek route built no provider')
     const [model] = built.getModels()
     if (model === undefined) throw new Error('the deepseek route resolved no models')
-    const context = { messages: [{ role: 'user' as const, content: 'hi', timestamp: 0 }] }
+    const context = normalizeContext({ messages: [{ role: 'user', content: 'hi', timestamp: 0 }] })
 
     // `stream` is interface-required and unused by the harness adapter, which
     // only calls `streamSimple`; both must still reach the catalog provider.
@@ -981,9 +1041,8 @@ describe('compat switches', () => {
     // judged by this adapter's section validator before it is stored.
     // schemastery keeps the null, so nothing but that check stands between it
     // and `Model.compat`.
-    const dir = await home()
-    const ctx = await bootWithSettings(dir, {})
-    await expect(ctx.settings.update('llm-pi-ai', {
+    const ctx = await bootWithSettings({})
+    await expect(configurations.get(ctx)!.update({
       providers: {
         'acme-gateway': {
           api: 'openai-completions',
@@ -1000,9 +1059,8 @@ describe('compat switches', () => {
     // changes the request the provider receives, not merely the resolved model.
     vi.stubEnv(KEY_ENV, 'test-key')
     const server = await mockServer([{ events: textEvents }])
-    const dir = await home()
-    const ctx = await bootWithSettings(dir, {})
-    await ctx.settings.update('llm-pi-ai', {
+    const ctx = await bootWithSettings({})
+    await configurations.get(ctx)!.update({
       providers: {
         'acme-gateway': {
           apiKeyEnv: KEY_ENV,
@@ -1056,18 +1114,19 @@ describe('compat switches', () => {
   it('refuses a valueless compat key on a model entry too', () => {
     expect(() => resolveProfiles({
       deepseek: {
-        modelOverrides: { 'deepseek-v4-flash': { compat: { requiresReasoningContentOnAssistantMessages: null } } as never },
+        modelOverrides: { 'deepseek-flash': { compat: { requiresReasoningContentOnAssistantMessages: null } } as never },
       },
-    })).toThrow(/model "deepseek-v4-flash" sets compat "requiresReasoningContentOnAssistantMessages" with no value/)
+    })).toThrow(/model "deepseek-flash" sets compat "requiresReasoningContentOnAssistantMessages" with no value/)
   })
 
   it('serves the Responses compat type on every protocol pi-ai gives it to', () => {
     // pi-ai types azure-openai-responses and openai-codex-responses with the
     // same OpenAIResponsesCompat, so a switch settable on one is settable on all.
-    for (const route of ['azure-openai-responses', 'openai-codex']) {
+    for (const route of ['azure', 'openai-codex']) {
       const models = modelsOf({ [route]: { compat: { supportsDeveloperRole: false } } }, route)
-      const [first] = [...models.values()]
-      expect((first?.compat as { supportsDeveloperRole?: boolean }).supportsDeveloperRole).toBe(false)
+      const model = [...models.values()].find(model => model.api === (route === 'azure' ? 'azure-openai-responses' : 'openai-codex-responses'))
+      expect(model).toBeDefined()
+      expect(model?.compat).toMatchObject({ supportsDeveloperRole: false })
     }
   })
 
@@ -1113,7 +1172,7 @@ describe('resolution snapshots', () => {
       profiles: () => current,
       // Credential resolution is the real await inside a stream call, and the
       // window a configuration change has to land in.
-      resolveApiKey: async () => { await held; return 'k' },
+      resolveApiKey: async (provider) => { if (provider === 'deepseek') await held; return 'k' },
       auth: memoryAuth(),
     })
 
@@ -1121,7 +1180,7 @@ describe('resolution snapshots', () => {
     const inFlight = (async () => {
       for await (const chunk of adapter.stream({
         provider: 'deepseek',
-        model: 'deepseek-v4-flash',
+        model: 'deepseek-flash',
         messages: [],
       })) chunks.push(chunk)
     })()
@@ -1150,7 +1209,7 @@ describe('resolution snapshots', () => {
     })
     const drain = async (): Promise<void> => {
       for await (const _chunk of adapter.stream({
-        provider: 'deepseek', model: 'deepseek-v4-flash', messages: [],
+        provider: 'deepseek', model: 'deepseek-flash', messages: [],
       })) { /* drain */ }
     }
 
@@ -1165,15 +1224,14 @@ describe('resolution snapshots', () => {
 
 describe('configurable-provider directory', () => {
   it('keeps the previous directory when a route collides with another adapter family', async () => {
-    const dir = await home()
-    const ctx = await bootWithSettings(dir, {})
+    const ctx = await bootWithSettings({})
     ctx.llm.registerConfigurableProviders([
       { provider: 'deepseek-official', displayName: 'DeepSeek', settingsNs: 'llm-deepseek', settingsPath: [] },
     ])
     const before = ctx.llm.listConfigurableProviders().length
     expect(before).toBeGreaterThan(30)
 
-    await ctx.settings.update('llm-pi-ai', {
+    await configurations.get(ctx)!.update({
       providers: {
         'deepseek-official': {
           api: 'openai-completions',
@@ -1191,11 +1249,10 @@ describe('configurable-provider directory', () => {
   })
 
   it('replaces its entries atomically as declared routes come and go', async () => {
-    const dir = await home()
-    const ctx = await bootWithSettings(dir, {})
+    const ctx = await bootWithSettings({})
     const catalogOnly = ctx.llm.listConfigurableProviders().length
 
-    await ctx.settings.update('llm-pi-ai', {
+    await configurations.get(ctx)!.update({
       providers: {
         'acme-gateway': {
           displayName: 'Acme Gateway',
@@ -1209,7 +1266,7 @@ describe('configurable-provider directory', () => {
     expect(ctx.llm.listConfigurableProviders().find(entry => entry.provider === 'acme-gateway')?.displayName)
       .toBe('Acme Gateway')
 
-    await ctx.settings.replace('llm-pi-ai', {})
+    await configurations.get(ctx)!.replace({})
     expect(ctx.llm.listConfigurableProviders()).toHaveLength(catalogOnly)
   })
 
@@ -1224,11 +1281,29 @@ describe('configurable-provider directory', () => {
     expect(offered).toContain('openai-codex')
     expect(offered).toContain('anthropic')
     expect(offered).toContain('openai')
+    expect(offered).toContain('azure')
+    expect(offered).not.toContain('azure-openai-responses')
+  })
+
+  it('leaves out an installed catalog route that ships no chat model', async () => {
+    const ctx = await harness({})
+    const offered = ctx.llm.listConfigurableProviders().map(entry => entry.provider)
+
+    // The installed catalog ships `typesafe` with classifier models only; with
+    // nothing to dispatch a chat request to, the route is not offered and is
+    // not a catalog route anywhere else either.
+    expect(getBuiltinProviders()).toContain('typesafe')
+    expect(getAllBuiltinModels('typesafe').length).toBeGreaterThan(0)
+    expect(getBuiltinModels('typesafe')).toEqual([])
+    expect(offered).not.toContain('typesafe')
+    expect(catalogProvider('typesafe')).toBeUndefined()
+    expect(catalogModels('typesafe').size).toBe(0)
   })
 
   it('lists a route a stored profile names as a catalog route, not a declared one', async () => {
     // `declared` answers catalog membership, so a profile stored against a
-    // route pi-ai ships is not mislabelled as one this deployment invented.
+    // route pi-ai ships is not mislabelled as one this deployment invented,
+    // and it keeps the catalog's endpoint and OAuth-only native auth.
     const ctx = await harness({ providers: { 'openai-codex': { apiKeyEnv: KEY_ENV } } })
 
     expect(ctx.llm.listConfigurableProviders()).toContainEqual({
@@ -1237,6 +1312,8 @@ describe('configurable-provider directory', () => {
       settingsNs: 'llm-pi-ai',
       settingsPath: ['providers', 'openai-codex'],
       declared: false,
+      defaultBaseURL: 'https://chatgpt.com/backend-api',
+      nativeAuth: { env: [], oauth: true },
     })
   })
 })

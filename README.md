@@ -42,11 +42,13 @@ pnpm dsh web
 
 An existing profile may still own `providers.knyazev-ai.models` in `settings.yaml`; that user array replaces the bundle catalog and is intentionally not rewritten by `git pull`. After updating, open **Settings → Models → KnyazevAI API**, choose **Fetch available models**, keep the suggested repairs selected, then choose **Adopt** and **Apply**. This restores reasoning metadata without overwriting tuned capacities. Remove any saved `kimi-2.6` row manually because the live API no longer publishes it.
 
+To use the current official Flash model ([DeepSeek-V4.1-Flash-1017](https://api-docs.deepseek.com/updates)), save your official API key in **Settings → Models → DeepSeek**, then select **DeepSeek-V4.1-Flash** for a new session. This route uses `deepseek-official/deepseek-flash` and supports images and `off`, `low`, `high`, and `max` reasoning. The KnyazevAI route keeps its own published model ids and capacities.
+
 ## Community and support
 
 - Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
 - Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
+- Join <a href="https://discord.gg/4MrtZUhpxg">DeepSeek Harness Discord community</a>.
 
 ## Contributing
 
@@ -55,6 +57,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Development
 
 Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
+
+`pnpm run dev:web` builds, serves, and rebuilds client bundles on source edits in one terminal, and `make help` lists the matching Make targets for Web and Desktop; the guide's application commands section owns the full table.
 
 For agents, follow [AGENTS.md](AGENTS.md).
 

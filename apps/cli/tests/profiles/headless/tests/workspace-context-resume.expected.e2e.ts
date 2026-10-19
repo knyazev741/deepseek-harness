@@ -23,7 +23,7 @@ import {
   type SessionEvent,
   type SessionHeader,
 } from '@knyazevai/dsh-session'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { logPath } from '../../../../../../packages/session/session-persistence-jsonl/src/format.ts'
 import { renderAgentInstructions } from '@knyazevai/dsh-agent-instructions'
 import { resolveConfig, workspaceBaselineIdentity } from '@knyazevai/dsh-agent-instructions/src/config.ts'
@@ -79,7 +79,6 @@ async function seedVisibleBaseline(
     content: file.content,
   })), { maxBytes: 65536 })
   const config = resolveConfig({
-    dshHome: join(cwd, '.dsh'),
     maxBytes: 65536,
     ...options.instructionFileCandidates === undefined
       ? {}
@@ -90,7 +89,7 @@ async function seedVisibleBaseline(
     { type: 'step/start', seq: SessionSeq(1), time: 11, data: { turn: 1, step: 1 } },
     {
       type: 'system/message', seq: SessionSeq(2), time: 12,
-      data: { turn: 1, step: 1, message: createMessage({ role: 'system', content: [], source: { kind: 'plugin', plugin: '@knyazevai/dsh-system-prompt' } }) },
+      data: { turn: 1, step: 1, message: createMessage({ role: 'system', content: [], source: { kind: 'system-prompt' } }) },
       surfaceOp: 'append',
     },
     {

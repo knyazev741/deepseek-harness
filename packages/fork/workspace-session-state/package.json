@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-fork-workspace-session-state",
   "description": "Settings-backed global pin state for workspace sessions",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -49,23 +49,23 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@deepseek-ai/schemastery": "workspace:~",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^",
-    "@knyazevai/dsh-workspace": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-invariants": "workspace:^",
-    "@knyazevai/dsh-session": "workspace:^",
-    "@knyazevai/dsh-settings": "workspace:^",
-    "@knyazevai/dsh-typert-protocol": "workspace:^",
-    "@knyazevai/dsh-workspace": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@knyazevai/dsh-invariants": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~"
   }
 }

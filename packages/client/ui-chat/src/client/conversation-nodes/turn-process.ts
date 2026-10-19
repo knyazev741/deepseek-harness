@@ -122,7 +122,7 @@ function latestAnswer(turn: TurnLocation): Readonly<FinalAssistantChatData> | nu
 }
 
 function processSpec(state: TurnProcessState, turn: TurnLocation): TurnProcessSpec | null {
-  const controlAnchorSeq = state.controlAnchorSeq
+  const controlAnchorSeq = state.controlAnchorSeq ?? turn.start?.seq
   if (controlAnchorSeq === undefined) return null
   const answer = latestAnswer(turn)
   const counts = {
@@ -296,6 +296,7 @@ export const turnProcessDefinition: ConversationNodeDefinition<TurnProcessState>
       'turn-process',
       data.controlAnchorSeq + CHAT_SYNTHETIC_SEQ_OFFSETS.processControl,
       data,
+      { groupTree: 'turn' },
     )
   },
 }
@@ -305,5 +306,19 @@ export const turnProcessDefinition: ConversationNodeDefinition<TurnProcessState>
  * @param ctx - owning UI Conversation context.
  */
 export function registerTurnProcess(ctx: Context): void {
-  ctx.uiConversation.events.register(turnProcessDefinition)
+  const match = turnProcessDefinition.match.bind(turnProcessDefinition)
+  ctx.uiConversation.events.register({
+    ...turnProcessDefinition,
+    match: {
+      'turn/start': match,
+      'assistant/live-chunk': match,
+      'assistant/message': match,
+      'tool/call': match,
+      'tool/result': match,
+      'llm/retry': match,
+      'step/start': match,
+      'step/end': match,
+      'turn/end': match,
+    },
+  })
 }

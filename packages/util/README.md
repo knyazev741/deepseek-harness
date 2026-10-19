@@ -28,6 +28,7 @@ Each package provides one primitive; open a package page for how to use it.
 |---|---|
 | [`brand/`](brand/README.md) | Nominal string types and their stateless constructor |
 | [`package-manifest/`](package-manifest/README.md) | Shared TypeScript declarations for package manifests |
+| [`plugin-market-index/`](plugin-market-index/README.md) | Validates plugin market index format 1 and builds pinned install arguments |
 | [`crypto/`](crypto/README.md) | Mints RFC 9562 v4 UUIDs from the cross-runtime `crypto.getRandomValues` primitive |
 | [`deque/`](deque/README.md) | Provides amortized constant-time queue operations with bounded vacant storage |
 | [`chunked-list/`](chunked-list/README.md) | Retains immutable list versions with bounded append copying and checkpoint validation |
@@ -39,6 +40,7 @@ Each package provides one primitive; open a package page for how to use it.
 | [`lazy-require/`](lazy-require/README.md) | Loads CommonJS-compatible Host dependencies on first use with caller-relative resolution |
 | [`native-command/`](native-command/README.md) | Runs host-native commands directly, never through a shell string |
 | [`workspace-path/`](workspace-path/README.md) | Provides browser-safe Workspace path and display helpers |
+| [`code-language/`](code-language/README.md) | Maps a filename suffix to the syntax-highlighting language that the Code preview, diff review, and the read card render |
 | [`output-retention/`](output-retention/README.md) | Bounds model-facing output and reports exact omission metadata |
 | [`time/`](time/README.md) | Validates and canonicalizes a caller-reported IANA time zone |
 | [`timeout/`](timeout/README.md) | Deadline arithmetic, signal fusion, and timeout-versus-cancel classification |

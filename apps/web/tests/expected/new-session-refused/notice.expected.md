@@ -1,0 +1,1 @@
+- alert: "新建会话失败：agent-preset/invalid: ghost (@knyazevai/dsh-no-such-plugin): never started"

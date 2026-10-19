@@ -29,6 +29,15 @@ describe('application entrypoints', () => {
     expect(applicationEntrypointViolations(resolve(import.meta.dirname, '..'))).toEqual([])
   })
 
+  it('accepts only the dsh source-or-build wrapper at the CLI bin', () => {
+    const root = fixture()
+    write(root, 'apps/cli/package.json', JSON.stringify({ bin: { dsh: 'bin.mjs' } }))
+    write(root, 'apps/cli/bin.mjs', '#!/usr/bin/env node\n')
+    expect(applicationEntrypointViolations(root)).toEqual([])
+    write(root, 'apps/cli/package.json', JSON.stringify({ bin: { dsh: 'rogue.mjs' } }))
+    expect(applicationEntrypointViolations(root)).toEqual([expect.stringContaining('classified bin must remain')])
+  })
+
   it('rejects a package-level application bin', () => {
     const root = fixture()
     write(root, 'packages/example/app/package.json', JSON.stringify({ bin: { app: 'lib/bin.js' } }))
@@ -99,8 +108,28 @@ describe('application entrypoints', () => {
     write(root, 'scripts/demo-ptc.mjs', "spawn('node', ['packages/example/app/src/bin.ts'])\n")
 
     expect(applicationEntrypointViolations(root)).toEqual([
-      'scripts/demo-ptc.mjs: application demo wrapper must launch apps/cli/src/bin.ts',
-      'scripts/demo-ptc.mjs: application demo wrapper must not launch a package entry directly',
+      'scripts/demo-ptc.mjs: application launcher wrapper must launch apps/cli/src/bin.ts',
+      'scripts/demo-ptc.mjs: application launcher wrapper must not launch a package entry directly',
+    ])
+  })
+
+  it('rejects a start:web script that bypasses the dsh launcher', () => {
+    const root = fixture()
+    write(root, 'package.json', JSON.stringify({ scripts: { 'start:web': 'node packages/example/app/src/bin.ts web' } }))
+
+    expect(applicationEntrypointViolations(root)).toEqual([
+      'package.json scripts.start:web: application launcher script must launch apps/cli/src/bin.ts',
+      'package.json scripts.start:web: application launcher script must not launch a package entry directly',
+    ])
+  })
+
+  it('rejects a dev:web wrapper that serves without the dsh launcher', () => {
+    const root = fixture()
+    write(root, 'package.json', JSON.stringify({ scripts: { 'dev:web': 'tsx scripts/dev-web.ts --poll' } }))
+    write(root, 'scripts/dev-web.ts', "execa('vite', ['build', '--watch'])\n")
+
+    expect(applicationEntrypointViolations(root)).toEqual([
+      'scripts/dev-web.ts: application launcher wrapper must launch apps/cli/src/bin.ts',
     ])
   })
 

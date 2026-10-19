@@ -33,5 +33,5 @@ it('creates distinct sessions in every fork preset through the shipped backend',
       ids.add(reply.result.value!.sessionId)
     }
     expect(ids.size).toBe(4)
-  }, 'fork-web')
+  }, { profile: 'fork-web' })
 })

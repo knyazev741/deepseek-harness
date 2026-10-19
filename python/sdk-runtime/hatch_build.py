@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import runpy
 import stat
 from pathlib import Path
 
@@ -73,9 +74,10 @@ class RuntimeBuildHook(BuildHookInterface):
                 f"unsupported DSH_RUNTIME_PLATFORM_TAG {platform_tag!r}; expected one of {supported}"
             )
         expected_executable = matches[0][1]
+        target = next(name for name, value in _PLATFORMS.items() if value[0] == platform_tag)
         runtime_dir = Path(self.root) / "src" / "deepseek_harness_runtime" / "runtime"
         runtime_files = sorted(
-            runtime_dir.glob("deepseek-harness-sdk-runtime-*") if runtime_dir.is_dir() else []
+            (path for path in runtime_dir.iterdir() if path.name != "node") if runtime_dir.is_dir() else []
         )
         expected_files = (
             [expected_executable, f"{expected_executable.removesuffix('.exe')}-rg.exe"]
@@ -84,6 +86,8 @@ class RuntimeBuildHook(BuildHookInterface):
         )
         if "-macos-" in expected_executable:
             expected_files.append(f"{expected_executable}-spawn-helper")
+        resources = runtime_dir / target
+        expected_files.append(resources.name)
         expected_files.sort()
         found_files = [path.name for path in runtime_files]
         if found_files != expected_files:
@@ -91,6 +95,12 @@ class RuntimeBuildHook(BuildHookInterface):
                 f"runtime wheel {platform_tag} payload must be {expected_files}; found {found_files}"
             )
         for executable in runtime_files:
+            if executable == resources:
+                validate = runpy.run_path(str(runtime_dir.parent / "_resources.py"))["validate_downloads"]
+                validate(resources, target)
+                continue
+            if not executable.is_file():
+                raise RuntimeError(f"runtime executable is not a file: {executable}")
             if platform_tag != "win_amd64" and executable.stat().st_mode & stat.S_IXUSR == 0:
                 raise RuntimeError(f"runtime executable is not executable: {executable}")
         build_data["pure_python"] = False

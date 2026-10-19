@@ -42,8 +42,8 @@ export const EXCLUDE_WORKSPACE: readonly string[] = [
 /**
  * Image paths that belong to the PAGE, not to the worker's loader.
  *
- * A package's `lib/client.js` is its browser bundle behind the `./client`
- * export: the page's own module system evaluates it with its own wrapper,
+ * A package's `lib/client.js` entry and `lib/client.*.js` sibling chunks are
+ * browser bundles behind the `./client` export: the page's own module system evaluates them with its own wrapper,
  * which has no ambient-store parameter. Transforming those bodies would
  * inject calls the page cannot resolve, so they ship untransformed — their
  * only change is the trailing debugger-name line every JavaScript entry
@@ -52,11 +52,13 @@ export const EXCLUDE_WORKSPACE: readonly string[] = [
  */
 export const PAGE_ASSETS: readonly string[] = [
   'node_modules/*/lib/client.js',
+  'node_modules/*/lib/client.*.js',
   'node_modules/@*/*/lib/client.js',
+  'node_modules/@*/*/lib/client.*.js',
 ]
 
 /**
- * Image specifiers the worker assembly requires directly, beyond the composed
+ * Image specifiers the worker assembly requires directly, beyond the
  * roster: they are requested by worker-bundle code, so no image file
  * references them and the reachability sweep must seed them as roots. Keep in
  * step with the literal `require`/`resolve` calls in the runtime's
@@ -65,7 +67,6 @@ export const PAGE_ASSETS: readonly string[] = [
 export const IMAGE_ENTRY_SEEDS: readonly string[] = [
   '@knyazevai/dsh-app-boot',
   '@knyazevai/dsh-cmdline',
+  '@knyazevai/dsh-launch-environment',
   '@deepseek-ai/cordis',
-  '@deepseek-ai/cordis-plugin-include',
-  'js-yaml',
 ]

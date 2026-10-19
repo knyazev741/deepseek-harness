@@ -7,6 +7,7 @@
 /** The module specifiers the shell shares into the frozen module table. */
 export const PLATFORM_MODULES = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
+  'zod', '@tanstack/react-virtual',
   '@knyazevai/dsh-client-store',
   '@knyazevai/dsh-client-ui-slots',
   '@knyazevai/dsh-client-ui-primitives',

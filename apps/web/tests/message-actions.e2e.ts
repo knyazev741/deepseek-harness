@@ -3,18 +3,19 @@
 // calls) and pins the settled conversation aria after the footers are
 // focus-revealed — the surface package jsdom tests cannot substitute for
 // (docs/testing.md snapshot rule).
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Browser, Page } from 'playwright'
+import { zstdCompressSync } from 'node:zlib'
+import type { Browser, Page, Request as BrowserRequest } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
-import { SessionId } from '@knyazevai/dsh-session'
+import { SESSION_FORMAT_VERSION, SessionId } from '@knyazevai/dsh-session'
 import {
-  assertFixtureInventory, captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
-  launchWebScaffold, parseSeedFixture, renderSeedFixture, seedSession, watchConsole, webSnapshotMode, type WebScaffold,
+  acknowledgeReloadConnectionLoss, assertFixtureInventory, captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
+  launchWebScaffold, parseSeedFixture, realizeSeedFixture, renderSeedFixture, seedSession, watchConsole, webSnapshotMode, type WebScaffold,
 } from './scaffold.ts'
-import { newEnglishPage, saveFailureShot } from './support.ts'
+import { openSettings, newEnglishPage, pinBrowserClock, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/message-actions', import.meta.url))
 // Borrowed read-only: this scenario needs any settled user+assistant pair, not
@@ -22,6 +23,7 @@ const SNAPSHOT_DIR = fileURLToPath(new URL('../../../snapshots/web/message-actio
 const SEED = fileURLToPath(new URL('../../../snapshots/web/seeded-history/session.v3.jsonl', import.meta.url))
 const UI_EXPECTED = join(SNAPSHOT_DIR, 'ui.expected.md')
 const FORK_EXPECTED = join(SNAPSHOT_DIR, 'fork.expected.md')
+const UNOPENED_FORK_EXPECTED = join(SNAPSHOT_DIR, 'fork-unopened.expected.md')
 const MODE = webSnapshotMode()
 const SEED_ID = 'message-actions-web-e2e'
 
@@ -191,7 +193,8 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
   let tripwire: ReturnType<typeof watchConsole>
 
   beforeAll(async () => {
-    scaffold = await launchWebScaffold({})
+    scaffold = await launchWebScaffold()
+    await mkdir(fileURLToPath(new URL('../../../.artifacts/screenshots/non-migrating-session-reads', import.meta.url)), { recursive: true })
     const sessionCwd = join(scaffold.workspaceCwd, 'workspace')
     await mkdir(sessionCwd, { recursive: true })
     await writeFile(join(sessionCwd, 'a.txt'), 'alpha\n')
@@ -201,9 +204,14 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     expect(parseSeedFixture(raw).events.flatMap(event => event.type === 'request/header'
       ? [event.data.reason]
       : []), 'adapted seed must carry an unchanged resume header').toEqual(['initial', 'resume'])
-    await seedSession(scaffold, raw, SEED_ID)
+    // The fixture carries no times of its own, so the seed anchors them at
+    // `Date.now() - 60_000` unless the scenario names the shared fixture day.
+    // 90 s keeps the earliest rows in the `1min` bucket and the later ones,
+    // carried by their stream spans, inside `now` — what the fork golden records.
+    await seedSession(scaffold, raw, SEED_ID, undefined, { createdAt: WEB_FIXTURE_TIME - 90_000 })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
+    await pinBrowserClock(page)
     tripwire = watchConsole(page)
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
@@ -215,7 +223,7 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
   })
 
   it.skipIf(MODE === 'record')('enables branch only on the completed transcript tail', async () => {
-    onTestFailed(() => saveFailureShot(page, 'web-e2e-message-actions'))
+    onTestFailed(() => saveFailureShot(page, 'screenshots/non-migrating-session-reads/web-e2e-message-actions'))
     const groupRow = page.locator('[role="treeitem"]').first()
     await groupRow.waitFor({ timeout: 15_000 })
     await groupRow.click()
@@ -227,7 +235,7 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     await expect.poll(
       () => page.getByRole('button', { name: 'System prompt', exact: true }).count(),
       { timeout: 10_000 },
-    ).toBe(2)
+    ).toBe(0)
 
     // Focus-reveal the footers (hover:hover keeps them opacity-hidden until
     // hover/focus-within). Branch renders only under assistant answers — user
@@ -241,10 +249,68 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
       () => branchButtons.evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-disabled'))),
       { timeout: 5_000 },
     ).toEqual(['true', null, null])
-    await branchButtons.first().focus()
-    await expect.poll(() => page.getByRole('tooltip').textContent(), { timeout: 5_000 })
-      .toBe('Available only on the last message of a completed turn')
+    await branchButtons.first().press('Shift+Tab')
+    await page.keyboard.press('Tab')
+    await expect.poll(() => page.getByRole('tooltip').allTextContents(), { timeout: 5_000 })
+      .toEqual(['Available only on the last message of a completed turn'])
     await expect.poll(() => page.getByRole('button', { name: 'Edit' }).count(), { timeout: 5_000 }).toBe(0)
+  }, 60_000)
+
+  it.skipIf(MODE === 'record')('keeps an action tooltip above the sticky composer', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-message-action-tooltip-layer'))
+    await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur() })
+    await page.mouse.move(0, 0)
+    const copy = page.getByRole('button', { name: 'Copy', exact: true }).last()
+    const composer = page.locator('[data-composer-seat]')
+    const tooltip = page.getByRole('tooltip', { name: 'Copy', exact: true })
+    const originalViewport = page.viewportSize()
+    if (originalViewport === null) throw new Error('tooltip probe requires a fixed viewport')
+    try {
+      await page.setViewportSize({ width: originalViewport.width, height: 600 })
+      // Grow the sticky seat upward so the bottom tooltip overlaps it without
+      // depending on the fixture's resting composer height.
+      await composer.evaluate((element) => { element.style.paddingTop = '48px' })
+      await copy.evaluate((button) => {
+        const scrollport = button.closest<HTMLElement>('[data-conversation-scroll]')
+        const composer = scrollport?.querySelector<HTMLElement>('[data-composer-seat]') ?? null
+        if (scrollport === null || composer === null) throw new Error('conversation geometry is unavailable')
+        const buttonRect = button.getBoundingClientRect()
+        const composerTop = composer.getBoundingClientRect().top
+        scrollport.scrollTop += buttonRect.bottom - (composerTop - 8)
+      })
+      await copy.hover()
+      await tooltip.waitFor({ state: 'visible', timeout: 5_000 })
+      // Tooltip is intentionally pointer-transparent. Enable hit testing only
+      // for this stacking probe; paint order is unchanged.
+      await tooltip.evaluate((element) => { element.style.pointerEvents = 'auto' })
+      const probe = await tooltip.evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        const x = rect.left + rect.width / 2
+        const y = rect.top + rect.height / 2
+        const composer = document.querySelector<HTMLElement>('[data-composer-seat]')
+        if (composer === null) throw new Error('composer geometry is unavailable')
+        const composerRect = composer.getBoundingClientRect()
+        const hit = document.elementFromPoint(x, y)
+        return {
+          insideComposer: composerRect.top <= y && y <= composerRect.bottom,
+          hitsTooltip: hit !== null && element.contains(hit),
+        }
+      })
+      expect(probe.insideComposer).toBe(true)
+      expect(probe.hitsTooltip).toBe(true)
+    } finally {
+      if (await tooltip.count() > 0) {
+        await tooltip.evaluate((element) => { element.style.removeProperty('pointer-events') })
+      }
+      if (await composer.count() > 0) {
+        await composer.evaluate((element) => { element.style.removeProperty('padding-top') })
+      }
+      await page.mouse.move(0, 0)
+      if (await copy.count() > 0) await copy.evaluate((element) => { element.blur() })
+      if (await tooltip.count() > 0) await tooltip.waitFor({ state: 'hidden', timeout: 5_000 })
+      await page.setViewportSize(originalViewport)
+    }
+    expect(tripwire.pageErrors).toEqual([])
   }, 60_000)
 
   it.skipIf(MODE === 'record')('matches the conversation aria golden with IconActions and clocks', async () => {
@@ -252,12 +318,45 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     await page.getByRole('button', { name: /^Select model, current/ })
       .waitFor({ timeout: 10_000 })
     await page.getByText(/Cache hit \d+%/u).first().waitFor({ timeout: 10_000 })
-    // Keep a footer focused so opacity-hidden actions stay in the a11y tree
-    // as an active/focused control during the capture.
-    await page.getByRole('button', { name: 'Copy' }).first().focus()
+    await page.mouse.move(0, 0)
+    // The golden includes the keyboard-focused action and its visible tooltip.
+    const copy = page.getByRole('button', { name: 'Copy', exact: true }).first()
+    await copy.press('Shift+Tab')
+    await page.keyboard.press('Tab')
+    await page.getByRole('tooltip', { name: 'Copy', exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
     const snapshot = (await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd))
       .split(SEED_ID).join('{{seededId}}')
     await compareOrRefreshGolden(UI_EXPECTED, snapshot, MODE)
+  })
+
+  it.skipIf(MODE === 'record')('persists performance detail and hides statistics in Compact', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-performance-usage'))
+    const stats = page.locator('[data-composer-stat]')
+    const statsText = async (): Promise<string> => (await stats.allTextContents()).join(' ')
+    await openSettings(page, 'en')
+    const dialog = page.getByRole('dialog', { name: 'Settings', exact: true })
+    const row = dialog.getByText('Performance & usage', { exact: true }).locator('../..')
+    await row.getByRole('button', { name: 'Detailed', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Compact', exact: true }).click()
+    await expect.poll(() => scaffold.ctx.settings.describe().find(row => row.ns === 'ui-chat')?.value).toMatchObject({ performanceUsage: 'compact' })
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect.poll(() => stats.locator('button').count()).toBe(0)
+    expect(await statsText()).not.toContain('turns')
+    expect(await statsText()).toContain('Cache hit')
+    await stats.first().hover()
+    expect(await page.getByRole('dialog').count()).toBe(0)
+    await compareOrRefreshGolden(join(SNAPSHOT_DIR, 'compact.expected.md'), await captureStableAria(page, '[data-composer-dock]', scaffold.workspaceCwd), MODE)
+    const warningStart = tripwire.warnings.length
+    await page.reload()
+    await openSettings(page, 'en')
+    await row.getByRole('button', { name: 'Compact', exact: true }).waitFor()
+    acknowledgeReloadConnectionLoss(tripwire, warningStart)
+    await row.getByRole('button', { name: 'Compact', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Detailed', exact: true }).click()
+    await expect.poll(() => scaffold.ctx.settings.describe().find(row => row.ns === 'ui-chat')?.value).toMatchObject({ performanceUsage: 'detailed' })
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect.poll(() => stats.locator('button').count()).toBe(2)
+    expect(await page.locator('[data-turn-tail]').getByRole('button', { name: /Ran for/ }).count()).toBe(0)
   })
 
   it.skipIf(MODE === 'record')('forks through the settled-message and session-row actions', async () => {
@@ -313,9 +412,10 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     // The child row is published before its inherited title rename settles;
     // wait for that second RPC projection before freezing the ARIA tree.
     await expect.poll(
-      () => page.locator('[role="treeitem"][aria-selected="true"]').textContent(),
+      () => page.locator('[role="treeitem"]').allTextContents(),
       { timeout: 10_000 },
-    ).toContain('Use the read tool twice (2)')
+    ).toEqual(expect.arrayContaining([expect.stringContaining('Use the read tool twice (2)')]))
+    expect(await sourceRow.textContent()).toContain('Use the read tool twice (1)')
     const tree = await captureStableAria(
       page,
       '[role="tree"][aria-label="Sessions"]',
@@ -324,9 +424,83 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     await compareOrRefreshGolden(FORK_EXPECTED, tree, MODE)
   })
 
+  it.skipIf(MODE === 'record')('forks an unopened current-format Session from its sidebar row', async () => {
+    onTestFailed(() => saveFailureShot(page, 'screenshots/non-migrating-session-reads/current-cold-fork'))
+    const id = SessionId('message-actions-current-cold')
+    await seedSession(scaffold, completedTailFixture(await readFile(SEED, 'utf8')), id)
+    const warningStart = tripwire.warnings.length
+    await page.reload({ waitUntil: 'load' })
+    const row = page.locator(`[data-row-key="session:${id}"]`)
+    await row.waitFor()
+    acknowledgeReloadConnectionLoss(tripwire, warningStart)
+    expect(scaffold.ctx.agents.get(id)).toBeUndefined()
+    await row.hover()
+    await row.locator('button[aria-label^="Session actions for "]').click()
+    await page.getByRole('menuitem', { name: 'Fork session', exact: true }).click()
+    await expect.poll(() => scaffold.ctx.agents.list().some(agent => agent.session.header.parentSession === id)).toBe(true)
+    expect(scaffold.ctx.agents.get(id)).toBeUndefined()
+    expect(await row.getAttribute('aria-selected')).not.toBe('true')
+  })
+
+  it.skipIf(MODE === 'record')('guides only a migration-required sidebar fork to opening its source', async () => {
+    onTestFailed(() => saveFailureShot(page, 'screenshots/non-migrating-session-reads/migration-required-fork'))
+    const id = SessionId('message-actions-needs-migration')
+    const [header, ...events] = realizeSeedFixture(scaffold, await readFile(SEED, 'utf8'), id).trimEnd().split('\n')
+      .map((line): Record<string, unknown> => JSON.parse(line) as Record<string, unknown>)
+    expect(header?.version).toBe(3)
+    const projects = (await readdir(scaffold.persistenceRoot, { withFileTypes: true })).filter(entry => entry.isDirectory())
+    expect(projects).toHaveLength(1)
+    const directory = join(scaffold.persistenceRoot, projects[0]!.name, id)
+    const predecessor = join(directory, 'session.v3.jsonl.zstd')
+    const createdAt = WEB_FIXTURE_TIME - 90_000
+    const rows = [{ ...header, id, cwd: scaffold.workspaceCwd, createdAt },
+      ...events.map((event, seq) => ({ ...event, seq, time: createdAt + seq + 1 }))]
+    const source = Buffer.concat(rows.map(row => zstdCompressSync(Buffer.from(`${JSON.stringify(row)}\n`))))
+    await mkdir(directory, { recursive: true })
+    await writeFile(predecessor, source)
+    await expect(scaffold.ctx.sessionPersistence.stat(id)).resolves.toMatchObject({ formatStatus: 'migration-required' })
+
+    const warningStart = tripwire.warnings.length
+    await page.reload({ waitUntil: 'load' })
+    await page.getByRole('button', { name: /^Show \d+ more sessions$/ }).click()
+    const row = page.locator(`[data-row-key="session:${id}"]`)
+    await row.waitFor()
+    acknowledgeReloadConnectionLoss(tripwire, warningStart)
+    const forkRequests: string[] = []
+    const trackFork = (request: BrowserRequest): void => {
+      const path = new URL(request.url()).pathname
+      if (path === '/api/session/fork') forkRequests.push(path)
+    }
+    page.on('request', trackFork)
+    try {
+      await row.hover()
+      await row.locator('button[aria-label^="Session actions for "]').click()
+      await page.getByRole('menuitem', { name: 'Fork session', exact: true }).click()
+      const notice = page.getByRole('alert').filter({ hasText: 'Open the original session to complete migration before creating a branch.' })
+      await notice.waitFor()
+      expect(await page.getByRole('menuitem', { name: 'Fork session', exact: true }).count()).toBe(0)
+      expect(forkRequests).toEqual(['/api/session/fork'])
+      expect(scaffold.ctx.agents.get(id)).toBeUndefined()
+      expect(await readdir(directory)).toEqual(['session.v3.jsonl.zstd'])
+      expect(await readFile(predecessor)).toEqual(source)
+      await compareOrRefreshGolden(UNOPENED_FORK_EXPECTED,
+        await captureStableAria(page, '[role="alert"]', scaffold.workspaceCwd), MODE)
+      await notice.getByRole('button', { name: 'Open original session', exact: true }).click()
+      await expect.poll(() => row.getAttribute('aria-selected')).toBe('true')
+      await expect.poll(() => scaffold.ctx.agents.get(id)).toBeDefined()
+      await expect(scaffold.ctx.sessionPersistence.stat(id)).resolves.toMatchObject({ formatStatus: 'current' })
+      expect(await readdir(directory)).toContain(`session.v${SESSION_FORMAT_VERSION}.jsonl.zstd`)
+      expect(await readFile(predecessor)).toEqual(source)
+      expect(forkRequests).toEqual(['/api/session/fork'])
+      expect(scaffold.ctx.agents.list().filter(agent => agent.session.header.parentSession === id)).toEqual([])
+    } finally {
+      page.off('request', trackFork)
+    }
+  })
+
   it.skipIf(MODE === 'record')('issued zero model calls and kept a closed inventory', async () => {
     expect(tripwire.pageErrors).toEqual([])
     expect(tripwire.warnings).toEqual([])
-    await assertFixtureInventory(SNAPSHOT_DIR, ['fork.expected.md', 'ui.expected.md'])
+    await assertFixtureInventory(SNAPSHOT_DIR, ['compact.expected.md', 'fork.expected.md', 'fork-unopened.expected.md', 'ui.expected.md'])
   })
 })

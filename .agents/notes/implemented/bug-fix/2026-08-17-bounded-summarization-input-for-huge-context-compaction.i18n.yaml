@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-17-bounded-summarization-input-for-huge-context-compaction.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-17-bounded-summarization-input-for-huge-context-compaction.md
-2026-08-17-bounded-summarization-input-for-huge-context-compaction.md: 29d890e3bbcff67bf6c142e577712c37b2316ea6
-2026-08-17-bounded-summarization-input-for-huge-context-compaction.zh.md: 27f8ce8696474485202a44e621bc4055d3be6fc4
+/agent-note-bounded-summarization-input-for-huge-context-compaction:
+  en: 13a022f2a82d39ba
+  zh: 4470497e8d516469
+/agent-note-bounded-summarization-input-for-huge-context-compaction/problem:
+  en: 30d0a283a20cdd2d
+  zh: b5c46491729df77f
+/agent-note-bounded-summarization-input-for-huge-context-compaction/decision:
+  en: 2a570c81d19f13ad
+  zh: 71526c9e56f2d80c
+/agent-note-bounded-summarization-input-for-huge-context-compaction/consequences:
+  en: 45fba4a7854f088f
+  zh: fe20f023b2a724dc
+/agent-note-bounded-summarization-input-for-huge-context-compaction/alternatives-considered:
+  en: e9fb557eef3073b9
+  zh: d55ce9bd443b026b

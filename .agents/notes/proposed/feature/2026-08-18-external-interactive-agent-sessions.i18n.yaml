@@ -1,6 +1,25 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-18-external-interactive-agent-sessions.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-08-18-external-interactive-agent-sessions.md
-2026-08-18-external-interactive-agent-sessions.md: 2db31ae4c744ae064757666b375730410fa86075
-2026-08-18-external-interactive-agent-sessions.zh.md: 1209c915914c4acd996b227d351ba4c7c7c8bb56
+/agent-note-external-interactive-agent-sessions-acp-and-native-dialects:
+  en: e625c8f18677e9d3
+  zh: 32d9c15fc7113773
+/agent-note-external-interactive-agent-sessions-acp-and-native-dialects/problem:
+  en: f7fbe4fa955ebd8f
+  zh: 2172b7d00ebab159
+/agent-note-external-interactive-agent-sessions-acp-and-native-dialects/proposal:
+  en: 23cef1f050c453f0
+  zh: 7445c0786cdb7358
+/agent-note-external-interactive-agent-sessions-acp-and-native-dialects/proposal/migration-status:
+  en: dfeb65ef24ad616a
+  zh: e7a8e42429a0f127
+/agent-note-external-interactive-agent-sessions-acp-and-native-dialects/alternatives-considered:
+  en: 1e3ea2e0073862a1
+  zh: 57f3234d8383770a
+/agent-note-external-interactive-agent-sessions-acp-and-native-dialects/acceptance-criteria:
+  en: 1e914bb7fac9f7c3
+  zh: f61e130b95dc3e97
+/agent-note-external-interactive-agent-sessions-acp-and-native-dialects/risks:
+  en: f2dc910bb476e1fb
+  zh: 79bc8fe9d00df6b3

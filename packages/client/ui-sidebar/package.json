@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-sidebar",
   "description": "Sidebar plugin: session multi-level tree, search, grouping, state dots",
-  "version": "0.1.6-alpha.1",
+  "version": "0.2.1-rc.2",
   "publishConfig": {
     "access": "public"
   },
@@ -23,7 +23,8 @@
       "default": "./lib/client.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "dsh": {
     "client": {
@@ -33,7 +34,8 @@
         "@knyazevai/dsh-client-ui-layout",
         "@knyazevai/dsh-client-ui-session",
         "@knyazevai/dsh-client-ui-workspace",
-        "@knyazevai/dsh-client-locale"
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-shortcuts"
       ],
       "platform": "web"
     }
@@ -44,25 +46,27 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@knyazevai/dsh-api-workspace-controller": "workspace:^",
-    "@knyazevai/dsh-client-locale": "workspace:^",
-    "@knyazevai/dsh-client-store": "workspace:^",
-    "@knyazevai/dsh-client-test-runtime": "workspace:^",
-    "@knyazevai/dsh-client-ui-layout": "workspace:^",
-    "@knyazevai/dsh-client-ui-primitives": "workspace:^",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:^",
-    "@knyazevai/dsh-client-ui-slots": "workspace:^",
-    "@knyazevai/dsh-client-ui-session": "workspace:^",
-    "@knyazevai/dsh-client-ui-workspace": "workspace:^",
-    "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@knyazevai/dsh-api-workspace-controller": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-layout": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-workspace": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",
-    "clsx": "^2.0.0"
+    "clsx": "^2.0.0",
+    "@knyazevai/dsh-client-shortcuts": "workspace:*",
+    "@knyazevai/dsh-client-product-analytics": "workspace:*"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.d.ts"

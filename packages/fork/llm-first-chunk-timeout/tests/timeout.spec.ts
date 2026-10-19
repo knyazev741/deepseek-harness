@@ -840,7 +840,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(agent.followup).toHaveBeenCalledWith(expect.objectContaining({
       role: 'user',
       content: [{ type: 'text', text: 'continue' }],
-      source: { kind: 'plugin', plugin: 'fork-llm-first-chunk-timeout' },
+      source: { kind: 'fork-first-chunk-recovery' },
     }))
   })
 
@@ -906,7 +906,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
       const nodes = agent.session.surface.nodes.filter(seq => agent.session.eventAt(seq)?.type !== 'system/message')
       agent.session.append('user/message', createUserMessage({
         content: [{ type: 'text', text: 'compacted history' }],
-        source: { kind: 'plugin', plugin: 'test-compaction' },
+        source: { kind: 'compaction-basic' },
       }), {
         surfaceOp: { op: 'replace', startSeq: nodes[0]!, endSeq: nodes.at(-1)! },
         sourceEventSeqs: [...nodes],
@@ -924,7 +924,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(adapter.requests[1]?.messages).toContainEqual(expect.objectContaining({
       role: 'user',
       content: [{ type: 'text', text: 'continue' }],
-      source: { kind: 'plugin', plugin: 'fork-llm-first-chunk-timeout' },
+      source: { kind: 'fork-first-chunk-recovery' },
     }))
     expect(agent.session.snapshotEvents().filter(event => event.type === 'turn/start')).toHaveLength(2)
     expect(agent.session.snapshotEvents().filter(event => event.type === 'turn/end').map(event => event.data.reason.kind))
@@ -972,7 +972,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     expect(result).toBe('delegated')
   })
 
-  it('delegates to retries after maxFirstChunkCompactionRetries', async () => {
+  it('delegates after maxFirstChunkCompactionRetries', async () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
@@ -1104,6 +1104,24 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     const result = await fireError(ctx, agent, { message: 'first LLM chunk idle timeout', code: 'FIRST_CHUNK_TIMEOUT' }, next)
     expect(result).toBe('delegated')
     expect(next).toHaveBeenCalledTimes(1)
+  })
+
+  it('delegates after a compaction budget and permits another batch after recovery', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 10, maxFirstChunkCompactionRetries: 1 })
+    const surface = { replaceGeneration: 0 }
+    const agent = { session: { surface }, options: {}, followup: vi.fn() }
+    const fake = new FakeCompaction(ctx)
+    fake.compactIfNeeded.mockImplementation(async () => { surface.replaceGeneration++; return null })
+    const failure = { message: 'first chunk timed out', code: 'FIRST_CHUNK_TIMEOUT' }
+    await fireError(ctx, agent, failure, delegated)
+    const next = vi.fn(async () => ({ kind: 'retry' as const }))
+    expect(await fireError(ctx, agent, failure, next)).toEqual({ kind: 'retry' })
+    expect(next).toHaveBeenCalledOnce()
+    await fireError(ctx, agent, failure, delegated)
+    expect(fake.compactIfNeeded).toHaveBeenCalledTimes(2)
   })
 
   it('drops per-agent bookkeeping after the recovery follow-up activity turns idle', async () => {

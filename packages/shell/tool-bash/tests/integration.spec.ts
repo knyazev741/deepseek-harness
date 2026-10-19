@@ -1,13 +1,14 @@
-import { createUserMessage } from '@knyazevai/dsh-llm'
+import { createUserMessage, ToolCallId } from '@knyazevai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { SessionId, type SessionEvent } from '@knyazevai/dsh-session'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import type { Agent } from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
+import { PtcRuntime, type PtcRunRequest, type PtcRunResult, type PtcRunSpec } from '@knyazevai/dsh-ptc-runtime'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import LocalJobRegistry from '@knyazevai/dsh-jobs-local'
 import * as ToolJobs from '@knyazevai/dsh-tool-jobs'
@@ -25,7 +26,7 @@ import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent
  */
 async function harness(adapter: MockAdapter, sessionRoot?: string, dshHome?: string) {
   const ctx = new Context()
-  await mountAgentLoopTestDependencies(ctx)
+  await mountAgentLoopTestDependencies(ctx, { workingDirectory: true })
   if (sessionRoot !== undefined) {
     await ctx.plugin(JsonlSessionPersistence, { root: sessionRoot, compression: 'none' })
   }
@@ -76,7 +77,7 @@ function findEvent<T extends SessionEvent['type']>(
 
 function resultText(event: SessionEvent): string {
   if (event.type !== 'tool/result') return ''
-  return event.data.message.content[0].content
+  return event.data.message.content
     .filter(block => block.type === 'text')
     .map(block => block.text)
     .join('')
@@ -93,6 +94,47 @@ async function pollUntil(predicate: () => boolean, timeoutMs = 5_000): Promise<v
 }
 
 describe('bash tool through the agent loop', () => {
+  it('logs the real nested shell launch directory after the Session changes directories again', async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-nested-bash-cwd-')))
+    dirs.push(root)
+    const selected = join(root, 'selected')
+    mkdirSync(selected)
+    const ctx = await harness(new MockAdapter([]))
+    try {
+      const agent = await ctx.agentLoop.create(SessionId('nested-shell-current-directory'), {}, { cwd: root })
+      await ctx.workingDirectory.set(agent, selected)
+      class BashBindingRuntime extends PtcRuntime {
+        readonly language = 'typescript'
+        readonly isolation = 'fixture'
+        resolve(request: PtcRunRequest): PtcRunSpec {
+          return { ...request, cwd: selected, timeoutMs: 120_000 }
+        }
+        async run(spec: PtcRunSpec): Promise<PtcRunResult> {
+          const bash = spec.bindings.find(binding => binding.global === 'tools')?.functions.bash
+          if (bash === undefined) throw new Error('missing bash binding')
+          const value = await bash({ command: 'pwd', description: 'Print launch directory' })
+          expect(value).toMatchObject({ cwd: selected, stdout: { text: `${selected}\n` } })
+          return { logs: [], value }
+        }
+      }
+      await ctx.plugin(BashBindingRuntime)
+      agent.ctx.tools.presentAs('ptc')
+      const result = await ctx.tools.execute({
+        callId: ToolCallId('nested-shell-root'), agent, signal: new AbortController().signal, name: 'run_code',
+        arguments: { code: 'return await tools.bash({ command: "pwd", description: "Print launch directory" })', description: 'Inspect current directory' },
+      })
+      expect(result.error).toBeUndefined()
+      expect(result.isError).toBe(false)
+      await ctx.workingDirectory.set(agent, root)
+      const dispatch = agent.session.snapshotEvents().find(event => event.type === 'tool/ptc-dispatch')
+      expect(dispatch?.data.meta).toMatchObject({ cwd: selected })
+      expect(dispatch?.data.content).toEqual([{ type: 'text', text: `${selected}\n` }])
+      expect(agent.session.header.cwd).toBe(root)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('first-turn bash receives session identity in a scrubbed DSH_* namespace', async () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-bash-session-env-'))
     dirs.push(root)
@@ -136,14 +178,12 @@ describe('bash tool through the agent loop', () => {
     expect(toolCall.data.name).toBe('bash')
 
     const toolResult = findEvent(log, 'tool/result')
-    expect(toolResult.data.message.content[0].isError).toBe(false)
+    expect(toolResult.data.message.isError).toBe(false)
     expect(resultText(toolResult)).toBe('integration-ok\n')
 
     // The second model call saw the tool result in its derived history.
     const lastRequest = adapter.requests.at(-1)
-    const toolResultBlocks = (lastRequest?.messages ?? [])
-      .flatMap(message => message.content)
-      .filter(block => block.type === 'tool-result')
+    const toolResultBlocks = (lastRequest?.messages ?? []).filter(message => message.role === 'tool')
     expect(toolResultBlocks).toHaveLength(1)
 
     const finalMessage = findEvent(log, 'assistant/message', 'last')
@@ -164,7 +204,7 @@ describe('bash tool through the agent loop', () => {
     await waitForIdle(ctx, agent)
 
     const toolResult = findEvent(events(agent), 'tool/result')
-    expect(toolResult.data.message.content[0].isError).toBe(false)
+    expect(toolResult.data.message.isError).toBe(false)
     expect(resultText(toolResult)).toContain('[exit code: 9]')
   })
 
@@ -178,8 +218,7 @@ describe('bash tool through the agent loop', () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-bg-'))
     dirs.push(dir)
     const sentinel = join(dir, 'release')
-    // The job id is deterministic (a fresh LocalJobRegistry counts per kind from 1),
-    // so the script can name `bash-1` without threading a generated id.
+    // The next model call reads the id from the prior tool result.
     const adapter = new MockAdapter([
       toolCallResponse('call-1', 'bash', {
         command: `while [ ! -f ${JSON.stringify(sentinel)} ]; do sleep 0.02; done; echo bg-ok`,
@@ -187,7 +226,11 @@ describe('bash tool through the agent loop', () => {
         run_in_background: true,
       }),
       textResponse('Started it in the background.'),
-      toolCallResponse('call-2', 'job_output', { job_id: 'bash-1' }),
+      (options) => {
+        const jobId = /started background job (bash-[0-9a-f]{16})/.exec(JSON.stringify(options.messages))?.[1]
+        if (jobId === undefined) throw new Error('model history lacks the started job id')
+        return toolCallResponse('call-2', 'job_output', { job_id: jobId })
+      },
       textResponse('Background job finished.'),
     ])
     const ctx = await harness(adapter)
@@ -197,11 +240,12 @@ describe('bash tool through the agent loop', () => {
     await waitForIdle(ctx, agent)
 
     const firstResult = findEvent(events(agent), 'tool/result')
-    expect(firstResult.data.message.content[0].isError).toBe(false)
-    expect(resultText(firstResult)).toBe('started background job bash-1')
+    expect(firstResult.data.message.isError).toBe(false)
+    const jobId = /^started background job (bash-[0-9a-f]{16})$/.exec(resultText(firstResult))?.[1]
+    if (jobId === undefined) throw new Error('first tool result lacks a job id')
     // The turn closed with the task still running, so the notice cannot exist yet.
     const isNotice = (e: SessionEvent): e is SessionEvent<'user/message'> =>
-      e.type === 'user/message' && e.data.source.kind === 'plugin'
+      e.type === 'user/message' && e.data.source.kind === 'tool-jobs'
     expect(events(agent).some(isNotice)).toBe(false)
 
     // Releasing the command now settles it against a provably idle owner. No
@@ -221,15 +265,14 @@ describe('bash tool through the agent loop', () => {
     const notice = events(agent).find(isNotice)!
     const noticeText = notice.data.content
       .filter(block => block.type === 'text').map(block => block.text).join('')
-    expect(noticeText).toContain('background job bash-1 (bash: ')
+    expect(noticeText).toContain(`background job ${jobId} (bash: `)
     expect(noticeText).toContain('finished [status: completed, exit code: 0]')
     expect(notice.data.source).toMatchObject({
-      kind: 'plugin',
-      plugin: 'tool-jobs',
+      kind: 'tool-jobs',
       form: 'notice',
     })
     const readResult = findEvent(events(agent), 'tool/result', 'last')
-    expect(readResult.data.message.content[0].isError).toBe(false)
+    expect(readResult.data.message.isError).toBe(false)
     expect(resultText(readResult)).toContain('bg-ok')
     expect(resultText(readResult)).toContain('[status: completed, exit code: 0]')
   })

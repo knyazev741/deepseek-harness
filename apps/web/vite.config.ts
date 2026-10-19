@@ -6,11 +6,12 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { clientBuildEnvironmentDefines } from '../../scripts/client-build-environment.ts'
 import { productWebBundleIsolation } from './product-isolation.ts'
+import { katexWoff2Fonts } from './katex-fonts.ts'
 
 const src = (rel: string): string => fileURLToPath(new URL(rel, import.meta.url))
 const STANDALONE_ERROR = 'apps/web is not a standalone application: bare Vite cannot inject window.__DSH_BOOT__. '
   + 'From a repository checkout, run `pnpm dsh web`; an installed package uses `dsh web`. '
-  + 'For client-plugin HMR, run `pnpm dsh web` together with `pnpm run dev:web`.'
+  + 'For client-plugin HMR, run `pnpm run dev:web`, which starts `dsh web` and the rebuild watchers together.'
 const DEFAULT_CLIENT_TITLE = 'DSH Local Build'
 
 /** Escape build-time text before placing it in the HTML title element. */
@@ -25,6 +26,20 @@ function clientDocumentTitle(): Plugin {
     name: 'dsh-client-document-title',
     transformIndexHtml(html) {
       return html.replace('<title>DSH Local Build</title>', `<title>${title}</title>`)
+    },
+  }
+}
+
+/** Keep the redistribution license beside the bundled brand font. */
+function brandFontLicense(): Plugin {
+  return {
+    name: 'dsh-brand-font-license',
+    async generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'assets/fonts/Montserrat-OFL.txt',
+        source: await readFile(src('../../packages/client/ui-theme/src/styles/Montserrat-OFL.txt')),
+      })
     },
   }
 }
@@ -135,7 +150,7 @@ const BOOT_GRAMMAR_FILES: readonly string[] = [
   'dist/json.mjs',
 ]
 
-/** Font asset extensions routed to assets/fonts/ (KaTeX's woff2/woff/ttf faces). */
+/** Font asset extensions routed to assets/fonts/. */
 const FONT_EXTENSIONS: readonly string[] = ['.woff2', '.woff', '.ttf']
 
 /**
@@ -156,7 +171,7 @@ export default defineConfig({
   // directory, and the served index resolves identically from the site root.
   base: './',
   plugins: [
-    rejectStandaloneServe(), clientDocumentTitle(), react(), emitPreviewPage(),
+    rejectStandaloneServe(), clientDocumentTitle(), brandFontLicense(), katexWoff2Fonts(), react(), emitPreviewPage(),
     productWebBundleIsolation(src('../..'), src('.')),
   ],
   build: {
@@ -223,16 +238,14 @@ export default defineConfig({
     // run vite from this directory (scripts/dev-web.ts). Workspace packages need
     // no entry: pnpm links each of them to a single directory.
     dedupe: ['react', 'react-dom'],
-    // The shell and its static bootstrap dependencies resolve to source so
-    // shell-owned CSS reaches Vite. Plugin packages never enter this graph;
-    // they arrive as runtime bundles through the client module system. Keep
-    // exact-match aliases after the Node browserization alias.
+    // Workspace packages are consumed as built lib products: each resolves
+    // through its own package.json exports from the importer's directory, and
+    // CSS still rides Vite's pipeline because the client build preset emits it
+    // beside the bundle. Plugin packages never enter this graph; they arrive as
+    // runtime bundles through the client module system. The remaining alias
+    // browserizes the vendored Cordis Loader's only Node import.
     alias: [
       { find: /^node:module$/, replacement: src('./src/node-module-stub.ts') },
-      { find: /^@knyazevai\/dsh-client-web$/, replacement: src('../../packages/client/web/src/boot.ts') },
-      { find: /^@knyazevai\/dsh-client-ui-slots$/, replacement: src('../../packages/client/ui-slots/src/index.ts') },
-      { find: /^@knyazevai\/dsh-client-ui-primitives$/, replacement: src('../../packages/client/ui-primitives/src/index.ts') },
-      { find: /^@knyazevai\/dsh-client-modules\/client$/, replacement: src('../../packages/client/modules/src/client/index.ts') },
     ],
   },
   define: {

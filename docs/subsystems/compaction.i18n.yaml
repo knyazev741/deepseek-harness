@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for compaction.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/compaction.md
-compaction.md: 326957b28b564d44895b60d8acd725687db2a9ff
-compaction.zh.md: f344227bde27768da98a529e470a1a2bd8e6ae39
+/compaction:
+  en: 2b372c8f979dfc0e
+  zh: 818c50976481b90b
+/compaction/the-compaction-session-events:
+  en: fac9b61ca88f8afd
+  zh: c3f9753960386d54
+/compaction/image-offload:
+  en: 19632b674911826b
+  zh: b29ef7ff4ae58e58
+/compaction/compactionresult:
+  en: 9dde333b53c14f24
+  zh: 8959aafefc55f9a4
+/compaction/the-service:
+  en: 9006d7acef8004cd
+  zh: 2ffb485397cb509c
+/compaction/tool-result-pruning-outcomes:
+  en: 27091b0a3d454575
+  zh: e22431e27e1349f2

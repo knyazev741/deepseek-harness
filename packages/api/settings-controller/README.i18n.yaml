@@ -1,6 +1,34 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/api/settings-controller/README.md
-README.md: 792469d04f7c45516da2d15d155c3b0efe7d84fb
-README.zh.md: c5680d33579257ab846d34680db0e54adc225109
+/:
+  en: a3cc85cfbefc88fe
+  zh: 67550210b403fe0d
+/settings-controller:
+  en: 7fecb4d8800e8f97
+  zh: 3e2c3fdb29b73cd0
+/settings-controller/summary:
+  en: 3f4f8577b088a92a
+  zh: affc78336ed63b22
+/settings-controller/table-of-contents:
+  en: 3a654e12f423946b
+  zh: 4e3a19aaee58f8a7
+/settings-controller/use-this-package:
+  en: cf2f4de5bee8be55
+  zh: b2630dcba4be5ae8
+/settings-controller/configuration:
+  en: 5b88e86059abb7f3
+  zh: 6a73789ea873dbab
+/settings-controller/model-experience:
+  en: 78e9a59c64ef808a
+  zh: 48b8b611da537891
+/settings-controller/model-experience/kv-cache-effect:
+  en: 740c7814748fc2d1
+  zh: 0cff374d4e5272ff
+/settings-controller/known-limitations-and-deferred-work:
+  en: a7475fd8aedf0830
+  zh: add1adce9d320baa
+/settings-controller/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: e88aeb617ffb74ea

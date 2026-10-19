@@ -1,7 +1,8 @@
 /** Every historical entry generation migrates all preset selections before projection or fork. */
 
 import { describe, expect, it } from 'vitest'
-import { sessionFormatCatalog } from '../src/index.ts'
+import { SESSION_FORMAT_VERSION } from '@knyazevai/dsh-session'
+import { createSessionFormatCatalogWithChildren } from '../src/index.ts'
 
 describe('catalog preset migration', () => {
   it.each([0, 1, 2])('migrates a seeded v%i header and every inherited/local selection', (version) => {
@@ -18,10 +19,10 @@ describe('catalog preset migration', () => {
       ? [...rows.slice(0, 2), { type: 'session/end-seed', seq: 2, time: 2, data: { inherited: true } }, ...rows.slice(2)]
       : rows
     const before = JSON.stringify({ header, source })
-    const restore = sessionFormatCatalog.createRestore(header, { recovery: 'strict', validation: 'current' })
+    const restore = createSessionFormatCatalogWithChildren([]).createRestore(header, { recovery: 'strict', validation: 'current' })
     for (const row of source) restore.decodeRow(row)
     const artifact = restore.finish()
-    expect(artifact.header).toMatchObject({ version: 3, id: 'code', agentPreset: 'ptc', isSeeded: true })
+    expect(artifact.header).toMatchObject({ version: SESSION_FORMAT_VERSION, id: 'code', agentPreset: 'ptc', isSeeded: true })
     expect(artifact.inheritedEventCount).toBe(2)
     expect(artifact.events.map(event => event.seq)).toEqual([0, 1, 2, 3, 4, 5])
     expect(artifact.events.filter(event => event.type === 'agent-preset/selected').map(event => event.data))
@@ -36,11 +37,11 @@ describe('catalog preset migration', () => {
       agentPreset: 'code', ...(version === 2 ? { isSeeded: false } : { seedLength: 0 }),
     }
     const marker = { type: 'fork/session-source', seq: 0, time: 1, ignorable: true, data: { source: 'github-actions' } }
-    const restore = sessionFormatCatalog.createRestore(header, { recovery: 'strict', validation: 'current' })
+    const restore = createSessionFormatCatalogWithChildren([]).createRestore(header, { recovery: 'strict', validation: 'current' })
     restore.decodeRow(marker)
     const artifact = restore.finish()
-    expect(artifact.header).toMatchObject({ version: 3, agentPreset: 'ptc' })
-    expect(artifact.events.filter(event => event.type === marker.type)).toEqual([{ ...marker, seq: version < 2 ? 1 : 0 }])
+    expect(artifact.header).toMatchObject({ version: SESSION_FORMAT_VERSION, agentPreset: 'ptc' })
+    expect(artifact.events.filter(event => event.type === 'plugin:' + marker.type)).toEqual([{ ...marker, type: 'plugin:' + marker.type, seq: version < 2 ? 1 : 0 }])
   })
 
   it.each([0, 1, 2])('rejects unaudited fork payload members in v%i', (version) => {
@@ -48,7 +49,7 @@ describe('catalog preset migration', () => {
       type: 'session', version, id: 'fork-invalid', createdAt: 1, delegationDepth: 0,
       ...(version === 2 ? { isSeeded: false } : { seedLength: 0 }),
     }
-    const restore = sessionFormatCatalog.createRestore(header, { recovery: 'strict', validation: 'current' })
+    const restore = createSessionFormatCatalogWithChildren([]).createRestore(header, { recovery: 'strict', validation: 'current' })
     expect(() =>{  restore.decodeRow({
       type: 'fork/session-source', seq: 0, time: 1, ignorable: true,
       data: { source: 'github-actions', sourceEventSeq: 0 },
@@ -61,7 +62,7 @@ describe('catalog preset migration', () => {
       delegationDepth: 0, agentPreset: 'code',
     }
     const row = { type: 'agent-preset/selected', seq: 0, time: 1, data: { agentPreset: 'code' } }
-    const restore = sessionFormatCatalog.createRestore(header, { recovery: 'strict', validation: 'current' })
+    const restore = createSessionFormatCatalogWithChildren([]).createRestore(header, { recovery: 'strict', validation: 'current' })
     restore.decodeRow(row)
     expect(restore.finish()).toMatchObject({ header: { agentPreset: 'code' }, events: [row] })
   })

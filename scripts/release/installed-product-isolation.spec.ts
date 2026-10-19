@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS } from '../experimental-package-policy.ts'
 import { verifyInstalledProductIsolation } from './installed-product-isolation.ts'
 
 const roots: string[] = []
@@ -26,7 +27,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-describe('installed default-product isolation', () => {
+describe.each([experimental, ...Object.values(EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS)])('installed default-product isolation: %s', (experimental) => {
   it('ignores development dependencies and unrelated installed experimental packages', () => {
     const root = fixture()
     const entry = writePackage(root, '@knyazevai/dsh', {
@@ -51,6 +52,20 @@ describe('installed default-product isolation', () => {
       )
     },
   )
+
+  it('skips the entry package\'s optional bundles, which must be installed, and still rejects other experimental edges', () => {
+    const root = fixture()
+    const entry = writePackage(root, '@knyazevai/dsh', { dependencies: { core: '1.0.0', [experimental]: '1.0.0' } })
+    writePackage(root, 'core', {})
+    writePackage(root, experimental, { dependencies: { '@knyazevai/dsh-experimental-inner': '1.0.0' } })
+    expect(verifyInstalledProductIsolation(entry, [experimental])).toBe(2)
+
+    writePackage(root, 'core', { dependencies: { [experimental]: '1.0.0' } })
+    expect(() => verifyInstalledProductIsolation(entry, [experimental])).toThrow(`core -> ${experimental}`)
+
+    const missing = writePackage(root, '@knyazevai/dsh-missing', { dependencies: { absent: '1.0.0' } })
+    expect(() => verifyInstalledProductIsolation(missing, ['absent'])).toThrow('optional bundle is missing: @knyazevai/dsh-missing -> absent')
+  })
 
   it('rejects experimental identities hidden behind an installed alias', () => {
     const root = fixture()

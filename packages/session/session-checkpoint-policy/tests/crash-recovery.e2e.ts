@@ -9,7 +9,7 @@ import SessionStore, {
   SessionId, TOOL_OUTCOME_UNKNOWN, interruptedTurnClosers,
   type SessionEvent,
 } from '@knyazevai/dsh-session'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 
 const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url))
 const childScript = fileURLToPath(new URL('./fixtures/crash-child.ts', import.meta.url))
@@ -112,9 +112,9 @@ describe.skipIf(process.platform === 'win32')('semantic checkpoint hard-crash re
     expect(result?.type === 'tool/result' && result.data.error).toEqual({
       name: 'ToolOutcomeUnknownError', code: TOOL_OUTCOME_UNKNOWN,
     })
-    if (result?.type !== 'tool/result' || result.data.message.content[0].content[0]?.type !== 'text') {
+    if (result?.type !== 'tool/result' || result.data.message.content[0]?.type !== 'text') {
       throw new Error('expected a text tool result')
     }
-    expect(result.data.message.content[0].content[0].text).toContain('Do not retry blindly.')
+    expect(result.data.message.content[0].text).toContain('Do not retry blindly.')
   })
 })

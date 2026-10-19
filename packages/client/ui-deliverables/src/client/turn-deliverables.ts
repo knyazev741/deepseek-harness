@@ -1,13 +1,17 @@
 /**
  * Turn-scoped produced-file Definition and readers. Client-only and
- * model-free: the vocabulary comes from successful first-party mutation
- * calls, never presentation data or the closing prose.
+ * model-free: produced paths come from successful first-party mutation calls and
+ * their recorded file targets, changed files from the Host's recorded git
+ * summary, and deliveries from `present`; never from presentation data or
+ * the closing prose.
  */
+import { isAbsoluteWorkspacePath } from '@knyazevai/dsh-util-workspace-path'
 import { isAppendSurfaceEvent } from '@knyazevai/dsh-session/surface'
 import type { TurnTailOwnerProps } from '@knyazevai/dsh-client-ui-chat/client'
 import type { ConversationNodeDefinition } from '@knyazevai/dsh-client-ui-conversation/client'
 import type { MarkdownFileMentions } from '@knyazevai/dsh-client-ui-primitives'
 import type { PresentedFile } from '@knyazevai/dsh-tool-present/types'
+import { isChangesEvent } from '../changes.ts'
 import { basename, isPresentedData, isPresentedFile } from '../presented.ts'
 
 /** A declared file with its authorized open coordinates. */
@@ -19,17 +23,24 @@ export interface PresentedPath extends PresentedFile {
 interface ProducedPath {
   readonly seq: number
   readonly path: string
+  readonly argumentPath?: string
+}
+
+/** The latest `workspace/changes` announcement of one Turn; the Host serves its summary by this sequence. */
+export interface ChangesTurnData {
+  readonly seq: number
 }
 
 /** Immutable produced-file facts published against one Turn. */
 export interface DeliverablesTurnData {
   readonly produced: readonly ProducedPath[]
   readonly presented?: readonly PresentedPath[]
+  readonly changes?: ChangesTurnData
 }
 
 declare module '@knyazevai/dsh-client-ui-conversation/client' {
   interface ConversationTurnDataMap {
-    /** Successful mutation paths accumulated in this Turn. */
+    /** Successful mutation paths, recorded changed files, and deliveries accumulated in this Turn. */
     deliverables: DeliverablesTurnData
   }
 }
@@ -106,6 +117,13 @@ function pathValue(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null
 }
 
+/** Resolve a settled mutation from recorded metadata, retaining legacy argument paths. */
+function mutationResultPath(argumentPath: string, meta: unknown): string | null {
+  if (!isRecord(meta) || !Object.hasOwn(meta, 'path')) return argumentPath
+  if (typeof meta.path === 'string' && isAbsoluteWorkspacePath(meta.path)) return meta.path
+  return isAbsoluteWorkspacePath(argumentPath) ? argumentPath : null
+}
+
 /** Narrow parsed JSON to an argument object. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -114,8 +132,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Files produced by one Turn data value.
  *
- * The source is the arguments of successful `write`, `edit`, and mutating
- * `str_replace_editor` calls, not the closing prose: a produced file must be
+ * The source is successful `write`, `edit`, and mutating `str_replace_editor`
+ * calls and their recorded absolute targets; legacy results use arguments. A produced file must be
  * listed whether or not the model remembered to name it. Reads, unsupported
  * tools, malformed calls, and failed results contribute nothing. Paths keep
  * first-seen order and appear once, so a file written and then edited in the
@@ -160,6 +178,7 @@ export const deliverablesDefinition: ConversationNodeDefinition<DeliverablesStat
     if (event.type === 'turn/start') return { id: String(event.data.turn), role: 'start' }
     if (event.type === 'tool/call') return { id: String(event.data.turn), role: 'update' }
     if (event.type === 'deliverables/presented') return isPresentedData(event.data) ? { id: String(event.data.turn), role: 'update' } : null
+    if (event.type === 'workspace/changes') return isChangesEvent(event.data) ? { id: String(event.data.turn), role: 'update' } : null
     if (event.type === 'tool/result' && isAppendSurfaceEvent(event)) {
       return { id: String(event.data.turn), role: 'update' }
     }
@@ -170,6 +189,7 @@ export const deliverablesDefinition: ConversationNodeDefinition<DeliverablesStat
     return { turn: match.event.data.turn, calls: new Map(), produced: [] }
   },
   update: (context, match) => {
+    if (match.event.type === 'workspace/changes') return { ...context.state, changes: { seq: match.event.seq } }
     if (match.event.type === 'deliverables/presented') {
       const { files } = match.event.data
       const seq = match.event.seq
@@ -190,13 +210,19 @@ export const deliverablesDefinition: ConversationNodeDefinition<DeliverablesStat
       return { ...context.state, calls }
     }
     if (match.event.type !== 'tool/result') return context.state
-    const result = match.event.data.message.content[0]
-    if (result.isError === true) return context.state
+    if (match.event.data.message.isError === true) return context.state
     const callId = String(match.event.data.message.source.callId)
-    const path = context.state.calls.get(callId)
-    return path === null || path === undefined
+    const argumentPath = context.state.calls.get(callId)
+    if (argumentPath === null || argumentPath === undefined) return context.state
+    const path = mutationResultPath(argumentPath, match.event.data.meta)
+    return path === null
       ? context.state
-      : { ...context.state, produced: [...context.state.produced, { seq: match.event.seq, path }] }
+      : {
+        ...context.state,
+        produced: [...context.state.produced, {
+          seq: match.event.seq, path, ...path === argumentPath ? {} : { argumentPath },
+        }],
+      }
   },
   buildLocationData: (context, scope, previous) => {
     if (scope !== 'turn' || context.state === undefined) return null
@@ -204,14 +230,28 @@ export const deliverablesDefinition: ConversationNodeDefinition<DeliverablesStat
       && previous.turn === context.state.turn
       && previous.key === 'deliverables'
       && previous.value.produced === context.state.produced
-      && previous.value.presented === context.state.presented) return previous
+      && previous.value.presented === context.state.presented
+      && previous.value.changes === context.state.changes) return previous
     return {
       kind: 'turn',
       turn: context.state.turn,
       key: 'deliverables',
-      value: { produced: context.state.produced, ...context.state.presented === undefined ? {} : { presented: context.state.presented } },
+      value: {
+        produced: context.state.produced,
+        ...context.state.presented === undefined ? {} : { presented: context.state.presented },
+        ...context.state.changes === undefined ? {} : { changes: context.state.changes },
+      },
     }
   },
+}
+
+/**
+ * The turn's latest change announcement.
+ * @param owner - closing turn.
+ * @returns the announcement, or null when the Host recorded none.
+ */
+export function changesForClosing(owner: TurnTailOwnerProps): ChangesTurnData | null {
+  return owner.turn.data.get('deliverables')?.changes ?? null
 }
 
 /**
@@ -231,11 +271,12 @@ export { basename } from '../presented.ts'
 
 /**
  * Resolves inline-code references against one turn's produced or delivered
- * paths. Exact paths resolve directly; a basename resolves only when exactly
- * one supplied path has that basename. Ambiguous and unknown tokens stay inert.
+ * paths and explicit mutation arguments. A reference resolves only when every
+ * exact or basename match identifies one target. Ambiguous and unknown tokens stay inert.
  * @param paths - The turn's produced or delivered paths, already deduplicated.
  * @param openFile - The chat view's file opener.
  * @param label - Localizes the accessible open-label for a resolved path.
+ * @param operations - successful mutations whose literal arguments may name the same canonical targets.
  * @returns The resolver MarkdownText consumes; the full path rides `title`,
  * the same disambiguator the row's chips carry.
  */
@@ -243,18 +284,17 @@ export function producedFileMentions(
   paths: readonly string[],
   openFile: (path: string) => void,
   label: (path: string) => string,
+  operations: readonly Pick<ProducedPath, 'path' | 'argumentPath'>[] = [],
 ): MarkdownFileMentions {
   return {
     resolve(value) {
-      const path = paths.includes(value) ? value : onlyPathWithBasename(paths, value)
+      const matches = new Set(paths.filter(path => path === value || basename(path) === value))
+      for (const operation of operations) {
+        if (operation.argumentPath === value) matches.add(operation.path)
+      }
+      const path = matches.size === 1 ? matches.values().next().value : undefined
       if (path === undefined) return undefined
       return { open: () => { openFile(path) }, label: label(path), title: path }
     },
   }
-}
-
-/** The single supplied path whose basename is exactly `value`, else undefined. */
-function onlyPathWithBasename(paths: readonly string[], value: string): string | undefined {
-  const matches = paths.filter(path => basename(path) === value)
-  return matches.length === 1 ? matches[0] : undefined
 }

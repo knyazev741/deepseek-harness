@@ -30,6 +30,8 @@ import WebSocket from 'ws'
 import { REPO_ROOT, connectFreshWorkspace, newEnglishPage, probeFreePort, requireDist, saveFailureShot } from './support.ts'
 
 const WEB_SURFACE_PROMPT = fileURLToPath(new URL('./expected/web-runtime-context/web-surface-prompt.expected.md', import.meta.url))
+/** Framed user text that marks the auxiliary title request's own messages. */
+const TITLE_PROMPT_MARKER = 'Generate the session title from this JSON array of human messages'
 const authenticatedCookies = new Map<string, Promise<{ origin: string; cookie: string }>>()
 
 /** Frame a complete text turn or an open block before a transport failure. */
@@ -309,7 +311,7 @@ const notReady = UI_PLUGIN_DIRS.filter((dir) => {
 if (notReady.length > 0) console.warn(`[smoke-real] skipped — client bundles not ready: ${notReady.join(', ')}`)
 
 describe('dsh web keyless CLI smoke', () => {
-  it('serves a usable app from two immutable plugin batches', async () => {
+  it('serves a usable app from three immutable plugin batches', async () => {
     requireDist()
     const sessionsDir = mkdtempSync(join(tmpdir(), 'dsh-web-keyless-'))
     const tsxLoader = pathToFileURL(createRequire(join(REPO_ROOT, 'package.json')).resolve('tsx')).href
@@ -356,15 +358,19 @@ describe('dsh web keyless CLI smoke', () => {
       await page.goto(readyUrl)
       await page.getByRole('button', { name: 'New session', exact: true }).first().waitFor({ timeout: 30_000 })
       const batchPaths = [...new Set(pluginScripts)].sort()
-      expect(batchPaths).toHaveLength(2)
-      expect(batchPaths).toContainEqual(expect.stringMatching(
-        /^\/plugins\/\?\?.+\/client\.js,.+\/client\.js&rev=[a-f\d]{12}$/,
-      ))
+      // The bootstrap phase is the modules package alone; the application phase
+      // spans two combos because its map-form URL is over the 3 KiB combo limit
+      // since the four settings companions joined the composition.
+      expect(batchPaths).toHaveLength(3)
+      expect(batchPaths.filter(path => (
+        /^\/plugins\/\?\?.+\/client\.js,.+\/client\.js&rev=[a-f\d]{12}$/.test(path)
+      ))).toHaveLength(2)
       expect(batchPaths).toContainEqual(expect.stringMatching(
         /^\/plugins\/\?\?@knyazevai\/dsh-client-modules\/client\.js&rev=[a-f\d]{12}$/,
       ))
       const readyOrigin = new URL(readyUrl).origin
       expect([...cacheHeaders.values()]).toEqual([
+        'public, max-age=31536000, immutable',
         'public, max-age=31536000, immutable',
         'public, max-age=31536000, immutable',
       ])
@@ -470,8 +476,13 @@ describe('dsh web keyless CLI smoke', () => {
         .flatMap(message => message.content ?? [])
         .find(block => block.type === 'text' && block.text?.includes('web-workspace-context-probe'))
       const expectedWebSection = readFileSync(WEB_SURFACE_PROMPT, 'utf8').trimEnd()
-        .replace('{{webUrl}}', new URL(baseUrl).origin)
       expect(captured.system).toContain(expectedWebSection)
+      expect(captured.system).not.toContain(new URL(baseUrl).origin)
+      expect(captured.messages?.filter(message => message.role === 'user')
+        .flatMap(message => message.content ?? [])
+        .some(block => block.type === 'text'
+          && block.text?.includes(`Current DeepSeek Harness Web GUI URL: ${JSON.stringify(new URL(baseUrl).origin)}.`)))
+        .toBe(true)
       expect(workspaceMessage).toMatchInlineSnapshot(`
         {
           "text": "<system-reminder>
@@ -515,8 +526,11 @@ describe('dsh web keyless CLI smoke', () => {
       request.setEncoding('utf8')
       request.on('data', (chunk: string) => { body += chunk })
       request.on('end', () => {
-        const parsed = JSON.parse(body) as { max_tokens?: number; messages?: unknown[] }
-        const titleRequest = parsed.max_tokens === 64
+        // The request body also carries the session log, whose recorded title
+        // request contains the marker, so only this request's own messages
+        // decide what the request is.
+        const parsed = JSON.parse(body) as { messages?: unknown[] }
+        const titleRequest = JSON.stringify(parsed.messages ?? null).includes(TITLE_PROMPT_MARKER)
         const mainRequest = !titleRequest && body.includes(promptMarker)
         response.writeHead(200, { 'content-type': 'text/event-stream' })
         if (!mainRequest) {

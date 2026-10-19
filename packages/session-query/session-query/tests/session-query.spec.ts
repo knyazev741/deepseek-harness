@@ -1,4 +1,5 @@
 import { createUserMessage, createMessage } from '@knyazevai/dsh-llm'
+import type { ContextFormed, MessageSource } from '@knyazevai/dsh-llm'
 import { describe, expect, it, vi } from 'vitest'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import SessionStore, { SessionLogOffset, SessionSeq, SESSION_FORMAT_VERSION, SessionId } from '@knyazevai/dsh-session'
@@ -24,6 +25,19 @@ import SessionQueryEngine, {
 } from '@knyazevai/dsh-session-query'
 import { SessionTitleProviderId, SessionTitleService } from '@knyazevai/dsh-session-title'
 import { TestSessionQueryEngine } from './test-service.ts'
+
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+  }
+}
+
+type CheckpointSource = Extract<MessageSource, { readonly kind: 'compact-checkpoint' }>
+
+/** Build a typed checkpoint source for a query fixture without owning compaction. */
+function checkpointSource(compactionId: string): CheckpointSource {
+  return { kind: 'compact-checkpoint', compactionId: compactionId as CheckpointSource['compactionId'] }
+}
 
 const TITLE_SERVICE_CONFIG = { fallbackMaxWords: 8, fallbackMaxBytes: 64, maxTitleBytes: 256 }
 
@@ -551,7 +565,7 @@ describe('session-query exact reads', () => {
     await expect(ctx.sessionQuery.readTitle(shared.id)).resolves.toMatchObject({
       title: 'Live title', eventSeq: 0,
     })
-    expect(Object.keys((await ctx.sessionQuery.listSessions())[0]!)).toEqual(['header', 'live', 'persisted'])
+    expect(Object.keys((await ctx.sessionQuery.listSessions())[0]!)).toEqual(['header', 'live', 'persisted', 'formatStatus'])
   })
 
   it('batches unique persisted title observations through one cancellable corpus scan', async () => {
@@ -904,6 +918,45 @@ describe('session-query exact reads', () => {
     expect(older.header.createdAt).toBe(1)
   })
 
+  it('preserves listed format status with live precedence without opening stored logs', async () => {
+    const historical = header('format-historical', 1)
+    const current = header('format-current', 2)
+    const unknown = header('format-unknown', 3)
+    const shared = header('format-shared', 4)
+    TestPersistence.reset()
+    const ctx = await liveContext()
+    ctx.sessions.create(shared.id, { meta: { createdAt: shared.createdAt } })
+    const liveOnly = ctx.sessions.create(SessionId('format-live'), { meta: { createdAt: 5 } })
+    await ctx.plugin(TestPersistence)
+    const list = vi.spyOn(ctx.sessionPersistence, 'list').mockResolvedValue([
+      { header: historical, revision: SessionPersistenceRevision('historical'), formatStatus: 'migration-required' },
+      { header: current, revision: SessionPersistenceRevision('current'), formatStatus: 'current' },
+      { header: unknown, revision: SessionPersistenceRevision('unknown') },
+      { header: shared, revision: SessionPersistenceRevision('shared'), formatStatus: 'migration-required' },
+    ])
+    const stat = vi.spyOn(ctx.sessionPersistence, 'stat')
+    const open = vi.spyOn(ctx.sessionPersistence, 'open')
+    try {
+      const records = await ctx.sessionQuery.listSessions()
+      const byId = new Map(records.map(record => [record.header.id, record]))
+      expect(byId.get(historical.id)).toMatchObject({ live: false, persisted: true, formatStatus: 'migration-required' })
+      expect(byId.get(current.id)).toMatchObject({ live: false, persisted: true, formatStatus: 'current' })
+      expect(byId.get(unknown.id)).toMatchObject({ live: false, persisted: true })
+      expect(byId.get(unknown.id)).not.toHaveProperty('formatStatus')
+      expect(byId.get(shared.id)).toMatchObject({ live: true, persisted: true, formatStatus: 'current' })
+      expect(byId.get(liveOnly.id)).toMatchObject({ live: true, persisted: false, formatStatus: 'current' })
+      expect(list).toHaveBeenCalledTimes(1)
+      expect(stat).not.toHaveBeenCalled()
+      expect(open).not.toHaveBeenCalled()
+      expect(TestPersistence.readCalls).toEqual([])
+    } finally {
+      list.mockRestore()
+      stat.mockRestore()
+      open.mockRestore()
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('filters sessions symmetrically and owns mutable filter values immediately', async () => {
     const durable = header('durable-filter', 1)
     TestPersistence.reset([{ meta: durable, events: eventLog('durable') }])
@@ -959,7 +1012,7 @@ describe('session-query exact reads', () => {
       'user/message',
       createUserMessage({
         content: [{ type: 'text', text: 'replacement' }],
-        source: { kind: 'plugin', plugin: 'test' },
+        source: { kind: 'test' },
       }),
       { surfaceOp: { op: 'replace', startSeq: first.seq, endSeq: first.seq }, sourceEventSeqs: [first.seq] },
     )
@@ -986,7 +1039,7 @@ describe('session-query exact reads', () => {
     session.append(
       'user/message',
       createUserMessage({
-        content: [{ type: 'text', text: 'checkpoint' }], source: { kind: 'plugin', plugin: 'compact' },
+        content: [{ type: 'text', text: 'checkpoint' }], source: checkpointSource('query-compaction-1'),
       }),
       { surfaceOp: { op: 'replace', startSeq: first.seq, endSeq: first.seq }, sourceEventSeqs: [first.seq] },
     )
@@ -1000,7 +1053,7 @@ describe('session-query exact reads', () => {
     session.append(
       'user/message',
       createUserMessage({
-        content: [{ type: 'text', text: 'latest checkpoint' }], source: { kind: 'plugin', plugin: 'compact' },
+        content: [{ type: 'text', text: 'latest checkpoint' }], source: checkpointSource('query-compaction-2'),
       }),
       { surfaceOp: { op: 'replace', startSeq: SessionSeq(2), endSeq: retained.seq }, sourceEventSeqs: [SessionSeq(2), retained.seq] },
     )
@@ -1030,7 +1083,7 @@ describe('session-query exact reads', () => {
     ])
     if (snapshot.events[0]?.type !== 'user/message') throw new Error('expected current user message')
     expect(() => {
-      (snapshot.events[0]!.data as { content: unknown[] }).content = []
+      (snapshot.events[0]!.data as unknown as { content: unknown[] }).content = []
     }).toThrow()
     Object.assign(snapshot.session, { cwd: '/mutated' })
 
@@ -1126,7 +1179,7 @@ describe('session-query exact reads', () => {
     await expect(ctx.sessionQuery.listSessions()).rejects.toThrow(expectCode('SESSION_QUERY_SOURCE_CONFLICT'))
     await persistence.dispose()
     await expect(ctx.sessionQuery.listSessions()).resolves.toEqual([
-      { header: shared, live: true, persisted: false },
+      { header: shared, live: true, persisted: false, formatStatus: 'current' },
     ])
   })
 

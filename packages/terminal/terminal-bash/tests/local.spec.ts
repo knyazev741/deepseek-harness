@@ -1,4 +1,5 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { provideWorkingDirectoryFixture, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,7 +17,6 @@ import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import LocalSubprocessRuntime from '@knyazevai/dsh-subprocess-local'
 import { resolvePwshPath } from '@knyazevai/dsh-pwsh-local/src/resolve.ts'
 import * as ptyLocal from '@knyazevai/dsh-terminal-bash'
-import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 
 const roots: string[] = []
 const contexts: Context[] = []
@@ -59,6 +59,7 @@ async function harness(
   const root = mkdtempSync(join(tmpdir(), 'dsh-pty-local-'))
   roots.push(root)
   const ctx = new Context()
+  provideWorkingDirectoryFixture(ctx)
   contexts.push(ctx)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(TerminalSessionService)
@@ -233,9 +234,10 @@ describe.skipIf(process.platform === 'win32')('terminal-bash real shell', () => 
     const child = /CHILD=(\d+)/.exec(output)?.[1]
     expect(child).toBeDefined()
     const pid = Number(child)
-    expect(() => process.kill(pid, 0)).not.toThrow()
+    expect(processIsRunning(pid)).toBe(true)
     await ctx.terminals.kill(agent, created.sessionId)
-    expect(() => process.kill(pid, 0)).toThrow()
+    // Linux can retain a stopped descendant as a zombie until its parent reaps it.
+    expect(processIsRunning(pid)).toBe(false)
   }, 10_000)
 
   it('quiesces a disowned same-session descendant after the shell exits naturally', async () => {

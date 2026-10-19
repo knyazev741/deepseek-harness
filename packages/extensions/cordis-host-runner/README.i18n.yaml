@@ -1,6 +1,70 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/extensions/cordis-host-runner/README.md
-README.md: 64006ab49b9f8260f45cb162c993b18ff5d227c7
-README.zh.md: 9b64f9e79ee44d122b30003fa1df6f13b83644e5
+/:
+  en: ac7eacf5f9b1e727
+  zh: 61461cb68f91fcce
+/knyazevai-dsh-cordis-host-runner:
+  en: 0cc05a8eadd61014
+  zh: 41e6ace968c495be
+/knyazevai-dsh-cordis-host-runner/summary:
+  en: 8ff708e868c265c4
+  zh: 9b727e6b7a15fa64
+/knyazevai-dsh-cordis-host-runner/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-cordis-host-runner/use-this-package:
+  en: bdaba8036acf80c9
+  zh: 2dd8f972c3023a8a
+/knyazevai-dsh-cordis-host-runner/use-this-package/minimal-configuration:
+  en: 9fbe9216726f69a6
+  zh: f96ad6547313d81d
+/knyazevai-dsh-cordis-host-runner/use-this-package/client-inspection:
+  en: b4a2fe9e7aa9dee7
+  zh: 56f55558809970da
+/knyazevai-dsh-cordis-host-runner/use-this-package/what-a-run-does:
+  en: a3c86c081974a710
+  zh: 180e1b7824c070d4
+/knyazevai-dsh-cordis-host-runner/use-this-package/what-happens-to-definitions:
+  en: d1a8777f171d22bb
+  zh: 7f6aa4c2680557b1
+/knyazevai-dsh-cordis-host-runner/use-this-package/trust-stance:
+  en: af859a1591c02386
+  zh: 46d3c82713fa9055
+/knyazevai-dsh-cordis-host-runner/understand-the-implementation:
+  en: b0a536c0d00cbdb8
+  zh: 08e5d813aa6a612a
+/knyazevai-dsh-cordis-host-runner/understand-the-implementation/design-philosophy:
+  en: 2193b1c446b388fc
+  zh: 6173e0e3e2df6812
+/knyazevai-dsh-cordis-host-runner/understand-the-implementation/source-map:
+  en: f567eacc1072b96c
+  zh: 7f50499d9740f802
+/knyazevai-dsh-cordis-host-runner/understand-the-implementation/how-a-run-flows:
+  en: a5bce87bc346e509
+  zh: 6cfc351312f220cd
+/knyazevai-dsh-cordis-host-runner/further-exploration:
+  en: e259243f4b40773e
+  zh: 145068bfc890845d
+/knyazevai-dsh-cordis-host-runner/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-cordis-host-runner/model-experience/run-outcomes-refusals-and-diagnostics-relayed-to-the-owning-session:
+  en: f53130bb645f50df
+  zh: 603361c566527789
+/knyazevai-dsh-cordis-host-runner/model-experience/run-outcomes-refusals-and-diagnostics-relayed-to-the-owning-session/what-the-model-sees:
+  en: 743dbef78fa3a8ad
+  zh: 2aa4e404e908cf22
+/knyazevai-dsh-cordis-host-runner/model-experience/run-outcomes-refusals-and-diagnostics-relayed-to-the-owning-session/token-effect:
+  en: c7ef63dd8179a97e
+  zh: e66545088d00956a
+/knyazevai-dsh-cordis-host-runner/model-experience/run-outcomes-refusals-and-diagnostics-relayed-to-the-owning-session/kv-cache-effect:
+  en: bbc4338c3035757a
+  zh: f51f4848786d5606
+/knyazevai-dsh-cordis-host-runner/known-limitations-and-deferred-work:
+  en: 1f10688ae249a077
+  zh: ab2ff597e1769b81
+/knyazevai-dsh-cordis-host-runner/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

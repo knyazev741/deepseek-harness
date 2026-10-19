@@ -1,3 +1,12 @@
+import type { ContextFormed } from '@knyazevai/dsh-llm'
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    /** Continuation after first-chunk recovery compacts the conversation.
+     * @persistenceAttribution
+     */
+    'fork-first-chunk-recovery': { kind: 'fork-first-chunk-recovery' } & ContextFormed
+  }
+}
 /**
  * Fork-owned recovery for a first-chunk idle timeout: force one context
  * compaction, then queue a `continue` follow-up so the agent loop starts a new
@@ -13,7 +22,7 @@
 
 import type { Context, Events } from '@deepseek-ai/cordis'
 import type { RequestErrorAction } from '@knyazevai/dsh-agent'
-import type {} from '@knyazevai/dsh-agent-presets'
+import type {} from '@knyazevai/dsh-agent-preset-registry'
 import type {} from '@knyazevai/dsh-compaction'
 import { createUserMessage } from '@knyazevai/dsh-llm/message'
 
@@ -41,7 +50,7 @@ export interface RecoveryHandle {
 function followUpFromCompaction(agent: Agent): void {
   agent.followup(createUserMessage({
     content: [{ type: 'text', text: CONTINUATION_TEXT }],
-    source: { kind: 'plugin', plugin: 'fork-llm-first-chunk-timeout' },
+    source: { kind: 'fork-first-chunk-recovery' },
   }))
 }
 
@@ -93,9 +102,11 @@ export function createRecovery(ctx: Context, maxRetries: number): RecoveryHandle
     const count = counters.get(agent) ?? 0
     if (count >= maxRetries) {
       ctx.logger.warn(
-        `first-chunk idle timeout persisted after ${maxRetries} compactions; delegating downstream recovery`,
+        `first-chunk idle timeout persisted after ${maxRetries} compactions; delegating retry policy`,
       )
-      return next()
+      const action = await next()
+      if (action?.kind === 'retry') counters.delete(agent)
+      return action
     }
     const generation = agent.session.surface.replaceGeneration
     try {

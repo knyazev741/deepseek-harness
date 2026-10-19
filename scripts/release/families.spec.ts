@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { officialClientBuildEnvironment, writeClientBuildRecord } from '../client-build-environment.ts'
+import { ON_DEMAND_BUNDLES } from '../../packages/boot/app-boot/src/official-bundles.ts'
 import { releaseFamily, type ReleaseMember } from './families.ts'
 import { compareVersions, nextVendorVersion, planShared, reachesPayload } from './bump.ts'
 
@@ -50,21 +51,52 @@ describe('release families', () => {
       .filter(member => member.directory.startsWith('packages/experimental/'))
       .map(member => member.name)).toEqual([
       '@knyazevai/dsh-experimental-agent-team-profile',
-      '@knyazevai/dsh-experimental-agent-team-web-profile',
       '@knyazevai/dsh-experimental-agent-team',
+      '@knyazevai/dsh-experimental-api-speech-to-text',
       '@knyazevai/dsh-experimental-auto-review',
+      '@knyazevai/dsh-experimental-badge-skill-bundle',
       '@knyazevai/dsh-experimental-browser-use-chrome-devtools-mcp',
       '@knyazevai/dsh-experimental-browser-use-playwright-mcp',
       '@knyazevai/dsh-experimental-browser-use-runtime',
       '@knyazevai/dsh-experimental-browser-use-stagehand-native',
+      '@knyazevai/dsh-experimental-claude-code-mods',
       '@knyazevai/dsh-experimental-client-ui-agent-team',
+      '@knyazevai/dsh-experimental-client-ui-claude-code-mods',
+      '@knyazevai/dsh-experimental-client-ui-cot-translation',
+      '@knyazevai/dsh-experimental-client-ui-voice-input',
       '@knyazevai/dsh-experimental-computer-use-cua-driver-mcp',
       '@knyazevai/dsh-experimental-computer-use-cua-driver-native',
+      '@knyazevai/dsh-experimental-cot-translation-bundle',
+      '@knyazevai/dsh-experimental-cua-macos',
+      '@knyazevai/dsh-cua',
+      '@knyazevai/dsh-hook-protocol',
+      '@knyazevai/dsh-hooks-claude-code',
+      '@knyazevai/dsh-hooks-codex',
+      '@knyazevai/dsh-experimental-inspector-profile',
       '@knyazevai/dsh-experimental-inspector',
+      '@knyazevai/dsh-experimental-plugin-market-bundle',
       '@knyazevai/dsh-experimental-ptc-runtime-python',
+      '@knyazevai/dsh-experimental-ralph-bundle',
+      '@knyazevai/dsh-experimental-session-inspector',
+      '@knyazevai/dsh-experimental-session-search',
+      '@knyazevai/dsh-session-title-all-prompts-llm',
+      '@knyazevai/dsh-experimental-session-titles-bundle',
+      '@knyazevai/dsh-skill-badge',
+      '@knyazevai/dsh-experimental-speech-to-text-sensevoice',
+      '@knyazevai/dsh-experimental-speech-to-text',
+      '@knyazevai/dsh-experimental-terminal-bundle',
       '@knyazevai/dsh-experimental-tool-agent-team',
+      '@knyazevai/dsh-tool-ralph',
+      '@knyazevai/dsh-tool-session-query',
+      '@knyazevai/dsh-tool-terminal',
+      '@knyazevai/dsh-experimental-tool-worktree',
+      '@knyazevai/dsh-experimental-translator',
+      '@knyazevai/dsh-experimental-voice-input-bundle',
+      '@knyazevai/dsh-webhook-github',
+      '@knyazevai/dsh-webhook',
       '@knyazevai/dsh-experimental-webworker-packer',
       '@knyazevai/dsh-experimental-webworker-runtime',
+      '@knyazevai/dsh-experimental-worktree',
     ])
   })
 
@@ -209,6 +241,52 @@ describe('release families', () => {
       '@knyazevai/dsh-consumer',
       '@knyazevai/dsh-zebra',
     ])
+  })
+
+  it('publishes on-demand catalog members before dsh without adding installed dependencies', () => {
+    const dsh = member('apps/cli', '@knyazevai/dsh')
+    const providers = ON_DEMAND_BUNDLES.map(name => member(`packages/subagent/${name}`, name))
+    const plan = releaseFamily('dsh').publishOrder([dsh, ...providers])
+    expect(plan.order.map(entry => entry.name)).toEqual([...ON_DEMAND_BUNDLES, dsh.name])
+    expect(dsh.manifest).toEqual({})
+    expect(plan.droppedPeerEdges).toEqual([])
+  })
+
+  it('rejects an advertised provider missing from the public release family', () => {
+    expect(() => releaseFamily('dsh').publishOrder([member('apps/cli', '@knyazevai/dsh')]))
+      .toThrow('Official catalog prerequisite')
+  })
+
+  it('keeps catalog prerequisites ahead of a dsh peer declaration', () => {
+    const dsh = member('apps/cli', '@knyazevai/dsh')
+    const providers = ON_DEMAND_BUNDLES.map(name => member(`packages/subagent/${name}`, name, {
+      peerDependencies: { '@knyazevai/dsh': 'workspace:*' },
+    }))
+    const plan = releaseFamily('dsh').publishOrder([dsh, ...providers])
+    expect(plan.order.map(entry => entry.name)).toEqual([...ON_DEMAND_BUNDLES, dsh.name])
+    expect(plan.droppedPeerEdges).toEqual(ON_DEMAND_BUNDLES.map(name => ({ consumer: name, peer: dsh.name })))
+  })
+
+  it.each(['dependencies', 'optionalDependencies', 'peerDependencies'])(
+    'requires exact packed DSH %s while preserving external ranges', (section) => {
+      const pkg = member('packages/example/provider', '@knyazevai/dsh-provider')
+      const family = releaseFamily('dsh')
+      const manifest = { name: pkg.name, version: pkg.version, [section]: { '@knyazevai/dsh-tools': pkg.version, external: '^4.0.0' } }
+      expect(() => { family.validatePackedManifest(pkg, manifest) }).not.toThrow()
+      for (const range of ['workspace:*', '^0.0.1', '~0.0.1', '0.0.2', '*']) {
+        expect(() => { family.validatePackedManifest(pkg, { ...manifest, [section]: { '@knyazevai/dsh-tools': range } }) })
+          .toThrow(`packed ${section}.@knyazevai/dsh-tools must equal`)
+      }
+    },
+  )
+
+  it('checks packed identities and preserves independent vendor versions', () => {
+    const pkg = member('vendor/example', '@deepseek-ai/example')
+    const family = releaseFamily('vendor')
+    expect(() => { family.validatePackedManifest(pkg, { name: pkg.name, version: pkg.version, dependencies: { '@knyazevai/dsh-tools': '^4.0.0' } }) })
+      .not.toThrow()
+    expect(() => { family.validatePackedManifest(pkg, { name: '@deepseek-ai/other', version: pkg.version }) }).toThrow('packed identity')
+    expect(() => { family.validatePackedManifest(pkg, { name: pkg.name, version: '0.0.2' }) }).toThrow('packed identity')
   })
 
   it('reports a runtime dependency cycle instead of emitting an arbitrary order', () => {

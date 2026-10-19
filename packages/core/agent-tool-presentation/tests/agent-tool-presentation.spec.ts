@@ -59,6 +59,10 @@ async function mount(ctx: Context, config: Config, id = 'agent') {
 }
 
 describe('the tool-presentation row', () => {
+  it('rejects an unsupported presentation mode in configuration', () => {
+    expect(() => Config({ mode: 'both' } as never)).toThrow()
+  })
+
   it('declares the services it uses without holding a PTC runtime hostage', () => {
     // A `native` row must mount where no runtime is composed, so the wait is
     // conditional inside apply rather than static metadata.
@@ -76,15 +80,6 @@ describe('the tool-presentation row', () => {
     expect(codedAssembly.tools.map(tool => tool.name)).toEqual([RUN_CODE_NAME])
     expect(codedAssembly.sections.find(section => section.name === 'tools:sdk')?.text).toContain('echo')
     expect(plainAssembly.tools.map(tool => tool.name)).toEqual(['echo'])
-  })
-
-  it('presents both forms when asked for both', async () => {
-    const ctx = await host()
-    const { agent } = await mount(ctx, { mode: 'both' })
-
-    const assembly = await ctx.systemPrompt.assemble({ scope: agent })
-
-    expect(assembly.tools.map(tool => tool.name)).toEqual(['echo', RUN_CODE_NAME])
   })
 
   it('restores the deployment default when the agent unloads', async () => {
@@ -105,7 +100,7 @@ describe('the tool-presentation row', () => {
 
     const { agent, row } = await mount(ctx, { mode: 'ptc' })
 
-    // Pending, not applied: `dsh-agent-presets` rejects a mount holding a row
+    // Pending, not applied: `dsh-agent-preset-registry` rejects a mount holding a row
     // that never reached a usable state, naming this id — so the preset fails
     // where the operator can act, instead of at the first request.
     expect(row.ctx.get('ptcRuntime')).toBeUndefined()

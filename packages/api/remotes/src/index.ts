@@ -23,7 +23,7 @@ import type {} from '@knyazevai/dsh-cordis-host-runner/types'
 import type {} from '@knyazevai/dsh-credentials/types'
 import type {} from '@knyazevai/dsh-goal/types'
 import type {} from '@knyazevai/dsh-llm/types'
-import type {} from '@knyazevai/dsh-agent-presets/types'
+import type {} from '@knyazevai/dsh-agent-preset-registry/types'
 import type {} from '@knyazevai/dsh-permission-presets/types'
 import type {} from '@knyazevai/dsh-settings/types'
 import type {} from '@knyazevai/dsh-user-approval'
@@ -48,10 +48,12 @@ export function apply(ctx: Context): void {
 function remoteEventSource(ctx: Context): TypertRemoteEventSource {
   return (signal) => {
     const queue = new RemoteEventQueue()
-    const disposers = API_REMOTE_FORWARDED_EVENTS.map(({ event, mode }) => {
+    const disposers = API_REMOTE_FORWARDED_EVENTS.map((entry) => {
+      const { event, mode } = entry
       if (mode === 'emit') {
+        const resources = 'resources' in entry ? entry.resources : undefined
         return ctx.on(event as never, ((...args: unknown[]) => {
-          queue.push({ event, args: assertJsonArgs(event, args) })
+          queue.push({ event, args: assertJsonArgs(event, args), ...resources === undefined ? {} : { resources } })
         }) as never)
       }
       return ctx.on(event as never, (function (

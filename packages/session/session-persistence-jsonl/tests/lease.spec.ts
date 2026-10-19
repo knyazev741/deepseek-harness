@@ -25,7 +25,7 @@ import {
   SessionPersistenceNotFoundError,
 } from '@knyazevai/dsh-session-persistence'
 import type { SessionPersistence } from '@knyazevai/dsh-session-persistence'
-import JsonlSessionPersistence from '../src/index.ts'
+import * as JsonlSessionPersistence from '../src/index.ts'
 import { LEASE_FILENAME, SessionWriteLease } from '../src/lease.ts'
 import type { JsonlSessionHandle } from '../src/storage.ts'
 import { sessionDir } from '../src/format.ts'
@@ -388,7 +388,7 @@ describe('cross-process write lock', () => {
   it('a drain failure and a release failure reject close as one AggregateError', async () => {
     const root = await freshRoot()
     const backend = await mount(root)
-    const holder = await backend.create(meta('drain-and-release-fail')) as unknown as JsonlSessionHandle
+    const holder = await backend.create(meta('drain-and-release-fail')) as JsonlSessionHandle
     await holder.append([...EVENTS])
 
     vi.spyOn(backend as unknown as { persistBatch: () => Promise<void> }, 'persistBatch')

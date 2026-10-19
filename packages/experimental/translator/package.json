@@ -1,0 +1,68 @@
+{
+  "name": "@knyazevai/dsh-experimental-translator",
+  "description": "Machine translation with reusable Session results",
+  "version": "0.2.1-rc.2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/translator"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./types": {
+      "types": "./lib/types/types.d.ts",
+      "default": "./lib/types/types.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/types/**/*.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "workspace:~"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-launch-environment": "workspace:*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-app-boot": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-launch-environment": "workspace:*",
+    "@knyazevai/dsh-llm-deepseek": "workspace:*",
+    "@knyazevai/dsh-llm-deepseek-api-key": "workspace:*",
+    "@knyazevai/dsh-llm-deepseek-account": "workspace:*",
+    "@knyazevai/dsh-deepseek-account": "workspace:*",
+    "@knyazevai/dsh-deepseek-llm-api-extensions": "workspace:*",
+    "@knyazevai/dsh-session-log-deepseek": "workspace:*",
+    "@knyazevai/dsh-session-query-sqlite": "workspace:*"
+  }
+}

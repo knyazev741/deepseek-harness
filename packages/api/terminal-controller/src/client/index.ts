@@ -3,12 +3,16 @@ import { Service, type Context } from '@deepseek-ai/cordis'
 import { remoteErrorOf } from '@knyazevai/dsh-typert-protocol'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import type {} from '@knyazevai/dsh-api-gateway/client'
+import type { ConnectionHandle } from '@knyazevai/dsh-client-connection/client'
 import { TerminalView, type TerminalRemote } from './model.ts'
 import { createSnapshotStore, type SnapshotStore } from '@knyazevai/dsh-client-store'
 import { randomUUID } from '@knyazevai/dsh-util-crypto'
 import type { TerminalShell, WebTerminalId, WebTerminalInfo } from '../types.ts'
 import { preferredShell, rememberShell } from './shell-preference.ts'
 import { TerminalCloseRequests, type TerminalCloseRequest } from './close-requests.ts'
+import { TerminalWindowHold } from './retention.ts'
+import { TerminalBindings } from './bindings.ts'
+import { TerminalInventory } from './inventory.ts'
 
 export type { TerminalView, TerminalViewState, TerminalViewIssue, TerminalRenderFrame, TerminalRemote } from './model.ts'
 
@@ -41,6 +45,11 @@ export class ClientTerminals extends Service {
   private readonly closed = new Set<WebTerminalId>(this.requests.pending().map(request => request.id))
   private disposed = false
   private readonly views = new Map<SessionId, Map<string, TerminalView>>()
+  private readonly inventories = new Map<SessionId, TerminalInventory>()
+  private readonly bindings = new TerminalBindings()
+  private readonly holds = new Map<SessionId, Map<WebTerminalId, TerminalWindowHold>>()
+  private readonly releasing = new Set<Promise<void>>()
+  private openTabs: readonly { sessionId: SessionId; tabId: string; contentId: string }[] = []
 
   /**
    * @param ctx - Client root Context with Gateway and terminal Remote namespace.
@@ -48,11 +57,28 @@ export class ClientTerminals extends Service {
    */
   constructor(ctx: Context, private readonly remote: TerminalRemote) {
     super(ctx, 'webTerminals')
+    const connection = ctx.get('connection') as ConnectionHandle
+    let connected = connection.generation.getSnapshot() !== undefined
+    ctx.on('connection/reset', () => {
+      if (!connected) { connected = true; return }
+      for (const [sessionId, inventory] of this.inventories) {
+        void inventory.reset()?.catch((error: unknown) => {
+          if (!this.disposed) {
+            this.ctx.logger.warn('Terminal list refresh failed; retry terminal recovery', { sessionId, error })
+          }
+        })
+      }
+    })
     ctx.effect(() => async () => {
       this.disposed = true
+      const listing = [...this.inventories.values()].map(inventory => inventory.dispose())
+      this.inventories.clear()
       const detaching = [...this.views.values()].flatMap(views => [...views.values()].map(view => view.dispose()))
       this.views.clear()
-      await Promise.all([...detaching, ...this.closing.values()])
+      this.bindings.clear()
+      const holds = [...this.holds.values()].flatMap(holds => [...holds.values()].map(hold => hold.dispose()))
+      this.holds.clear()
+      await Promise.all([...listing, ...detaching, ...holds, ...this.releasing, ...this.closing.values()])
     }, 'terminal-controller.client.views')
     for (const request of this.requests.pending()) this.cleanup(request)
   }
@@ -61,21 +87,35 @@ export class ClientTerminals extends Service {
    * Return the stable model for one sidebar occurrence.
    * @param sessionId - owning Session.
    * @param key - sidebar occurrence key.
-   * @param terminalId - existing Host identity when restoring a listed terminal.
+   * @param contentId - globally unique content identity; layout-local tab ids are not persistence keys.
+   * @param terminalId - existing Host identity when restoring a listed terminal; otherwise reuse the saved content identity.
    * @param shellPath - explicit shell for a new terminal; restored terminals retain their own shell.
    * @returns its observable state and terminal commands.
    */
-  view(sessionId: SessionId, key: string, terminalId?: WebTerminalId, shellPath?: string): TerminalView {
+  view(sessionId: SessionId, key: string, contentId: string, terminalId?: WebTerminalId, shellPath?: string): TerminalView {
     let views = this.views.get(sessionId)
     if (views === undefined) { views = new Map(); this.views.set(sessionId, views) }
     let view = views.get(key)
     if (view === undefined) {
-      const id = terminalId ?? randomUUID() as WebTerminalId
-      view = new TerminalView(sessionId, this.remote, this.ctx.remote, id, terminalId === undefined, shellPath)
+      const saved = terminalId ?? this.bindings.get(sessionId, contentId)
+      const id = saved ?? randomUUID() as WebTerminalId
+      this.bindings.set(sessionId, contentId, id)
+      view = new TerminalView(sessionId, this.remote, this.ctx.remote, this.inventory(sessionId), id, saved === undefined, shellPath,
+        signal => this.hold(sessionId, id).ready(signal))
       views.set(key, view)
+      this.reconcileHolds()
       void view.refresh()
     }
     return view
+  }
+
+  private inventory(sessionId: SessionId): TerminalInventory {
+    let inventory = this.inventories.get(sessionId)
+    if (inventory === undefined) {
+      inventory = new TerminalInventory(() => this.remote.list(sessionId))
+      this.inventories.set(sessionId, inventory)
+    }
+    return inventory
   }
 
   /**
@@ -101,32 +141,84 @@ export class ClientTerminals extends Service {
    * Save a close intent and release the tab immediately; cleanup outlives DOM unmount and reload.
    * @param sessionId - owning Session.
    * @param key - sidebar occurrence key, including an inactive restored tab.
+   * @param contentId - globally unique content identity whose binding is removed.
    * @param terminalId - restored identity if the tab has no model yet.
    */
-  close(sessionId: SessionId, key: string, terminalId?: WebTerminalId): void {
+  close(sessionId: SessionId, key: string, contentId: string, terminalId?: WebTerminalId): void {
     const views = this.views.get(sessionId)
     const view = views?.get(key)
-    const id = view?.id ?? terminalId
+    const id = view?.id ?? terminalId ?? this.bindings.get(sessionId, contentId)
     if (id === undefined) return
     const request: TerminalCloseRequest = { sessionId, id, title: view?.state.getSnapshot().title ?? key }
     this.closed.add(id)
     this.requests.save(request)
+    this.bindings.delete(sessionId, contentId)
     views?.delete(key)
     if (views?.size === 0) this.views.delete(sessionId)
     this.cleanup(request, view)
+    this.reconcileHolds()
   }
 
   /**
-   * Query Host terminals that have neither a tab in this page nor an unfinished close.
+   * Reconcile this window's open terminal occurrences, including dormant saved Sessions.
+   * @param tabs - terminal-kind membership supplied by the sidebar layout owner.
+   */
+  retainTabs(tabs: readonly { sessionId: SessionId; tabId: string; contentId: string }[]): void {
+    this.openTabs = tabs
+    this.reconcileHolds()
+  }
+
+  private hold(sessionId: SessionId, id: WebTerminalId): TerminalWindowHold {
+    let holds = this.holds.get(sessionId)
+    if (holds === undefined) { holds = new Map(); this.holds.set(sessionId, holds) }
+    let hold = holds.get(id)
+    if (hold === undefined || hold.failed) {
+      if (hold !== undefined) this.release(hold)
+      hold = new TerminalWindowHold(this.ctx.remote, this.remote, sessionId, id)
+      holds.set(id, hold)
+    }
+    return hold
+  }
+
+  private reconcileHolds(): void {
+    if (this.disposed) return
+    const wanted = new Map<SessionId, Set<WebTerminalId>>()
+    for (const tab of this.openTabs) {
+      const id = this.bindings.get(tab.sessionId, tab.contentId)
+      if (id === undefined || this.closed.has(id)) continue
+      let ids = wanted.get(tab.sessionId)
+      if (ids === undefined) { ids = new Set(); wanted.set(tab.sessionId, ids) }
+      ids.add(id)
+      const view = this.views.get(tab.sessionId)?.get(tab.tabId)
+      if (view === undefined || view.state.getSnapshot().info !== undefined) {
+        if (!this.holds.get(tab.sessionId)?.has(id)) this.hold(tab.sessionId, id)
+      }
+    }
+    for (const [sessionId, holds] of this.holds) {
+      for (const [id, hold] of holds) {
+        if (!wanted.get(sessionId)?.has(id)) { holds.delete(id); this.release(hold) }
+      }
+      if (holds.size === 0) this.holds.delete(sessionId)
+    }
+  }
+
+  private release(hold: TerminalWindowHold): void {
+    const releasing = hold.dispose().finally(() => { this.releasing.delete(releasing) })
+    this.releasing.add(releasing)
+    void releasing.catch((error: unknown) => { this.ctx.logger.warn('Terminal hold release failed', error) })
+  }
+
+  /**
+   * Read shared Session discovery without a live view or unfinished close.
    * @param sessionId - Session being displayed.
+   * @param refresh - explicitly replace settled discovery, including a previous failure.
    * @returns terminals available for opening as recovered tabs.
    */
-  async recover(sessionId: SessionId): Promise<WebTerminalInfo[]> {
-    const result = await this.remote.list(sessionId)
-    if (!result.ok) throw new Error(result.error.message)
+  async recover(sessionId: SessionId, refresh: boolean = false): Promise<WebTerminalInfo[]> {
+    const available = await this.inventory(sessionId).read(refresh)
     const held = new Set([...(this.views.get(sessionId)?.values() ?? [])].map(view => view.id))
     const closing = new Set(this.requests.pending().map(request => request.id))
-    return result.value.filter(info => !held.has(info.id) && !closing.has(info.id) && !this.closed.has(info.id))
+    return [...available.values()].filter(info => !held.has(info.id) && !closing.has(info.id) && !this.closed.has(info.id))
   }
 
   /**
@@ -147,6 +239,7 @@ export class ClientTerminals extends Service {
         const result = await this.remote.close(record.sessionId, record.id)
         if (!result.ok) throw result.error
       }
+      this.inventories.get(record.sessionId)?.remove(record.id)
       this.requests.remove(record.id)
     })().catch((error: unknown) => {
       if (remoteErrorOf(error)?.code === 'session/not-found') {
@@ -166,7 +259,7 @@ export class ClientTerminals extends Service {
 }
 
 /** Required Client transport and terminal namespace. */
-export const inject = ['remote', 'remote.terminal']
+export const inject = ['remote', 'remote.terminal', 'connection']
 
 /**
  * Install the Client terminal models.

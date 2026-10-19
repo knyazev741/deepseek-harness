@@ -1,17 +1,16 @@
-/** Session-scoped browser terminals over the composed subprocess and sandbox providers. */
+/** Session-owned user terminals with the execution environment's system-user permissions. */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@knyazevai/dsh-agent'
-import type { Session, SessionEvent, SessionId } from '@knyazevai/dsh-session'
-import type { SubprocessTerminalHandle } from '@knyazevai/dsh-subprocess'
+import type { SessionId } from '@knyazevai/dsh-session'
 import type {} from '@knyazevai/dsh-sandbox-policy'
-import type {} from '@knyazevai/dsh-sandbox'
-import type {} from '@knyazevai/dsh-session-projection'
-import { Remote, RemoteError, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
+import type {} from '@knyazevai/dsh-working-directory'
+import { Remote, RemoteError, TypertRemoteService, type RemoteStream } from '@knyazevai/dsh-typert-protocol'
 import { discoverShells, resolveShell } from './shells.ts'
 import { BrowserTerminal } from './terminal.ts'
+import { TerminalRetention } from './retention.ts'
 import type {
-  TerminalShell, TerminalAttachmentId, TerminalCreateRequest, TerminalEnvironment, TerminalFrame,
+  TerminalShell, TerminalInput, TerminalCreateRequest, TerminalEnvironment, TerminalFrame, TerminalRetentionFrame,
   WebTerminalId, WebTerminalInfo,
 } from './types.ts'
 
@@ -45,12 +44,23 @@ export interface Config {
   readonly maxRows: number
   /** Screen history rows retained for reconnecting clients. */
   readonly scrollback: number
-  /** Maximum queued UTF-8 frame bytes per output follower before disconnection. */
+  /** Maximum queued UTF-8 frame bytes per output follower and in the Client input buffer. */
   readonly maxBufferedBytes: number
-  /** Maximum UTF-8 bytes in one input request. */
+  /** Maximum raw UTF-8 bytes per input command and across unacknowledged Client input. */
   readonly maxInputBytes: number
   /** Provider process-termination grace period in milliseconds. */
   readonly disposeGraceMs: number
+  /** Continuous confirmed idle time without window holds before reclamation; zero disables reclamation. */
+  readonly unattendedTimeoutMs: number
+  /** Interval between unattended shell and process observations. */
+  readonly activityPollIntervalMs: number
+  /** Delay before retrying failed owned terminal cleanup. */
+  readonly cleanupRetryMs: number
+}
+
+interface TerminalAllocation {
+  info: WebTerminalInfo
+  readonly cleanup: TerminalRetention
 }
 
 interface OwnedSession {
@@ -59,12 +69,12 @@ interface OwnedSession {
   cleanup?: Promise<void>
   readonly terminals: Map<WebTerminalId, BrowserTerminal>
   readonly pending: Map<WebTerminalId, Promise<BrowserTerminal>>
-  readonly allocations: Map<WebTerminalId, { handle: SubprocessTerminalHandle; info: WebTerminalInfo }>
+  readonly allocations: Map<WebTerminalId, TerminalAllocation>
 }
 
 /** Typed Remote control of transient Session-owned terminal processes. */
 export class TerminalController extends TypertRemoteService {
-  static inject = ['subprocess', 'sandboxPolicy', 'sessionProjections', 'typert']
+  static inject = ['subprocess', 'sandboxPolicy', 'workingDirectory', 'typert']
   static Config: z<Config> = z.object({
     shell: z.union([z.object({
       path: z.string().required(), name: z.string().required(), args: z.array(z.string()).default([]),
@@ -77,6 +87,9 @@ export class TerminalController extends TypertRemoteService {
     maxBufferedBytes: z.number().step(1).min(1024).default(2 * 1024 * 1024),
     maxInputBytes: z.number().step(1).min(1).default(64 * 1024),
     disposeGraceMs: z.number().step(1).min(1).default(1000),
+    unattendedTimeoutMs: z.number().step(1).min(0).max(Number.MAX_SAFE_INTEGER).default(7_200_000),
+    activityPollIntervalMs: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(30_000),
+    cleanupRetryMs: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(60_000),
   })
 
   private readonly owners = new Map<SessionId, OwnedSession>()
@@ -88,15 +101,6 @@ export class TerminalController extends TypertRemoteService {
    */
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'terminalController', { namespace: 'terminal' })
-    ctx.on('internal/dispatch', (_mode, eventName, args) => {
-      if (eventName !== 'session/event') return
-      const [session, event] = args as [Session, SessionEvent]
-      if (event.type !== 'sandbox/mode') return
-      const owner = this.owners.get(session.id)
-      if (owner === undefined || owner.terminals.size + owner.pending.size + owner.allocations.size === 0) return
-      const current = ctx.sessionProjections.stateOf(session, 'sandboxMode') ?? ctx.sandboxPolicy.defaultMode
-      if (event.data.mode !== current) throw new Error('Close browser terminals before changing the Session sandbox mode')
-    }, { global: true })
     ctx.effect(() => async () => {
       this.lifetime.abort(new Error('Terminal controller disposed'))
       const results = await Promise.allSettled([...this.owners].map(([id, owner]) => this.disposeOwner(id, owner)))
@@ -106,17 +110,17 @@ export class TerminalController extends TypertRemoteService {
   }
 
   /**
-   * Read the Session working directory and terminal limits without resolving a shell.
+   * Read the Session's current directory and terminal limits without filesystem validation or shell lookup.
    * @param agent - Session owner supplied by the Gateway.
    * @param signal - request cancellation.
-   * @returns the Session workspace directory and terminal limits.
+   * @returns the logged current directory and terminal limits; retained terminals keep their own process directories.
    */
   @Remote
   environment(agent: Agent, signal: AbortSignal): TerminalEnvironment {
     signal.throwIfAborted()
-    const { sandboxPolicy } = this.execution(agent)
-    return { cwd: sandboxPolicy.resolve({ session: agent.session }).workspaceRoot,
-      maxInputBytes: this.config.maxInputBytes, maxCols: this.config.maxCols,
+    const { workingDirectory } = this.execution(agent)
+    return { cwd: workingDirectory.get(agent.session),
+      maxInputBytes: this.config.maxInputBytes, maxBufferedBytes: this.config.maxBufferedBytes, maxCols: this.config.maxCols,
       maxRows: this.config.maxRows, scrollback: this.config.scrollback }
   }
 
@@ -145,7 +149,7 @@ export class TerminalController extends TypertRemoteService {
   }
 
   /**
-   * Allocate an interactive shell once for a caller-generated identity.
+   * Allocate a user shell once for a caller-generated identity, without Agent sandbox or approval restrictions.
    * @param agent - Session owner supplied by the Gateway.
    * @param request - initial dimensions and idempotency identity.
    * @param signal - allocation cancellation; committed terminals survive disconnection.
@@ -167,7 +171,6 @@ export class TerminalController extends TypertRemoteService {
       this.requireOpen(owner, request.id)
       return terminal.info
     }
-    if (owner.allocations.has(request.id)) throw new Error('Close the failed terminal allocation before creating it again')
     if (new Set([...owner.terminals.keys(), ...owner.pending.keys(), ...owner.allocations.keys()]).size >= this.config.maxTerminals) throw new RemoteError('terminal/limit-reached', 'Session terminal limit reached', { limit: this.config.maxTerminals })
     const allocation = this.spawn(agent, owner, request, AbortSignal.any([signal, this.lifetime.signal, owner.lifetime.signal]))
     owner.pending.set(request.id, allocation)
@@ -175,6 +178,9 @@ export class TerminalController extends TypertRemoteService {
       const terminal = await allocation
       owner.terminals.set(request.id, terminal)
       owner.allocations.delete(request.id)
+      terminal.monitor(this.config, () => { owner.closedIds.add(request.id) }, () => {
+        owner.terminals.delete(request.id)
+      }, (error) => { this.ctx.logger.error('Browser terminal cleanup failed', error) })
       this.requireOpen(owner, request.id)
       return terminal.info
     } finally {
@@ -183,46 +189,34 @@ export class TerminalController extends TypertRemoteService {
   }
 
   /**
-   * Attach to a terminal without binding its process lifetime to the transport.
-   * @param agent - Session owner supplied by the Gateway.
-   * @param id - terminal identity.
-   * @param attachmentId - new exclusive input attachment.
-   * @param signal - physical stream cancellation.
-   * @returns screen recovery followed by output and metadata changes.
+   * Retain an existing terminal for a window without activating its Agent or taking input control.
+   * @param sessionId - owning Session identity, including an inactive saved layout.
+   * @param id - retained Host terminal identity.
+   * @param signal - physical Remote stream cancellation.
+   * @returns a hold acknowledgement followed by an open lifetime stream.
    */
   @Remote({ mode: 'stream' })
-  follow(agent: Agent, id: WebTerminalId, attachmentId: TerminalAttachmentId, signal: AbortSignal): AsyncIterable<TerminalFrame> {
-    if (!/^[\w-]{1,128}$/u.test(attachmentId)) throw new Error('Invalid terminal attachment identity')
-    return this.terminal(agent, id).follow(attachmentId, signal)
+  retain(sessionId: SessionId, id: WebTerminalId, signal: AbortSignal): AsyncIterable<TerminalRetentionFrame> {
+    const owner = this.owners.get(sessionId)
+    const terminal = owner?.terminals.get(id)
+    if (terminal === undefined || owner?.closedIds.has(id) === true || owner?.lifetime.signal.aborted === true) {
+      throw new RemoteError('terminal/unavailable', 'Terminal is closing or unavailable', {})
+    }
+    return terminal.retain(signal)
   }
 
   /**
-   * Deliver raw input, including Tab completion and control characters.
+   * Attach terminal input and output to one physical Remote stream.
    * @param agent - Session owner supplied by the Gateway.
    * @param id - terminal identity.
-   * @param attachmentId - current writable attachment.
-   * @param data - input bytes represented as UTF-8 text.
-   * @returns after provider input acceptance.
+   * @param signal - attachment cancellation; the process remains alive and input is never replayed.
+   * @returns screen recovery, output, writable state and provider-acceptance acknowledgements.
    */
-  @Remote
-  async write(agent: Agent, id: WebTerminalId, attachmentId: TerminalAttachmentId, data: string): Promise<void> {
-    if (Buffer.byteLength(data, 'utf8') > this.config.maxInputBytes) throw new Error('Terminal input exceeds the configured limit')
-    await this.terminal(agent, id).write(attachmentId, data)
-  }
-
-  /**
-   * Update the dimensions of the PTY and recovery screen.
-   * @param agent - Session owner supplied by the Gateway.
-   * @param id - terminal identity.
-   * @param attachmentId - current writable attachment.
-   * @param cols - column count.
-   * @param rows - row count.
-   * @returns after the resize completes.
-   */
-  @Remote
-  async resize(agent: Agent, id: WebTerminalId, attachmentId: TerminalAttachmentId, cols: number, rows: number): Promise<void> {
-    this.dimensions(cols, rows)
-    await this.terminal(agent, id).resize(attachmentId, cols, rows)
+  @Remote({ mode: 'stream' })
+  attach(agent: Agent, id: WebTerminalId, signal: AbortSignal): RemoteStream<TerminalFrame, TerminalInput> {
+    const invocation = this.ctx.invocation
+    if (invocation === undefined) throw new Error('Terminal attachment requires a Remote invocation')
+    return this.terminal(agent, id).attach(invocation.uplink<TerminalInput>(), this.config, signal, invocation.uplinkWindow)
   }
 
   /**
@@ -256,7 +250,7 @@ export class TerminalController extends TypertRemoteService {
     } else {
       const allocation = owner.allocations.get(id)
       if (allocation === undefined) return
-      await allocation.handle.terminate()
+      await allocation.cleanup.close()
       owner.allocations.delete(id)
     }
   }
@@ -278,8 +272,8 @@ export class TerminalController extends TypertRemoteService {
     owner.cleanup = (async () => {
       await Promise.allSettled(owner.pending.values())
       const results = await Promise.allSettled([
-        ...[...owner.terminals.values()].map(terminal => terminal.close()),
-        ...[...owner.allocations.values()].map(allocation => allocation.handle.terminate()),
+        ...[...owner.terminals.values()].map(terminal => terminal.dispose()),
+        ...[...owner.allocations.values()].map(allocation => allocation.cleanup.dispose()),
       ])
       const errors = results.filter(result => result.status === 'rejected').map(result => result.reason as unknown)
       if (errors.length > 0) throw new AggregateError(errors, 'Session terminal cleanup failed')
@@ -292,12 +286,13 @@ export class TerminalController extends TypertRemoteService {
 
   private terminal(agent: Agent, id: WebTerminalId): BrowserTerminal {
     const terminal = this.owners.get(agent.id)?.terminals.get(id)
-    if (terminal === undefined) throw new Error('Terminal no longer exists in this Session')
+    if (terminal === undefined) throw new RemoteError('terminal/unavailable', 'Terminal no longer exists in this Session', {})
+    this.requireOpen(this.owners.get(agent.id) as OwnedSession, id)
     return terminal
   }
 
   private requireOpen(owner: OwnedSession, id: WebTerminalId): void {
-    if (owner.closedIds.has(id)) throw new Error('Terminal was closed in this Session')
+    if (owner.closedIds.has(id)) throw new RemoteError('terminal/unavailable', 'Terminal was closed in this Session', {})
   }
 
   private dimensions(cols: number, rows: number): void {
@@ -305,49 +300,47 @@ export class TerminalController extends TypertRemoteService {
       || !Number.isSafeInteger(rows) || rows < 1 || rows > this.config.maxRows) throw new Error('Terminal dimensions exceed the configured limits')
   }
 
-  private execution(agent: Agent): { subprocess: Context['subprocess']; sandboxPolicy: Context['sandboxPolicy'] } {
+  private execution(agent: Agent): { subprocess: Context['subprocess']; sandboxPolicy: Context['sandboxPolicy']; workingDirectory: Context['workingDirectory'] } {
     // The Agent context selects execution providers but does not inject consumer services.
     const subprocess = agent.ctx.get('subprocess')
     const sandboxPolicy = agent.ctx.get('sandboxPolicy')
     if (subprocess === undefined || sandboxPolicy === undefined) throw new Error('The Session execution environment requires subprocess and sandbox policy providers')
-    return { subprocess, sandboxPolicy }
+    const workingDirectory = agent.ctx.get('workingDirectory')
+    if (workingDirectory === undefined) throw new Error('The Session execution environment requires a working-directory provider')
+    return { subprocess, sandboxPolicy, workingDirectory }
   }
 
   private async spawn(agent: Agent, owner: OwnedSession, request: TerminalCreateRequest, signal: AbortSignal): Promise<BrowserTerminal> {
-    const environment = this.environment(agent, signal)
-    const { subprocess, sandboxPolicy } = this.execution(agent)
+    const { subprocess, workingDirectory } = this.execution(agent)
+    const cwd = await workingDirectory.ensure(agent, signal)
     const shell = request.shellPath === undefined
       ? await resolveShell(subprocess, this.config.shell, signal)
       : (await this.shells(agent, signal)).find(candidate => candidate.path === request.shellPath)
     if (shell === undefined) throw new Error('Selected shell is not available in this execution environment')
-    const policy = sandboxPolicy.resolve({ session: agent.session })
-    let argv = [shell.path, ...shell.args]
-    if (policy.mode !== 'danger-full-access') {
-      const sandbox = agent.ctx.get('sandbox')
-      if (sandbox === undefined) throw new Error('The Session sandbox mode requires an execution sandbox provider')
-      argv = (await sandbox.confine(argv, { ...policy, mode: policy.mode }, signal)).argv
-    }
     const handle = await subprocess.spawnTerminal({
-      argv, cwd: environment.cwd, cols: request.cols, rows: request.rows,
+      argv: [shell.path, ...shell.args], cwd, cols: request.cols, rows: request.rows,
       terminalType: 'xterm-256color', env: { DSH_SESSION_ID: agent.id },
+      shellActivity: true,
       graceMs: this.config.disposeGraceMs, signal,
     })
-    const allocation = {
-      handle,
-      info: {
-        id: request.id, shell, title: shell.name, cwd: environment.cwd,
-        cols: request.cols, rows: request.rows, state: 'running', exitCode: null,
-      } as WebTerminalInfo,
+    const info: WebTerminalInfo = {
+      id: request.id, shell, title: shell.name, cwd,
+      cols: request.cols, rows: request.rows, state: 'running', exitCode: null,
     }
-    owner.allocations.set(request.id, allocation)
     try {
       signal.throwIfAborted()
-      return new BrowserTerminal(handle, allocation.info, this.config.scrollback, this.config.maxBufferedBytes)
+      return new BrowserTerminal(handle, info, this.config.scrollback, this.config.maxBufferedBytes)
     } catch (error) {
-      allocation.info = { ...allocation.info, state: 'failed', error: error instanceof Error ? error.message : String(error) }
-      try {
+      const cleanup = new TerminalRetention(this.config, handle.inspectActivity.bind(handle), async () => {
+        owner.closedIds.add(request.id)
         await handle.terminate()
         owner.allocations.delete(request.id)
+      }, (cleanupError) => { this.ctx.logger.error('Browser terminal allocation cleanup failed', cleanupError) })
+      owner.allocations.set(request.id, {
+        info: { ...info, state: 'failed', error: error instanceof Error ? error.message : String(error) }, cleanup,
+      })
+      try {
+        await cleanup.close()
       } catch (cleanupError) {
         throw new AggregateError([error, cleanupError], 'Terminal allocation cleanup failed')
       }

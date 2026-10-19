@@ -1,6 +1,73 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/bundle/web-app/README.md
-README.md: d34275240a61e10543e87e5f12f20bd93ab0e22e
-README.zh.md: 9b0b4a1c037af160fae6da631858a36cd9c55a58
+/:
+  en: af2e4e5296596e8f
+  zh: 70c0b5ac93209d00
+/knyazevai-dsh-web-app:
+  en: 25b0de394d430eaa
+  zh: 04277db641ca5c0b
+/knyazevai-dsh-web-app/summary:
+  en: 0a2a9876194543e5
+  zh: ff472776a44ae260
+/knyazevai-dsh-web-app/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-web-app/use-this-package:
+  en: 3bd37b85139d2fa7
+  zh: ba86c807eb83866e
+/knyazevai-dsh-web-app/use-this-package/starting-the-web-gui:
+  en: e3cac911f080d8ef
+  zh: 60749e9f5c39c1bc
+/knyazevai-dsh-web-app/use-this-package/configuration:
+  en: 3f4aca1d403b3e1d
+  zh: 65de57c1475d643e
+/knyazevai-dsh-web-app/use-this-package/listening-trust-and-public-deployments:
+  en: e6ddea1d2fc40501
+  zh: ff08b6fa3fc24136
+/knyazevai-dsh-web-app/use-this-package/running-over-ssh:
+  en: df205a26b6d49168
+  zh: e46ed7cf9e06248a
+/knyazevai-dsh-web-app/use-this-package/per-session-agent-setup:
+  en: ccd6fc264b51e44b
+  zh: 3265c68477a89ec9
+/knyazevai-dsh-web-app/understand-the-implementation:
+  en: 323742a00cfe67b2
+  zh: eff5245a82fc16e7
+/knyazevai-dsh-web-app/understand-the-implementation/patch-semantics:
+  en: 8a2554b3d17daa1f
+  zh: 66f18946791cabb6
+/knyazevai-dsh-web-app/understand-the-implementation/advertised-application-url:
+  en: 0b22e03e28d41420
+  zh: fd45a97dd4336c25
+/knyazevai-dsh-web-app/understand-the-implementation/readiness:
+  en: 973128fd346869df
+  zh: 54e6792f9f82a192
+/knyazevai-dsh-web-app/understand-the-implementation/source-map:
+  en: c44f2dd7b5b67976
+  zh: 68caf99143800537
+/knyazevai-dsh-web-app/further-exploration:
+  en: 732d6baa6d456a8d
+  zh: 290011a94bbe7085
+/knyazevai-dsh-web-app/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-web-app/model-experience/web-runtime-variable:
+  en: 623bf8a0bf05599d
+  zh: 398ded2e7b20c1ea
+/knyazevai-dsh-web-app/model-experience/web-runtime-variable/what-the-model-sees:
+  en: ebaddc153ad7a835
+  zh: 21aa60f73d14f26c
+/knyazevai-dsh-web-app/model-experience/web-runtime-variable/token-effect:
+  en: 449fbfa3986f98f0
+  zh: a7d66333594ab2dd
+/knyazevai-dsh-web-app/model-experience/web-runtime-variable/kv-cache-effect:
+  en: 37542a8b81a744f5
+  zh: c0048aaadecae296
+/knyazevai-dsh-web-app/known-limitations-and-deferred-work:
+  en: 635c1336e2f4e821
+  zh: caabdecb02e2df14
+/knyazevai-dsh-web-app/known-limitations-and-deferred-work/dev-note:
+  en: 3f81b4f3beb74a0d
+  zh: 2e377ca40822d093

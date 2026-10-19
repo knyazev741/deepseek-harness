@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-23-no-consecutive-auto-compaction.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-23-no-consecutive-auto-compaction.md
-2026-09-23-no-consecutive-auto-compaction.md: 19e14c2e7a7393aa8c8650db40bde2930e1e4616
-2026-09-23-no-consecutive-auto-compaction.zh.md: ac7fb06802be70fc3f80d62101e23cf3a6da495e
+/agent-note-require-assistant-progress-between-automatic-compactions:
+  en: 610e13638bdfb0cf
+  zh: 494507e46b2d434a
+/agent-note-require-assistant-progress-between-automatic-compactions/problem:
+  en: dcd120156e0ac49f
+  zh: 591730f888d8bcfc
+/agent-note-require-assistant-progress-between-automatic-compactions/decision:
+  en: 2dc8bfc233fc2371
+  zh: 142d5904e8cba1be
+/agent-note-require-assistant-progress-between-automatic-compactions/alternatives-considered:
+  en: aae26ad7a1d966b5
+  zh: 5850c949f1cae389
+/agent-note-require-assistant-progress-between-automatic-compactions/consequences:
+  en: 04d72c7556693577
+  zh: e9b30bed893d0739

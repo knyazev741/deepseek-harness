@@ -7,7 +7,6 @@ import type { Agent } from '@knyazevai/dsh-agent'
 import type { MessageId } from '@knyazevai/dsh-llm'
 import type { SessionId } from '@knyazevai/dsh-session'
 import { foldSubagentDescriptor } from '@knyazevai/dsh-subagent'
-import type { ContinuableStart } from '@knyazevai/dsh-subagent'
 import { errorMessage, TeamError } from './error.ts'
 import type { TeamJournal } from './journal.ts'
 import type { TeamRuntimeLifecycle } from './lifecycle.ts'
@@ -56,8 +55,6 @@ export function resolveActiveMember(
 
 /** Owns Team identities and the lifecycle of rostered continuable children. */
 export class TeamRoster {
-  private readonly inFlightCreations = new Set<Promise<unknown>>()
-
   /**
    * @param ctx - Team service context with Agent, Session, persistence, and subagent services.
    * @param journal - authoritative Lead-log transaction owner.
@@ -133,7 +130,7 @@ export class TeamRoster {
       id: root.id,
       name: 'lead',
       role: 'lead',
-      status: root.status,
+      status: availability(root),
       ...root.options.model === undefined ? {} : { model: root.options.model },
       diagnostics: [],
     }]
@@ -148,7 +145,7 @@ export class TeamRoster {
           ? 'failed'
           : member.phase === 'provisioning'
             ? 'provisioning'
-            : live?.status ?? 'inactive',
+            : availability(live),
         description: member.description,
         provider: member.provider,
         context: member.context,
@@ -167,21 +164,7 @@ export class TeamRoster {
    */
   async spawn(caller: Agent, request: SpawnTeammateRequest): Promise<SpawnTeammateResult> {
     if (this.lifecycle.disposed) throw new TeamError('Agent Teams service is disposing', 'TEAM_DISPOSED')
-    const operation = this.spawnAdmitted(caller, request)
-    this.inFlightCreations.add(operation)
-    try {
-      return await operation
-    } finally {
-      this.inFlightCreations.delete(operation)
-    }
-  }
-
-  /**
-   * Return admitted creation operations captured for ordered disposal.
-   * @returns detached snapshot ordered only by Set insertion.
-   */
-  pendingCreations(): readonly Promise<unknown>[] {
-    return [...this.inFlightCreations]
+    return await this.lifecycle.track(this.spawnAdmitted(caller, request))
   }
 
   /**
@@ -201,7 +184,7 @@ export class TeamRoster {
    * @param targetName - durable teammate name.
    * @returns the target status sampled before cancellation.
    */
-  interrupt(caller: Agent, targetName: string): { previousStatus: 'running' | 'idle' | 'inactive' } {
+  interrupt(caller: Agent, targetName: string): { previousStatus: 'running' | 'inactive' } {
     const membership = this.membership(caller)
     if (membership.role !== 'lead') throw new TeamError('only the Team Lead can interrupt teammates', 'TEAM_LEAD_REQUIRED')
     const state = this.journal.state(membership.root)
@@ -209,7 +192,7 @@ export class TeamRoster {
     if (target.id === membership.root.id) throw new TeamError('the Team Lead cannot interrupt itself', 'TEAM_INVALID_TARGET')
     const live = this.ctx.agents.get(target.id)
     if (live === undefined) return { previousStatus: 'inactive' }
-    const previousStatus = live.status
+    const previousStatus = availability(live)
     this.ctx.subagents.interrupt(target.id, { kind: 'ancestor', agent: caller })
     return { previousStatus }
   }
@@ -239,7 +222,7 @@ export class TeamRoster {
    * @param childIds - selected roster child ids.
    */
   async stopTeammates(root: Agent, childIds: readonly SessionId[]): Promise<void> {
-    await this.lifecycle.withTimeout(this.ctx.subagents.drainContinuableChildren(root, childIds))
+    await this.lifecycle.withTimeout(this.ctx.subagents.drainChildren(root, childIds))
   }
 
   /** Perform one creation admitted before the Team runtime disposal cutoff. */
@@ -277,9 +260,9 @@ export class TeamRoster {
       await this.journal.appendAndFlush(root, 'team/member', { version: 2, teamId: TeamId(root.id), member })
     })
 
-    let started: ContinuableStart
     try {
-      started = await this.ctx.subagents.startContinuable({
+      const started = await this.ctx.subagents.startActivation({
+        delivery: 'parent',
         childId,
         provider: request.provider,
         label: description,
@@ -440,7 +423,7 @@ export class TeamRoster {
       id: member.id,
       name: member.name,
       role: 'teammate',
-      status: live?.status ?? 'inactive',
+      status: availability(live),
       description: member.description,
       provider: member.provider,
       context: member.context,
@@ -486,4 +469,9 @@ export class TeamRoster {
     // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
     return foldSubagentDescriptor(agent.session.snapshotEvents(agent.session.inheritedEventCount)) !== undefined
   }
+}
+
+/** Turn availability is independent of whether the Agent is loaded. */
+function availability(agent: Agent | undefined): 'running' | 'inactive' {
+  return agent?.status === 'running' ? 'running' : 'inactive'
 }

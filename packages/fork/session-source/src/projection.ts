@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import type { SessionEvent } from '@knyazevai/dsh-session'
+import { pluginRecordOf } from '@knyazevai/dsh-session'
 import type { ProjectionDefinition } from '@knyazevai/dsh-session-projection'
 import type { ForkSessionSource } from './types.ts'
 
@@ -14,13 +15,13 @@ export const forkSessionSourceEventDataSchema = eventDataSchema
 /** The JSON-safe projection state and wire schema. */
 export const forkSessionSourceSchema = sourceSchema
 
-/** Last-known-value projection for the `fork/session-source` event. */
+/** Last-known-value projection for the `plugin:fork/session-source` event. */
 export const forkSessionSourceProjectionDefinition = {
   key: 'forkSessionSource',
   stateSchema: sourceSchema,
   init: () => null,
   apply: (state, event: SessionEvent) => {
-    if (event.type !== 'fork/session-source') return state
+    if (pluginRecordOf(event)?.type !== 'plugin:fork/session-source' && event.type !== 'fork/session-source') return state
     return eventDataSchema.parse(event.data).source
   },
   wire: {

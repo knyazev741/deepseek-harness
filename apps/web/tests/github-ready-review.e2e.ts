@@ -22,7 +22,7 @@ import {
 import { saveFailureShot } from './support.ts'
 
 const MODE = webSnapshotMode()
-const OVERLAY = fileURLToPath(new URL('../../cli/config/examples/github-review/cordis.yml', import.meta.url))
+const OVERLAY = fileURLToPath(new URL('../../../packages/experimental/webhook-github/examples/github-review/cordis.yml', import.meta.url))
 const EXPECTED = fileURLToPath(new URL('./expected/github-ready-review/conversation.expected.md', import.meta.url))
 const EXPANDED_EXPECTED = fileURLToPath(
   new URL('./expected/github-ready-review/conversation-expanded.expected.md', import.meta.url),
@@ -35,6 +35,7 @@ const REPLY = 'Review complete: no actionable findings.'
 
 /** Deterministic model response for the webhook-created Session. */
 class ReviewAdapter extends LlmAdapter {
+  override async listModels(provider: string) { return [{ provider, id: MODEL, name: `${provider}/${MODEL}` }] }
   readonly requests: GenerateOptions[] = []
 
   override async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
@@ -91,7 +92,13 @@ describe.skipIf(MODE === 'record')('web e2e: GitHub ready-for-review', () => {
     process.env.DSH_GITHUB_WEBHOOK_PORT = String(port)
     process.env.DSH_GITHUB_WEBHOOK_SECRET = SECRET
     webhookOrigin = `http://127.0.0.1:${String(port)}`
-    scaffold = await launchWebScaffold({ extraOverlayPath: OVERLAY })
+    scaffold = await launchWebScaffold({
+      extraOverlayPath: OVERLAY,
+      profile: { packages: [
+        { dir: fileURLToPath(new URL('../../../packages/experimental/webhook', import.meta.url)) },
+        { dir: fileURLToPath(new URL('../../../packages/experimental/webhook-github', import.meta.url)) },
+      ] },
+    })
     scaffold.ctx.effect(
       () => scaffold.ctx.llm.registerAdapter([PROVIDER], adapter),
       'GitHub webhook review adapter',
@@ -179,7 +186,7 @@ describe.skipIf(MODE === 'record')('web e2e: GitHub ready-for-review', () => {
     expect(agent).toBeDefined()
     const workspace = await scaffold.ctx.workspaceRegistry.resolveByPath(scaffold.workspaceCwd)
     expect(workspace?.sessionIds).toContain(agent?.id)
-    const webhookMessage = adapter.requests[0]?.messages.find(message => message.source.kind === 'webhook')
+    const webhookMessage = adapter.requests[0]?.messages.find(message => message.role === 'user' && message.source?.kind === 'webhook')
     expect(webhookMessage?.content).toHaveLength(1)
     const [content] = webhookMessage?.content ?? []
     expect(content?.type).toBe('text')

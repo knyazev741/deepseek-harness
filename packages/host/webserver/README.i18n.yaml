@@ -1,6 +1,61 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/host/webserver/README.md
-README.md: a5da3642c4d503ee2d978e4970e48481c67be01e
-README.zh.md: 5e11c18c0e736ebc8c13518e8bc410026d673f9b
+/:
+  en: 7b0123143b731803
+  zh: 0ef8ad760107d8f6
+/knyazevai-dsh-host-webserver:
+  en: ec5a4e4e03afd7b2
+  zh: cca95a502c21db9f
+/knyazevai-dsh-host-webserver/summary:
+  en: 0d1ffed238b25446
+  zh: 9f66adce1c593c53
+/knyazevai-dsh-host-webserver/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-host-webserver/use-this-package:
+  en: 1998834973f7cf17
+  zh: 63455a2f75d090ad
+/knyazevai-dsh-host-webserver/use-this-package/minimal-configuration:
+  en: eeb4865ed96338a5
+  zh: 08138a132e633e54
+/knyazevai-dsh-host-webserver/use-this-package/serving-https:
+  en: 90352948bfdc1d99
+  zh: 35d148bf3bfcf76f
+/knyazevai-dsh-host-webserver/use-this-package/registering-routes:
+  en: 296ffba200f0dc93
+  zh: 5d78d6b5f48634c9
+/knyazevai-dsh-host-webserver/use-this-package/the-fallback-seat:
+  en: e21232b7aecbe7a8
+  zh: 2c4a94cab2aa53ff
+/knyazevai-dsh-host-webserver/use-this-package/behavior-under-failure:
+  en: dd2529dd54707e39
+  zh: 2615f469d66ac681
+/knyazevai-dsh-host-webserver/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: 4ed0861911abaf5d
+/knyazevai-dsh-host-webserver/understand-the-implementation/design-concept:
+  en: 728da97b91b797b6
+  zh: 22541daf0223c663
+/knyazevai-dsh-host-webserver/understand-the-implementation/matching-and-lifecycle:
+  en: 8589aba0cbaa1c76
+  zh: babf3b27b0cdb35e
+/knyazevai-dsh-host-webserver/understand-the-implementation/source-map:
+  en: 4a0b809827d92cb3
+  zh: 609885ab34257ff1
+/knyazevai-dsh-host-webserver/further-exploration:
+  en: 28a1aef4bead8564
+  zh: 2574aec659925d9c
+/knyazevai-dsh-host-webserver/model-experience:
+  en: 38887e1f9117e7e5
+  zh: 6a6e1a002fac4624
+/knyazevai-dsh-host-webserver/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: de54f3467ef3b9be
+/knyazevai-dsh-host-webserver/known-limitations-and-deferred-work:
+  en: 9aa6b8cf92d5b506
+  zh: 55ee3f6ad1cace50
+/knyazevai-dsh-host-webserver/known-limitations-and-deferred-work/dev-note:
+  en: 245b35764295ba1e
+  zh: a15b132b111bfef0

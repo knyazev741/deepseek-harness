@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
-import { act, render } from '@testing-library/react'
+import { createSnapshotStore } from '@knyazevai/dsh-client-store'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { act, fireEvent, render } from '@testing-library/react'
+import { useRef } from 'react'
 import {
-  SlotTestRuntime, TestRemote, stubSettingsScope, usePinnedBrowserLanguages,
+  SlotTestRuntime, stubConfigForm, usePinnedBrowserLanguages,
 } from '@knyazevai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
 import { resolveSlotLabel } from '@knyazevai/dsh-client-ui-slots'
@@ -20,9 +22,15 @@ import {
   apply as applyChat, EMPTY_CHAT_SNAPSHOT, inject as injectChat,
 } from '@knyazevai/dsh-client-ui-chat/client'
 import type {
-  ChatNodeTurnDataInjected, ChatSnapshot, TranscriptViewRowInjected, UseChatNodeTurnData,
+  ChatFlowInjected, ChatNodeInjected, ChatSnapshot, TranscriptViewRowInjected, UseChatNodeTurnData, UseDisclosure,
 } from '@knyazevai/dsh-client-ui-chat/client'
+import type { QuotaNoticeInjected } from '@knyazevai/dsh-client-ui-chat/client'
+import type { PerformanceUsageRowInjected } from '../src/client/settings/PerformanceUsageRow.tsx'
 import { CHAT_SETTINGS_NAMESPACE, type ChatSettings } from '../src/chat-settings.ts'
+import { ActivityPill, UsagePill } from '../src/client/chat/StatsPills.tsx'
+import { createFlowMotion, type InputFoldDriver } from '../src/client/chat/flow-motion.ts'
+import { CHAT_FLOW_INJECT, CHAT_NODE_INJECT } from '../src/client/apply.ts'
+import { UserContent } from '../src/client/chat/UserContent.tsx'
 
 declare module '@knyazevai/dsh-client-ui-conversation/client' {
   interface ConversationTurnDataMap {
@@ -36,22 +44,30 @@ const SID = 'session-1' as SessionId
 
 async function bench() {
   const runtime = await SlotTestRuntime.create()
-  const chatSettings = stubSettingsScope<ChatSettings>()
-  runtime.ctx.provide('settingsScope', {
-    bind: ({ namespace }: { namespace: string }) => namespace === CHAT_SETTINGS_NAMESPACE
+  const chatSettings = stubConfigForm<ChatSettings>()
+  runtime.ctx.provide('configForms', {
+    developerTools: { enabled: createSnapshotStore(true) },
+    get: (namespace: string) => namespace === CHAT_SETTINGS_NAMESPACE
       ? chatSettings.scope
-      : stubSettingsScope().scope,
+      : stubConfigForm().scope,
   } as never)
   runtime.ctx.provide('layout', { openRightbar: vi.fn(), closeRightbar: vi.fn() } as never)
-  runtime.ctx.provide('sidebarRight', { openResource: vi.fn() } as never)
+  runtime.ctx.provide('sidebarRight', { openResource: vi.fn(), openTab: vi.fn() } as never)
+  runtime.ctx.provide('sidebarRightTabs', {
+    register: vi.fn(() => () => {}),
+    get: vi.fn(() => ({})),
+    subscribe: vi.fn(() => () => {}),
+  } as never)
+  runtime.ctx.provide('resources', { register: vi.fn(() => () => {}) } as never)
+  const openSession = vi.fn<(id: SessionId) => void>()
   runtime.ctx.provide('uiWorkspace', {
     openWorkspace: vi.fn(async (_workspaceId: WorkspaceId, beforeOpen: (id: SessionId) => void) => {
       beforeOpen(SID)
-      runtime.sessions.open(SID)
+      openSession(SID)
     }),
-    openSession: (id: SessionId) => { runtime.sessions.open(id) },
+    openSession,
   } as never)
-  new TestRemote(runtime.ctx, {
+  runtime.remote.provideNamespaces({
     session: { openWorkspacePath: vi.fn(async () => ({ ok: true, value: { opened: true } })) },
   })
   const locale = new LocaleRuntime(runtime.ctx)
@@ -59,6 +75,7 @@ async function bench() {
   runtime.slots.installLocale(locale)
   await runtime.root.declare({
     'main': { kind: 'keyed', scope: 'root' },
+    'shell.overlay': { kind: 'list', scope: 'root' },
     'conversation.approval.detail': { kind: 'single', scope: 'session' },
     'settings.general.item': { kind: 'list', scope: 'root' },
   }, (_props: { renderSlot?: unknown }) => null)
@@ -78,6 +95,39 @@ function storeOf(runtime: SlotTestRuntime, key: 'conversation.session' | 'conver
 }
 
 describe('Chat apply wiring', () => {
+  it('keeps presentation-policy helpers out of the public browser entry', async () => {
+    const entry = await import('../src/client/index.ts')
+    expect(entry).not.toHaveProperty('derivePresentationPolicy')
+    expect(entry).not.toHaveProperty('presentationPolicyFor')
+    expect(entry).not.toHaveProperty('CHAT_FLOW_INJECT')
+    expect(entry).not.toHaveProperty('CHAT_NODE_INJECT')
+    expect(entry).not.toHaveProperty('ChatFlow')
+    expect(entry).not.toHaveProperty('UserContent')
+  })
+
+  it('registers the frame-wide quota notice host and keeps the failure row injection-free', async () => {
+    const b = await bench()
+    try {
+      const host = b.runtime.slots.entries('shell.overlay').find(entry => entry.options.id === 'chat.quota-notice')
+      expect(host).toBeDefined()
+      expect(b.runtime.slots.spec('shell.quota-notice')).toMatchObject({ kind: 'chain', scope: 'root' })
+      const inject: ((...args: never[]) => Record<string, unknown>) | undefined = host?.inject
+      if (inject === undefined) throw new Error('ui-chat did not register the quota notice host')
+      const face = inject()
+      expect(face.hooks).toBeDefined()
+      const notice = (face.hooks as QuotaNoticeInjected['hooks']).notice
+      expect(notice.getSnapshot()).toBeNull()
+      ;(face.dismissNotice as QuotaNoticeInjected['dismissNotice'])()
+      expect(notice.getSnapshot()).toBeNull()
+      // The turn-error row carries neither a transient notice nor a chain child.
+      const row = b.runtime.slots.entries('conversation.chat.node').find(entry => entry.options.key === 'turn-error')!
+      expect(row.inject).toBeUndefined()
+      expect(row.children).toBeUndefined()
+    } finally {
+      await b.runtime.dispose()
+    }
+  })
+
   it('contributes Chat View, node renderers, and stats', async () => {
     const b = await bench()
     const views = b.runtime.slots.entries('conversation.view')
@@ -86,27 +136,138 @@ describe('Chat apply wiring', () => {
     expect(b.runtime.slots.spec('conversation.chat.node'))
       .toMatchObject({ kind: 'keyed', scope: 'session' })
     expect(b.runtime.slots.entries('conversation.composer.dock').map(row => row.options.id))
-      .toEqual(['stats'])
+      .toEqual(['activity', 'usage'])
     expect(b.runtime.slots.entries('settings.general.item').map(row => row.options.id))
-      .toEqual(['transcript-view', 'composer-enter'])
+      .toEqual(['transcript-view', 'link-opening', 'composer-enter', 'performance-usage'])
     await b.runtime.dispose()
   })
 
-  it('mirrors the Host transcript preference into its Settings row', async () => {
+  it('owns node dispatch in the shared flow and image Slots in their domain renderers', async () => {
     const b = await bench()
+    onTestFinished(() => b.runtime.dispose())
+    b.runtime.renderRoot()
+    expect(b.runtime.slots.spec('conversation.chat.flow')).toMatchObject({ kind: 'single', scope: 'session' })
+    const view = b.runtime.slots.entries('conversation.view')[0]
+    const flow = b.runtime.slots.entries('conversation.chat.flow')[0]
+    const assistant = b.runtime.slots.entries('conversation.chat.node').find(entry => entry.options.key === 'assistant-step')
+    const userContent = b.runtime.factoryOf('conversation.chat.user.content')
+    expect(userContent).toMatchObject({ scope: 'session', locale: 'chat', component: UserContent })
+    expect(userContent.children?.['conversation.chat.user.images']).toMatchObject({ kind: 'single', scope: 'session' })
+    expect(assistant?.children?.['conversation.chat.message.images']).toMatchObject({ kind: 'single', scope: 'session' })
+    expect(userContent.store).toBeUndefined()
+    expect(userContent.inject).toBeUndefined()
+    expect(view?.children?.['conversation.chat.flow']).toBeDefined()
+    expect(view?.children?.['conversation.chat.node']).toBeUndefined()
+    expect(view?.children?.['conversation.chat.message.images']).toBeUndefined()
+    expect(view?.children?.['conversation.chat.user.images']).toBeUndefined()
+    expect(flow?.children?.['conversation.chat.node']).toBeDefined()
+    expect(flow?.children?.['conversation.chat.message.images']).toBeUndefined()
+    expect(flow?.children?.['conversation.chat.user.images']).toBeUndefined()
+    expect(userContent.children?.['conversation.chat.message.images']).toBeUndefined()
+    expect(assistant?.children?.['conversation.chat.user.images']).toBeUndefined()
+    expect(flow?.store).toBeDefined()
+    expect(flow?.store).toBe(view?.store)
+    await b.chat.dispose()
+    expect(b.runtime.slots.spec('conversation.chat.flow')).toBeUndefined()
+    expect(b.runtime.slots.spec('conversation.chat.node')).toBeUndefined()
+    expect(b.runtime.slots.spec('conversation.chat.message.images')).toBeUndefined()
+    expect(b.runtime.slots.spec('conversation.chat.user.images')).toBeUndefined()
+    expect(() => b.runtime.factoryOf('conversation.chat.user.content')).toThrow('no definition')
+  })
+
+  it('lets another registrant replace one composer stats pill by id', async () => {
+    const b = await bench()
+    onTestFinished(() => b.runtime.dispose())
+    function PluginActivity() { return null }
+    const dispose = b.runtime.ctx.slots.register({
+      name: 'conversation.composer.dock', id: 'activity', order: 0, priority: -1,
+    }, PluginActivity)
+    const winners = (): Record<string, unknown> => Object.fromEntries(
+      b.runtime.slots.entriesOfSlot('conversation.composer.dock')
+        .map((entry): [string, unknown] => [entry.options.id ?? '', entry.component]),
+    )
+    expect(winners()).toEqual({ activity: PluginActivity, usage: UsagePill })
+    dispose()
+    expect(winners()).toEqual({ activity: ActivityPill, usage: UsagePill })
+  })
+
+  it.each([
+    { desktop: false, initial: 'detailed', choice: 'standard' },
+    { desktop: true, initial: 'standard', choice: 'detailed' },
+  ] as const)('mirrors the Host transcript preference into its Settings row (desktop: $desktop)', async ({ desktop, initial, choice }) => {
+    if (desktop) {
+      vi.stubGlobal('dshDesktop', {})
+      onTestFinished(() => { vi.unstubAllGlobals() })
+    }
+    const b = await bench()
+    onTestFinished(() => b.runtime.dispose())
     const row = b.runtime.slots.entries('settings.general.item')
       .find(entry => entry.options.id === 'transcript-view')!
     const face = (row.inject as unknown as () => TranscriptViewRowInjected)()
 
-    expect(face.hooks.transcriptView.getSnapshot()).toBe('compact')
-    face.setTranscriptView('normal')
-    expect(face.hooks.transcriptView.getSnapshot()).toBe('normal')
-    expect(b.chatSettings.set).toHaveBeenCalledWith('transcriptView', 'normal')
+    expect(face.hooks.transcriptView.getSnapshot()).toBe(initial)
+    face.setTranscriptView(choice)
+    expect(face.hooks.transcriptView.getSnapshot()).toBe(choice)
+    expect(b.chatSettings.set).toHaveBeenCalledWith('transcriptView', choice)
 
     b.chatSettings.publish({
-      status: 'ready', value: { transcriptView: 'compact' }, revision: 1, writable: true,
+      status: 'ready', value: { linkOpening: 'sidebar', transcriptView: 'compact', performanceUsage: 'detailed' }, revision: 1, writable: true,
     })
     expect(face.hooks.transcriptView.getSnapshot()).toBe('compact')
+  })
+
+  it('restores saved collapse timing when the Chat plugin remounts', async () => {
+    const b = await bench()
+    try {
+      const row = b.runtime.slots.entries('settings.general.item')
+        .find(entry => entry.options.id === 'transcript-view')!
+      const face = row.inject!()
+      const hooks = face.hooks as TranscriptViewRowInjected['hooks']
+      const setCollapseTiming = face.setCollapseTiming as TranscriptViewRowInjected['setCollapseTiming']
+      expect(hooks.collapseTiming.getSnapshot()).toBe('completion')
+      setCollapseTiming('next-input')
+      expect(hooks.collapseTiming.getSnapshot()).toBe('next-input')
+      expect(b.chatSettings.set).toHaveBeenCalledExactlyOnceWith('collapseTiming', 'next-input')
+      b.chatSettings.publish({ status: 'ready', value: { linkOpening: 'sidebar', transcriptView: 'standard', performanceUsage: 'detailed', collapseTiming: 'next-input' }, revision: 1, writable: true })
+      expect(hooks.transcriptView.getSnapshot()).toBe('standard')
+      expect(hooks.collapseTiming.getSnapshot()).toBe('next-input')
+      expect(b.runtime.slots.entries('settings.general.item').map(entry => entry.options.id))
+        .toEqual(['transcript-view', 'link-opening', 'composer-enter', 'performance-usage'])
+
+      await b.chat.dispose()
+      expect(b.runtime.slots.entries('settings.general.item').some(entry => entry.options.id === 'transcript-view')).toBe(false)
+      await b.runtime.mount({ inject: [...injectChat], apply: applyChat })
+      const remountedRow = b.runtime.slots.entries('settings.general.item')
+        .find(entry => entry.options.id === 'transcript-view')!
+      const remounted = remountedRow.inject!()
+      const remountedHooks = remounted.hooks as TranscriptViewRowInjected['hooks']
+      expect(remountedHooks.collapseTiming).not.toBe(hooks.collapseTiming)
+      expect(remountedHooks.collapseTiming.getSnapshot()).toBe('next-input')
+      expect(remountedHooks.transcriptView.getSnapshot()).toBe('standard')
+      expect(b.chatSettings.set).toHaveBeenCalledExactlyOnceWith('collapseTiming', 'next-input')
+      expect(b.runtime.slots.entries('settings.general.item').map(entry => entry.options.id))
+        .toEqual(['transcript-view', 'link-opening', 'composer-enter', 'performance-usage'])
+    } finally {
+      await b.runtime.dispose()
+    }
+  })
+
+  it('shares the accepted performance preference with settings, composer, and turn tails', async () => {
+    const b = await bench()
+    const row = b.runtime.slots.entries('settings.general.item').find(entry => entry.options.id === 'performance-usage')!
+    const face = (row.inject as unknown as () => PerformanceUsageRowInjected)()
+    expect(face.hooks.performanceUsage.getSnapshot()).toBe('detailed')
+    face.setPerformanceUsage('compact')
+    expect(b.chatSettings.set).toHaveBeenCalledWith('performanceUsage', 'compact')
+    b.chatSettings.publish({ value: { linkOpening: 'sidebar', transcriptView: 'compact', performanceUsage: 'compact' } })
+    expect(face.hooks.performanceUsage.getSnapshot()).toBe('compact')
+    for (const entry of [
+      ...b.runtime.slots.entries('conversation.composer.dock'),
+      b.runtime.slots.entries('conversation.chat.node').find(entry => entry.options.key === 'turn-tail')!,
+    ]) {
+      const injected = (entry.inject as () => Pick<PerformanceUsageRowInjected, 'hooks'>)()
+      expect(injected.hooks.performanceUsage).toBe(face.hooks.performanceUsage)
+    }
     await b.runtime.dispose()
   })
 
@@ -133,16 +294,16 @@ describe('Chat apply wiring', () => {
 
   it('keeps the Chat standard source total while its target enters and leaves', async () => {
     const b = await bench()
-    await b.runtime.sessions.add({ id: SID }, { current: false })
-    const binding = b.runtime.sessions.binding(SID)
-    if (binding === undefined) throw new Error('Chat source test Session binding is unavailable')
+    await b.runtime.sessions.add({ id: SID })
+    using reference = b.runtime.sessions.retain(SID)
+    const binding = reference.binding
     const resolveSource = (owner: SessionBinding): ObservableSnapshot<ChatSnapshot> => {
       const contribution = b.sourceDescriptor.resolve(owner) as {
         hooks: { chat: ObservableSnapshot<ChatSnapshot> }
       }
       return contribution.hooks.chat
     }
-    const source = b.runtime.ctx.uiSession.adapter.resolve(SID)!.hooks.chat as
+    const source = b.runtime.ctx.uiSession.adapter.bindingSource(reference).getSnapshot().hooks.chat as
       ObservableSnapshot<ChatSnapshot>
     expect(resolveSource(binding)).toBe(source)
     expect(resolveSource(binding)).toBe(source)
@@ -160,7 +321,7 @@ describe('Chat apply wiring', () => {
   it('binds Turn data directly to its keyed Location source', async () => {
     const b = await bench()
     const spec = b.runtime.slots.spec('conversation.chat.node') as unknown as {
-      inject: ChatNodeTurnDataInjected
+      inject: ChatNodeInjected
     }
     let value: number | undefined = 42
     const listeners = new Set<() => void>()
@@ -178,7 +339,7 @@ describe('Chat apply wiring', () => {
     const useChat = vi.fn(() => { throw new Error('Turn data must not read the Chat snapshot') })
     const useTurnData = spec.inject.hooks.turnData(
       { useChat } as unknown as Parameters<typeof spec.inject.hooks.turnData>[0],
-      data,
+      { turnData: data, disclosureReset: createSnapshotStore(0), useGroupAction: () => { throw new Error('unused group action') } },
     )
     const Probe = ({ useData }: { useData: UseChatNodeTurnData }) => (
       <output>{useData('metric') ?? 'missing'}</output>
@@ -196,12 +357,142 @@ describe('Chat apply wiring', () => {
 
     view.rerender(<Probe useData={spec.inject.hooks.turnData(
       { useChat } as unknown as Parameters<typeof spec.inject.hooks.turnData>[0],
-      undefined,
+      { turnData: undefined, disclosureReset: createSnapshotStore(0), useGroupAction: () => { throw new Error('unused group action') } },
     )} />)
     expect(view.getByText('missing')).toBeTruthy()
     expect(useChat).not.toHaveBeenCalled()
 
     view.unmount()
     await b.runtime.dispose()
+  })
+
+  it('binds process hiding to each render context without sharing viewport motion', async () => {
+    const b = await bench()
+    onTestFinished(() => b.runtime.dispose())
+    const spec = b.runtime.slots.spec('conversation.chat.flow') as { inject: ChatFlowInjected }
+    const nodeSpec = b.runtime.slots.spec('conversation.chat.node') as { inject: ChatNodeInjected }
+    expect(spec.inject).toBe(CHAT_FLOW_INJECT)
+    expect(nodeSpec.inject).toBe(CHAT_NODE_INJECT)
+    type UseGroupAction = ReturnType<ChatFlowInjected['hooks']['groupAction']>
+    type UseGroupHeaderAction = ReturnType<ChatFlowInjected['hooks']['groupHeaderAction']>
+    const standard = { sessionId: SID } as Parameters<ChatFlowInjected['hooks']['groupAction']>[0]
+    // Each viewport asks only its own driver for a batch; null keeps the rows on CSS transitions.
+    const driverFirst = vi.fn<() => InputFoldDriver | null>(() => null)
+    const driverSecond = vi.fn<() => InputFoldDriver | null>(() => null)
+    const first = createFlowMotion(driverFirst, () => {})
+    const second = createFlowMotion(driverSecond, () => {})
+    const useFirst = spec.inject.hooks.groupAction(standard, { motion: first })
+    const useSecond = spec.inject.hooks.groupAction(standard, { motion: second })
+    const useFirstHeader = spec.inject.hooks.groupHeaderAction(standard, { motion: first })
+    const useSecondHeader = spec.inject.hooks.groupHeaderAction(standard, { motion: second })
+    expect(nodeSpec.inject.hooks.groupAction(standard, {
+      turnData: undefined, disclosureReset: createSnapshotStore(0), useGroupAction: useFirst,
+    })).toBe(useFirst)
+    const reveal = vi.fn()
+    function Probe({ useHidden, hidden, label }: { useHidden: UseGroupAction; hidden: boolean; label: string }) {
+      const ref = useHidden(hidden, reveal)
+      return <div ref={ref} data-testid={label}>{label}</div>
+    }
+    function Header({ useHeader, hidden, label }: { useHeader: UseGroupHeaderAction; hidden: boolean; label: string }) {
+      const ref = useRef<HTMLDivElement>(null)
+      useHeader(ref, hidden)
+      return <div ref={ref} data-testid={label}>{label}</div>
+    }
+    const rows = (firstHidden: boolean, secondHidden: boolean, firstHeaderHidden = false, secondHeaderHidden = false) => (
+      <div data-chat-motion="">
+        <Probe useHidden={useFirst} hidden={firstHidden} label="first" />
+        <Probe useHidden={useSecond} hidden={secondHidden} label="second" />
+        <Header useHeader={useFirstHeader} hidden={firstHeaderHidden} label="first-header" />
+        <Header useHeader={useSecondHeader} hidden={secondHeaderHidden} label="second-header" />
+      </div>
+    )
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    let view: ReturnType<typeof render> | undefined
+    try {
+      view = render(rows(false, false))
+      const firstRow = view.getByTestId('first')
+      const secondRow = view.getByTestId('second')
+      const firstHeader = view.getByTestId('first-header')
+      const secondHeader = view.getByTestId('second-header')
+      Object.defineProperty(firstHeader, 'offsetHeight', { value: 30 })
+      Object.defineProperty(secondHeader, 'offsetHeight', { value: 40 })
+      Object.defineProperty(firstRow, 'offsetHeight', { value: 80 })
+      Object.defineProperty(secondRow, 'offsetHeight', { value: 90 })
+      view.rerender(rows(true, false))
+      expect(firstRow.hasAttribute('hidden')).toBe(false)
+      expect(first.foldActive()).toBe(true)
+      expect(second.foldActive()).toBe(false)
+      await act(async () => { await Promise.resolve() })
+      expect(driverFirst).toHaveBeenCalledTimes(1)
+      expect(driverSecond).not.toHaveBeenCalled()
+      view.rerender(rows(true, true))
+      expect(second.foldActive()).toBe(true)
+      await act(async () => { await Promise.resolve() })
+      expect(driverFirst).toHaveBeenCalledTimes(1)
+      expect(driverSecond).toHaveBeenCalledTimes(1)
+      const finished = new Event('transitionend', { bubbles: true })
+      Object.defineProperty(finished, 'propertyName', { value: 'height' })
+      act(() => { firstRow.dispatchEvent(finished) })
+      expect(first.foldActive()).toBe(false)
+      expect(second.foldActive()).toBe(true)
+      expect(firstRow.getAttribute('hidden')).toBe('until-found')
+      expect(secondRow.hasAttribute('hidden')).toBe(false)
+      act(() => { vi.runAllTimers() })
+      expect(secondRow.getAttribute('hidden')).toBe('until-found')
+      expect(view.getByTestId('first')).toBe(firstRow)
+      expect(view.getByTestId('second')).toBe(secondRow)
+      act(() => { firstRow.dispatchEvent(new Event('beforematch')) })
+      expect(reveal).toHaveBeenCalledOnce()
+      view.rerender(rows(true, true, true, false))
+      expect(first.foldActive()).toBe(true)
+      expect(second.foldActive()).toBe(false)
+      view.rerender(rows(true, true, true, true))
+      expect(second.foldActive()).toBe(true)
+      await act(async () => { await Promise.resolve() })
+      act(() => { vi.runAllTimers() })
+      expect(firstHeader.getAttribute('hidden')).toBe('')
+      expect(secondHeader.getAttribute('hidden')).toBe('')
+      view.rerender(rows(true, true, false, true))
+      expect(firstHeader.dataset.chatMotion).toBe('reveal')
+      expect(secondHeader.hasAttribute('data-chat-motion')).toBe(false)
+    } finally {
+      try {
+        view?.unmount()
+        first.clear()
+        second.clear()
+        expect(vi.getTimerCount()).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
+    }
+  })
+
+  it('injects local disclosures bound to their Chat seat reset source', async () => {
+    const b = await bench()
+    try {
+      const spec = b.runtime.slots.spec('conversation.chat.node') as { inject: ChatNodeInjected }
+      const reset = createSnapshotStore(0)
+      const useDisclosure = spec.inject.hooks.disclosure(
+        {} as Parameters<typeof spec.inject.hooks.disclosure>[0],
+        { turnData: undefined, disclosureReset: reset, useGroupAction: () => { throw new Error('unused group action') } },
+      )
+      function Probe({ useDisclosure }: { useDisclosure: UseDisclosure }) {
+        const { expanded, toggle } = useDisclosure()
+        return <button aria-expanded={expanded} onClick={toggle}>Details</button>
+      }
+      const view = render(<Probe useDisclosure={useDisclosure} />)
+      try {
+        const button = view.getByRole('button', { name: 'Details' })
+        fireEvent.click(button)
+        expect(button.getAttribute('aria-expanded')).toBe('true')
+        act(() => { reset.set(1) })
+        expect(button.getAttribute('aria-expanded')).toBe('false')
+        expect(view.getByRole('button', { name: 'Details' })).toBe(button)
+      } finally {
+        view.unmount()
+      }
+    } finally {
+      await b.runtime.dispose()
+    }
   })
 })

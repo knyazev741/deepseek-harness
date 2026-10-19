@@ -8,13 +8,24 @@ import type {
 import { bindSnapshotSelector, makeTranslate } from '@knyazevai/dsh-client-test-runtime'
 import { en as commonEn } from '@knyazevai/dsh-client-locale/src/locales/en.ts'
 import { zh as commonZh } from '@knyazevai/dsh-client-locale/src/locales/zh.ts'
-import { StatsPills, deriveStats, formatDuration, type StatsPillsProps } from '../src/client/chat/StatsPills.tsx'
+import { PartialArguments } from '@knyazevai/dsh-util-values'
+import { ActivityPill, UsagePill, deriveStats, formatDuration, type StatPillProps } from '../src/client/chat/StatsPills.tsx'
 import { formatTokens } from '../src/client/chat/token-format.ts'
 import { en, zh } from '../src/client/locale.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
-const t: StatsPillsProps['t'] = makeTranslate(zh, commonZh)
-const tEn: StatsPillsProps['t'] = makeTranslate(en, commonEn)
+const t: StatPillProps['t'] = makeTranslate(zh, commonZh)
+const tEn: StatPillProps['t'] = makeTranslate(en, commonEn)
+
+/** Both composer-dock entries in their registered order, as the dock renders them. */
+function StatsPills(props: StatPillProps) {
+  return (
+    <>
+      <ActivityPill {...props} />
+      <UsagePill {...props} />
+    </>
+  )
+}
 
 afterEach(() => {
   cleanup()
@@ -68,6 +79,7 @@ describe('deriveStats', () => {
   it('ignores tool results with no call time', () => {
     const tool: ToolResultNode = {
       kind: 'tool-result', seq: 5, time: 5_000, callId: 'c', call: null, callTime: null, content: [],
+      name: '', args: PartialArguments.EMPTY,
       isError: false, subCalls: [],
     }
     const stats = deriveStats([tool, assistant(1, 1)])
@@ -86,6 +98,7 @@ describe('deriveStats', () => {
     }
     const tool: ToolResultNode = {
       kind: 'tool-result', seq: 5, time: 7_000, callId: 'c', call: null, callTime: 4_000, content: [],
+      name: '', args: PartialArguments.EMPTY,
       isError: false, subCalls: [],
     }
     const stats = deriveStats([timed, untimed, tool])
@@ -125,7 +138,7 @@ describe('formatters', () => {
   })
 })
 
-describe('StatsPills', () => {
+describe('composer stats pills', () => {
   const USAGE = { uncachedInputTokens: 10, outputTokens: 5, cacheReadTokens: 90, cacheWriteTokens: 0 }
 
   /** A whole-log sessionStats value: zeros plus overrides. */
@@ -137,15 +150,15 @@ describe('StatsPills', () => {
   }
 
   /** Stub the projection seat: a key-addressed table of whole values. */
-  function projections(values: Record<string, unknown>): StatsPillsProps['useProjection'] {
+  function projections(values: Record<string, unknown>): StatPillProps['useProjection'] {
     return (key: string) => values[key]
   }
 
   function props(
     source: { getSnapshot(): ChatSnapshot; subscribe(fn: () => void): () => void },
     values: Record<string, unknown> = { tokenUsage: USAGE },
-  ): StatsPillsProps {
-    return { useChat: bindSnapshotSelector(source), useProjection: projections(values), t: tEn }
+  ): StatPillProps {
+    return { usePerformanceUsage: selector => selector('detailed'), useChat: bindSnapshotSelector(source), useProjection: projections(values), t: tEn }
   }
 
   function tokenUsage(cacheReadTokens: number, uncachedInputTokens: number) {
@@ -158,12 +171,30 @@ describe('StatsPills', () => {
     timing: { stepStartTime: 1_000, firstTokenTime: 1_800, completedTime: 4_800 },
   })
 
+  it('compact keeps only speed and cache hit, with no interactive statistics', () => {
+    const { source } = makeSource({ nodes: [timedStep()] })
+    const view = render(<StatsPills {...props(source)} usePerformanceUsage={selector => selector('compact')} />)
+    expect(view.container.textContent).toBe('20 tok/sCache hit 90%')
+    expect(view.queryByRole('button')).toBeNull()
+    fireEvent.mouseOver(view.getByText('20 tok/s'))
+    expect(view.queryByRole('dialog')).toBeNull()
+    view.rerender(<StatsPills {...props(source)} />)
+    expect(view.getAllByRole('button')).toHaveLength(2)
+    fireEvent.click(view.getAllByRole('button')[0]!)
+    expect(view.getByRole('dialog')).toBeTruthy()
+    view.rerender(<StatsPills {...props(source)} usePerformanceUsage={selector => selector('compact')} />)
+    expect(view.queryByRole('dialog')).toBeNull()
+  })
+
+  it('compact omits unavailable metrics instead of showing counts', () => {
+    const { source } = makeSource({ nodes: [assistant(1, 1)] })
+    const view = render(<StatsPills {...props(source, {})} usePerformanceUsage={selector => selector('compact')} />)
+    expect(view.container.textContent).toBe('')
+  })
+
   it('renders the counts reading and usage pill and hides a brand-new empty session', () => {
     const { source } = makeSource({ nodes: [assistant(1, 1)] })
     const view = render(<StatsPills {...props(source)} />)
-    // InputBar's `.root:has([data-composer-stats])` bottom-clearance rule keys
-    // off this attribute: present exactly while the row renders.
-    expect(view.container.querySelector('[data-composer-stats]')).toBeTruthy()
     // No timing on the fixture: the speed segment drops out and the dialog
     // would have no rows, so the counts reading stays a static pill (no button).
     expect(view.getByText('1 turns 1 steps').closest('button')).toBeNull()
@@ -179,7 +210,6 @@ describe('StatsPills', () => {
       contextPressure: {},
     })} />)
     expect(emptyView.container.textContent).toBe('')
-    expect(emptyView.container.querySelector('[data-composer-stats]')).toBeNull()
   })
 
   it.each([
@@ -211,6 +241,16 @@ describe('StatsPills', () => {
     const timePill = view.getAllByRole('button')[0]!
     expect(timePill.textContent).toBe('1 turns 1 steps·20 tok/s')
     expect(timePill.getAttribute('aria-label')).toBe('1 turns 1 steps · 20 tok/s')
+  })
+
+  it('marks each pill with its dock entry id', () => {
+    const { source } = makeSource({ nodes: [timedStep()] })
+    const view = render(<StatsPills {...props(source)} />)
+    const pills = [...view.container.querySelectorAll('[data-composer-stat]')]
+    expect(pills.map(pill => [pill.getAttribute('data-composer-stat'), pill.textContent])).toEqual([
+      ['activity', '1 turns 1 steps·20 tok/s'],
+      ['usage', '105 tok·Cache hit 90%'],
+    ])
   })
 
   it('click-opens the time-and-speed dialog carrying the time split and speeds', () => {
@@ -264,7 +304,7 @@ describe('StatsPills', () => {
     expect(dialog.textContent).not.toContain('LLM time')
   })
 
-  it('closes the dialog on Escape or outside pointerdown', () => {
+  it('closes the dialog on Escape or an outside pointerdown', () => {
     const { source } = makeSource({ nodes: [timedStep()] })
     const view = render(<StatsPills {...props(source)} />)
     const timePill = view.getAllByRole('button')[0]!
@@ -290,12 +330,29 @@ describe('StatsPills', () => {
 
     fireEvent.click(timePill)
     expect(view.getByRole('dialog').getAttribute('aria-label')).toBe('Session statistics')
+    // A sibling pill's pointerdown lands outside the open dialog and closes it.
+    fireEvent.pointerDown(usagePill)
     fireEvent.click(usagePill)
     const dialogs = view.getAllByRole('dialog')
     expect(dialogs).toHaveLength(1)
     expect(dialogs[0]!.getAttribute('aria-label')).toBe('Token usage')
     expect(timePill.getAttribute('aria-expanded')).toBe('false')
     expect(usagePill.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('swaps dialogs on keyboard activation of a sibling pill, which fires click without pointerdown', () => {
+    const { source } = makeSource({ nodes: [timedStep()] })
+    const view = render(<StatsPills {...props(source)} />)
+    const [timePill, usagePill] = [...view.getAllByRole('button')] as [HTMLElement, HTMLElement]
+    fireEvent.click(timePill)
+    // A click inside the panel keeps it open; focus moving away does not close it.
+    fireEvent.click(view.getByRole('dialog'))
+    fireEvent.focusIn(usagePill)
+    expect(view.getByRole('dialog').getAttribute('aria-label')).toBe('Session statistics')
+    fireEvent.click(usagePill)
+    const dialogs = view.getAllByRole('dialog')
+    expect(dialogs).toHaveLength(1)
+    expect(dialogs[0]!.getAttribute('aria-label')).toBe('Token usage')
   })
 
   it('takes every pill and dialog label from the active locale', () => {
@@ -437,7 +494,7 @@ describe('StatsPills', () => {
   it('renders ZERO times during streaming chunk frames (RFC hard acceptance)', () => {
     const { set, source } = makeSource({ nodes: [assistant(1, 1)] })
     let renders = 0
-    function Counting(p: StatsPillsProps) {
+    function Counting(p: StatPillProps) {
       renders += 1
       return <StatsPills {...p} />
     }

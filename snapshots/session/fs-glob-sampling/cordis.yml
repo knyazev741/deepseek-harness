@@ -1,6 +1,6 @@
 # Minimal live counterpart for the glob-sampling snapshot composition.
 - id: llm-deepseek
-  name: '@knyazevai/dsh-llm-deepseek'
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
   config:
     models:
       - id: deepseek-v4-pro
@@ -27,7 +27,7 @@
 - id: system-prompt
   name: '@knyazevai/dsh-system-prompt'
   config:
-    personaPrefix: You are a concise snapshot agent working in {{cwd}}.
+    personaPrefix: You are a concise snapshot agent.
 
 - id: tool-jobs
   name: '@knyazevai/dsh-tool-jobs'

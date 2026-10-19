@@ -9,6 +9,7 @@
  * gate.
  */
 
+import { provideWorkingDirectoryFixture } from '@knyazevai/dsh-agent-loop-testkit'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -58,6 +59,8 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
     await writeFile(join(dir, 'greeting.txt'), 'hello pwsh\n')
 
     ctx = new Context()
+
+    provideWorkingDirectoryFixture(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(LocalJobRegistry)
@@ -65,7 +68,9 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(BashEnvPlugin)
     await ctx.plugin(PwshLocalExecutor, { timeoutMs: 20_000, graceMs: 200 })
-    await ctx.plugin(ToolPwsh)
+    // This suite pins the executor's own deadline behaviour; the job-backed
+    // foreground path is pinned by background.spec.
+    await ctx.plugin(ToolPwsh, { promoteOnTimeout: false })
   })
 
   afterEach(async () => {

@@ -28,11 +28,9 @@ function hasTaskAction(messages, action) {
 }
 
 function latestToolText(messages) {
-  const message = messages.findLast(candidate => candidate.content.some(block => block.type === 'tool-result'))
+  const message = messages.findLast(candidate => candidate.role === 'tool')
   if (message === undefined) return ''
-  return message.content.flatMap(block => block.type === 'tool-result'
-    ? block.content.filter(item => item.type === 'text').map(item => item.text)
-    : []).join('\n')
+  return message.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')
 }
 
 function toolChunks(specs) {
@@ -185,17 +183,18 @@ class TeamFixtureAdapter extends LlmAdapter {
       throw new Error('Team profile exposes a direct subagent tool')
     }
     const initial = options.messages.findLast(message => message.role === 'user' && message.source.kind === 'user')
-    const identity = initial?.content[0]?.text?.trimEnd()
-    if (identity !== 'TEAM_WORKFLOW_CHILD' && (!tools.includes('spawn_teammate') || !tools.includes('workflow'))) {
+    const workflowChild = initial?.content[0]?.text === 'TEAM_WORKFLOW_CHILD'
+    const context = options.messages.findLast(message => message.source?.kind === 'runtime-context')
+    const identity = context?.source.sections?.find(section => section.name === 'team:identity')?.text
+    if (!workflowChild && (!tools.includes('spawn_teammate') || !tools.includes('workflow'))) {
       throw new Error('Team profile is missing teammate or workflow tools')
     }
-    const chunks = identity === 'TEAM_WORKFLOW_CHILD'
-      ? textChunks('Fresh workflow child complete.')
-      : identity === '<system-reminder>\nYou are teammate "researcher".\n</system-reminder>'
-      ? researcher(options.messages)
-      : identity === '<system-reminder>\nYou are teammate "implementer".\n</system-reminder>'
-        ? implementer(options.messages)
-        : lead(options.messages)
+    let chunks
+    if (workflowChild) chunks = textChunks('Fresh workflow child complete.')
+    else if (identity?.startsWith('You are teammate "researcher".')) chunks = researcher(options.messages)
+    else if (identity?.startsWith('You are teammate "implementer".')) chunks = implementer(options.messages)
+    else if (identity?.startsWith('You are the Team Lead named "lead".')) chunks = lead(options.messages)
+    else throw new Error('Team runtime context is missing a recognized identity')
     for (const chunk of chunks) {
       options.signal?.throwIfAborted()
       yield chunk

@@ -1,7 +1,7 @@
-# Keyless overflow recovery followed by first-chunk retries and cooldown.
+# Keyless context-overflow replay composition.
 
 - id: llm-deepseek
-  name: '@knyazevai/dsh-llm-deepseek'
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
   disabled: true
 
 - id: session-persistence-jsonl
@@ -18,29 +18,12 @@
     maxTokens: 32
 
 - insert:
-    - id: fork-llm-first-chunk-timeout
-      name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'
-
-    - id: fork-llm-rate-limit-cooldown
-      name: '@knyazevai/dsh-fork-llm-rate-limit-cooldown'
-      config:
-        cooldownMs: 1
-        retryableCodes: [FIRST_CHUNK_TIMEOUT]
-
     - id: llm-replay
       name: '@knyazevai/dsh-llm-replay'
       config:
         providers:
           - id: deepseek-official
             name: DeepSeek
-            retryPolicy:
-              mode: normal
-              maxRetries: 20
-              retryableCodes: [FIRST_CHUNK_TIMEOUT]
-              backoff:
-                initialDelayMs: 1
-                maxDelayMs: 1
-                jitterRatio: 0
             models:
               - id: deepseek-v4-flash
                 contextWindow: 128000

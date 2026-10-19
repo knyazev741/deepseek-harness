@@ -14,7 +14,7 @@ import { subagentIdentityProjectionDefinition } from '@knyazevai/dsh-subagent/sr
 import TypertRegistry from '@knyazevai/dsh-typert-registry'
 import { createUserMessage, MessageId } from '@knyazevai/dsh-llm'
 import { snapshotSubagentDescriptor } from '@knyazevai/dsh-subagent'
-import { createInboxStub } from '@knyazevai/dsh-agent-loop-testkit'
+import { createInboxStub, mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@knyazevai/dsh-agent-loop-testkit'
 import type { Agent, Inbox } from '@knyazevai/dsh-agent'
 import type { SessionEvent, SessionHeader, SessionId } from '@knyazevai/dsh-session'
 import AttachmentStore from '@knyazevai/dsh-attachment'
@@ -22,6 +22,7 @@ import type { SessionPromptRequest, SessionRequestId } from '../src/types.ts'
 import {
   SessionPersistenceRevision,
   type SessionPersistenceSnapshot,
+  type SessionHandle, SessionAccess,
 } from '@knyazevai/dsh-session-persistence'
 import {
   createSessionTestRemote,
@@ -76,6 +77,53 @@ function conversationEvents(): SessionEvent[] {
 }
 
 describe('sessions.list cold merge', () => {
+  it('preserves listed format status and prefers live readiness without extra persistence reads', async () => {
+    const ctx = new Context()
+    try {
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(AgentRegistry)
+      const historical = header('format-historical', 100)
+      const current = header('format-current', 200)
+      const unknown = header('format-unknown', 300)
+      const shared = ctx.sessions.create(sid('format-shared'), { meta: { createdAt: 400, cwd: '/proj' } }).header
+      const liveOnly = ctx.sessions.create(sid('format-live'), { meta: { cwd: '/proj' } })
+      const snapshots: SessionPersistenceSnapshot[] = [
+        { ...statSnapshot(historical), formatStatus: 'migration-required' },
+        { ...statSnapshot(current), formatStatus: 'current' },
+        statSnapshot(unknown),
+        { ...statSnapshot(shared), formatStatus: 'migration-required' },
+      ]
+      const list = vi.fn(async () => snapshots)
+      const stat = vi.fn()
+      const open = vi.fn()
+      ctx.provide('sessionPersistence', { list, stat, open } as never)
+      const remote = createSessionTestRemote(ctx, {
+        defaultModelSelection: () => ({ provider: 'p', model: 'm' }),
+        cwd: '/tmp',
+      })
+      const observe = vi.spyOn(ctx.sessionQuery, 'observeSession')
+      try {
+        const response = await remote.list(request({}))
+        if (!response.ok) throw new Error('list failed')
+        const byId = new Map(response.value.items.map(item => [item.sessionId, item]))
+        expect(byId.get(historical.id)).toMatchObject({ formatStatus: 'migration-required' })
+        expect(byId.get(current.id)).toMatchObject({ formatStatus: 'current' })
+        expect(byId.get(unknown.id)).toMatchObject({ sessionId: unknown.id })
+        expect(byId.get(unknown.id)).not.toHaveProperty('formatStatus')
+        expect(byId.get(shared.id)).toMatchObject({ formatStatus: 'current' })
+        expect(byId.get(liveOnly.id)).toMatchObject({ formatStatus: 'current' })
+        expect(list).toHaveBeenCalledTimes(1)
+        expect(stat).not.toHaveBeenCalled()
+        expect(open).not.toHaveBeenCalled()
+        expect(observe).not.toHaveBeenCalled()
+      } finally {
+        observe.mockRestore()
+      }
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('uses a predecessor title hint with zero cold stat or body reads', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
@@ -96,7 +144,7 @@ describe('sessions.list cold merge', () => {
     ctx.provide('sessionProjectionCache', {
       cachedSnapshot: () => undefined,
       cachedPredecessorTitle: (meta: SessionHeader) => meta.id === sid('legacy-title')
-        ? { asOfSeq: -1, values: { title: 'Cached predecessor title' } }
+        ? { asOfSeq: 2, values: { title: 'Cached predecessor title' } }
         : undefined,
     } as never)
     const remote = createSessionTestRemote(ctx, {
@@ -118,7 +166,7 @@ describe('sessions.list cold merge', () => {
         sessionId: sid('legacy-title'),
         blank: false,
         updatedAt: 100,
-        projections: { asOfSeq: -1, values: { title: 'Cached predecessor title' } },
+        projections: { kind: 'cached', asOfSeq: 2, values: { title: 'Cached predecessor title' } },
       }),
     ])
     expect(stat).not.toHaveBeenCalled()
@@ -151,6 +199,12 @@ describe('sessions.list cold merge', () => {
         if (meta.id === sid('cached-conversation')) {
           return { asOfSeq: 1, values: { sessionListMetadata: { blank: false, lastPromptAt: 1000 } } }
         }
+        if (meta.id === sid('seeded-cold')) {
+          return {
+            asOfSeq: 5,
+            values: { title: 'Forked title', sessionListMetadata: { blank: false, lastPromptAt: 1200 } },
+          }
+        }
         return undefined
       },
       cachedPredecessorTitle: () => undefined,
@@ -171,10 +225,18 @@ describe('sessions.list cold merge', () => {
       origin: 'subagent',
     })
     expect(byId['missing-cwd']).toBeUndefined()
-    // A cold seeded header never consults the cache: its cut is not 0, so a
-    // cut-0 lookup would alias a different projection identity.
-    expect(byId['seeded-cold']).toMatchObject({ blank: false, updatedAt: 450 })
-    expect(cacheCalls).not.toContain('seeded-cold')
+    // A cold seeded header reads the cache by header alone, like any other
+    // cold row: the cache binds the lifecycle, and a listing never seeds a fold.
+    expect(byId['seeded-cold']).toMatchObject({
+      blank: false,
+      updatedAt: 1200,
+      projections: {
+        kind: 'cached',
+        asOfSeq: 5,
+        values: { title: 'Forked title', sessionListMetadata: { blank: false, lastPromptAt: 1200 } },
+      },
+    })
+    expect(cacheCalls).toContain('seeded-cold')
     expect(inspect).not.toHaveBeenCalled()
   })
 
@@ -271,6 +333,79 @@ describe('cold history recovery view', () => {
 })
 
 describe('Remote Agent and Session lookup policy', () => {
+  it('resumes a cold session before mutating a restored queue row', async () => {
+    const ctx = new Context()
+    await mountAgentLoopTestDependencies(ctx)
+    await mountAgentLoopTestHarness(ctx)
+    const sessionId = sid('session-cold-queue-mutation')
+    const meta = header(sessionId, 1000)
+    const message = createUserMessage({
+      content: [{ type: 'text', text: 'survives restart' }],
+      source: { kind: 'user' },
+    })
+    const events: SessionEvent[] = [{
+      type: 'agent/inbox/spliced',
+      seq: SessionSeq(0),
+      time: 1001,
+      data: { target: 'next-turn', start: 0, inserted: [message] },
+    }]
+    providePersistence(ctx, {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events }),
+      open: (_id: SessionId, access: SessionAccess): Promise<SessionHandle> => Promise.resolve({
+        id: sessionId,
+        header: meta,
+        inheritedEventCount: SessionLogOffset(0),
+        access,
+        read: () => Promise.resolve({ eventState: 'detached', events: structuredClone(events) }),
+        append: (appended) => { events.push(...appended); return Promise.resolve() },
+        flush: () => Promise.resolve(),
+        close: () => Promise.resolve(),
+        [Symbol.asyncDispose]: () => Promise.resolve(),
+      }),
+    })
+    const resume = vi.spyOn(ctx.agents, 'resume')
+    const remote = createSessionTestRemote(ctx, {
+      defaultModelSelection: () => ({ provider: 'p', model: 'm' }),
+      cwd: '/tmp',
+    })
+
+    const response = await remote.updateQueue(request({
+      sessionId,
+      itemId: message.id,
+      action: { kind: 'remove' },
+    }))
+
+    expect(response).toEqual({ ok: true, value: { accepted: true } })
+    expect(resume).toHaveBeenCalledOnce()
+    const resumedAgent = ctx.agents.get(sessionId)
+    expect(resumedAgent?.inbox.nextTurn).toEqual([])
+    expect(resumedAgent?.session.snapshotEvents().at(-1)).toMatchObject({
+      type: 'agent/inbox/spliced',
+      data: { target: 'next-turn', start: 0, removedCount: 1, inserted: [], outcome: 'canceled' },
+    })
+    await ctx.fiber.dispose()
+  })
+
+  it('keeps queue-item-not-found for a cold session when no persistence backend is composed', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    const remote = createSessionTestRemote(ctx, {
+      defaultModelSelection: () => ({ provider: 'p', model: 'm' }),
+      cwd: '/tmp',
+    })
+
+    const response = await remote.updateQueue(request({
+      sessionId: sid('session-no-persistence'),
+      itemId: MessageId('queued-item'),
+      action: { kind: 'remove' },
+    }))
+
+    expect(response.ok).toBe(false)
+    if (!response.ok) expect(response.error.code).toBe('session/queue-item-not-found')
+  })
+
   it('deduplicates a cold resume across Agent and Session parameters', async () => {
     const ctx = new Context()
     await ctx.plugin(TypertRegistry)
@@ -353,6 +488,40 @@ describe('Remote Agent and Session lookup policy', () => {
     await expect(liveFailure).rejects.toMatchObject(ownershipFailure)
     expect(resume).not.toHaveBeenCalled()
     expect(inspect).toHaveBeenCalledOnce()
+  })
+
+  it('reapplies the subagent ownership fence after a successful resume publishes the Agent', async () => {
+    const ctx = new Context()
+    await ctx.plugin(TypertRegistry)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    const sessionId = sid('session-remote-resumed-child')
+    const meta = header(sessionId, 1000)
+    providePersistence(ctx, {
+      list: () => Promise.resolve([meta]),
+      inspect: () => Promise.resolve({ meta, events: [] as SessionEvent[] }),
+      locate: () => undefined,
+    })
+    vi.spyOn(ctx.agents, 'resume').mockImplementationOnce(async () => {
+      const session = ctx.sessions.create(sessionId, {
+        meta: { cwd: '/proj', origin: 'subagent' },
+      })
+      const published = { id: session.id, session, status: 'idle', ctx } as Agent
+      await ctx.agents.register(published)
+      return { agent: published, dispose: () => Promise.resolve() }
+    })
+    const defaultLookup = ctx.typert.lookups.get('agent')
+    createSessionTestRemote(ctx, {
+      defaultModelSelection: () => ({ provider: 'p', model: 'm' }),
+      cwd: '/tmp',
+    })
+    await vi.waitFor(() => { expect(ctx.typert.lookups.get('agent')).not.toBe(defaultLookup) })
+    const lookup = ctx.typert.lookups.get('agent')
+    if (lookup === undefined) throw new Error('Agent lookup provider was not mounted')
+
+    const resolution = lookup.resolve(sessionId)
+
+    await expect(resolution).rejects.toMatchObject({ code: 'session/agent-busy' })
   })
 })
 
@@ -708,6 +877,7 @@ describe('sessions.prompt synchronous rejection', () => {
       AttachmentStore.prototype,
     ) as never)
     ctx.provide('llm', {
+      listModels: async () => [{ id: 'm', name: 'Model' }],
       listProviders: () => [{ id: 'p', name: 'Provider' }],
       resolveModelInfo: () => Promise.resolve({
         provider: 'p', id: 'm', name: 'Model', inputModalities: ['text', 'image'],

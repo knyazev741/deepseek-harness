@@ -1,9 +1,11 @@
 /** Browser terminal identities, metadata and screen-stream frames. */
 import type { Branded } from '@knyazevai/dsh-brand'
-import type {} from '@knyazevai/dsh-typert-protocol'
+import type { RemoteUplinkWindow } from '@knyazevai/dsh-typert-protocol'
 
 declare module '@knyazevai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
+    /** The terminal identity is missing or has begun process cleanup. */
+    'terminal/unavailable': Record<string, never>
     /** Input or resize was refused without invalidating the output attachment. */
     'terminal/control-unavailable': { readonly reason: 'read-only' | 'not-running' }
     /** Retained screens and pending allocations consume the Session's terminal quota. */
@@ -13,8 +15,11 @@ declare module '@knyazevai/dsh-typert-protocol' {
 
 /** A terminal identity scoped to one Session and one Host lifetime. */
 export type WebTerminalId = Branded<'WebTerminalId'>
-/** An attachment allowed to write and resize one terminal. */
-export type TerminalAttachmentId = Branded<'TerminalAttachmentId'>
+
+/** Acknowledges one physical window hold without taking screen or input control. */
+export interface TerminalRetentionFrame {
+  readonly type: 'retained'
+}
 
 /** An executable shell verified in the subprocess provider's execution environment. */
 export interface TerminalShell {
@@ -23,10 +28,13 @@ export interface TerminalShell {
   readonly name: string
 }
 
-/** Working directory and limits shared by new and restored terminals. */
+/** Current Session directory and terminal limits; retained terminals keep their own process directories. */
 export interface TerminalEnvironment {
+  /** Logged current directory, read without filesystem validation. */
   readonly cwd: string
   readonly maxInputBytes: number
+  /** Maximum complete encoded Client input bytes retained until acknowledgement. */
+  readonly maxBufferedBytes: number
   readonly maxCols: number
   readonly maxRows: number
   readonly scrollback: number
@@ -44,7 +52,6 @@ export interface WebTerminalInfo {
   readonly state: 'running' | 'exited' | 'failed'
   readonly exitCode: number | null
   readonly error?: string
-  readonly controllerId?: TerminalAttachmentId
 }
 
 /** Create is idempotent for an open identity; closed identities cannot be recreated. */
@@ -56,8 +63,17 @@ export interface TerminalCreateRequest {
   readonly rows: number
 }
 
-/** Every attachment begins with a complete bounded screen, then ordered output. */
+/** Commands are numbered consecutively from one within each attachment; acknowledgements never authorize replay. */
+export type TerminalInput =
+  | { readonly type: 'write'; readonly sequence: number; readonly data: string }
+  | { readonly type: 'resize'; readonly sequence: number; readonly cols: number; readonly rows: number }
+
+/**
+ * Every attachment begins with a complete bounded screen, then ordered output.
+ * inputWindow is absent when the carrier has no encoded-frame inbox limit.
+ */
 export type TerminalFrame =
-  | { readonly type: 'snapshot'; readonly sequence: number; readonly screen: string; readonly info: WebTerminalInfo }
+  | { readonly type: 'snapshot'; readonly sequence: number; readonly screen: string; readonly info: WebTerminalInfo; readonly writable: boolean; readonly inputWindow?: RemoteUplinkWindow }
   | { readonly type: 'output'; readonly sequence: number; readonly data: string }
-  | { readonly type: 'state'; readonly info: WebTerminalInfo }
+  | { readonly type: 'state'; readonly info: WebTerminalInfo; readonly writable: boolean }
+  | { readonly type: 'ack'; readonly sequence: number; readonly refusal?: 'read-only' | 'not-running' }

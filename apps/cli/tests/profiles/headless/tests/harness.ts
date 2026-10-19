@@ -8,10 +8,10 @@ import * as BashEnvPlugin from '@knyazevai/dsh-shell-env'
 import LocalSubprocessRuntime from '@knyazevai/dsh-subprocess-local'
 import * as ToolBash from '@knyazevai/dsh-tool-bash'
 import * as ToolTodo from '@knyazevai/dsh-tool-todo'
-import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek'
+import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
 import TokenMeter from '@knyazevai/dsh-token-meter'
 import ToolResultPruner from '@knyazevai/dsh-compaction-tool-result-pruner'
-import JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import * as SessionCheckpointPolicy from '@knyazevai/dsh-session-checkpoint-policy'
 import { BasicCompactionEngine } from '@knyazevai/dsh-compaction-basic'
 import type { BasicCompactionConfig } from '@knyazevai/dsh-compaction-basic'
@@ -49,19 +49,34 @@ export interface CodingHarnessOptions {
    * compaction plugin (the default suites run without it).
    */
   compact?: BasicCompactionConfig
-  /** Test-only context capacity advertised for `deepseek-v4-flash`. */
+  /**
+   * Test-only context capacity advertised for `deepseek-v4-flash`. Automatic
+   * pressure scales the message budget left after the request's reserved
+   * output tokens, so this capacity must exceed the advertised output cap.
+   */
   modelContextWindow?: number
+  /**
+   * Test-only per-request output cap advertised for `deepseek-v4-flash`, which
+   * the adapter forwards as `max_tokens` and pressure excludes from the
+   * capacity above.
+   */
+  modelMaxTokens?: number
 }
 
 export async function codingHarness(workdir: string, options: CodingHarnessOptions = {}): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx, {
+    workingDirectory: true,
     systemPrompt: { personaPrefix: options.personaPrefix ?? '' },
   })
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LlmDeepSeek, {
-    ...options.modelContextWindow === undefined ? {} : {
-      models: [{ id: 'deepseek-v4-flash', contextWindow: options.modelContextWindow }],
+    ...options.modelContextWindow === undefined && options.modelMaxTokens === undefined ? {} : {
+      models: [{
+        id: 'deepseek-v4-flash',
+        ...options.modelContextWindow === undefined ? {} : { contextWindow: options.modelContextWindow },
+        ...options.modelMaxTokens === undefined ? {} : { maxTokens: options.modelMaxTokens },
+      }],
     },
   })
   await ctx.plugin(LocalSubprocessRuntime)

@@ -25,6 +25,9 @@ import * as BashEnvPlugin from '@knyazevai/dsh-shell-env'
 import { PwshLocalExecutor } from '@knyazevai/dsh-pwsh-local'
 import LocalSubprocessRuntime from '@knyazevai/dsh-subprocess-local'
 import LocalFileSystem from '@knyazevai/dsh-fs-local'
+import WorkingDirectory from '@knyazevai/dsh-working-directory'
+import * as ToolWorkingDirectory from '@knyazevai/dsh-tool-working-directory'
+import * as ToolWorktree from '@knyazevai/dsh-experimental-tool-worktree'
 import { AttachmentStore } from '@knyazevai/dsh-attachment'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@knyazevai/dsh-attachment'
 import UserQuestionService from '@knyazevai/dsh-user-questions'
@@ -53,7 +56,8 @@ import * as ToolStrReplaceEditor from '@knyazevai/dsh-tool-str-replace-editor'
 import TerminalSessionService from '@knyazevai/dsh-terminal'
 import * as ToolPty from '@knyazevai/dsh-tool-terminal'
 import * as ToolGoal from '@knyazevai/dsh-tool-goal'
-import * as ToolSchedule from '@knyazevai/dsh-schedule'
+import * as ToolSchedule from '@knyazevai/dsh-tool-schedule'
+import type ScheduleService from '@knyazevai/dsh-schedule'
 import Lsp from '@knyazevai/dsh-lsp'
 import * as ToolLsp from '@knyazevai/dsh-tool-lsp'
 import * as ToolSkill from '@knyazevai/dsh-tool-skill'
@@ -64,6 +68,11 @@ import * as StagehandBrowserTools from '@knyazevai/dsh-experimental-browser-use-
 import type TeamService from '@knyazevai/dsh-experimental-agent-team'
 import * as ToolTeam from '@knyazevai/dsh-experimental-tool-agent-team'
 import * as ToolTodo from '@knyazevai/dsh-tool-todo'
+import type PluginManager from '@knyazevai/dsh-plugin-manager'
+import * as PluginManagerTools from '@knyazevai/dsh-plugin-manager/tools'
+import type PluginMarket from '@knyazevai/dsh-plugin-market'
+import * as PluginMarketTools from '@knyazevai/dsh-plugin-market/tools'
+import SandboxPolicy from '@knyazevai/dsh-sandbox-policy'
 import McpResources from '@knyazevai/dsh-mcp-resources'
 import * as ToolSubagent from '@knyazevai/dsh-tool-subagent'
 import { registerListSubagentModels } from '../packages/subagent/tool-subagent/src/list-models.ts'
@@ -72,6 +81,7 @@ import WorkflowEngine from '@knyazevai/dsh-workflow'
 import type { WorkflowRun, WorkflowStartRequest } from '@knyazevai/dsh-workflow'
 import * as ToolRalph from '@knyazevai/dsh-tool-ralph'
 import * as ToolWorkflow from '@knyazevai/dsh-tool-workflow'
+import * as ToolWorkspaceDependencies from '@knyazevai/dsh-tool-workspace-dependencies'
 import { githubSlug } from './verify-md-links.ts'
 
 /** Attachment seam marker that makes the attachments-conditional `read_image` schema harvestable. */
@@ -117,7 +127,7 @@ class CatalogWorkflowEngine extends WorkflowEngine {
 function registerCatalogSubagentProvider(ctx: Context, name: string): void {
   const provider: SubagentProvider = {
     name,
-    capabilities: { agentOptions: true, outputSchema: true, depthLimit: true, toolFilter: true, persona: true },
+    capabilities: { agentOptions: true, agentPreset: true, outputSchema: true, depthLimit: true },
     inheritsParentContext: false,
     start: () => Promise.reject(new Error('tool-catalog provider cannot start a child')),
     // Declared so consumers configured for continuable background mode mount.
@@ -130,28 +140,8 @@ function registerCatalogSubagentProvider(ctx: Context, name: string): void {
 const catalogChildScopes = new WeakMap<Context, Agent>()
 
 /**
- * Install one scope-local tool package into an agent-like child scope for
- * schema harvest, without starting a model, Agent loop, or persistence backend.
- * @param ctx - catalog context owning the scope.
- * @param mountScoped - package installer for the scoped context.
- * @param key - agent-like scope key exposed to the package's scope selector.
- * @param inject - services the package installer must await before mounting.
- */
-async function mountCatalogChildScope(
-  ctx: Context,
-  mountScoped: (childCtx: Context) => void,
-  key: Agent = { id: SessionId('tool-catalog-child') } as Agent,
-  inject: string[] = ['tools', 'systemPrompt', 'subagents'],
-): Promise<void> {
-  await ctx.plugin(Object.assign((inner: Context) => {
-    mountScoped(createScope(inner, key).ctx)
-  }, { inject }))
-  catalogChildScopes.set(ctx, key)
-}
-
-/**
  * Tool package plus its hand-maintained boot recipe. The caller mounts the
- * prompt and registry; each recipe supplies only package-specific seams and
+ * prompt, directory services, and registry; each recipe supplies only package-specific seams and
  * config, while `dir` participates in the completeness check.
  */
 export interface ToolPackage {
@@ -200,6 +190,31 @@ export interface ToolPackage {
  */
 const TOOL_PACKAGES: ToolPackage[] = [
   {
+    pkg: '@knyazevai/dsh-plugin-manager',
+    dir: 'plugin-manager',
+    source: 'packages/boot/plugin-manager/src/tools.ts',
+    requires: ['ctx.tools', 'ctx.pluginManager', 'ctx.sandboxPolicy'],
+    writes: ['tool/call', 'tool/result', 'user/message'],
+    async mount(ctx) {
+      // Schema harvest never executes a management method or opens a profile.
+      ctx.provide('pluginManager', {} as PluginManager)
+      await ctx.plugin(SandboxPolicy)
+      await ctx.plugin(PluginManagerTools)
+    },
+  },
+  {
+    pkg: '@knyazevai/dsh-plugin-market',
+    dir: 'plugin-market',
+    source: 'packages/boot/plugin-market/src/tools.ts',
+    requires: ['ctx.tools', 'ctx.pluginMarket'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      // Schema harvest never fetches an index.
+      ctx.provide('pluginMarket', {} as PluginMarket)
+      await ctx.plugin(PluginMarketTools)
+    },
+  },
+  {
     pkg: '@knyazevai/dsh-mcp-resources',
     dir: 'mcp-resources',
     source: 'packages/mcp/mcp-resources/src/tools.ts',
@@ -231,19 +246,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     dir: 'tool-ask-user',
     source: 'packages/interaction/tool-ask-user/src/index.ts',
     requires: ['ctx.tools', 'ctx.userQuestions'],
-    writes: ['tool/call', 'tool/result after a UI/provider answers the question'],
+    writes: ['tool/call', 'tool/result after an answer or timeout', 'late user/message'],
     async mount(ctx) {
       await ctx.plugin(UserQuestionService)
       await ctx.plugin(ToolAskUser)
     },
     note:
-      'ask_user_question pauses the tool call until the active UI provider returns a human answer.',
+      'ask_user_question keeps the original blocking behavior by default; set `mode: timed` to opt into a foreground timeout and pending result while the question remains answerable. In timed mode, `timeout: -1` keeps that call blocking indefinitely.',
   },
   {
     pkg: '@knyazevai/dsh-tools',
     dir: 'tools',
     source: 'packages/core/tools/src/ptc.ts',
-    requires: ['ctx.tools', 'ctx.ptcRuntime (execution time)', 'ctx.systemPrompt'],
+    requires: ['ctx.workingDirectory (Agent executions)', 'ctx.tools', 'ctx.ptcRuntime (execution time)', 'ctx.systemPrompt'],
     writes: ['tool/call', 'one tool/ptc-dispatch-start + tool/ptc-dispatch pair per bridged sub-call', 'tool/result'],
     // The registry's OWN tool: run_code exists only under a non-native mode
     // (the registry registers it in its constructor; the PTC runtime is read
@@ -251,7 +266,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     toolsConfig: { mode: 'ptc' },
     async mount() {},
     note:
-      'Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: ptc` / `mode: both` (see the PTC mode Agent Note). Under `ptc` it is the registry\'s only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime\'s language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result.',
+      'Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: ptc` (see the PTC mode Agent Note). Under `ptc` it is the registry\'s only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime\'s language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result.',
   },
   {
     pkg: '@knyazevai/dsh-plan-mode',
@@ -269,25 +284,27 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@knyazevai/dsh-tool-bash',
     dir: 'tool-bash',
     source: 'packages/shell/tool-bash/src/index.ts',
-    requires: ['ctx.tools', 'ctx.shell', 'ctx.systemPrompt', 'ctx.shellEnv', 'ctx.jobs at call time for run_in_background'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.shell', 'ctx.systemPrompt', 'ctx.shellEnv', 'ctx.jobs for run_in_background and the job-backed foreground path'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(LocalSubprocessRuntime)
       await ctx.plugin(BashEnvPlugin)
       await ctx.plugin(LocalBashExecutor)
+      // The shipped profiles compose the job registry, and the tool's
+      // background surface follows it: harvest the job-backed schema.
+      await ctx.plugin(LocalJobRegistry)
       await ctx.plugin(ToolBash)
     },
     note:
-      'The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@knyazevai/dsh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled.',
+      'The bash tool is the model-facing consumer of the bash executor seam. With a job registry composed every call registers with the generic `ctx.jobs` runtime as it starts, collected/stopped through the `job_*` tools from `@knyazevai/dsh-tool-jobs`; without one, or with `enableRunInBackground: false`, the tool registers a foreground-only schema without the `run_in_background` parameter.',
   },
   {
     pkg: '@knyazevai/dsh-tool-present',
     dir: 'tool-present',
-    source: 'packages/fs/tool-present/src/index.ts',
-    requires: ['ctx.tools', 'ctx.fs', 'ctx.sessionProjections'],
+    source: 'packages/deliverables/tool-present/src/index.ts',
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.fs', 'ctx.sessionProjections'],
     writes: ['tool/call', 'deliverables/presented after a successful final result', 'tool/result'],
     async mount(ctx) {
-      await ctx.plugin(LocalFileSystem)
       await ctx.plugin(ToolPresent)
     },
     note: 'Deliveries belong to the calling Session; Web ui-deliverables supplies source-file opening and cards.',
@@ -296,15 +313,17 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@knyazevai/dsh-tool-pwsh',
     dir: 'tool-pwsh',
     source: 'packages/shell/tool-pwsh/src/index.ts',
-    requires: ['ctx.tools', 'ctx.shell', 'ctx.systemPrompt', 'ctx.shellEnv', 'ctx.jobs at call time for run_in_background'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.shell', 'ctx.systemPrompt', 'ctx.shellEnv', 'ctx.jobs for run_in_background and the job-backed foreground path'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       // The pwsh tool consumes the bash executor seam; the schema harvest
       // mounts the pwsh-local implementation so the inject resolves without
-      // executing anything (registration never spawns a process).
+      // executing anything (registration never spawns a process). The job
+      // registry is composed for the same reason as the bash entry.
       await ctx.plugin(LocalSubprocessRuntime)
       await ctx.plugin(BashEnvPlugin)
       await ctx.plugin(PwshLocalExecutor)
+      await ctx.plugin(LocalJobRegistry)
       await ctx.plugin(ToolPwsh)
     },
     note:
@@ -314,20 +333,20 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@knyazevai/dsh-tool-cordis',
     dir: 'tool-cordis',
     source: 'packages/extensions/tool-cordis/src/index.ts',
-    requires: ['ctx.tools', 'ctx.dynamicCordisRunner'],
-    writes: ['tool/call', 'tool/result', 'process-local dynamic package lifecycle'],
+    requires: ['ctx.tools', 'ctx.cordisInspect'],
+    writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(CordisHostRunner)
       await ctx.plugin(ToolCordis)
     },
     note:
-      'Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@knyazevai/dsh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or DSH restarts; a full changed request header logs those tool-set changes.',
+      'Creator mode provides two read-only runtime inspection tools. The Cordis host runner supplies the inspection registry; Client queries require a connected page. Author persistent changes as bundles and install them with plugin_manager.',
   },
   {
     pkg: '@knyazevai/dsh-tool-bash-persistent',
     dir: 'tool-bash-persistent',
     source: 'packages/shell/tool-bash-persistent/src/index.ts',
-    requires: ['ctx.tools', 'ctx.terminals', 'an owning Agent at execution time'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.terminals', 'an owning Agent at execution time'],
     writes: ['tool/call', 'PTY shell state', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(TerminalSessionService)
@@ -340,7 +359,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@knyazevai/dsh-tool-pwsh-persistent',
     dir: 'tool-pwsh-persistent',
     source: 'packages/shell/tool-pwsh-persistent/src/index.ts',
-    requires: ['ctx.tools', 'ctx.terminals', 'an owning Agent at execution time'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.terminals', 'an owning Agent at execution time'],
     writes: ['tool/call', 'PTY shell state', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(TerminalSessionService)
@@ -356,7 +375,6 @@ const TOOL_PACKAGES: ToolPackage[] = [
     requires: ['ctx.tools', 'ctx.fs'],
     writes: ['tool/call', 'fs/observed after view presence/absence, edit absence, or successful mutation', 'tool/result'],
     async mount(ctx) {
-      await ctx.plugin(LocalFileSystem)
       await ctx.plugin(ToolStrReplaceEditor)
     },
     note:
@@ -366,13 +384,11 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@knyazevai/dsh-tool-fs',
     dir: 'tool-fs',
     source: 'packages/fs/tool-fs/src/index.ts',
-    requires: ['ctx.tools', 'ctx.fs', 'ctx.systemPrompt', 'ctx.attachments (image-tool registration)', 'ctx.llm + an image-capable route (image-tool execution)'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.fs', 'ctx.systemPrompt', 'ctx.attachments (image-tool registration)', 'ctx.llm + an image-capable route (image-tool execution)'],
     writes: ['tool/call', 'fs/write-intent or fs/edit-intent for mutations', 'fs/observed after read presence/absence or successful file operation', 'durable attachment (read_image)', 'tool/result'],
     async mount(ctx) {
-      // The tool needs `fs`; the bare provider is sufficient because policy
-      // changes behavior, not schema shape. The catalog seam marker opts into
+      // The catalog seam marker opts into
       // the attachments-conditional image schema without attachment I/O.
-      await ctx.plugin(LocalFileSystem)
       await ctx.plugin(CatalogAttachmentStore)
       await ctx.plugin(ToolFs)
     },
@@ -383,7 +399,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@knyazevai/dsh-tool-fs-search',
     dir: 'tool-fs-search',
     source: 'packages/fs/tool-fs-search/src/index.ts',
-    requires: ['ctx.tools', 'ctx.subprocess', 'ctx.systemPrompt'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.subprocess', 'ctx.systemPrompt'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       // The tools inject `subprocess` (search spawns the packaged ripgrep
@@ -400,8 +416,8 @@ const TOOL_PACKAGES: ToolPackage[] = [
   {
     pkg: '@knyazevai/dsh-tool-terminal',
     dir: 'tool-terminal',
-    source: 'packages/terminal/tool-terminal/src/index.ts',
-    requires: ['ctx.tools', 'ctx.terminals', 'ctx.systemPrompt', 'ctx.jobs at call time for run_in_background'],
+    source: 'packages/experimental/tool-terminal/src/index.ts',
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.terminals', 'ctx.systemPrompt', 'ctx.jobs at call time for run_in_background'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(TerminalSessionService)
@@ -425,31 +441,29 @@ const TOOL_PACKAGES: ToolPackage[] = [
       'create, edit, pause, and resume require direct-human root authority; complete and blocked also accept the exact current goal round. The default blocked lower bound is three admitted rounds.',
   },
   {
-    pkg: '@knyazevai/dsh-schedule',
-    dir: 'schedule',
-    source: 'packages/schedule/schedule/src/tools.ts',
-    requires: ['ctx.tools', 'ctx.sessions', 'Session persistence', 'a future live root Agent'],
-    writes: ['tool/call', 'schedule/change create or delete', 'tool/result'],
+    pkg: '@knyazevai/dsh-tool-schedule',
+    dir: 'tool-schedule',
+    source: 'packages/schedule/tool-schedule/src/index.ts',
+    requires: ['ctx.tools', 'ctx.schedule'],
+    writes: ['tool/call', 'Schedule storage domain create, update, or delete', 'tool/result'],
     async mount(ctx) {
-      await ctx.plugin(SessionStore)
-      const session = ctx.sessions.create(SessionId('tool-catalog-schedule'))
-      const agent = { id: session.id, session } as Agent
-      await mountCatalogChildScope(ctx, (childCtx) => {
-        ToolSchedule.registerScheduleTools(ctx, childCtx, agent, () => {})
-      }, agent, ['tools', 'systemPrompt'])
+      // Schema harvest never executes a tool, so the Host service is a
+      // declaration-only stub.
+      ctx.provide('schedule', {} as ScheduleService)
+      await ctx.plugin(ToolSchedule)
     },
-    scope: ctx => catalogChildScopes.get(ctx) as Agent,
     note:
-      'Registered only inside live root Agent scopes created after the opt-in Schedule plugin loads. '
-      + 'Version 1 accepts after_seconds, explicit absolute at, and bounded fixed-rate every_seconds, '
-      + 'and discloses session-local delivery; '
-      + 'management reads and mutations require the shared Session persistence barrier.',
+      'A preset or Agent scope mounts this package; the preset decides which agents receive the four '
+      + 'management tools. Each call acts on the calling Agent\'s Session. '
+      + 'Accepts after_seconds, explicit absolute at, bounded fixed-rate every_seconds, daily and weekly '
+      + 'local times in an explicit IANA zone, and cron as a five-field expression. '
+      + 'Management uses the Host storage domain; due messages resume the original Session.',
   },
   {
     pkg: '@knyazevai/dsh-tool-lsp',
     dir: 'tool-lsp',
     source: 'packages/lsp/tool-lsp/src/index.ts',
-    requires: ['ctx.tools', 'ctx.lsp', 'ctx.systemPrompt'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.lsp', 'ctx.systemPrompt'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       // The tool registers from the seam alone; the schema does not depend on any provider.
@@ -462,7 +476,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
   {
     pkg: '@knyazevai/dsh-tool-ralph',
     dir: 'tool-ralph',
-    source: 'packages/workflow/tool-ralph/src/index.ts',
+    source: 'packages/experimental/tool-ralph/src/index.ts',
     requires: ['ctx.tools', 'ctx.workflowEngine', 'ctx.subagents', 'ctx.systemPrompt', 'a calling Agent (exec.agent parents every fresh round)'],
     writes: ['tool/call', 'tool/result', 'workflow and child session events during execution'],
     async mount(ctx) {
@@ -478,7 +492,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@knyazevai/dsh-tool-skill',
     dir: 'tool-skill',
     source: 'packages/skill/tool-skill/src/index.ts',
-    requires: ['ctx.tools', 'ctx.agents', 'ctx.skills'],
+    requires: ['ctx.workingDirectory', 'ctx.tools', 'ctx.agents', 'ctx.skills'],
     writes: ['tool/call', 'tool/result', 'user/message replacement catalogs via agent.inject()'],
     async mount(ctx) {
       await ctx.plugin(AgentRegistry)
@@ -493,7 +507,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
   {
     pkg: '@knyazevai/dsh-tool-session-query',
     dir: 'tool-session-query',
-    source: 'packages/session-query/tool-session-query/src/index.ts',
+    source: 'packages/experimental/tool-session-query/src/index.ts',
     requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.sessionQuery', 'a calling Agent for workspace authority'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
@@ -522,7 +536,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
       registerListSubagentModels(ctx, { routes: [{ provider: 'mock', model: 'mock' }] })
     },
     note:
-      'The registered delegation name is the load-time `toolName` config (default `subagent`); the default schema above has model selection off, while the discovery schema is shown as the fixed companion available in an enabled Session. Web presets sample the Plugins preference for each new top-level Session and preserve that decision for its child Sessions; `subagent_fork` remains fixed-route. Each instance independently controls whether it reads model-selection settings and its background behavior through `modelSelectionSettings`, `backgroundMode`, and `enableRunInBackground`.',
+      'The registered delegation name is the load-time `toolName` config (default `subagent`); the default schema above has model selection off, while the discovery schema is shown as the fixed companion available in an enabled Session. Web presets sample the Plugins preference for each new top-level Session and preserve that decision for its child Sessions; `subagent_fork` remains fixed-route. Each instance selects its backend through `provider` and reads model-selection settings through `modelSelectionSettings`. Every delegation returns a child id promptly; local children accept follow-ups, while external backends report their single execution automatically.',
   },
   {
     pkg: '@knyazevai/dsh-tool-subagent-control',
@@ -543,7 +557,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
       await ctx.plugin(ToolSubagentListAgents)
     },
     note:
-      'The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries).',
+      'The globally named discovery, interruption, and local-message tools over managed subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries).',
   },
   {
     pkg: '@knyazevai/dsh-tool-jobs',
@@ -556,14 +570,14 @@ const TOOL_PACKAGES: ToolPackage[] = [
       await ctx.plugin(ToolJobs)
     },
     note:
-      'The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers\' `ctx.jobs.start()`.',
+      'The kind-agnostic background-job controller: background bash commands and PTY sends are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers\' `ctx.jobs.start()`.',
   },
   {
     pkg: '@knyazevai/dsh-experimental-tool-agent-team',
     dir: 'tool-agent-team',
     source: 'packages/experimental/tool-agent-team/src/index.ts',
     requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.agentTeams', 'an exact live Team member Agent'],
-    writes: ['tool/call', 'team/member', 'team/message/queued', 'team/message/delivered', 'team/task', 'tool/result'],
+    writes: ['tool/call', 'team/member', 'team/task', 'agent/inbox/spliced', 'user/message on inbox claim', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(SessionStore)
@@ -609,6 +623,31 @@ const TOOL_PACKAGES: ToolPackage[] = [
       'todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.',
   },
   {
+    pkg: '@knyazevai/dsh-tool-working-directory',
+    dir: 'tool-working-directory',
+    source: 'packages/session/tool-working-directory/src/index.ts',
+    requires: ['ctx.tools', 'ctx.workingDirectory'],
+    writes: ['tool/call', 'working-directory/change', 'user context for directory changes', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolWorkingDirectory)
+    },
+    note: 'Reads or changes the calling Session directory. Existing shells and processes retain their own directories; origin metadata and permission roots stay fixed.',
+  },
+  {
+    pkg: '@knyazevai/dsh-experimental-tool-worktree',
+    dir: 'tool-worktree',
+    source: 'packages/experimental/tool-worktree/src/index.ts',
+    requires: ['ctx.tools', 'ctx.worktrees', 'a calling Agent'],
+    writes: ['tool/call', 'Git branch and checkout', 'working-directory/change', 'tool/result'],
+    async mount(ctx) {
+      ctx.provide('worktrees', {
+        create: () => Promise.reject(new Error('gen-tool-catalog: worktree creation is unavailable during schema harvest')),
+      })
+      await ctx.plugin(ToolWorktree)
+    },
+    note: 'Explicit experimental composition only. Creates a new branch and checkout from a pinned local commit under existing write permissions, then changes the Session directory. Leaving retains the branch and checkout.',
+  },
+  {
     pkg: '@knyazevai/dsh-tool-workflow',
     dir: 'tool-workflow',
     source: 'packages/workflow/tool-workflow/src/index.ts',
@@ -619,6 +658,17 @@ const TOOL_PACKAGES: ToolPackage[] = [
       registerCatalogSubagentProvider(ctx, 'mock')
       await ctx.plugin(CatalogWorkflowEngine)
       await ctx.plugin(ToolWorkflow)
+    },
+  },
+  {
+    pkg: '@knyazevai/dsh-tool-workspace-dependencies',
+    dir: 'tool-workspace-dependencies',
+    source: 'packages/skill/tool-workspace-dependencies/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      // Schema harvest never prepares a payload; the directory need not exist.
+      await ctx.plugin(ToolWorkspaceDependencies, { source: resolve(root, '.tmp/tool-catalog/primary-runtime') })
     },
   },
   {
@@ -717,6 +767,8 @@ export async function collectToolCatalog(packages: ToolPackage[] = TOOL_PACKAGES
     try {
       await ctx.plugin(SessionProjectionRegistry)
       await ctx.plugin(SystemPrompt)
+      await ctx.plugin(LocalFileSystem)
+      await ctx.plugin(WorkingDirectory)
       await ctx.plugin(ToolRuntime, entry.toolsConfig ?? {})
       await entry.mount(ctx)
       const schemas = ctx.tools.schemas(entry.scope?.(ctx)).sort((a, b) => a.name.localeCompare(b.name))

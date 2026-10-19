@@ -1,5 +1,5 @@
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { onTestFinished, afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Events, Fiber } from '@deepseek-ai/cordis'
 import LlmRuntime, {
@@ -218,7 +218,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
       role: 'assistant',
       content: [{ type: 'text', text: 'done' }],
     })
-    expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')).toHaveLength(2)
+    expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')).toHaveLength(3)
   })
 
   it('escalates QUOTA via the default code set', async () => {
@@ -324,7 +324,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
       role: 'assistant',
       content: [{ type: 'text', text: 'done' }],
     })
-    expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')).toHaveLength(2)
+    expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')).toHaveLength(3)
   })
 
   it('delegates while the bounded retry budget is not yet exhausted', async () => {
@@ -413,6 +413,75 @@ describe('fork-llm-rate-limit-cooldown', () => {
     await fiber.dispose()
     disposeAdapter()
     expect(adapter.requests).toHaveLength(3)
+  })
+})
+
+describe('Gonka persistent recovery', () => {
+  it.each(['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'FIRST_CHUNK_TIMEOUT', 'TRANSPORT',
+    'PI_AI_ERROR', 'STREAM_CLOSED', 'EMPTY_RESPONSE', 'AUTH', 'INVALID_REQUEST', 'CONTEXT_WINDOW_EXCEEDED'])(
+    'finishes after repeated exhausted budgets for %s and records every cooldown', async (code) => {
+      const adapter = new ScriptedAdapter([
+        ...Array.from({ length: 45 }, () => new LlmError('provider unavailable', code, {})), textResponse('done'),
+      ])
+      const { ctx, disposeAdapter } = await harness(adapter, {
+        includeRetry: true, cooldownMs: 1, retryableCodes: ['*'],
+        retryPolicy: normalConfig({ maxRetries: 20, retryableCodes: [code],
+          backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 } }),
+      })
+      context = ctx
+      disposed = disposeAdapter
+      const agent = await ctx.agentLoop.create(SessionId(`persistent-${code}`), { provider: 'mock', model: 'mock' })
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await agent.whenIdle()
+      expect(adapter.requests).toHaveLength(46)
+      const waits = agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')
+      expect(waits).toHaveLength(45)
+      expect(waits.at(-1)?.data).toMatchObject({ mode: 'always', retry: 25, delayMs: 1 })
+      expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry-started')).toHaveLength(45)
+      expect(agent.session.deriveMessages().at(-1)?.role).toBe('assistant')
+    },
+  )
+
+  it('waits ten minutes by default and allows the retry executor to be mounted later', async () => {
+    vi.useFakeTimers()
+    onTestFinished(() => { vi.useRealTimers() })
+    const adapter = new ScriptedAdapter([rateLimited(), rateLimited(), textResponse('done')])
+    const { ctx, disposeAdapter } = await harness(adapter, {
+      retryableCodes: ['*'], retryPolicy: normalConfig({ maxRetries: 1,
+        backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 } }),
+    })
+    context = ctx
+    disposed = disposeAdapter
+    await ctx.plugin(retry)
+    const agent = await ctx.agentLoop.create(SessionId('default-wait'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await vi.advanceTimersByTimeAsync(1)
+    expect(adapter.requests).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(599_999)
+    expect(adapter.requests).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(1)
+    await agent.whenIdle()
+    expect(adapter.requests).toHaveLength(3)
+  })
+
+  it.each(['long-retry-after', 'unlisted-code'])('recovers before exhaustion for %s', async (scenario) => {
+    const code = scenario === 'unlisted-code' ? 'AUTH' : 'RATE_LIMIT'
+    const adapter = new ScriptedAdapter([
+      new LlmError('try later', code, { providerRetryAfterMs: 3 }), textResponse('done'),
+    ])
+    const { ctx, disposeAdapter } = await harness(adapter, {
+      includeRetry: true, cooldownMs: 3, retryableCodes: ['*'],
+      retryPolicy: normalConfig({ maxRetries: 20, retryableCodes: ['RATE_LIMIT'],
+        backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 } }),
+    })
+    context = ctx
+    disposed = disposeAdapter
+    const agent = await ctx.agentLoop.create(SessionId(scenario), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+    expect(adapter.requests).toHaveLength(2)
+    expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')[0]?.data)
+      .toMatchObject({ mode: 'always', delayMs: 3 })
   })
 })
 

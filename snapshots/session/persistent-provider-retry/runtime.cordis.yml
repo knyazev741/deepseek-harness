@@ -1,0 +1,15 @@
+# The route keeps retrying normalized failures with deterministic test delays.
+- id: llm-replay
+  config:
+    providers:
+      - id: deepseek-official
+        name: DeepSeek
+        retryPolicy:
+          mode: always
+          backoff:
+            initialDelayMs: 1
+            maxDelayMs: 1
+            jitterRatio: 0
+        models:
+          - id: deepseek-v4-flash
+          - id: deepseek-v4-pro

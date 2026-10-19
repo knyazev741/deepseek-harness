@@ -7,11 +7,12 @@
  * here is the submit plane (phase, claim, attempt) alone.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type { SessionBinding } from '@knyazevai/dsh-api-session-controller/client'
+import type { InboxState } from '@knyazevai/dsh-agent/types'
 import type { ObservableSnapshot, SnapshotStore } from '@knyazevai/dsh-client-store'
 import type { Branded } from '@knyazevai/dsh-brand'
 import type { ArbitrateKey, ArbitrateOutcome, Occurrence, ReferenceInsert, TokenSpan } from './draft-editor.ts'
-import type { QueueRow } from './queue.ts'
-import type { InputSubmitMode } from './composer-submission.ts'
+import type { InputSubmitMode, MessageSubmission } from './composer-submission.ts'
 
 /** Attachment payload passed to a claimed command submission. */
 export type SubmitAttachment =
@@ -38,7 +39,7 @@ export interface SubmitOutcome {
 export interface CommandClaim {
   /** Catalog command name without the leading slash (the key of per-command composer copy such as `hint.*`). */
   readonly name: string
-  /** Inserted command text with its argument separator; the bare complete name also retains the claim. */
+  /** Command spelling followed by its argument separator; the composer shows the spelling as a chip and inserts the separator after it. */
   readonly token: string
   readonly hint?: string
   readonly attachments?: boolean
@@ -119,6 +120,13 @@ export interface InputTriggerController {
     envelope: { readonly attachments: number },
   ): Promise<PickOutcome>
   /**
+   * Resolve the claim a persisted command chip names without acting on it.
+   * @param token - command spelling without its argument separator, e.g. '/goal'.
+   * @param signal - restore-attempt abort.
+   * @returns the claim, or undefined when no source claims the token; rejects when catalog warmup fails.
+   */
+  resolveClaim(token: string, signal: AbortSignal): Promise<CommandClaim | undefined>
+  /**
    * @param source - chip owner, or undefined for a text reference.
    * @param reference - source id and glyph.
    * @returns whether a preview opened.
@@ -166,7 +174,7 @@ export type DraftAttachmentId = Branded<'DraftAttachmentId'>
  * applied the edit after phase and span guards).
  */
 export interface InputTarget {
-  /** Replace the trigger span with claim.token and enter claimed (span-CAS'd). */
+  /** Replace the leading trigger span with a command chip and enter claimed (span-CAS'd). */
   beginCommand(claim: CommandClaim, span: TokenSpan): boolean
   /** Replace the trigger span with one reference chip (span-CAS'd). */
   insertReference(ref: ReferenceInsert, span: TokenSpan): boolean
@@ -174,7 +182,7 @@ export interface InputTarget {
 
 /** Per-session input facade owned by the conversation wiring layer. */
 export interface SessionInput extends InputTarget {
-  /** Replace the whole draft (persisted-draft seed and programmatic writes). */
+  /** Replace the whole draft with plain text, removing inline reference chips. */
   setDraft(text: string): void
   /** Append ordered browser-owned attachment ids; busy admission phases refuse. */
   addAttachments(ids: readonly DraftAttachmentId[]): boolean
@@ -186,7 +194,7 @@ export interface SessionInput extends InputTarget {
    * THE complexity sink: enter adjudication, submit transaction, and the default sink live inside.
    * @param mode - delivery intent retained through asynchronous adjudication and serialization.
    */
-  submit(mode?: InputSubmitMode): void
+  submit(mode?: InputSubmitMode, source?: 'click' | 'enter'): void
   /**
    * Surface a notice outside the machine's own effect stream: detached
    * command results and business notifications render through here.
@@ -197,6 +205,12 @@ export interface SessionInput extends InputTarget {
    * @param text - notice body.
    */
   notify(level: 'info' | 'error', text: string): void
+
+  /**
+   * Return the keyboard to the composer with the caret it last held, for
+   * callers that took focus away from it (an overlay that held its own).
+   */
+  focus(): void
   /** Input state store (InputZone currency + decorations read here). */
   readonly state: SnapshotStore<InputState>
 }
@@ -205,7 +219,24 @@ export interface SessionInput extends InputTarget {
 export interface SessionInputResolver {
   /** Resolve the facade for one session-scope ctx. */
   for(actx: Context): SessionInput
+  /**
+   * Prepare the exact retained Session before navigation publishes it.
+   * @param binding - target Session generation, already retained by the caller.
+   * @param options - content to adopt and explicit permission to replace existing text.
+   * @returns applied, preserved, or blocked by a pending submission or disposal.
+   * @throws when binding is not the currently retained Session generation.
+   */
+  requestDraftInitialization(binding: SessionBinding, options: DraftInitializationOptions): DraftInitializationResult
 }
+
+/** Initial text for a target Session; attachments remain under their existing owner. */
+export interface DraftInitializationOptions {
+  readonly prompt?: string
+  readonly clearPreviousDraft?: boolean
+}
+
+/** An initialization request never waits for a React mount or a remote catalog. */
+export type DraftInitializationResult = 'applied' | 'preserved' | 'blocked'
 
 /**
  * The public input action face provided to every session-scope slot
@@ -214,8 +245,19 @@ export interface SessionInputResolver {
  * paste/…) stay InputBar-private and never ride this face.
  */
 export interface InputActions {
-  /** Replace the whole draft (persisted-draft seed and programmatic writes). */
+  /** @returns a revision-guarded copy of the current editor selection. */
+  captureInsertion(): TokenSpan
+  /**
+   * Insert asynchronous text without replacing subsequent edits or reference chips.
+   * @param text - plain text to insert in one undo step.
+   * @param span - captured selection and draft revision.
+   * @returns false when the draft changed or submission locked the editor.
+   */
+  insertText(text: string, span: TokenSpan): boolean
+  /** Replace the whole draft with plain text, removing inline reference chips. */
   setDraft(text: string): void
+  /** Write the current semantic document through the mounted persistence callback. */
+  persistDraft(): void
   /** Append ordered browser-owned attachment ids; busy admission phases refuse. */
   addAttachments(ids: readonly DraftAttachmentId[]): boolean
   /** Remove one browser-owned attachment id; busy admission phases refuse. */
@@ -233,9 +275,6 @@ export interface InputNotice {
   readonly seq: number
 }
 
-/** One independently addressable row projected from the transient queue snapshot. */
-export type QueuedMessage = QueueRow
-
 /** Guard union of the scoped consume-token event, checked by the shell. */
 export type ConsumeTokenGuard = ConsumeTokenRequest['guard']
 
@@ -252,8 +291,8 @@ export interface InputState {
   readonly claim?: { readonly name: string; readonly token: string; readonly hint?: string; readonly attachments?: boolean }
   /** Reference occurrence view of the editor's chips, sorted by offset. */
   readonly occurrences: readonly Occurrence[]
-  /** Read-only transient inbox projection from Session control, including pending steering. */
-  readonly queue: readonly QueuedMessage[]
+  /** Messages still waiting for their own turn. */
+  readonly queue: InboxState['next-turn']
 }
 
 /**
@@ -271,24 +310,33 @@ export interface SubmitAttempt {
   readonly draftSnapshot: string
   /** Default-message delivery intent retained while slash adjudication is pending. */
   readonly mode: InputSubmitMode
+  /** Original message occurrence, retained across command arbitration. */
+  readonly submission?: MessageSubmission
 }
 
 /**
  * Submit-machine input events (the machine's single write path). Text
  * mutation lives in the editor; the machine only observes the draft through
- * event payloads (claim integrity, enter snapshots, settlement decisions).
+ * event payloads (leading command chip, enter snapshots, settlement decisions).
  */
 export type InputEvent =
-  /** Clipboard projection changed: the claimed integrity watch runs (zero effects). */
-  | { readonly type: 'draft-changed'; readonly draft: string }
-  /** The editor applied a claim-token replacement: enter claimed. */
+  /** Editor content changed; carries the claim of the leading command chip, if any (zero effects). */
+  | { readonly type: 'draft-changed'; readonly command: CommandClaim | undefined }
+  /** The editor inserted a command chip: enter claimed. */
   | { readonly type: 'claim'; readonly claim: CommandClaim }
   /** Enter submission with the current clipboard projection. */
-  | { readonly type: 'enter'; readonly mode: InputSubmitMode; readonly draft: string }
+  | { readonly type: 'enter'; readonly mode: InputSubmitMode; readonly draft: string; readonly submission?: MessageSubmission }
   | { readonly type: 'adjudicated'; readonly attempt: SubmitAttempt; readonly outcome: PickOutcome }
   | { readonly type: 'adjudication-failed'; readonly attempt: SubmitAttempt; readonly message: string }
-  /** Settlement carries the live clipboard projection for suffix-retention and claim re-entry decisions. */
-  | { readonly type: 'submit-settled'; readonly attempt: SubmitAttempt; readonly ok: boolean; readonly draft: string; readonly outcome?: SubmitOutcome; readonly message?: string }
+  /** Settlement carries the leading command chip's claim, which the claim follows after a failure. */
+  | {
+    readonly type: 'submit-settled'
+    readonly attempt: SubmitAttempt
+    readonly ok: boolean
+    readonly command: CommandClaim | undefined
+    readonly outcome?: SubmitOutcome
+    readonly message?: string
+  }
   /** Settlement of one optimistic default send, independent of the frozen command slot. */
   | { readonly type: 'sink-settled'; readonly attempt: SubmitAttempt; readonly ok: boolean; readonly outcome?: SubmitOutcome; readonly message?: string }
   /** Commit an attachment-only send whose empty draft did not need an attempt. */

@@ -59,15 +59,16 @@ describe('validateChildFrame', () => {
       .toEqual({ type: 'done', error: { kind: 'invalid-output', message: 'lossy' } })
     expect(validateChildFrame({ type: 'done', error: { kind: 'output-limit', message: 'big' } }))
       .toEqual({ type: 'done', error: { kind: 'output-limit', message: 'big' } })
+    expect(validateChildFrame({ type: 'done', error: { kind: 'timeout', message: 'CPU time exhausted' } }))
+      .toEqual({ type: 'done', error: { kind: 'timeout', message: 'CPU time exhausted' } })
     expect(validateChildFrame({ type: 'done', value: 1, error: { kind: 'exception', message: 'boom' } }))
       .toEqual({ type: 'done', value: 1, error: { kind: 'exception', message: 'boom' } })
     // A `value: undefined` field is dropped (JSON never carries it, but a forged
     // shape might; the rebuild coalesces to the absent case).
     expect(validateChildFrame({ type: 'done', value: undefined })).toEqual({ type: 'done' })
-    // A missing or unrecognized kind drops the frame: the child always sends
-    // one of the three, so anything else is a forgery.
+    // Unknown failure kinds cannot become runtime outcomes.
     expect(validateChildFrame({ type: 'done', error: { message: 'boom' } })).toBeUndefined()
-    expect(validateChildFrame({ type: 'done', error: { kind: 'timeout', message: 'x' } })).toBeUndefined()
+    expect(validateChildFrame({ type: 'done', error: { kind: 'unknown', message: 'x' } })).toBeUndefined()
   })
 
   it('rejects malformed done frames', () => {
@@ -297,7 +298,7 @@ describe('checkDoneValue', () => {
   it('emits exact digits for beyond-safe integral doubles', () => {
     // String(2**60) prints the ROUNDED ...847000; echoing that to the child
     // would change the integer. BigInt digits give the exact ...846976.
-    const v = JSON.parse('[1152921504606846976]') as unknown
+    const v: unknown = JSON.parse('[1152921504606846976]')
     expect(encodeJsonPlain(v)).toBe('[1152921504606846976]')
     expect(checkDoneValue(v, 100)).toEqual({ ok: true, bytes: Buffer.byteLength('[1152921504606846976]', 'utf8') })
   })

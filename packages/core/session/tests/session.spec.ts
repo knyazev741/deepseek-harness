@@ -1,6 +1,8 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { createSystemMessage, createUserMessage, ToolCallId, createMessage, createToolResultMessage, MessageId, ReasoningEffortId } from '@knyazevai/dsh-llm'
+import { createDeveloperMessage, createSystemMessage, createUserMessage, ToolCallId, createMessage, createToolResultMessage, MessageId, ReasoningEffortId } from '@knyazevai/dsh-llm'
+import type { ContentBlock } from '@knyazevai/dsh-llm'
+import type { ContextFormed } from '@knyazevai/dsh-llm'
 import SessionStore, {
   adoptSessionEvent,
   SESSION_FORMAT_VERSION,
@@ -11,7 +13,14 @@ import SessionStore, {
   SessionSeq,
   snapshotSessionEvent,
 } from '@knyazevai/dsh-session'
-import type { CreateSessionOptions, LogIntent, SessionEventType, SessionHeader, SessionSurface } from '@knyazevai/dsh-session'
+import type { CreateSessionOptions, SessionEventType, SessionHeader, SessionSurface } from '@knyazevai/dsh-session'
+
+declare module '@knyazevai/dsh-llm' {
+  interface MessageSourceMap {
+    'test': { kind: 'test' } & ContextFormed
+    'watcher': { kind: 'watcher' } & ContextFormed
+  }
+}
 
 describe('Session', () => {
   it('exposes one stable readonly surface view', () => {
@@ -58,10 +67,10 @@ describe('Session', () => {
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
 
     const messages = session.deriveMessages()
-    expect(messages.map(m => m.role)).toEqual(['user', 'assistant', 'user'])
+    expect(messages.map(m => m.role)).toEqual(['user', 'assistant', 'tool'])
     // raw chunks must NOT appear in derived history
     expect(messages[1]!.content).toHaveLength(2)
-    expect(messages[2]!.content[0]).toMatchObject({ type: 'tool-result', toolCallId: ToolCallId('c1') })
+    expect(messages[2]).toMatchObject({ role: 'tool', content: [{ type: 'text', text: 'ok' }] })
   })
 
   it('accepts and round-trips a max-tokens turn/end reason', () => {
@@ -92,7 +101,7 @@ describe('Session', () => {
     const session = Session.create(SessionId('s2'))
     session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'file changed: a.ts' }],
-      source: { kind: 'plugin', plugin: 'watcher' },
+      source: { kind: 'watcher' },
     }), { surfaceOp: 'append' })
     session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'focus on tests' }],
@@ -110,13 +119,14 @@ describe('Session', () => {
     const session = Session.create(SessionId('s2-raw'))
     const message = createUserMessage({
       content: [{ type: 'text', text: '<system-reminder>Additional instructions from: pkg/AGENTS.md</system-reminder>' }],
-      source: { kind: 'plugin', plugin: 'agent-instructions' },
+      source: { kind: 'agent-instructions', form: 'instructions', changes: [] },
     })
     session.append('user/message', message, { surfaceOp: 'append' })
 
     expect(session.deriveMessages()).toEqual([message])
     const event = session.snapshotEvents()[0]
-    expect(event?.type === 'user/message' && event.data.source).toEqual({ kind: 'plugin', plugin: 'agent-instructions' })
+    expect(event?.type === 'user/message' && event.data.source)
+      .toEqual({ kind: 'agent-instructions', form: 'instructions', changes: [] })
   })
 
   it('replays identically from a seeded event log', () => {
@@ -260,14 +270,14 @@ describe('Session', () => {
       data: { header: { config: { provider: 'mock', model: 'model' } }, reason: 'initial' },
     } as const
     for (const reason of ['fallback', 'unknown', null]) {
-      const invalid = structuredClone(base) as unknown as SessionEvent
+      const invalid = structuredClone(base) as SessionEvent
       if (invalid.type !== 'request/header') throw new Error('test fixture must be a request header')
       invalid.data.reason = reason as never
       expect(() => Session.create(SessionId('invalid-header-reason'), [invalid]))
         .toThrow('seed request/header at index 0 has an invalid reason')
     }
     for (const startsSeries of [false, 1, 'true']) {
-      const invalid = structuredClone(base) as unknown as SessionEvent
+      const invalid = structuredClone(base) as SessionEvent
       if (invalid.type !== 'request/header') throw new Error('test fixture must be a request header')
       invalid.data.startsSeries = startsSeries as never
       expect(() => Session.create(SessionId('invalid-series-marker'), [invalid]))
@@ -290,12 +300,9 @@ describe('Session', () => {
     }
     const tool = {
       id: 'tool',
-      role: 'user',
-      content: [{
-        type: 'tool-result',
-        toolCallId: 'call',
-        content: [{ type: 'text', text: 'result' }],
-      }],
+      role: 'tool',
+      toolCallId: 'call',
+      content: [{ type: 'text', text: 'result' }],
       source: { kind: 'tool', callId: 'call' },
     }
     const invalid = [
@@ -362,7 +369,7 @@ describe('Session', () => {
           data: {
             turn: 1,
             step: 1,
-            message: { ...user, id: 'system', source: { kind: 'plugin', plugin: 'prompt' } },
+            message: { ...user, id: 'system', source: { kind: 'system-prompt' } },
           },
         },
         message: 'message must have role "system"',
@@ -374,22 +381,22 @@ describe('Session', () => {
           data: {
             turn: 1,
             step: 1,
-            message: { ...user, id: 'system', role: 'system', source: { kind: 'plugin', plugin: '' } },
+            message: { ...user, id: 'system', role: 'system', source: { kind: 'runtime-context' } },
           },
         },
-        message: 'message must have plugin source',
+        message: 'message must have system-prompt source',
       },
       {
-        name: 'tool tuple',
+        name: 'tool role',
         event: {
           type: 'tool/result', seq: 0, time: 1, surfaceOp: 'append',
           data: {
             turn: 1,
             step: 1,
-            message: { ...tool, content: [{ type: 'text', text: 'not a result' }] },
+            message: { ...tool, role: 'user' },
           },
         },
-        message: 'message must contain one tool-result block',
+        message: 'message must have role "tool"',
       },
       {
         name: 'tool correlation',
@@ -458,7 +465,7 @@ describe('Session', () => {
         content: [{ type: 'text', text: 'owned' }],
         source: { kind: 'user' },
       },
-    } as SessionEvent<'user/message'>
+    } as unknown as SessionEvent<'user/message'>
     expect(adoptSessionEvent(owned)).toBe(owned)
     expect(Object.isFrozen(owned.data)).toBe(true)
     expect(Object.isFrozen(owned.data.content)).toBe(true)
@@ -470,6 +477,19 @@ describe('Session', () => {
     expect(snapshot.data.content).not.toBe(source.data.content)
   })
 
+  it('adopts developer messages in place and freezes their nested tool changes', () => {
+    const event: SessionEvent<'developer/message'> = {
+      type: 'developer/message', seq: SessionSeq(1), time: 1, surfaceOp: 'append',
+      data: { turn: 1, step: 1, headerSeq: SessionSeq(0), message: structuredClone(createDeveloperMessage({
+        content: [{ type: 'tool-addition', toolName: 'search' }], source: { kind: 'test' },
+      })) },
+    }
+    expect(Object.isFrozen(event.data.message)).toBe(false)
+    expect(adoptSessionEvent(event)).toBe(event)
+    expect(Object.isFrozen(event.data.message)).toBe(true)
+    expect(Object.isFrozen(event.data.message.content[0])).toBe(true)
+  })
+
   it('adopts a system/message by freezing its message', () => {
     const event = {
       type: 'system/message',
@@ -479,7 +499,7 @@ describe('Session', () => {
       data: {
         turn: 1,
         step: 1,
-        message: createSystemMessage('You are terse.', '@knyazevai/dsh-system-prompt'),
+        message: createSystemMessage('You are terse.'),
       },
     } as unknown as SessionEvent
     const adopted = adoptSessionEvent(event)
@@ -523,7 +543,7 @@ describe('Session', () => {
       .toEqual(valid)
 
     for (const reasoningEffort of ['', 1]) {
-      const invalid = structuredClone(valid) as unknown as SessionEvent
+      const invalid = structuredClone(valid) as SessionEvent
       if (invalid.type !== 'request/header') throw new Error('test fixture must be a request header')
       const config = invalid.data.header.config as unknown as Record<string, unknown>
       config.reasoningEffort = reasoningEffort
@@ -558,7 +578,7 @@ describe('Session', () => {
       { maxTokens: false },
       { reasoningEffort: true },
     ]) {
-      const invalid = structuredClone(valid) as unknown as SessionEvent
+      const invalid = structuredClone(valid) as SessionEvent
       if (invalid.type !== 'request/header') throw new Error('test fixture must be a request header')
       invalid.data.header.adapterDefaults = adapterDefaults as never
       expect(() => Session.create(SessionId('invalid-adapter-defaults'), [invalid]))
@@ -585,11 +605,11 @@ describe('Session', () => {
     const messages = session.deriveMessages()
     const userBlock = messages[0]!.content[0]!
     expect(() => { if (userBlock.type === 'text') userBlock.text = 'HACKED' }).toThrow(TypeError)
-    const toolBlock = messages[1]!.content[0]!
+    const toolMessage = messages[1]!
     expect(() => {
-      if (toolBlock.type === 'tool-result') toolBlock.content.push({ type: 'text', text: 'injected' })
+      if (toolMessage.role === 'tool') (toolMessage.content as ContentBlock[]).push({ type: 'text', text: 'injected' })
     }).toThrow(TypeError)
-    expect(() => { messages[0]!.content.push({ type: 'text', text: 'extra' }) }).toThrow(TypeError)
+    expect(() => { (messages[0]!.content as ContentBlock[]).push({ type: 'text', text: 'extra' }) }).toThrow(TypeError)
     // The returned ARRAY is the caller's own snapshot, though — reordering it
     // is the caller's business and never reaches the cache or the log.
     messages.reverse()
@@ -639,93 +659,6 @@ describe('Session', () => {
       .toThrow(/surface-eligible and requires a surfaceOp marker/)
     // The rejected append never entered the log (only turn/start is present).
     expect(session.snapshotEvents()).toHaveLength(1)
-  })
-
-  it('stamps an ignorable marker only on log-only appends and keeps legacy calls unchanged', () => {
-    const session = Session.create(SessionId('ignorable-append'))
-    const intent: LogIntent = { ignorable: true }
-    const marked = session.append('turn/start', { turn: 1 }, intent)
-    expect(marked.ignorable).toBe(true)
-
-    const legacy = session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
-    expect(legacy.ignorable).toBeUndefined()
-    expect(session.snapshotEvents()).toEqual([
-      expect.objectContaining({ type: 'turn/start', ignorable: true }),
-      expect.objectContaining({ type: 'turn/end' }),
-    ])
-  })
-
-  it('rejects malformed runtime intents instead of silently dropping them', () => {
-    const session = Session.create(SessionId('invalid-append-intent'))
-    class ClassIntent { readonly kind = 'class' }
-    const invalidIntents: unknown[] = [
-      null,
-      [],
-      new ClassIntent(),
-      { ignorable: false },
-      { ignorable: 'true' },
-      { ignorable: true, extra: 'field' },
-      { surfaceOp: 'append' },
-    ]
-    for (const intent of invalidIntents) {
-      expect(
-        () => (session.append as unknown as (type: string, data: unknown, intent: unknown) => unknown)(
-          'turn/start',
-          { turn: 1 },
-          intent,
-        ),
-      ).toThrow(/append intent|not surface-eligible/)
-    }
-    expect(session.snapshotEvents()).toHaveLength(0)
-
-    const nullPrototypeIntent = Object.create(null) as LogIntent
-    nullPrototypeIntent.ignorable = true
-    expect(() => session.append('turn/start', { turn: 1 }, nullPrototypeIntent)).not.toThrow()
-    expect(session.snapshotEvents()).toHaveLength(1)
-  })
-
-  it('rejects unknown symbol keys on append intents', () => {
-    const session = Session.create(SessionId('invalid-symbol-append-intent'))
-    const intent: Record<PropertyKey, unknown> = { ignorable: true }
-    intent[Symbol('unexpected')] = true
-
-    expect(() => (session.append as unknown as (type: string, data: unknown, intent: unknown) => unknown)(
-      'turn/start',
-      { turn: 1 },
-      intent,
-    )).toThrow(/invalid field "Symbol\(unexpected\)"/)
-    expect(session.snapshotEvents()).toHaveLength(0)
-  })
-
-  it('rejects unknown non-enumerable keys on append intents', () => {
-    const session = Session.create(SessionId('invalid-non-enumerable-append-intent'))
-    const intent: Record<string, unknown> = { ignorable: true }
-    Object.defineProperty(intent, 'unexpected', { value: true, enumerable: false })
-
-    expect(() => (session.append as unknown as (type: string, data: unknown, intent: unknown) => unknown)(
-      'turn/start',
-      { turn: 1 },
-      intent,
-    )).toThrow(/invalid field "unexpected"/)
-    expect(session.snapshotEvents()).toHaveLength(0)
-  })
-
-  it('rejects an ignorable marker on a surface append at runtime', () => {
-    const session = Session.create(SessionId('surface-ignorable-append'))
-    expect(() => (session.append as unknown as (...args: unknown[]) => unknown)(
-      'user/message',
-      { content: [{ type: 'text', text: 'surface' }], source: { kind: 'user' } },
-      { surfaceOp: 'append', ignorable: true },
-    )).toThrow(/ignorable/)
-    expect(session.snapshotEvents()).toHaveLength(0)
-  })
-
-  it('keeps ignorable out of the surface intent type', () => {
-    expectTypeOf<LogIntent>().toEqualTypeOf<{ ignorable?: true }>()
-    // @ts-expect-error SurfaceIntent must never accept an ignorable marker.
-    if (false) Session.create(SessionId('surface-ignorable-type')).append('user/message', {
-      content: [{ type: 'text', text: 'surface' }], source: { kind: 'user' },
-    }, { surfaceOp: 'append', ignorable: true })
   })
 
   it('accepts dense arrays and nested plain objects', () => {
@@ -1710,7 +1643,7 @@ describe('SessionStore', () => {
 
     expect(() => session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'replacement' }],
-      source: { kind: 'plugin', plugin: 'test' },
+      source: { kind: 'test' },
     }), {
       surfaceOp: { op: 'replace', startSeq: SessionSeq(2), endSeq: SessionSeq(2) },
       sourceEventSeqs: [SessionSeq(2)],

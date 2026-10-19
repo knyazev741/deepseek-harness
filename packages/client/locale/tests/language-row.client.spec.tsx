@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { SessionListState } from '@knyazevai/dsh-api-session-controller/client'
 import type { WorkspaceSnapshot } from '@knyazevai/dsh-api-workspace-controller/client'
 import { createSnapshotStore } from '@knyazevai/dsh-client-store'
-import { bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'
+import { allowAllAccess, bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'
 import { LanguageRow } from '../src/client/LanguageRow.tsx'
 import type { LanguageRowComponentProps } from '../src/client/LanguageRow.tsx'
 import { createLanguageRowStore } from '../src/client/settings-store.ts'
@@ -20,19 +20,19 @@ const OPTIONS = [{ id: 'zh', label: '中文' }, { id: 'en', label: 'English' }]
 
 function emptySessions() {
   const store = createSnapshotStore<SessionListState>(
-    { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined })
+    { ids: [], byId: {}, phase: 'ready', projectionsBySession: {} })
   return bindSnapshotSelector(store)
 }
 function emptyWorkspaces() {
   const store = createSnapshotStore<WorkspaceSnapshot>({
-    items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+    items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })
   return bindSnapshotSelector(store)
 }
 
-type AttentionSnapshot = Parameters<Parameters<LanguageRowComponentProps['useSessionPendingInteraction']>[0]>[0]
+type AttentionSnapshot = Parameters<Parameters<LanguageRowComponentProps['useSessionStatus']>[0]>[0]
 const noAttention: AttentionSnapshot = new Map()
-const useSessionPendingInteraction: LanguageRowComponentProps['useSessionPendingInteraction'] = selector => selector(noAttention)
+const useSessionStatus: LanguageRowComponentProps['useSessionStatus'] = selector => selector(noAttention)
 
 function mount(active = 'en') {
   // Real store instance — the sanctioned zero-machinery path for tests.
@@ -41,9 +41,10 @@ function mount(active = 'en') {
   const setLocale = vi.fn()
   const props: LanguageRowComponentProps = {
     useSessions: emptySessions(),
-    useSessionPendingInteraction,
-    usePanelInfo, useResource,
+    useSessionStatus,
+    usePanelInfo, useSessionRetainInfo: () => undefined, useResource,
     useWorkspaces: emptyWorkspaces(),
+    ...allowAllAccess,
     useStore: bindSnapshotSelector(store),
     actions: store.actions,
     t: (key: string) => key === 'language.title' ? 'Language' : key,

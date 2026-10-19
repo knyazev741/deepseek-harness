@@ -50,6 +50,8 @@ export {
 export interface SessionPersistenceSnapshot {
   /** Detached metadata for one stored session. */
   readonly header: SessionHeader
+  /** Header-only format classification; absent without versioned artifact metadata. */
+  readonly formatStatus?: 'current' | 'migration-required'
   /** Opaque change token; see {@link SessionPersistence.stat}. */
   readonly revision: SessionPersistenceRevision
   /** Logical event count, when the backend can provide it cheaply from metadata; otherwise absent. */
@@ -133,6 +135,9 @@ declare module '@deepseek-ai/cordis' {
  * on this backend instance observe at least that prefix.
  */
 export abstract class SessionPersistence extends Service {
+  /** Process-local instance identity, stable through Context proxies and distinct after service replacement. */
+  readonly identity: symbol = Symbol('sessionPersistence')
+
   constructor(ctx: Context) {
     super(ctx, 'sessionPersistence')
   }

@@ -2,7 +2,7 @@
 /** Cleanup errors remain reachable after the terminal tab has disappeared. */
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, within } from '@testing-library/react'
-import { makeTranslate } from '@knyazevai/dsh-client-test-runtime'
+import { allowAllAccess, makeTranslate } from '@knyazevai/dsh-client-test-runtime'
 import type { TerminalCloseFailure } from '@knyazevai/dsh-api-terminal-controller/client'
 import type { WebTerminalId } from '@knyazevai/dsh-api-terminal-controller/types'
 import { TerminalCleanup } from '../src/client/TerminalCleanup.tsx'
@@ -13,8 +13,9 @@ afterEach(cleanup)
 type CleanupProps = Parameters<typeof TerminalCleanup>[0]
 const unusedHook = (): never => { throw new Error('Terminal cleanup does not consume global hooks') }
 const standard: Omit<CleanupProps, 'useCloseFailures' | 'retryClose' | 't'> = {
-  useSessions: unusedHook, useSessionPendingInteraction: unusedHook, usePanelInfo: unusedHook,
+  useSessions: unusedHook, useSessionStatus: unusedHook, useSessionRetainInfo: unusedHook, usePanelInfo: unusedHook,
   useWorkspaces: unusedHook, useResource: unusedHook,
+  ...allowAllAccess,
 }
 
 it('stays absent for ordinary closes and offers a retry only after cleanup fails', () => {

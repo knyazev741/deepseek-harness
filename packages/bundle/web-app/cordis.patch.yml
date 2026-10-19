@@ -7,15 +7,15 @@
 #
 # The web-startup plugin injects `cmdlineArgs` and provides `webStartup` as an
 # ordinary Cordis service. Rows configured from flags inject that service, so
-# Loader resolves their expressions only after it exists. The web runtime then
-# provides bind-dependent `webRuntime` values to the trust fence.
-# `dsh --profile web --help` provides neither service, so no server binds.
+# Loader resolves their expressions only after it exists. The web-runtime row
+# validates the advertised public URL; Connection reads invocation authorities
+# directly from `webStartup`.
+# `dsh --profile web --help` provides no `webStartup`, so no server binds.
 
 # ── surface-specific values the base deliberately omits ─────────────────────
 
 - id: system-prompt
   config:
-    personaSuffix: Your working directory is {{cwd}}.
     personaPrefix: >-
       You are a coding agent powered by the {{model}} model.
 
@@ -31,7 +31,7 @@
 
 - id: tools
   config:
-    # TEMPORARY workaround: DSH_TOOLS_MODE (native|ptc|both) opts a whole dsh
+    # TEMPORARY workaround: DSH_TOOLS_MODE (native|ptc) opts a whole dsh
     # process into PTC mode while per-session tool-presentation selection is being
     # designed; unset keeps the schema default (native). Remove the env seam
     # once the web UI owns the choice per session.
@@ -42,6 +42,25 @@
 # `dsh.client` rows are the browser roster the modules node half scans into
 # window.__DSH_BOOT__; the modules row is simultaneously a host row.
 - insert:
+    - id: desktop-product-telemetry
+      name: '@knyazevai/dsh-host-product-telemetry-otel'
+      disabled: !!js "ctx.get('profileContext')?.name !== 'desktop'"
+      config:
+        scheduledDelayMillis: 30000
+        timeoutMillis: 15000
+        exportTimeoutMillis: 20000
+        shutdownTimeoutMillis: 2000
+        serviceName: deepseek-harness-desktop
+        serviceVersion: !!js process.env.DSH_CLIENT_VERSION
+        endpoint: !!js process.env.DSH_PRODUCT_ANALYTICS_OTLP_URL
+
+    - id: product-analytics
+      name: '@knyazevai/dsh-client-product-analytics'
+      disabled: !!js "ctx.get('profileContext')?.name !== 'desktop'"
+      config:
+        enabled: true
+        appVersion: !!js process.env.DSH_CLIENT_VERSION
+
     # Host-owned opt-in sampled when a new Web session receives its preset
     # delegation tools. The Plugins page edits this settings namespace.
     - id: subagent-model-selection-settings
@@ -102,6 +121,10 @@
     - id: session-controller
       name: '@knyazevai/dsh-api-session-controller'
 
+    # One background job's observation record streamed over Typert Remote;
+    # the roster rides the session control stream above.
+    - id: job-controller
+      name: '@knyazevai/dsh-api-job-controller'
     # Workspace file service: bounded read, directory listing, and the
     # agent-write change feed inside the session workspace root.
     - id: terminal-controller
@@ -109,8 +132,21 @@
     - id: workspace-files
       name: '@knyazevai/dsh-api-workspace-files'
 
+    # The Schedule service owns the task store and delivers each due occurrence
+    # as a follow-up in its original Session. The clock reading and the four
+    # reminder tools belong to the `standard`, `cordis`, and `ptc` presets,
+    # which declare them in their own scope.
+    - id: schedule
+      name: '@knyazevai/dsh-schedule'
+
     # Configuration-surface reads and writes over Typert Remote. Each method
     # reports an actionable error when its settings-domain provider is absent.
+    - id: ui-settings-account
+      name: '@knyazevai/dsh-client-ui-settings-account'
+
+    - id: account-controller
+      name: '@knyazevai/dsh-api-account-controller'
+
     - id: settings-controller
       name: '@knyazevai/dsh-api-settings-controller'
 
@@ -121,6 +157,12 @@
     - id: cordis-host-runner
       name: '@knyazevai/dsh-cordis-host-runner'
 
+    # The Host inspect providers are process-global: the registry rejects a
+    # duplicate id, so they register here once and every preset's `tool-cordis`
+    # row reads them.
+    - id: cordis-inspect-providers
+      name: '@knyazevai/dsh-tool-cordis/host'
+
     # Ordinary provider for the parsed Web flags. Its plugin-level injection
     # waits for cmdlineArgs; no launcher metadata or special row kind is needed.
     - id: web-startup
@@ -129,36 +171,45 @@
     # ── layer 2: transport/service ──────────────────────────────────────────────
 
     # Plain route-registration carrier; host and port come from the app's
-    # webStartup provider, with these deployment fallbacks. The dist is served by
-    # the web-runtime row below through the fallback seat.
+    # webStartup provider, with these deployment fallbacks. The dist is served
+    # by the web-runtime row below through the fallback seat. Routing and
+    # browser-facing asset paths do not depend on the advertised URL, which the
+    # web-runtime row owns; Connection reads trust authorities from webStartup.
+    # This row rejects wildcard binds.
     - id: webserver
       name: '@knyazevai/dsh-host-webserver'
       inject: [webStartup]
       config:
         host: !!js ctx.webStartup.host ?? '127.0.0.1'
         port: !!js ctx.webStartup.port ?? 3080
+        tls: !!js ctx.webStartup.tls
         compression: gzip
         compressionLevel: 1
         compressionThresholdBytes: 1024
 
     # Web glue owned by this bundle: resolves the built frontend dist (an
     # assembly fact of dsh-web-app, never user config), mounts the
-    # frontend-static fallback owner, registers the web-surface prompt
-    # section and the bash runtime variable, prints the URL line, and opens the
-    # canonical local URL after the full Loader tree settles and the required-
-    # entry audit passes. The
-    # webStartup provider supplies invocation-only values; after the server binds, this row samples
-    # LAN trust once and provides `webRuntime`. A complete agent-preset persona
-    # suppresses the prompt section for that agent while retaining the host-owned
-    # shell variable.
+    # frontend-static fallback owner, registers the bash runtime variable,
+    # prints the URL line, and opens the canonical URL after the full Loader
+    # tree settles and the required-entry audit passes. Invocation-only values
+    # come from the webStartup provider; the advertised application URL is
+    # this row's `publicUrl`, otherwise the bind-address URL.
     - id: web-runtime
       name: '@knyazevai/dsh-web-app'
       inject: [webStartup]
       config:
         openBrowser: !!js ctx.webStartup.openBrowser
         printUrl: true
+        publicUrl: !!js ctx.webStartup.publicUrl
         surfaceContext: true
-        trustedHosts: !!js ctx.webStartup.trustedHosts
+
+    # Model context for an agent that inspects or extends the harness serving
+    # this GUI: value-free prompt sections plus the current checkout and GUI
+    # URL as optional runtime context. A complete agent-preset persona replaces
+    # the sections, and a persona that suppresses optional runtime context
+    # also drops the two value lines.
+    - id: harness-dev-context
+      name: '@knyazevai/dsh-harness-dev-context'
 
     # The client-plugin reload chain, always mounted: it is idle until a
     # rebuild watcher (pnpm run dev:web) actually rewrites client bundles. It
@@ -177,15 +228,17 @@
       name: '@knyazevai/dsh-client-modules'
 
     # Owns both ends of the web transport: node half binds the gateway to the
-    # webserver under /api; browser half is the fetch/SSE client.
+    # webserver under /api; browser half is the fetch/SSE client. Every API
+    # request and upgrade passes the loopback, listener-bind, or trustedHosts
+    # policy; an advertised public URL contributes nothing to it.
     - id: connection
       name: '@knyazevai/dsh-client-connection'
-      inject: [webRuntime]
+      inject: [webStartup]
       config:
-        # LAN literals derived from the active bind plus --trusted-host extras.
-        # A deployment adding authorities keeps this expression and concatenates
-        # its literals, for example: ['app.internal', ...ctx.webRuntime.trustedHosts].
-        trustedHosts: !!js ctx.webRuntime.trustedHosts
+        # Keep invocation authorities (each --trusted-host value) when adding
+        # deployment values, for example: ['app.internal', ...ctx.webStartup.trustedHosts].
+        # The listener's bind IP is accepted separately from this list.
+        trustedHosts: !!js ctx.webStartup.trustedHosts
 
     # Raw Blob and ReadableStream uploads run independently of Connection's
     # RPC and generation service.
@@ -203,6 +256,12 @@
 
     - id: locale
       name: '@knyazevai/dsh-client-locale'
+
+    - id: shortcuts
+      name: '@knyazevai/dsh-client-shortcuts'
+
+    - id: ui-shortcuts
+      name: '@knyazevai/dsh-client-ui-shortcuts'
 
     - id: ui-layout
       name: '@knyazevai/dsh-client-ui-layout'
@@ -225,14 +284,22 @@
       name: '@knyazevai/dsh-client-ui-sidebar-right'
 
 
+    - id: office-to-pdf
+      name: '@knyazevai/dsh-office-to-pdf'
+
     # The right Sidebar's document tab: bounded file reads with selectable
-    # Markdown, code, HTML, PDF, and plain-text renderers.
+    # Markdown, code, HTML, PDF, Office, and plain-text renderers.
     - id: ui-sidebar-documentpreview
       name: '@knyazevai/dsh-client-ui-sidebar-documentpreview'
 
-    # The right Sidebar's workspace file tree tab type.
+    # Web profiles opt in; Desktop retains sandboxed HTTP(S) Browser tabs.
+    - id: ui-sidebar-browser
+      name: '@knyazevai/dsh-client-ui-sidebar-browser'
+      disabled: !!js "ctx.get('profileContext')?.name !== 'desktop'"
+
     - id: ui-sidebar-terminal
       name: '@knyazevai/dsh-client-ui-sidebar-terminal'
+    # The right Sidebar's workspace file tree tab type.
     - id: ui-sidebar-files
       name: '@knyazevai/dsh-client-ui-sidebar-files'
 
@@ -245,11 +312,16 @@
     - id: ui-settings-models
       name: '@knyazevai/dsh-client-ui-settings-models'
 
+    # Plugin management: the sidebar Plugins page installs, enables, disables,
+    # and removes the profile's bundles through the `pluginManager` Remote.
+    # Without a profile-backed Host it reports itself unavailable.
+    - id: ui-plugin-manager
+      name: '@knyazevai/dsh-client-ui-plugin-manager'
+
+    # Read-only Plugin list tab in the Settings Plugins section; the built-in
+    # bundles the sidebar page leaves out are inspected here.
     - id: ui-settings-plugin-inventory
       name: '@knyazevai/dsh-client-ui-settings-plugin-inventory'
-
-    - id: ui-settings-unarchive-sessions
-      name: '@knyazevai/dsh-client-ui-settings-unarchive-sessions'
 
     - id: ui-conversation
       name: '@knyazevai/dsh-client-ui-conversation'
@@ -274,19 +346,25 @@
     - id: ui-cordis
       name: '@knyazevai/dsh-client-ui-cordis'
 
-    # Durable workflow lifecycle as an independent Chat node after the
-    # existing generic workflow tool row.
-    - id: ui-workflow-run
-      name: '@knyazevai/dsh-client-ui-workflow-run'
-
-    # Turn tail: the produced-files row under each closing assistant message.
-    # Remove this entry to turn the surface off; the tail hole renders empty.
+    # Turn tail: the changed-files card and delivery cards under each closing
+    # assistant message. Remove this entry to turn the surface off; the tail
+    # hole renders empty.
     - id: ui-deliverables
       name: '@knyazevai/dsh-client-ui-deliverables'
+
+    # Records each top-level turn's changed files from git working-tree
+    # snapshots; the changed-files card above renders its events.
+    - id: workspace-changes
+      name: '@knyazevai/dsh-workspace-changes'
 
 
     - id: ui-workspace
       name: '@knyazevai/dsh-client-ui-workspace'
+
+    # Durable workflow lifecycle as an independent Chat node after the
+    # existing generic workflow tool row.
+    - id: ui-workflow-run
+      name: '@knyazevai/dsh-client-ui-workflow-run'
 
     # Input triggers: the '/' | '@' pipeline (ui-input-trigger), the command surface over
     # it (ui-commands), and the reference sources (ui-skill / ui-reference).
@@ -305,16 +383,20 @@
     - id: ui-reference
       name: '@knyazevai/dsh-client-ui-reference'
 
-    # Read-only active Schedule catalog. The shipped Web graph resolves the
-    # client package but leaves it disabled; the explicit Schedule overlay
-    # enables this same row together with the host Schedule services.
-    - id: ui-schedule
-      name: '@knyazevai/dsh-client-ui-schedule'
-      disabled: true
+    # Display masking for recognized credentials in sent user text; remove
+    # this entry to draw credentials as written.
+    - id: ui-secret-mask
+      name: '@knyazevai/dsh-client-ui-secret-mask'
 
-    # Background jobs: the session-header list over the jobsBySession mirror.
+    # Background jobs: the session-header roster with on-demand streaming
+    # record panels over the session job-output service.
     - id: ui-jobs
       name: '@knyazevai/dsh-client-ui-jobs'
+
+    # Task management and Session reminder catalog over the Host Schedule
+    # service mounted above.
+    - id: ui-schedule
+      name: '@knyazevai/dsh-client-ui-schedule'
 
     # Goal surface: GoalBar in the input dock over the goal session projection.
     - id: ui-goal
@@ -330,6 +412,9 @@
     - id: ui-model-selection
       name: '@knyazevai/dsh-client-ui-model-selection'
 
+    - id: ui-deepseek-model-label-1017
+      name: '@knyazevai/dsh-client-ui-deepseek-model-label-1017'
+
     - id: ui-permission
       name: '@knyazevai/dsh-client-ui-permission-presets'
 
@@ -338,10 +423,29 @@
     - id: ui-agent-preset
       name: '@knyazevai/dsh-client-ui-agent-preset'
 
-    # Plugin configuration: the host-plane sections a user owns, as expandable
-    # cards. A namespace this deployment does not expose renders nothing.
+    - id: ui-settings-session-log
+      name: '@knyazevai/dsh-client-ui-settings-session-log'
+
+    # The Built-in plugins settings section: the navigation entry and the tab
+    # row the inventory tab registers into. The official configuration pages
+    # are the companion rows below.
     - id: ui-settings-plugins
       name: '@knyazevai/dsh-client-ui-settings-plugins'
+
+    # The official settings pages: one companion package per host-plane
+    # namespace, each registering its page into the Plugins page while the
+    # Host serves the namespace.
+    - id: ui-settings-shell
+      name: '@knyazevai/dsh-client-ui-settings-shell'
+
+    - id: ui-settings-agent-loop
+      name: '@knyazevai/dsh-client-ui-settings-agent-loop'
+
+    - id: ui-settings-subagent
+      name: '@knyazevai/dsh-client-ui-settings-subagent'
+
+    - id: ui-settings-web-search
+      name: '@knyazevai/dsh-client-ui-settings-web-search'
 
     # Plan control: the composer plan seat over the plan projection + /plan channel.
     - id: ui-plan
@@ -370,6 +474,9 @@
 # exists, so there is no agent to key by. Behind a preset realm those variables
 # would never reach the model's shell at all.
 
+- id: tool-plugin-manager
+  disabled: true
+
 - id: tool-bash
   disabled: true
 
@@ -377,8 +484,8 @@
   disabled: true
 
 # The background-job REGISTRY stays on the host plane; only the model-facing
-# `job_*` controls move. Its producers — `tool-bash` here, `tool-terminal` and a
-# non-continuable `tool-subagent` elsewhere — are preset rows that resolve it
+# `job_*` controls move. Its producers — `tool-bash` here and `tool-terminal`
+# elsewhere — are preset rows that resolve it
 # with `ctx.get`, and an entry-local realm around the registry is invisible to
 # every sibling row outside that realm, so `run_in_background` answered
 # "background jobs unavailable" while the controls sat in the catalog. That is
@@ -463,12 +570,6 @@
 - id: tool-workflow
   disabled: true
 
-# `base` ships this row disabled; the preset-plane gate reads declared row ids
-# without regard to `disabled`, so this row must stay to keep `tool-ralph` off
-# the host plane and out of collision with every preset's row.
-- id: tool-ralph
-  disabled: true
-
 - id: agent-instructions
   disabled: true
 
@@ -478,15 +579,11 @@
 - id: tool-web
   disabled: true
 
-# The preset roster. The shipped presets are bundled inside
-# `dsh-agent-presets` itself and prepended as a read-only `system` root
-# (`includeShippedRoot`); `$DSH_HOME/.agent-presets` is where a person — or an
-# agent — authors their own, appended by the same package (`includeUserRoot`),
-# and carries the same trust as shell access because a preset IS a
-# composition. This row only names the default and any deployment-added
-# `roots`; no launcher patching is involved.
+# The preset selection registry. The shipped preset declarations follow as
+# separate patch files under `presets/`, listed after this file in
+# `package.json` `dsh.bundle.patch`.
 - insert:
-    - id: agent-presets
-      name: '@knyazevai/dsh-agent-presets'
+    - id: agent-preset-registry
+      name: '@knyazevai/dsh-agent-preset-registry'
       config:
         default: standard

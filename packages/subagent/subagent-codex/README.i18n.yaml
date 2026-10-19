@@ -1,6 +1,82 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/subagent/subagent-codex/README.md
-README.md: 292bd194a7bdbb7d6d39a64c87216f87ef6b3d73
-README.zh.md: 07dff0b59c8a2bd36ac95958a29f29926a497986
+/:
+  en: c0c24742184eba37
+  zh: 2982b61ecfff95ce
+/knyazevai-dsh-subagent-codex:
+  en: b30fd91ec074bdf7
+  zh: 25a0b8e55da4ab06
+/knyazevai-dsh-subagent-codex/summary:
+  en: c67aec00cc7c52dd
+  zh: 1c992c3594fb0abe
+/knyazevai-dsh-subagent-codex/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-subagent-codex/use-this-package:
+  en: 2ac37ff256c2e329
+  zh: 95be2a38e7c3d094
+/knyazevai-dsh-subagent-codex/use-this-package/installing-the-bundle:
+  en: 7740af6d6cb86814
+  zh: e5eb3546e160bac8
+/knyazevai-dsh-subagent-codex/use-this-package/configuration:
+  en: 12e318e156ee4dc0
+  zh: 0de0e31b417ee465
+/knyazevai-dsh-subagent-codex/use-this-package/exposing-the-tool:
+  en: a36399c7ac98724d
+  zh: d43815e08689da6b
+/knyazevai-dsh-subagent-codex/use-this-package/what-you-get:
+  en: abd75016d4c7f61e
+  zh: 904158c896bd21ce
+/knyazevai-dsh-subagent-codex/use-this-package/failure-and-recovery:
+  en: 4ffe0312c5a8f722
+  zh: 532a1997e9ae825b
+/knyazevai-dsh-subagent-codex/understand-the-implementation:
+  en: d283c5564d6697e1
+  zh: 723aa78188880979
+/knyazevai-dsh-subagent-codex/understand-the-implementation/design-concept:
+  en: 40315dca80a4e688
+  zh: 6b12db5e1037db98
+/knyazevai-dsh-subagent-codex/understand-the-implementation/source-map:
+  en: 36647129f061610f
+  zh: 42947c700d1d9202
+/knyazevai-dsh-subagent-codex/understand-the-implementation/run-flow:
+  en: b8244d26ba25f468
+  zh: 6cb77dfece19cce7
+/knyazevai-dsh-subagent-codex/further-exploration:
+  en: 644ba5765fe6cea5
+  zh: 4612a4591bd120f5
+/knyazevai-dsh-subagent-codex/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-subagent-codex/model-experience/child-request:
+  en: 1796fa78833bfc2b
+  zh: d925d4c0d6c46552
+/knyazevai-dsh-subagent-codex/model-experience/child-request/what-the-model-sees:
+  en: 7dd70afca1823730
+  zh: 7a07bb554d82c892
+/knyazevai-dsh-subagent-codex/model-experience/child-request/token-effect:
+  en: 7812d203a360434a
+  zh: 52c8b9a0cbfe39c3
+/knyazevai-dsh-subagent-codex/model-experience/child-request/kv-cache-effect:
+  en: cd1fb7e2382ad2a2
+  zh: 2646d4b03a2e7220
+/knyazevai-dsh-subagent-codex/model-experience/parent-scheduling-and-results-indirectly:
+  en: 4c391bb16e3cd380
+  zh: ab3847efe35fa6dc
+/knyazevai-dsh-subagent-codex/model-experience/parent-scheduling-and-results-indirectly/what-the-model-sees:
+  en: 9ca324fb0b034a6c
+  zh: 83ff78167bd31a14
+/knyazevai-dsh-subagent-codex/model-experience/parent-scheduling-and-results-indirectly/token-effect:
+  en: f618e05fde7c8b57
+  zh: 7306c4535b6fa4c0
+/knyazevai-dsh-subagent-codex/model-experience/parent-scheduling-and-results-indirectly/kv-cache-effect:
+  en: 19f1316ea4bb1bb9
+  zh: 181231ddffdc8494
+/knyazevai-dsh-subagent-codex/known-limitations-and-deferred-work:
+  en: e55a466c946cbce4
+  zh: 96dfb5c8f8210927
+/knyazevai-dsh-subagent-codex/known-limitations-and-deferred-work/dev-note:
+  en: cacc98025ed8913e
+  zh: e7673a3087ec0c62

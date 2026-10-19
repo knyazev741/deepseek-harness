@@ -9,18 +9,34 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import type { GlobalStandardProps, RenderOpts, SessionStandardProps } from '@knyazevai/dsh-client-ui-slots'
+import type { ShortcutCatalogEntry } from '@knyazevai/dsh-client-shortcuts/client'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { PaneId, TabId } from '@knyazevai/dsh-client-ui-dockkit'
 import type { ReactNode } from 'react'
 import { createSnapshotStore } from '@knyazevai/dsh-client-store'
 import type { IconProps } from '@knyazevai/dsh-client-ui-primitives'
 import { GuideBody } from '../src/client/tabs/guide/GuideBody.tsx'
 import type { GuideBodyProps } from '../src/client/tabs/guide/GuideBody.tsx'
 import type { SidebarRightGuideBox } from '../src/client/tab-registry.ts'
-import { bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'
+import { allowAllAccess, bindSnapshotSelector } from '@knyazevai/dsh-client-test-runtime'
 import css from '../src/client/tabs/guide/GuideBody.module.css'
 
 afterEach(cleanup)
 
-const TAB = { id: 'tab-1', kind: 'guide', contentId: 'sidebar://guide', title: 'Start' }
+const SESSION = 's-guide' as SessionId
+const unused = (): never => { throw new Error('This isolated component does not consume framework hooks') }
+const standard: GlobalStandardProps & SessionStandardProps = {
+  sessionId: SESSION, useSession: unused, useProjection: unused, useConversation: unused,
+  useInput: unused, useChat: unused, useTrajectory: unused,
+  usePanelInfo: unused, useSessions: unused, useSessionStatus: unused,
+  useSessionRetainInfo: unused, useResource: unused, useWorkspaces: unused,
+  ...allowAllAccess,
+  inputActions: { captureInsertion: unused, insertText: unused, setDraft: unused, persistDraft: unused,
+    addAttachments: unused, removeAttachment: unused, pruneAttachments: unused, submit: unused },
+}
+
+const TAB = { id: 'tab-1' as TabId, kind: 'guide', contentId: 'sidebar://guide', title: 'Start' }
 
 /** A glyph that marks its box, so a spec can tell an entry with an icon from one without. */
 function Glyph({ size }: IconProps): ReactNode {
@@ -42,17 +58,23 @@ function box(kind: string, order: number, icon?: SidebarRightGuideBox['icon'], d
  * Mount the body with the entries observable and a chain that renders its
  * fallback, which is what the chain does with no registrant.
  */
-function mountGuide(entries: readonly SidebarRightGuideBox[], custom?: (key: string) => ReactNode) {
+function mountGuide(entries: readonly SidebarRightGuideBox[], custom?: (key: string) => ReactNode,
+  shortcuts: readonly ShortcutCatalogEntry[] = []) {
   const guideEntries = createSnapshotStore<readonly SidebarRightGuideBox[]>(entries)
   const openTab = vi.fn()
-  const renderSlot = vi.fn((_seat: string, _owner: unknown, options: { fallback: ReactNode }) => options.fallback)
-  const props = {
-    useTabInfo: () => ({ tab: { ...TAB, actions: { openResource: vi.fn(), openTab, close: vi.fn() } } }),
+  const renderSlot = vi.fn<GuideBodyProps['renderSlotChain']>((_seat, _owner, options) => options?.fallback)
+  const props: GuideBodyProps = {
+    ...standard, SessionProvider: ({ children }) => children,
+    useShortcuts: <T,>(selector: (entries: readonly ShortcutCatalogEntry[]) => T): T => selector(shortcuts),
+    useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: false }, panel: { id: 'pane-guide' as PaneId },
+      tab: { ...TAB, visible: true, signal: new AbortController().signal,
+        navigation: { address: TAB.contentId, params: undefined, revision: 0 },
+        actions: { bindCommands: vi.fn(() => vi.fn()), openResource: vi.fn(), openTab, close: vi.fn() } } }),
     useGuideEntries: bindSnapshotSelector(guideEntries),
     renderSlotChain: renderSlot,
-    renderSlot: vi.fn((_slot: string, _owner: unknown, options: { entryKey: string; fallback: ReactNode }) =>
-      custom?.(options.entryKey) ?? options.fallback),
-  } as unknown as GuideBodyProps
+    renderSlot: vi.fn((_slot: string, _owner: unknown, options?: RenderOpts) =>
+      (options?.entryKey === undefined ? undefined : custom?.(options.entryKey)) ?? options?.fallback),
+  }
   const view = render(<GuideBody {...props} />)
   const boxes = (): string[] =>
     [...view.container.querySelectorAll('[data-sidebar-right-guide-entry]')].map(node => node.getAttribute('data-sidebar-right-guide-entry') ?? '')
@@ -60,6 +82,16 @@ function mountGuide(entries: readonly SidebarRightGuideBox[], custom?: (key: str
 }
 
 describe('GuideBody', () => {
+  it('shows configured guide bindings and omits cleared key labels', () => {
+    for (const keys of [['Ctrl', 'P'], []]) {
+      const entry: ShortcutCatalogEntry = { id: 'workspace.files' as never, label: 'Files', aliases: [],
+        binding: null, keys, aria: keys.length ? 'Control+P' : undefined, modified: true, conflicts: [], issue: null }
+      const { view } = mountGuide([{ ...box('files', 10), commandId: entry.id }], undefined, [entry])
+      expect(view.getByRole('button').getAttribute('aria-keyshortcuts')).toBe(entry.aria ?? null)
+      expect(view.getByRole('button').textContent).toBe(`files title${keys.join('')}`)
+      cleanup()
+    }
+  })
   it('renders the chain with the same tab hook, and the shipped guide as its fallback', () => {
     const { view, renderSlot, boxes, useTabInfo } = mountGuide([box('files', 10, Glyph), box('terminal', 20)])
     expect(renderSlot).toHaveBeenCalledWith('sidebar.right.tab.guide', {}, {

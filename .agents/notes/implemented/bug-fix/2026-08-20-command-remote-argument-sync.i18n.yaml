@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-20-command-remote-argument-sync.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-20-command-remote-argument-sync.md
-2026-08-20-command-remote-argument-sync.md: 4fa9ea156d267b769e80583bfda3fe3dd0a5d94b
-2026-08-20-command-remote-argument-sync.zh.md: d94ea99a0c049cc6f676c1968f4e14db1a26cbc9
+/agent-note-command-remote-argument-synchronization:
+  en: 22654669d8fc3a58
+  zh: e957bcd75af1fb91
+/agent-note-command-remote-argument-synchronization/problem:
+  en: ca477d7bb6a0ed07
+  zh: 659c1770cdfdba41
+/agent-note-command-remote-argument-synchronization/decision:
+  en: 78e50578d84baa4a
+  zh: 41bcfe0396991090
+/agent-note-command-remote-argument-synchronization/alternatives-considered:
+  en: b765bed22ec3a8be
+  zh: 49cab72c62514c43
+/agent-note-command-remote-argument-synchronization/consequences:
+  en: 1bebcf4f3df678e9
+  zh: 7c7a4801a433a4de
+/agent-note-command-remote-argument-synchronization/testing:
+  en: a8190516b7de8d53
+  zh: 60f8de0c4d642f45

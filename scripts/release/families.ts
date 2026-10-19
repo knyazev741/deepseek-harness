@@ -16,6 +16,7 @@ import {
   readClientBuildRecord,
 } from '../client-build-environment.ts'
 import { validateTarballPayload } from '../publication-payload.ts'
+import { ON_DEMAND_BUNDLES } from '../../packages/boot/app-boot/src/official-bundle-packages.ts'
 
 /**
  * Dependency sections a consumer must publish after, because npm resolves them
@@ -252,6 +253,13 @@ export abstract class ReleaseFamily {
   }
 
   /**
+   * Packages that must already be published before this member can advertise them.
+   * @param _member - Member being published.
+   * @returns Release prerequisites that do not become installed dependencies.
+   */
+  protected publicationPrerequisites(_member: ReleaseMember): readonly string[] { return [] }
+
+  /**
    * The family members one member declares in the given sections.
    * @param member - the dependent member.
    * @param byName - every family member by package name.
@@ -270,6 +278,13 @@ export abstract class ReleaseFamily {
       for (const name of Object.keys(dependencies)) {
         const dependency = byName.get(name)
         if (dependency !== undefined && dependency.name !== member.name) edges.push(dependency)
+      }
+    }
+    if (sections.includes('dependencies')) {
+      for (const name of this.publicationPrerequisites(member)) {
+        const prerequisite = byName.get(name)
+        if (prerequisite === undefined) throw new Error(`${member.name}: Official catalog prerequisite ${name} is missing from the public release family`)
+        if (!edges.some(edge => edge.name === name)) edges.push(prerequisite)
       }
     }
     return edges.sort((left, right) => left.name.localeCompare(right.name))
@@ -313,6 +328,17 @@ export abstract class ReleaseFamily {
    * @param files - every path inside its tarball.
    */
   abstract validatePayload(member: ReleaseMember, files: readonly string[]): void
+
+  /**
+   * Check the identity in the packed manifest before publishing its bytes.
+   * @param member - Source member selected for this release.
+   * @param manifest - Manifest read from its packed tarball.
+   */
+  validatePackedManifest(member: ReleaseMember, manifest: Readonly<Record<string, unknown>>): void {
+    if (manifest.name !== member.name || manifest.version !== member.version) {
+      throw new Error(`${member.name}: packed identity must match ${member.name}@${member.version}`)
+    }
+  }
 
   /**
    * The executable that proves this family's artifacts install and run, or
@@ -371,6 +397,26 @@ class DshFamily extends ReleaseFamily {
    */
   validatePayload(member: ReleaseMember, files: readonly string[]): void {
     validateTarballPayload(files, member.name)
+  }
+
+  /** Publish every advertised on-demand package before the installation that offers it. */
+  protected override publicationPrerequisites(member: ReleaseMember): readonly string[] {
+    return member.name === '@knyazevai/dsh' ? ON_DEMAND_BUNDLES : []
+  }
+
+  /** Require the packed DSH runtime graph to stay on the shared exact release version. */
+  override validatePackedManifest(member: ReleaseMember, manifest: Readonly<Record<string, unknown>>): void {
+    super.validatePackedManifest(member, manifest)
+    for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+      const dependencies = manifest[section]
+      if (dependencies === null || typeof dependencies !== 'object' || Array.isArray(dependencies)) continue
+      for (const [name, range] of Object.entries(dependencies)) {
+        if (name !== '@knyazevai/dsh' && !name.startsWith('@knyazevai/dsh-')) continue
+        if (range !== member.version) {
+          throw new Error(`${member.name}: packed ${section}.${name} must equal ${member.version}, got ${String(range)}`)
+        }
+      }
+    }
   }
 
   readonly installedEntry = { packageName: '@knyazevai/dsh', binPath: 'lib/bin.js' }

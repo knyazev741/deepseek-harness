@@ -1213,11 +1213,11 @@
       ]
     },
     {
-      "name": "@knyazevai/dsh-agent-presets",
+      "name": "@knyazevai/dsh-agent-preset-registry",
       "version": "0.1.5-rc.2",
       "installations": [
         {
-          "location": "node_modules/@knyazevai/dsh-agent-presets",
+          "location": "node_modules/@knyazevai/dsh-agent-preset-registry",
           "direct": false,
           "optional": false,
           "peer": false

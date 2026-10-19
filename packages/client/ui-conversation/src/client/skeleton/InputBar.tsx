@@ -13,11 +13,11 @@
  * trigger instead of a parallel tree.
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, MouseEvent } from 'react'
 import clsx from 'clsx'
 import {
-  IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
+  IconPlusOutlineMedium, IconWarningOutlineRegular, Toast, Tooltip,
 } from '@knyazevai/dsh-client-ui-primitives'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
 // composer reads a host-computed value; the domain owns the key).
@@ -36,7 +36,9 @@ import {
 } from '../input/editor/view-binding.ts'
 import { resolveSubmitMode } from '../input/submission-policy.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
+import { isImageMediaType } from '../service.ts'
 import { ContextMeter } from './ContextMeter.tsx'
+import { observeControlRow } from './control-row-layout.ts'
 import css from './InputBar.module.css'
 
 export type InputBarProps = ComposerBarProps
@@ -45,7 +47,7 @@ export const InputBar = memo(function InputBar({
   useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments,
   retryFileUpload,
   toggleCommandMenu, stop, t,
-  renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher,
+  renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useStopShortcut,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
   placeholder, accessory,
@@ -53,8 +55,11 @@ export const InputBar = memo(function InputBar({
   const input = useInput(s => s)
   const notice = useNotices(s => s)
   const busyEnter = useBusyEnter(s => s)
+  const stopKeys = useStopShortcut(keys => keys)
   void useLexicon // hook seat stays bound by the inject compartment; text-ref decoration rides the shell's editor transforms
   const commandMenuOpen = useMenuLauncher(source => source === 'command')
+  const [activity, setActivity] = useState(false)
+  useEffect(() => { setActivity(false) }, [sessionId])
   const promptError = useSession(s => s.promptError) ?? null
   const running = useSession(s => s.running) ?? false
   const subagent = useSession(s => s.subagent) ?? null
@@ -99,11 +104,15 @@ export const InputBar = memo(function InputBar({
   // an unresolved promptError deliberately re-announces it once — the failure
   // is still pending, and a transient banner is its only surface. Attachment
   // rejections show product copy keyed by the wire reason — whichever domain
-  // refused them; other codes are developer-facing and keep the raw message
-  // plus code.
+  // refused them. Writer contention has localized recovery guidance; other
+  // failures retain the diagnostic message and code.
   useEffect(() => {
     if (promptError === null) return
     const { error } = promptError
+    if (error.code === 'session/writer-held') {
+      showToast(t('error.sessionInUse'))
+      return
+    }
     showToast(error.code === 'session/attachment-invalid' || error.code === 'subagent/attachment-invalid'
       ? attachmentErrorText(t, error.details.reason, imageLimits)
       : `${error.message} (${error.code})`)
@@ -111,6 +120,12 @@ export const InputBar = memo(function InputBar({
   useEffect(() => {
     if (notice?.level === 'error') showToast(notice.text)
   }, [notice, showToast])
+  const rowRef = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    const row = rowRef.current
+    if (row === null) return
+    return observeControlRow(row)
+  }, [])
   const cardRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -139,7 +154,7 @@ export const InputBar = memo(function InputBar({
   const editable = live && !locked && !machineBusy
   const steeringAvailable = subagent === null || subagent.address.mode === 'continuable'
   const canSteerQueue = !locked && !machineBusy && !commandMenuOpen && empty && running && steeringAvailable
-    && input.queue.some(row => row.placement === 'queued')
+    && input.queue.length > 0
 
   useEffect(() => {
     if (input === undefined || inputActions === undefined) return
@@ -167,7 +182,7 @@ export const InputBar = memo(function InputBar({
     focusDraftEditor(editor, revealSelection)
   }, [locked, sessionId, editor])
 
-  // A persisted draft arrives AFTER the unlock effect: ConversationSession
+  // A persisted draft arrives AFTER the unlock effect: DefaultConversationViews
   // adopts it in its own mount effect, and a parent's mount effect runs after
   // its children's. Reveal when the draft becomes non-empty so a restored long
   // draft does not stay at its head with the caret at its end. This effect does
@@ -194,9 +209,14 @@ export const InputBar = memo(function InputBar({
   // client-side size or count limit and upload as soon as they are picked.
   // The host enforces the same image limits at submit for callers that bypass
   // this composer.
-  const intakeFiles = useCallback((files: readonly File[]): void => {
-    if (subagent !== null || addFiles === undefined || files.length === 0) return
+  const intakeFiles = useCallback((files: readonly File[], directories?: ReadonlySet<File>): void => {
+    if (locked || machineBusy || (subagent !== null && !continuable) || addFiles === undefined || files.length === 0) return
     const rejected = ((): string | null => {
+      // Child prompts support images, but not generic file receipts or the
+      // Desktop path-reference fallback. Refuse mixed batches before intake.
+      if (continuable && files.some(file => directories?.has(file) || !isImageMediaType(file.type))) {
+        return t('image.unsupportedType')
+      }
       if (imageLimits !== undefined) {
         const mediaTypes = imageLimits.mediaTypes as readonly string[]
         const images = files.filter(file => mediaTypes.includes(file.type))
@@ -213,12 +233,12 @@ export const InputBar = memo(function InputBar({
           return t('image.totalTooLarge', { size: imageSizeText(imageLimits.maxMessageImageBytes) })
         }
       }
-      return addFiles(files)
+      return addFiles(files, directories)
     })()
     if (rejected !== null) showToast(rejected)
-  }, [subagent, addFiles, attachments, imageLimits, showToast, t])
+  }, [locked, machineBusy, subagent, continuable, addFiles, attachments, imageLimits, showToast, t])
 
-  const canAcceptDrop = subagent === null && !locked && !machineBusy && addFiles !== undefined
+  const canAcceptDrop = (subagent === null || continuable) && !locked && !machineBusy && addFiles !== undefined
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const onPickFiles = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -257,8 +277,28 @@ export const InputBar = memo(function InputBar({
     keepDraftFocus(e, editor)
   }
 
+  const onCardMouseDown = (e: MouseEvent<HTMLDivElement>): void => {
+    if (!editable || editor === null || e.button !== 0 || e.defaultPrevented) return
+    const target = e.target
+    if (!(target instanceof Element) || !e.currentTarget.contains(target)) return
+    if (target.closest('[data-composer-overlay]') !== null) return
+    if (scrollRef.current?.contains(target)) return
+    const control = target.closest('button, a, input, select, textarea, [role="button"], [contenteditable], [tabindex]')
+    if (control !== null && e.currentTarget.contains(control)) return
+    e.preventDefault()
+    // Lexical's stored selection can lag behind native caret moves, so calling
+    // editor.focus() on a focused editor can restore an older caret.
+    if (document.activeElement !== editor.getRootElement()) focusDraftEditor(editor, revealSelection)
+  }
+
   const onToggleCommandMenu = (): void => {
-    if (keyboard !== undefined) toggleCommandMenu?.(keyboard.caretSpan())
+    if (keyboard === undefined) return
+    // The menu is a combobox over the editor, so the keyboard has to be there
+    // before the launcher opens it: activating the button from the keyboard
+    // leaves focus on the button, and restoring it afterwards would re-track an
+    // empty draft and close the menu again.
+    if (editor !== null) focusDraftEditor(editor, revealSelection)
+    toggleCommandMenu?.(keyboard.caretSpan())
   }
 
   // The no-session Workspace trigger: the resident editable div acts as the
@@ -298,7 +338,7 @@ export const InputBar = memo(function InputBar({
     }
     if (keyboard === undefined) return // absent machine: the button is disabled
     /* v8 ignore next -- defensive: the primary button is disabled for empty, disabled, and pending-upload states. */
-    if (!empty && !disabled && !machineBusy && !uploadsPending) keyboard.submit(primarySubmitMode)
+    if (!empty && !disabled && !machineBusy && !uploadsPending) keyboard.submit(primarySubmitMode, 'click')
   }
 
   // Claim ghost hint: rendered by CSS as generated content after the last
@@ -337,7 +377,7 @@ export const InputBar = memo(function InputBar({
         <Toast
           key={toast.seq}
           text={toast.text}
-          icon={<IconWarningOutline16 />}
+          icon={<IconWarningOutlineRegular />}
           anchor={cardRef.current}
           onDone={dismissToast}
         />
@@ -358,9 +398,10 @@ export const InputBar = memo(function InputBar({
         data-composer-card
         onClick={workspaceTrigger ? onRequestWorkspace : undefined}
         onPointerDown={workspaceTrigger ? (e) => { e.stopPropagation() } : undefined}
+        onMouseDown={onCardMouseDown}
       >
         {sessionId !== undefined && (
-          <div className={css.overlayAnchor}>{renderSlot('conversation.input.overlay', {})}</div>
+          <div className={css.overlayAnchor} data-composer-overlay>{renderSlot('conversation.input.overlay', {})}</div>
         )}
         {accessory !== undefined && <div className={css.accessory}>{accessory}</div>}
         {renderSlot('conversation.input.attachments', {
@@ -395,8 +436,8 @@ export const InputBar = memo(function InputBar({
           hint={hint}
           showPlaceholder={draft === '' && attachments.length === 0 && !claimActive}
         />
-        <div className={css.row}>
-          <div className={css.tools}>
+        <div ref={rowRef} className={css.row}>
+          <div className={css.tools} hidden={activity}>
             <Tooltip label={t('input.commands')} side="top" delayMs={500}>
               <button
                 type="button"
@@ -408,7 +449,7 @@ export const InputBar = memo(function InputBar({
                 onMouseDown={keepFocus}
                 onClick={onToggleCommandMenu}
               >
-                <IconPlusOutline16 size={14} />
+                <IconPlusOutlineMedium size={14} />
               </button>
             </Tooltip>
             <input
@@ -427,14 +468,18 @@ export const InputBar = memo(function InputBar({
               ? null
               : renderSlot('conversation.input.left', {})}
           </div>
-          <div className={css.trailing}>
-            {input === undefined || sessionId === undefined
-              ? null
-              : renderSlot('conversation.input.right', {})}
-            {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
-            <ContextMeter useProjection={useProjection} t={t} />
+          <div className={clsx(css.trailing, activity && css.trailingActive)}>
+            <div className={css.standardControls} hidden={activity}>
+              {input === undefined || sessionId === undefined
+                ? null
+                : renderSlot('conversation.input.right', {})}
+              {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
+            </div>
+            {input === undefined || sessionId === undefined ? null : <div className={activity ? css.activityExpanded : css.activity}>
+              {renderSlot('conversation.input.activity', { locked, onActiveChange: setActivity })}
+            </div>}
             {interruptible && (
-              <Tooltip label={t('input.stop')} side="top" delayMs={500} disabled={stop === undefined}>
+              <Tooltip label={t('input.stop')} shortcutKeys={stopKeys} side="top" delayMs={500} disabled={stop === undefined}>
                 <button
                   type="button"
                   className={css.primary}
@@ -449,7 +494,7 @@ export const InputBar = memo(function InputBar({
                 </button>
               </Tooltip>
             )}
-            <Tooltip label={primaryLabel} side="top" delayMs={500} disabled={primaryDisabled}>
+            <Tooltip label={primaryStops ? t('input.stop') : primaryLabel} shortcutKeys={primaryStops ? stopKeys : undefined} side="top" delayMs={500} disabled={primaryDisabled}>
               <button
                 type="button"
                 className={css.primary}
@@ -472,9 +517,12 @@ export const InputBar = memo(function InputBar({
           </div>
         </div>
       </div>
-      {variant === 'composer' && input !== undefined && sessionId !== undefined
-        ? renderSlot('conversation.composer.dock', {})
-        : null}
+      <div className={css.dock} data-composer-dock>
+        {variant === 'composer' && input !== undefined && sessionId !== undefined
+          ? renderSlot('conversation.composer.dock', {})
+          : null}
+        {activity ? null : <ContextMeter useProjection={useProjection} t={t} />}
+      </div>
     </div>
   )
 })
