@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-deepseek-model-label-1017",
   "description": "Temporary 1017 release badge for official DeepSeek Flash model labels",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publishConfig": {
     "access": "public"
   },

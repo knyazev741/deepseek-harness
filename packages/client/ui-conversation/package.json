@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-conversation",
   "description": "Target-neutral Conversation assembly, shell, composer, queue, and view navigation",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publishConfig": {
     "access": "public"
   },
