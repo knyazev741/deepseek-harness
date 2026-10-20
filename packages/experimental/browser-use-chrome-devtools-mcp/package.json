@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-browser-use-chrome-devtools-mcp",
   "description": "Experimental per-Session Chromium browser tools through chrome-devtools-mcp",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publishConfig": {
     "access": "public"
   },

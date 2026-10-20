@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-working-directory",
   "description": "Read and change the active Session working directory",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publishConfig": {
     "access": "public"
   },
