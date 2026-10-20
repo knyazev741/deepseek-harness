@@ -44,12 +44,15 @@ const publicRegistry: PromotionRegistry = {
 }
 
 /**
- * Verify every uploaded artifact before changing tags; update the CLI only after its whole family.
+ * Verify uploaded artifacts before changing tags; a modular publisher can leave the CLI untouched.
  * @param directory - immutable tarballs retained from the successful pack job.
  * @param registry - public npm reader and writer, or an owned test implementation.
+ * @param options - Whether this publisher owns only modular package tags.
  * @returns after every latest tag has been verified at the packed version.
  */
-export async function promoteRelease(directory: string, registry: PromotionRegistry = publicRegistry): Promise<void> {
+export async function promoteRelease(
+  directory: string, registry: PromotionRegistry = publicRegistry, options: { readonly skipCli?: boolean } = {},
+): Promise<void> {
   const members = readPublishOrder(directory).map((filename) => {
     const path = join(directory, filename)
     return { ...packedIdentity(path), integrity: `sha512-${createHash('sha512').update(readFileSync(path)).digest('base64')}` }
@@ -70,17 +73,18 @@ export async function promoteRelease(directory: string, registry: PromotionRegis
     }))
     for (const result of results) if (result.status === 'rejected') throw result.reason
   }
-  for (const member of [...members.filter(member => member !== cli), cli]) {
+  const promoted = [...members.filter(member => member !== cli), ...options.skipCli === true ? [] : [cli]]
+  for (const member of promoted) {
     await registry.setLatest(member.name, member.version)
     console.log(`release promote: ${member.name}@latest = ${member.version}`)
   }
 }
 
 async function main(): Promise<void> {
-  const { values } = parseArgs({ options: { from: { type: 'string' } } })
-  if (values.from === undefined) throw new Error('usage: promote.ts --from <packed DSH directory>')
+  const { values } = parseArgs({ options: { from: { type: 'string' }, 'skip-cli': { type: 'boolean' } } })
+  if (values.from === undefined) throw new Error('usage: promote.ts --from <packed DSH directory> [--skip-cli]')
   assertMainSource()
-  await promoteRelease(resolve(values.from))
+  await promoteRelease(resolve(values.from), publicRegistry, { skipCli: values['skip-cli'] === true })
 }
 
 if (isEntry(import.meta.url)) await main()

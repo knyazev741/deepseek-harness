@@ -1,6 +1,6 @@
 # Publish the dsh release sequence to npm. This workflow is manual-only
 # (workflow_dispatch) and intentionally does not listen to pull_request or push:
-# publication must always be an explicit, reviewed act from a dsh-v* tag, and it
+# publication must always be an explicit, reviewed act from the current main release, and it
 # must never appear as a PR check. It repacks the current tree before publishing
 # so the bytes uploaded are exactly what this dispatch produced.
 name: Release publish (dsh)
@@ -10,6 +10,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: Release-publish
+  cancel-in-progress: false
 
 env:
   PRIMARY_NODE_VERSION: '24'
@@ -55,13 +59,17 @@ jobs:
       - name: Verify release version
         env:
           RELEASE_PUBLISH: 'true'
-        run: pnpm run release:verify --family dsh
+        run: |
+          pnpm run release:assert-main
+          pnpm run release:verify --family dsh
 
       - name: Build
         run: pnpm run build:official
 
       - name: Pack release tarballs
-        run: pnpm run release:pack --family dsh --out dist/npm
+        run: |
+          pnpm run release:pack --family dsh --out dist/npm
+          pnpm run release:pack-entry --from dist/npm --out dist/npm-entry
 
       # The harness packages declare the vendored framework as a peer, and this
       # verification must not depend on the registry already carrying matching
@@ -97,7 +105,7 @@ jobs:
     # the only job in the sequence that can write to the registry.
     environment: npm-publish
     concurrency:
-      group: Release-publish
+      group: Release-modular-publish
       cancel-in-progress: false
     permissions:
       contents: read
@@ -128,4 +136,6 @@ jobs:
       - name: Publish tarballs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm run release:publish --family dsh --from dist/npm
+        run: |
+          pnpm run release:assert-main
+          pnpm run release:publish --family dsh --from dist/npm

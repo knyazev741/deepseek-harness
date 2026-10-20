@@ -125,7 +125,11 @@ dsh 族套用仓库的发布 payload 策略（拒绝源码与声明映射）。v
 
 `pack` 无凭据，在每个 pull request 和每次 master push 上跑，所以一个 pull request 就能证明发布集仍能完整打出来。发布则位于独立的 `release-publish.yml` / `release-vendor-publish.yml` 工作流，仅 `workflow_dispatch`（因此不会作为 PR check 出现）：它重新打包当前树，再按顺序逐个发布，挂在 `npm-publish` environment 后面等人工审批。pack 的 run 按 ref 分组，并发的 pull request 不会互相顶掉；全局 `Release-publish` 分组落在 `publish` job 上，因为 dist-tag 是共享的 registry 状态。dsh 发布成功后，发布操作者按[发布记录](../../../../docs/session-format-status.zh.md#updating-the-record)核实其 Session 写入器；若交付了更高的 Session 格式，则更新该记录。
 
-fork 的 [main 发布工作流](../../../../.github/workflows/release-main.yml)使用同一全局发布并发组。它暂存不可变候选版本，仅在针对公开依赖的仅入口包安装与浏览器启动通过后，才最后晋升 CLI。这防止已准备好的 workspace 或预先安装全部 tarball 的消费方隐藏损坏的 npm 依赖图。[操作参考](../../../../docs/cookbook/publishing-main.zh.md)拥有配置与恢复说明。
+fork 的 [main 发布工作流](../../../../.github/workflows/release-main.yml)通过 `Release-publish` 将 CLI 发布与手动发布串行化。单独包随后在 `Release-modular-publish` 下发布；晋升排除 CLI，避免延迟的单独包任务替换更新的 CLI 标签。手动 DSH 工作流按此顺序持有两把锁。[操作参考](../../../../docs/cookbook/publishing-main.zh.md)拥有配置与恢复说明。
+
+CLI 归档通过 npm `bundleDependencies` 包含其声明的 DSH 运行时依赖闭包，包括必需的 peer。整个包族仍共享一个版本，并发布单独包。包含依赖后，应用安装不再要求各 DSH 包分别可用；npm 仍会扫描 CLI 归档本身。外部依赖仍由 npm 正常安装，其要求提升到入口 manifest；必须有一个已声明范围是所有相关要求的子集，否则打包失败。平台相关的外部包必须由 npm 正常安装。
+
+生产入口 manifest 省略根开发依赖，因为 npm pack 可能漏掉同时列在其中的 bundle。该 manifest 移除打包钩子，保留安装钩子。在任一输出接收归档前，每个原始运行时文件必须存在于最终归档中。入口输出与包族输出包含完全相同的 CLI 字节。真实浏览器冒烟检查使用仅提供该 CLI、拒绝所有兄弟 DSH 包请求的 registry，检测不完整归档或未声明的插件要求。
 
 dsh 的验证会一并安装 vendored 族的 pack 产物。harness 的包把 vendored 框架声明成 peer，而那些包属于另一条序列，无凭据的 job 无法从私有 registry 取到——所以 dsh 的 `pack` job 为验证而打包 vendored 族，发布的仍只有 dsh 那一份。发布工作流（`release-publish.yml`）重新打包当前树，只发布 dsh 族。
 

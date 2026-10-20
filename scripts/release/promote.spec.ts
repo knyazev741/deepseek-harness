@@ -31,6 +31,12 @@ it('promotes the CLI last even when its tarball is first', async () => {
   expect(registry.setLatest.mock.calls).toEqual([['@knyazevai/dsh-agent', '0.2.1'], ['@knyazevai/dsh', '0.2.1']])
 })
 
+it('leaves the CLI tag untouched during a separate modular publication', async () => {
+  const { directory, registry } = fixture()
+  await promoteRelease(directory, registry, { skipCli: true })
+  expect(registry.setLatest.mock.calls).toEqual([['@knyazevai/dsh-agent', '0.2.1']])
+})
+
 it.each(['mismatch', 'missing', 'newer'] as const)('makes no tag writes when preflight finds %s', async (kind) => {
   const { directory, registry, integrities } = fixture()
   registry.read.mockImplementation(async (name) => {

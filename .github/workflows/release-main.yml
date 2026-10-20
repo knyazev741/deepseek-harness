@@ -8,10 +8,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: Release-publish
-  cancel-in-progress: false
-
 env:
   PRIMARY_NODE_VERSION: '24'
   DSH_TELEMETRY_DISABLED: '1'
@@ -19,10 +15,16 @@ env:
 jobs:
   release:
     if: github.repository == 'knyazev741/deepseek-harness' && github.ref == 'refs/heads/main'
-    name: Verify, publish, and promote
+    name: Publish verified CLI
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     environment: npm-publish
+    concurrency:
+      group: Release-publish
+      cancel-in-progress: false
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha: ${{ steps.version.outputs.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -75,6 +77,7 @@ jobs:
         run: |
           pnpm run release:verify --family dsh
           pnpm run release:pack --family dsh --out dist/npm --concurrency 8
+          pnpm run release:pack-entry --from dist/npm --out dist/npm-entry
 
       - name: Install Chromium
         run: pnpm exec playwright install chromium --with-deps
@@ -82,19 +85,19 @@ jobs:
       - name: Install only the packed CLI and boot Web
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: pnpm run release:smoke-web --version "$RELEASE_VERSION" --from dist/npm --evidence dist/npm-smoke/packed-node24
+        run: pnpm run release:smoke-web --version "$RELEASE_VERSION" --from dist/npm-entry --evidence dist/npm-smoke/packed-node24
 
       - name: Verify current remote source before publication
         run: pnpm run release:assert-main
 
-      - name: Publish immutable candidate tarballs
+      - name: Publish the immutable CLI candidate
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: pnpm run release:publish --family dsh --from dist/npm --dist-tag "candidate-$RELEASE_VERSION"
+        run: pnpm run release:publish --family dsh --from dist/npm-entry --dist-tag "candidate-$RELEASE_VERSION"
 
       - name: Wait for public metadata and downloads after npm scanning
-        run: pnpm run release:wait-public --from dist/npm
+        run: pnpm run release:wait-public --from dist/npm-entry
 
       - name: Install the public candidate and boot Web on Node 24
         env:
@@ -112,10 +115,10 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: pnpm run release:smoke-web --version "$RELEASE_VERSION" --evidence dist/npm-smoke/public-node22
 
-      - name: Promote the verified family to latest
+      - name: Promote the verified CLI to latest
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm run release:promote --from dist/npm
+        run: pnpm run release:promote --from dist/npm-entry
 
       - name: Report the public release
         env:
@@ -131,6 +134,60 @@ jobs:
           name: npm-main-${{ steps.version.outputs.version || github.run_id }}
           path: |
             dist/npm
+            dist/npm-entry
             dist/npm-smoke
           if-no-files-found: ignore
           retention-days: 7
+
+  modules:
+    if: github.repository == 'knyazev741/deepseek-harness' && github.ref == 'refs/heads/main'
+    name: Publish modular packages
+    needs: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    environment: npm-publish
+    permissions:
+      contents: read
+    concurrency:
+      group: Release-modular-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v5.0.0
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install publisher tools without package scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: npm-main-${{ needs.release.outputs.version }}
+          path: dist
+
+      - name: Verify current remote source before modular publication
+        run: pnpm run release:assert-main
+
+      - name: Publish immutable modular candidates
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+        run: pnpm run release:publish --family dsh --from dist/npm --dist-tag "candidate-$RELEASE_VERSION"
+
+      - name: Wait for public modular metadata and downloads
+        run: pnpm run release:wait-public --from dist/npm
+
+      - name: Promote modular packages without changing the CLI tag
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm run release:promote --from dist/npm --skip-cli

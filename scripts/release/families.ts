@@ -494,7 +494,7 @@ export function releaseFamily(id: string): ReleaseFamily {
  * @param member - the packed member.
  * @returns The tarball filename.
  */
-export function tarballName(member: ReleaseMember): string {
+export function tarballName(member: Pick<ReleaseMember, 'name' | 'version'>): string {
   const unscoped = member.name.startsWith('@') ? member.name.slice(1).replace('/', '-') : member.name
   return `${unscoped}-${member.version}.tgz`
 }

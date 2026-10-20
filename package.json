@@ -202,6 +202,7 @@
     "release:vendor": "tsx scripts/release/bump.ts --family vendor",
     "release:verify": "tsx scripts/release/verify.ts",
     "release:pack": "tsx scripts/release/pack.ts",
+    "release:pack-entry": "tsx scripts/release/pack-entry.ts",
     "release:verify-packed-install": "tsx scripts/release/verify-packed-install.ts",
     "release:publish": "tsx scripts/release/publish.ts",
     "dsh": "node --import tsx/esm scripts/repo-dsh.ts",

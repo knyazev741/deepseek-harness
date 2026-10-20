@@ -1,6 +1,6 @@
 /** Entry-only npm install and real browser startup, outside the source checkout. */
 import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -10,6 +10,7 @@ import { valid } from 'semver'
 import { chromium, type Page } from 'playwright'
 import { isEntry } from './process.ts'
 import { startPackedRegistry } from './packed-registry.ts'
+import { npmCliPath } from './npm.ts'
 
 /**
  * Give the consumer its own home, npm settings, cache, and profile without inherited npm/API credentials or Node hooks.
@@ -42,14 +43,6 @@ export function smokeEnvironment(root: string, heapMb: number, registry: string)
  */
 export function redactSmokeOutput(output: string): string {
   return output.replace(/([?&#](?:token|auth|access_token|key)=)[^\s&#]+/giu, '$1<redacted>')
-}
-
-function npmCli(): string {
-  const directory = dirname(process.execPath)
-  const candidates = [join(directory, '../lib/node_modules/npm/bin/npm-cli.js'), join(directory, 'node_modules/npm/bin/npm-cli.js')]
-  const path = candidates.find(candidate => existsSync(candidate))
-  if (path === undefined) throw new Error('The release smoke requires npm installed beside Node.js')
-  return path
 }
 
 function signalOwned(child: ChildProcess, signal: NodeJS.Signals): void {
@@ -91,7 +84,7 @@ export async function smokeWebInstall(options: SmokeOptions): Promise<void> {
     writeFileSync(join(root, 'global.npmrc'), '')
     if (options.packedDirectory !== undefined) registry = await startPackedRegistry(options.packedDirectory)
     const ready = Promise.withResolvers<string>()
-    child = spawn(process.execPath, [npmCli(), 'exec', '--yes', '--package', `@knyazevai/dsh@${options.version}`, '--', 'dsh', 'web', '--port', '0', '--no-open'], {
+    child = spawn(process.execPath, [npmCliPath(), 'exec', '--yes', '--package', `@knyazevai/dsh@${options.version}`, '--', 'dsh', 'web', '--port', '0', '--no-open'], {
       cwd: root, env: smokeEnvironment(root, options.heapMb, registry?.url ?? 'https://registry.npmjs.org'),
       detached: true, stdio: ['ignore', 'pipe', 'pipe'],
     })
