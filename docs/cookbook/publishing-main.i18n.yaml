@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for publishing-main.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/cookbook/publishing-main.md
+/:
+  en: 03872c6d927c8ed5
+  zh: ff963bdaf6b039ca
+/publishing-main-to-npm:
+  en: c5676a84d16c73b4
+  zh: 97f694fc43e5a840
+/publishing-main-to-npm/summary:
+  en: eca46d034a0ae682
+  zh: 0e810755a67bb436
+/publishing-main-to-npm/table-of-contents:
+  en: 4db46e7220b13e79
+  zh: 3ee78cc611c2baf6
+/publishing-main-to-npm/requirements:
+  en: e728f5552e73e587
+  zh: 670569f12eee3f6b
+/publishing-main-to-npm/release-lifecycle:
+  en: d543aaabc6e3bdd3
+  zh: fdcba2c0c7d81521
+/publishing-main-to-npm/failures-and-retries:
+  en: 09329067de0dd1a0
+  zh: 7138744a058f5f9c
+/publishing-main-to-npm/dev-note:
+  en: bda52518d74ea0c1
+  zh: e9ca77bf0b492c6a

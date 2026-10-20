@@ -158,6 +158,8 @@ The credential-free dsh dependency-layout and dsh/vendor pack rehearsals use the
 
 ### Daily commands
 
+The fork publishes `main` through [automatic npm publication](cookbook/publishing-main.md). Version commits land before the build; fresh CLI installations and browser startup must pass before the workflow updates `latest`.
+
 The root [contributor instructions](../AGENTS.md#commands) summarize common commands, while [`package.json`](../package.json) and [scripts/run-gates.ts](../scripts/run-gates.ts) own the current script and gate inventories. Select the smallest checks that cover the changed surface. Documentation changes use `pnpm run doc-sync`; package-public behavior changes also update the owning README or JSDoc, and built-artifact checks require `pnpm run build` first.
 
 ### Profile runs

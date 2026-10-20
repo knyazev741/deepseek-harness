@@ -28,9 +28,9 @@ Status: implemented
 
 三组一律发到 npmjs.com 的 `@deepseek-ai` scope，且 access 按序列而非按 scope 区分：vendored 框架与 native 包是 `public`，dsh 族自 2026-08-13 其自身序列公开发布起即为 `public`（[理由](../../archived/process/2026-08-13-public-vendor-and-native-sequences.md)）。没有任何发布路径传 `--access`——一个选项无法服务级别互不相同的序列，且会覆盖真正拥有该级别的 manifest。
 
-### 版本由本地命令写进仓库，CI 只核对与上传
+### 版本在构建前写入仓库
 
-每条序列有一条 bump-and-commit 命令：算出目标版本，写进相关 manifest，跑 `pnpm install --lockfile-only`，再把 manifest 连 lockfile 一起 commit。发布版本因此在仓库里查得到。tag 由人工在 commit 合入 master 后打；CI 不写仓库，也不需要写权限。
+每个序列都有一个 bump-and-commit 命令：计算目标版本，写入 manifest 与 lockfile，然后提交。手动标签工作流检查并上传已集成的版本。fork 的 main 工作流调用同一 bump 命令，在构建前推送版本提交，并在构建、发布与晋升前把干净 SHA 与远端 main 核对。正常的非快进拒绝及串行发布防止自动版本写入覆盖人工提交。
 
 `release:dsh` 接受 `major`、`minor`、`patch` 或显式版本号，把同一个版本写进可发布族、`packages/*/*` 下的每个私有包**以及 workspace 根**。私有包不会获得发布 tag，仍位于 pack 与 publish 之外；它们跟随版本是因为[静态版本一致性门禁](../../archived/process/2026-09-03-workspace-version-coherence-gate.md)要求每个 dsh 包的版本等于根版本。根的检查接受预发布段，因此 `0.0.1-alpha.1`、`0.0.1-canary.1` 和 `0.0.1-rc.1` 等显式版本走同一条 pack、已安装产物探针和发布路径。发布 dsh 时，`alpha` 和 `canary` 分别映射到同名 npm dist-tag，包含 `rc` 在内的其他预发布版本映射到 `next`，稳定版本则沿用 npm 默认的 `latest`。其他发布家族保留各自的 dist-tag 规则。
 
@@ -119,11 +119,13 @@ registry 的两个行为决定了「怎么尝试一次发布」。写入之间�
 
 dsh 族套用仓库的发布 payload 策略（拒绝源码与声明映射）。vendored 族保留上游 payload，因为那些 manifest 导出 `./src/*`，去掉 `src` 会发出一个导出映射指向不存在文件的包。
 
-### workflow 形状：PR/push 上 pack，从手动 dispatch 工作流发布
+### 手动与 main 分支发布工作流
 
 `pack` job 一趟遍历整个发布集，把每个成员打进同一个目录，写出上传顺序，整个目录作为一份 artifact 上传；它位于 `release.yml` / `release-vendor.yml`。发布集是一个整体——绝不会出现一半的包已经上了 registry、另一半还在构建。
 
 `pack` 无凭据，在每个 pull request 和每次 master push 上跑，所以一个 pull request 就能证明发布集仍能完整打出来。发布则位于独立的 `release-publish.yml` / `release-vendor-publish.yml` 工作流，仅 `workflow_dispatch`（因此不会作为 PR check 出现）：它重新打包当前树，再按顺序逐个发布，挂在 `npm-publish` environment 后面等人工审批。pack 的 run 按 ref 分组，并发的 pull request 不会互相顶掉；全局 `Release-publish` 分组落在 `publish` job 上，因为 dist-tag 是共享的 registry 状态。dsh 发布成功后，发布操作者按[发布记录](../../../../docs/session-format-status.zh.md#updating-the-record)核实其 Session 写入器；若交付了更高的 Session 格式，则更新该记录。
+
+fork 的 [main 发布工作流](../../../../.github/workflows/release-main.yml)使用同一全局发布并发组。它暂存不可变候选版本，仅在针对公开依赖的仅入口包安装与浏览器启动通过后，才最后晋升 CLI。这防止已准备好的 workspace 或预先安装全部 tarball 的消费方隐藏损坏的 npm 依赖图。[操作参考](../../../../docs/cookbook/publishing-main.zh.md)拥有配置与恢复说明。
 
 dsh 的验证会一并安装 vendored 族的 pack 产物。harness 的包把 vendored 框架声明成 peer，而那些包属于另一条序列，无凭据的 job 无法从私有 registry 取到——所以 dsh 的 `pack` job 为验证而打包 vendored 族，发布的仍只有 dsh 那一份。发布工作流（`release-publish.yml`）重新打包当前树，只发布 dsh 族。
 
@@ -166,7 +168,7 @@ dsh 的验证会一并安装 vendored 族的 pack 产物。harness 的包把 ven
 
 **在发布期改写依赖范围。** 与协议相比，改写逻辑只在 CI 执行过，本机 `pnpm install` 看不出它是否正确，而且每次发布都要重来一遍。
 
-**在 CI 里执行 bump 并把版本推回仓库。** 需要给 workflow 仓库写权限，且发布分支上的版本 commit 会与人的 commit 竞争。bump 与 commit 留在本地，CI 只核对与上传。
+**未协调的 CI 版本写入。** 版本提交可能与人工提交竞争。fork 的 main 工作流串行发布、无强制推送，并核对远端 head；过期任务停止，不替换源码也不发布过期源码。
 
 ## 后果
 

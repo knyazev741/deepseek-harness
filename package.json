@@ -220,7 +220,11 @@
     "verify-official-bundle-catalog": "tsx scripts/gen-official-bundle-catalog.ts --check",
     "gen-provider-data": "tsx packages/llm/llm-pi-ai/scripts/gen-provider-data.ts",
     "verify-provider-data": "tsx packages/llm/llm-pi-ai/scripts/gen-provider-data.ts --check",
-    "verify-product-use": "tsx scripts/verify-product-use.ts"
+    "verify-product-use": "tsx scripts/verify-product-use.ts",
+    "release:next-main-version": "tsx scripts/release/next-main-version.ts",
+    "release:assert-main": "tsx scripts/release/assert-main.ts",
+    "release:smoke-web": "tsx scripts/release/smoke-web-install.ts",
+    "release:promote": "tsx scripts/release/promote.ts"
   },
   "devDependencies": {
     "@knyazevai/dsh-hooks-claude-code": "workspace:*",
@@ -295,6 +299,7 @@
     "@knyazevai/dsh-working-directory": "workspace:*",
     "@knyazevai/dsh-experimental-worktree": "workspace:*",
     "@knyazevai/dsh-experimental-tool-worktree": "workspace:*",
-    "@knyazevai/dsh-experimental-cua-macos": "workspace:*"
+    "@knyazevai/dsh-experimental-cua-macos": "workspace:*",
+    "playwright": "^1.49.0"
   }
 }

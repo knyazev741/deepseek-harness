@@ -203,6 +203,9 @@ importers:
       papaparse:
         specifier: 5.5.3
         version: 5.5.3
+      playwright:
+        specifier: ^1.49.0
+        version: 1.61.1
       pnpm:
         specifier: 11.28.5
         version: 11.28.5

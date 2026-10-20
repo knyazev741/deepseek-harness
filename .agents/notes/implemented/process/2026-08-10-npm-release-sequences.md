@@ -28,9 +28,9 @@ Two hard blockers sat in the way. All 217 workspace manifests set `private: true
 
 All three publish to the `@deepseek-ai` scope on npmjs.com, and access is per sequence rather than per scope: the vendored framework and the native packages are `public`, and the dsh family has been `public` since its own sequence went public on 2026-08-13 ([rationale](../../archived/process/2026-08-13-public-vendor-and-native-sequences.md)). No publish path passes `--access`, because one flag cannot serve sequences that disagree and would override the manifest that owns the level.
 
-### Versions land in the repository from a local command; CI only checks and uploads
+### Versions land in the repository before building
 
-Each sequence has one bump-and-commit command: it derives the target version, writes it into the relevant manifests, runs `pnpm install --lockfile-only`, and commits the manifests with the lockfile. The published version is therefore readable from the repository. A human creates the tag after the commit merges to master; CI never writes to the repository and needs no write permission.
+Each sequence has one bump-and-commit command: it derives the target version, writes the manifests and lockfile, and commits them. Manual tag workflows check and upload an integrated version. The fork's main workflow invokes the same bump command, pushes the version commit before building, and verifies its clean SHA against remote main before building, publishing, and promoting. Normal non-fast-forward rejection and serialized publication prevent an automatic version write from replacing a human commit.
 
 `release:dsh` accepts `major`, `minor`, `patch`, or an explicit version, and writes one version across the publishable family, every private package under `packages/*/*`, **and the workspace root**. Private packages receive no release tag and remain outside pack and publish; they follow the version because [the static version-coherence gate](../../archived/process/2026-09-03-workspace-version-coherence-gate.md) requires every dsh package's version to equal the root's. The root check accepts a prerelease segment, so explicit versions such as `0.0.1-alpha.1`, `0.0.1-canary.1`, and `0.0.1-rc.1` drive the same pack, installed-artifact probe, and publication path. `dsh` publication maps `alpha` and `canary` to their matching npm dist-tags, maps other prereleases including `rc` to `next`, and leaves stable versions to npm's `latest` default. Other release families retain their own dist-tag policy.
 
@@ -119,11 +119,13 @@ The entity in this domain is a **release family**: a set of packages sharing one
 
 The dsh family applies the repository's publication payload policy, which rejects sources and declaration maps. The vendored family keeps upstream's payload, because those manifests export `./src/*` and dropping `src` would publish an export map pointing at absent files.
 
-### Workflow shape: pack on PR/push, publish from a manual dispatch workflow
+### Manual and main-branch publication workflows
 
 The `pack` job walks the whole release set once, packing each member into one directory, writes the upload order, and uploads that directory as one artifact; it lives in `release.yml` / `release-vendor.yml`. The release set is one unit — half the packages can never reach the registry while the other half is still building.
 
 `pack` carries no credentials and runs on every pull request and master push, so a pull request proves the release set still packs. Publication lives in a separate `release-publish.yml` / `release-vendor-publish.yml` workflow that is `workflow_dispatch`-only (so it never appears as a PR check): it repacks the current tree and then publishes each entry in order, behind the `npm-publish` environment for human approval. Pack runs are grouped per ref so concurrent pull requests do not displace each other; the `publish` job carries the global `Release-publish` group, because dist-tags are shared registry state. After a dsh publication succeeds, the release operator verifies its Session writer against the [release record](../../../../docs/session-format-status.md#updating-the-record) and updates that record when a higher Session format has shipped.
+
+The fork's [main publication workflow](../../../../.github/workflows/release-main.yml) uses the same global publication concurrency group. It stages immutable candidates and promotes the CLI last only after entry-only installs and browser startup pass against public dependencies. This prevents a prepared workspace or a consumer seeded with every tarball from hiding a broken npm dependency graph. Its [operator reference](../../../../docs/cookbook/publishing-main.md) owns setup and recovery.
 
 A dsh verification installs the vendored family's pack output too. The harness packages declare the vendored framework as a peer, those packages live in another sequence, and the credential-free job cannot fetch them from a private registry — so the dsh `pack` job packs the vendored family for verification while publishing only the dsh set. The publish workflow (`release-publish.yml`) repacks the current tree and publishes only the dsh set.
 
@@ -166,7 +168,7 @@ The installed-consumer probe captures npm's HTTP diagnostics and includes them w
 
 **Rewriting dependency ranges at publication time.** Compared with the protocol, the rewrite runs only in CI, a local `pnpm install` cannot show whether it is correct, and it repeats on every release.
 
-**Running bump in CI and pushing the version back.** It needs repository write permission for the workflow, and a version commit on the release branch races human commits. Bump and commit stay local; CI checks and uploads.
+**Uncoordinated CI version writes.** A version commit can race human commits. The fork main workflow serializes releases, pushes without force, and verifies the remote head; a stale run stops rather than replacing source or publishing it.
 
 ## Consequences
 

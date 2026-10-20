@@ -11,8 +11,9 @@
  * never reuses an unchanged member's existing version from a different
  * repository state.
  *
- * The version lands in the manifests, the lockfile follows, and a human creates
- * the tag after the commit merges. CI never writes to the repository.
+ * The version lands in the manifests and lockfile before the release is built.
+ * Manual releases tag the integrated commit; the fork's main workflow pushes
+ * this version commit and tag before building its verified remote main.
  */
 
 import { globSync, readFileSync, writeFileSync } from 'node:fs'
@@ -407,7 +408,7 @@ function main(): void {
   }
   capture('git', ['add', 'pnpm-lock.yaml', ...planned.map(entry => entry.manifestPath)])
   capture('git', ['commit', '-m', `release(${family.id}): ${summary}`])
-  console.log('release bump: committed. After this merges to master, tag it:')
+  console.log('release bump: committed. After this commit is on main, tag it:')
   for (const tag of [...new Set(planned.map(entry => entry.tag).filter(tag => tag !== undefined))]) {
     console.log(`  git tag ${tag} <merge commit> && git push origin ${tag}`)
   }
