@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-storage-sqlite",
   "description": "SQLite storage backend (kv facet) for the DeepSeek Harness storage hub",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publishConfig": {
     "access": "public"
   },

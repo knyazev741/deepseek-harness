@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-translator",
   "description": "Machine translation with reusable Session results",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publishConfig": {
     "access": "public"
   },

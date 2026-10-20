@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-client-ui-voice-input",
   "description": "Record speech and insert editable text into the conversation draft",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publishConfig": {
     "access": "public"
   },

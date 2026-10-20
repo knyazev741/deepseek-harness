@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-speech-to-text",
   "description": "Experimental speech recognition with independently selectable providers",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publishConfig": {
     "access": "public"
   },

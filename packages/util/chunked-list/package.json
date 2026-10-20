@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-chunked-list",
   "description": "Persistent append-only chunked lists with bounded copying and JSON checkpoint validation",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publishConfig": {
     "access": "public"
   },
