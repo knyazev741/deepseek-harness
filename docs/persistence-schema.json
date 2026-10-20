@@ -25634,7 +25634,7 @@
       "digest": "8a9c990773f798eac10ca8878e6bcc531ee080bc589cac956730e462cc6a09ad",
       "names": [],
       "sources": [
-        "packages/interaction/permission-presets/src/index.ts:59"
+        "packages/interaction/permission-presets/src/index.ts:61"
       ]
     },
     {

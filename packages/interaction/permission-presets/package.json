@@ -61,6 +61,7 @@
     "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/schemastery": "workspace:~",
     "zod": "4.4.3"
   },

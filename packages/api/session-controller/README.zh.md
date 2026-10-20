@@ -41,7 +41,7 @@ Host 仅在配置的工作时间片耗尽时，于完整条目之间让出事件
 
 Client 列表行和驻留 Session 使用当前 `sessionListMetadata` 投影纠正过期的空白会话提示；最近活动时间取摘要时间戳与投影中最后一次用户提示词时间的较晚值。当 SessionManager 在列表行到达前创建实例时，会使用已保留的该 Session 元数据对账空白状态。因此，即使旧列表响应仍将已有对话标为空白，新会话操作也不会复用已经打开过的对话。
 
-`session.create` 返回一个用于新对话的 Session，响应指明实际使用的 Session。请求指明的 `sessionId` 在满足以下条件时被复用：仍为空白（尚未开始任何轮次）、属于请求的目录、是请求的工作区中未归档的成员，且未被其他写者占用；活动 Session 原地复用，持久化 Session 被恢复并持续持有其写锁。被复用的 Session 运行请求的 `agentPreset`，请求未指明时运行配置的默认 preset：不解析它记录的 preset，变更在 Agent 发布前记录为 `agent-preset/selected`。指明的 Session 若已开始、不满足工作区归属，或被其他写者占用，则保持不变，改为新建 Session。没有对应已存储 Session 的 `sessionId` 成为新 Session 的标识。指明其他目录中的 Session 返回 `session/conflict`，指明由 subagent 路由拥有的 Session 返回 `session/agent-busy`；这两项检查先于 preset 解析。指明同一标识的创建请求按到达顺序执行，preset 解析也包含在内，每个响应报告其自身请求完成时该 Session 运行的 preset。`session.list` 根据缓存元数据列出持久化空白会话，不打开冷日志正文。
+`session.create` 在解析新会话默认值之前等待已接收的 profile 编辑结束，响应会指明实际使用的 Session。请求指明的 `sessionId` 在满足以下条件时被复用：仍为空白（尚未开始任何轮次）、属于请求的目录、是请求的工作区中未归档的成员，且未被其他写者占用；活动 Session 原地复用，持久化 Session 被恢复并持续持有其写锁。被复用的 Session 运行请求的 `agentPreset`，请求未指明时运行配置的默认 preset：不解析它记录的 preset，变更在 Agent 发布前记录为 `agent-preset/selected`。指明的 Session 若已开始、不满足工作区归属，或被其他写者占用，则保持不变，改为新建 Session。没有对应已存储 Session 的 `sessionId` 成为新 Session 的标识。指明其他目录中的 Session 返回 `session/conflict`，指明由 subagent 路由拥有的 Session 返回 `session/agent-busy`；这两项检查先于 preset 解析。指明同一标识的创建请求按到达顺序执行，preset 解析也包含在内，每个响应报告其自身请求完成时该 Session 运行的 preset。`session.list` 根据缓存元数据列出持久化空白会话，不打开冷日志正文。
 
 Client 列表刷新保留未变化的行对象，并在顺序和值均相同时复用条目数组。每行的 `retainedBy` 包含正数的本地引用来源计数，Host 元数据刷新不能覆盖它们。缓存成员检查使用每次刷新构建的 ID 集合，因此对账成本随当前列表和保留缓存的规模线性增长。 Host 摘要更新会替换运行状态与 Agent 可用性；本地 create/fork 响应只补充已有行缺失的元数据。普通 Session 被移除后，仅在目录仍有子项时保留其投影 store。
 
@@ -90,7 +90,7 @@ Client 的首次 `follow`、重连首屏与 `loadOlder()` 至少请求 50 条以
 
 GUI 模型选择要求确切提供方／模型对出现在可用目录中；不可用的选择以 `session/model-unavailable` 拒绝。提示词准入保留已保存的路由，不按目录可用性阻断发送，由请求执行报告凭据缺失或模型不可用。`initializeDefaultModel()` 在账号登录后、其他提供方均未配置 API key 时，将第一个可用账号模型保存为默认模型；凭据检查使用已配置的引用，不依赖模型是否可用。提供方没有可用模型时，初始化以 `session/provider-models-unavailable` 拒绝。可用性变化不会替换模型或改写会话选择。
 
-`selectModel` 成功返回表示会话级模型选择已生效，不等待默认 profile 设置保存。默认设置在后台按提交顺序保存；保存失败会记录警告，并保留会话选择。新会话读取最近一次成功保存的默认值。
+`selectModel` 在默认 profile 保存尝试完成后成功返回，因此写入成功时，新会话可立即使用已确认的选择。保存按提交顺序执行；失败会记录警告，并保留会话选择。新会话读取最近一次成功保存的默认值。固定 `agent-default-model` 的 home patch 或命令行 overlay 会阻止 profile 写入；移除该覆盖即可让模型选择器记住后续选择。
 
 -----
 

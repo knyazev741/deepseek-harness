@@ -135,6 +135,15 @@ describe('web e2e: current sandbox policy reaches the model before tools', () =>
     }).toBe(true)
   }
 
+  async function waitForPermissionSave(preset: string): Promise<void> {
+    const run = sessionEvents.findLast(event => event.type === 'command/run'
+      && event.data.name === 'permission' && event.data.args?.trim() === preset)
+    if (run?.type !== 'command/run') throw new Error('permission command was not recorded')
+    await expect.poll(() => sessionEvents.some(event => event.type === 'command/done'
+      && event.data.commandId === run.data.commandId && event.data.kind === 'success')).toBe(true)
+    expect(scaffold.ctx.permissionPresets.defaultPreset).toBe(preset)
+  }
+
   it('switches read-only, danger-full-access, and workspace-write through the real GUI command path', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-permission-policy-context'))
     if (MODE !== 'record') {
@@ -148,6 +157,7 @@ describe('web e2e: current sandbox policy reaches the model before tools', () =>
       await input.press('Enter')
       await page.getByRole('button', { name: `Access mode, current: ${PRESET_LABELS[index]}` })
         .waitFor({ timeout: 10_000 })
+      await waitForPermissionSave(preset)
 
       const settled = scaffold.whenTurnSettled()
       await writeComposerDraft(page, input, PROMPTS[index] as string)
@@ -160,6 +170,7 @@ describe('web e2e: current sandbox policy reaches the model before tools', () =>
     await writeComposerDraft(page, input, '/permission read-only')
     await input.press('Enter')
     await page.getByRole('button', { name: 'Access mode, current: Read Only' }).waitFor({ timeout: 10_000 })
+    await waitForPermissionSave('read-only')
     await verifyUserTerminal('read-only')
     const settled = scaffold.whenTurnSettled()
     await writeComposerDraft(page, input, PROMPTS[3])

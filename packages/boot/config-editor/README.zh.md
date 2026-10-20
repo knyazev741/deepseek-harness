@@ -30,7 +30,7 @@ kind: "package-reference"
   name: '@knyazevai/dsh-config-editor'
 ```
 
-使用 [settings](../../settings/settings/README.zh.md) 提供只编辑即时字段的表单。编辑完整配置的调用方可使用 `ctx.configEditor.edit()`；普通字段保留 Loader 的正常生命周期。
+使用 [settings](../../settings/settings/README.zh.md) 提供只编辑即时字段的表单。编辑完整配置的调用方可使用 `ctx.configEditor.edit()`；普通字段保留 Loader 的正常生命周期。 编辑按提交顺序执行。`waitForPendingEdits()` 等待已接收的写入结束，包括等待期间接收的写入；每次写入的调用方仍负责报告自己的失败。
 
 <a id="understand-the-implementation"></a>
 ## 理解实现

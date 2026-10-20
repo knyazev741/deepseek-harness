@@ -25,6 +25,7 @@ function flatten(rows: EntryOptions[]): EntryOptions[] {
 /** Persist complete raw configs and apply them through the normal Loader path. */
 export class ConfigEditor extends Service {
   static inject = ['loader', 'profileContext']
+  private edits: Promise<void> = Promise.resolve()
 
   constructor(private readonly ownerContext: Context) {
     super(ownerContext, 'configEditor')
@@ -77,6 +78,19 @@ export class ConfigEditor extends Service {
     })
     const row = flatten(composeEntries([...loaded.layers.map(layer => layer.patches), patches])).find(row => row.id === entry.options.id)
     return structuredClone((row?.config ?? {}) as Record<string, unknown>)
+  }
+
+  /**
+   * Wait for admitted profile edits, including edits admitted while waiting.
+   * Each edit's caller remains responsible for reporting its own failure.
+   * @returns after every admitted edit has settled, whether it succeeded or failed.
+   */
+  async waitForPendingEdits(): Promise<void> {
+    let tail: Promise<void>
+    do {
+      tail = this.edits
+      await tail
+    } while (tail !== this.edits)
   }
 
   /** Validate, persist, and reconcile a plugin's next config; ordinary fields keep normal lifecycle rules.
@@ -149,8 +163,13 @@ export class ConfigEditor extends Service {
         }
       })
     }
-    const hmr = this.ownerContext.get('hmr')
-    await (hmr === undefined ? run() : hmr.runExclusive(run))
+    const operation = this.edits.then(() => {
+      const hmr = this.ownerContext.get('hmr')
+      return hmr === undefined ? run() : hmr.runExclusive(run)
+    })
+    // Each caller observes its own failure without blocking later edits.
+    this.edits = operation.catch((_error: unknown) => undefined)
+    await operation
   }
 }
 

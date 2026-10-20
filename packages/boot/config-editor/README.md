@@ -30,7 +30,7 @@ Mount this service in a profile application with Loader and `profileContext`. It
   name: '@knyazevai/dsh-config-editor'
 ```
 
-Use [settings](../../settings/settings/README.md) for forms restricted to live fields. Callers that edit complete configuration can use `ctx.configEditor.edit()`; ordinary fields retain Loader’s normal lifecycle.
+Use [settings](../../settings/settings/README.md) for forms restricted to live fields. Callers that edit complete configuration can use `ctx.configEditor.edit()`; ordinary fields retain Loader’s normal lifecycle. Edits commit in submission order. `waitForPendingEdits()` waits for admitted writes to settle, including writes admitted during that wait; each write's caller still reports its own failure.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation

@@ -7,11 +7,13 @@
  * publish one fixed, current-session-only preset with a synchronous admission
  * check; settings defaults remain limited to the configured table. The read
  * side exposes a process catalog plus the current-value-only `permissions`
- * Session projection; the write side ships as the `/permission` command.
+ * Session projection; the `/permission` command also saves configured choices
+ * as the new-session default when profile-backed Settings are available.
  *
  * @module dsh-permission-presets
  */
 import type {} from '@knyazevai/dsh-settings'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 
 import type { Volatile } from '@deepseek-ai/cordis'
 
@@ -261,7 +263,7 @@ export class PermissionPresetService extends TypertRemoteService {
         // No settlement text labels its value with this command's own name: a
         // surface that renders `name · text` (the web command row) would
         // otherwise read `permission · Permission preset: workspace-write.`
-        handler: ({ agent, rawInput }) => {
+        handler: async ({ agent, rawInput }) => {
           const name = rawInput.trim()
           if (name === '') {
             return { kind: 'success', text: `current preset ${this.current(agent.session)} (available: ${this.names.join(', ')})` }
@@ -270,6 +272,19 @@ export class PermissionPresetService extends TypertRemoteService {
             return { kind: 'error', text: `unknown preset "${name}" (available: ${this.names.join(', ')})` }
           }
           this.apply(agent.session, name, (policy) => { this.ctx.approval.setPolicy(agent, policy) })
+          const settings = this.ctx.get('settings')
+          const entry = ctx.fiber.entry
+          if (name !== AUTO_PRESET && settings !== undefined && entry !== undefined) {
+            try {
+              await settings.update(entry.options.id, { defaultPreset: name })
+            } catch (error: unknown) {
+              this.ctx.logger.warn(`permission: preset ${name} changed for the session but the default was not saved: ${String(error)}`)
+              return {
+                kind: 'error',
+                text: `preset ${name} applies to this session but could not be saved for new sessions; check the profile settings`,
+              }
+            }
+          }
           return { kind: 'success', text: `preset ${name}` }
         },
       })

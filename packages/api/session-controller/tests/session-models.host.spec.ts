@@ -617,34 +617,38 @@ describe('Web session model selection', () => {
     await ctx.fiber.dispose()
   })
 
-  it('accepts consecutive model switches while default persistence is blocked', async () => {
+  it('acknowledges a model switch after its new-session default is saved', async () => {
     const { ctx, sessionId } = await harness()
+    const entered = Promise.withResolvers<undefined>()
     const release = Promise.withResolvers<undefined>()
-    const saves: Promise<void>[] = []
-    const operations: Promise<unknown>[] = []
+    let savedSelection = { provider: 'deepseek-official', model: 'deepseek-chat' }
+    let returned = false
+    const operations: Promise<void>[] = []
     onTestFinished(async () => {
       release.resolve(undefined)
-      await Promise.allSettled([...operations, ...saves])
+      await Promise.allSettled(operations)
       await ctx.fiber.dispose()
     })
     const remote = createSessionTestRemote(ctx, {
-      defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }),
-      saveDefaultModelSelection: () => {
-        saves.push(release.promise)
-        return release.promise
+      defaultModelSelection: () => savedSelection,
+      saveDefaultModelSelection: async (selection) => {
+        entered.resolve(undefined)
+        await release.promise
+        savedSelection = selection
       },
       cwd: '/tmp',
     })
 
-    for (const model of ['deepseek-reasoner', 'deepseek-chat']) {
-      let returned = false
-      const operation = remote.selectModel({ sessionId, provider: 'deepseek-official', model })
-        .then((result) => { expectValue(result); returned = true })
-      operations.push(operation)
-      await expect.poll(() => returned).toBe(true)
-      expect(currentSelection(ctx, sessionId)).toMatchObject({ provider: 'deepseek-official', model })
-    }
-    expect(saves).toHaveLength(2)
+    const operation = remote.selectModel({ sessionId, provider: 'deepseek-official', model: 'deepseek-reasoner' })
+      .then((result) => { expectValue(result); returned = true })
+    operations.push(operation)
+    await entered.promise
+    await new Promise<void>((resolve) => { setImmediate(resolve) })
+    expect(returned).toBe(false)
+    expect(currentSelection(ctx, sessionId).model).toBe('deepseek-reasoner')
+    release.resolve(undefined)
+    await operation
+    expect(ctx.agentDefaultModel.currentSelection().model).toBe('deepseek-reasoner')
   })
 
   it('saves an accepted selection as the default and survives a storage failure', async () => {

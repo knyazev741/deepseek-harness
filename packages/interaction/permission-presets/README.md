@@ -53,7 +53,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaid
 
 ### Switching presets
 
-Switching to Auto first runs its synchronous admission check; every preset switch then changes only the knobs whose effective value differs, and selecting the preset already in effect changes nothing. The current value resolves as the still-matching last recorded selection, including a recorded Auto selection under the `never` approval policy, else the first matching configured entry, else `custom`. Users switch through the `/permission` command: a bare invocation reports the current preset and every available entry, and a preset argument switches to it.
+Switching to Auto first runs its synchronous admission check; every preset switch then changes only the knobs whose effective value differs, and selecting the preset already in effect adds no permission events. The current value resolves as the still-matching last recorded selection, including a recorded Auto selection under the `never` approval policy, else the first matching configured entry, else `custom`. Users switch through the `/permission` command: a bare invocation reports the current preset and every available entry, and a preset argument switches to it.
 
 ### What users see
 
@@ -61,7 +61,7 @@ Clients render selectable entries from the process catalog: configured presets i
 
 ### Session defaults
 
-The `permission` settings namespace holds `defaultPreset` for future sessions and accepts configured presets only. Session creation reads it, applies it to the sandbox mode and approval policy, and records the applied preset as a `permission/preset` selection. Later settings changes never alter an existing session. A resumed seed, including an explicitly empty one marked by `session/end-seed`, preserves its effective permission and receives only missing durable facts rather than the latest user default; a persisted `auto` identity requires the live Auto registration and its admission before publication.
+The `permission` settings namespace holds `defaultPreset` for future sessions and accepts configured presets only. An explicit `/permission <preset>` selection saves a configured preset there before reporting success, including a repeated choice. Auto remains session-local. Programmatic `set()` calls and opening an existing Session do not change the default. Without profile-backed Settings, the command changes only its Session. If persistence fails, the command reports that the Session changed but the new-session default was not saved; existing Sessions keep their effective permissions. Session creation reads it, applies it to the sandbox mode and approval policy, and records the applied preset as a `permission/preset` selection. Later settings changes never alter an existing session. A resumed seed, including an explicitly empty one marked by `session/end-seed`, preserves its effective permission and receives only missing durable facts rather than the latest user default; a persisted `auto` identity requires the live Auto registration and its admission before publication.
 
 -----
 

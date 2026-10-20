@@ -36,6 +36,9 @@
       "path": "../../core/agent-default-model"
     },
     {
+      "path": "../../boot/config-editor"
+    },
+    {
       "path": "../../core/scope"
     },
     {

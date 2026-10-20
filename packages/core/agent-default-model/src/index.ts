@@ -46,8 +46,6 @@ function selection(settings: { provider: string; model: string; reasoningEffort?
  * Each operation reads the owning Config references.
  */
 export class AgentDefaultModelConfig extends Service {
-  private saves: Promise<void> = Promise.resolve()
-
   static Config = z.object({
     provider: z.string().required().volatile(),
     model: z.string().required().volatile(),
@@ -88,9 +86,7 @@ export class AgentDefaultModelConfig extends Service {
       provider: next.provider, model: next.model,
       ...next.reasoningEffort === undefined ? {} : { reasoningEffort: String(next.reasoningEffort) },
     }
-    const saved = this.saves.then(() => editor.edit(entry, () => config))
-    this.saves = saved.catch(() => {})
-    await saved
+    await editor.edit(entry, () => config)
   }
 }
 

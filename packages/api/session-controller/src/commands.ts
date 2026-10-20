@@ -1,6 +1,7 @@
 /** Session commands whose activation policy is explicit at each Remote method. */
 
 import { modelAvailable } from './catalog.ts'
+import type {} from '@knyazevai/dsh-config-editor'
 import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import { brandString } from '@knyazevai/dsh-brand'
@@ -121,6 +122,7 @@ export class SessionCommandController {
         })
       }
     }
+    await this.ctx.get('configEditor')?.waitForPendingEdits()
     const cwd = workspace?.path ?? request.cwd ?? this.defaultCwd
     let created: ApiSessionCreated
     try {
@@ -150,9 +152,9 @@ export class SessionCommandController {
   }
 
   /**
-   * Validate and install one Session-local model selection; save the default in the background.
+   * Validate and install one Session-local model selection, then save the default.
    * @param request - Session identity and requested model selection.
-   * @returns the normalized selection installed for the Session, without waiting for default persistence.
+   * @returns the normalized selection after default persistence settles; a failed save is reported without undoing the Session selection.
    */
   async selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue> {
     const agent = await this.resolveAgent(request.sessionId)
@@ -174,7 +176,7 @@ export class SessionCommandController {
             : { reasoningEffort: resolved.reasoningEffort }),
         }
         this.agents.selectForNextRequest(agent, selected)
-        void this.ctx.agentDefaultModel.saveSelection(selected).catch((error: unknown) => {
+        await this.ctx.agentDefaultModel.saveSelection(selected).catch((error: unknown) => {
           this.ctx.logger.warn(
             `session-controller: model selection changed for the Session but the default was not saved: ${String(error)}`,
           )

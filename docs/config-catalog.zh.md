@@ -2451,7 +2451,7 @@ export interface Config {
 
 - `inject`: `shell` · `approval` · `sessions` · `sessionProjections`
 - `refs`: [`ApprovalPolicy`](subsystems/approval.zh.md) · [`SandboxMode`](subsystems/sandbox.zh.md) · `Volatile` (`@deepseek-ai/cordis`)
-- `source`: [`packages/interaction/permission-presets/src/index.ts:159`](../packages/interaction/permission-presets/src/index.ts)
+- `source`: [`packages/interaction/permission-presets/src/index.ts:161`](../packages/interaction/permission-presets/src/index.ts)
 
 ```ts config-catalog
 /** The {@link PermissionPresetService} config: preset table and composition default. */

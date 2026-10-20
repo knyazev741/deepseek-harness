@@ -1,0 +1,4 @@
+# New Sessions pin the configured permission before request assembly.
+- id: permission
+  config:
+    defaultPreset: workspace-write

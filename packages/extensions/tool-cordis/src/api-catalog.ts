@@ -731,6 +731,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'Detached layer values alongside their Loader entries.',
       },
       {
+        signature: 'async waitForPendingEdits(): Promise<void>',
+        description: 'Wait for admitted profile edits, including edits admitted while waiting. Each edit\'s caller remains responsible for reporting its own failure.',
+        parameters: [],
+        returns: 'after every admitted edit has settled, whether it succeeded or failed.',
+      },
+      {
         signature: 'async edit( entry: Entry, change: (current: Record<string, unknown>, inherited: Record<string, unknown>) => Record<string, unknown>, ): Promise<void>',
         description: 'Validate, persist, and reconcile a plugin\'s next config; ordinary fields keep normal lifecycle rules.',
         parameters: [{ name: 'entry', description: 'Current Loader entry, also used to detect replacement during the write.' }, { name: 'change', description: 'Derive a raw config from the current entry and its inherited layer.' }],
@@ -2129,9 +2135,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote(\'selectModel\') selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue>',
-        description: 'Select one Session-local model after explicitly resuming the Session; save the default in the background.',
+        description: 'Select one Session-local model after explicitly resuming the Session, then save the default.',
         parameters: [{ name: 'request', description: 'Session identity and requested model selection.' }],
-        returns: 'the normalized selection installed for the Session, without waiting for default persistence.',
+        returns: 'the normalized selection after default persistence settles; a failed save is reported without undoing the Session selection.',
       },
       {
         signature: '@Remote async initializeDefaultModel(): Promise<void>',

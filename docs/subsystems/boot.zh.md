@@ -82,6 +82,13 @@ entries(): Entry[]
  */
 configuration(): Array<{ entry: Entry; inherited: Record<string, unknown>; override: Record<string, unknown> }>
 
+/**
+ * Wait for admitted profile edits, including edits admitted while waiting.
+ * Each edit's caller remains responsible for reporting its own failure.
+ * @returns after every admitted edit has settled, whether it succeeded or failed.
+ */
+async waitForPendingEdits(): Promise<void>
+
 /** Validate, persist, and reconcile a plugin's next config; ordinary fields keep normal lifecycle rules.
  * @param entry Current Loader entry, also used to detect replacement during the write.
  * @param change Derive a raw config from the current entry and its inherited layer.
