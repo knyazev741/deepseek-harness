@@ -12,23 +12,23 @@ The default gate ([.github/workflows/ci.yml](../../../../.github/workflows/ci.ym
 
 ## Decision
 
-A dedicated workflow, [.github/workflows/e2e.yml](../../../../.github/workflows/e2e.yml), separate from ci.yml, runs only `pnpm run test:e2e` against the external API using a repo secret, on trusted events, with a preflight that converts a missing secret into a loud failure instead of a false green. The keyless workflow remains separate so forkable quality gates and secret-consuming real-API gates keep different trigger and credential policies.
+A dedicated workflow, [.github/workflows/e2e.yml](../../../../.github/workflows/e2e.yml), separate from ci.yml, runs only `pnpm run test:e2e` against the external API using a repo secret, on trusted events, with a preflight that converts a missing secret into a loud failure instead of a false green. The keyless workflow remains separate so forkable quality gates and secret-consuming real-API gates keep different trigger and credential policies. Automatic runs require [repository opt-in](2026-10-20-real-api-e2e-opt-in.md); manual dispatch remains available independently.
 
 ### A separate workflow, not a job in ci.yml
 
 ci.yml's value is that it is keyless, forkable, and always-green: any contributor (including an outside fork) gets a complete keyless signal with no secret in the blast radius. Adding a secret-consuming job there would couple that always-green gate to credential availability and a different trigger policy. Keeping the secret-bearing work in its own file isolates the secret, trigger, and concurrency policy, and preserves ci.yml's property for forks. Different lifecycles → different files.
 
-### Cost is not the constraint; reliability is
+### Coverage on configured repositories
 
-Internal inference cost is not the limiting constraint, so the workflow optimizes for coverage and signal. It runs every matching `*.e2e.ts` file on multiple triggers and every trusted PR, implementing the [docs/testing.md](../../../../docs/testing.md) with-key policy.
+Once a repository enables automatic runs, the workflow optimizes for coverage and signal. It runs every matching `*.e2e.ts` file on multiple triggers and every trusted PR, implementing the [docs/testing.md](../../../../docs/testing.md) with-key policy.
 
 ### Triggers: trusted events only
 
-`workflow_dispatch` + `push` to `main`/`master` + nightly `schedule` (`17 0 * * *`, 08:17 Asia/Shanghai) + `pull_request`. Push gives a post-merge signal; schedule catches external-API drift; dispatch is the manual escape hatch; and trusted pull requests get a pre-merge gate. That pre-merge signal deliberately accepts the larger key-exposure surface described under § Security.
+`workflow_dispatch` + opted-in `push` to `main`/`master` + nightly `schedule` (`17 0 * * *`, 08:17 Asia/Shanghai) + `pull_request`. Push gives a post-merge signal; schedule catches external-API drift; dispatch is the manual escape hatch; and trusted pull requests get a pre-merge gate. That pre-merge signal deliberately accepts the larger key-exposure surface described under § Security.
 
 ### The untrusted-PR gate
 
-GitHub withholds repo secrets from two kinds of PR: those from **forks**, and **Dependabot** PRs (same-repo branch, so `head.repo.fork == false`, but secrets are still withheld). A job-level `if:` skips the whole job for both:
+GitHub withholds repo secrets from two kinds of PR: those from **forks**, and **Dependabot** PRs (same-repo branch, so `head.repo.fork == false`, but secrets are still withheld). The trusted-PR clause of the job-level `if:` skips the whole job for both:
 
 ```
 github.event_name != 'pull_request'
@@ -41,7 +41,7 @@ The gate is a *clean-skip nicety*, not the secret's security boundary (see § Se
 
 ### Preflight: fail loud, never false-green
 
-Because the job only runs on trusted events where the secret is expected, the preflight is an unconditional presence check: empty key → `exit 1` with a `::error::` annotation naming the secret to configure. This is the crux that makes a self-skipping suite safe to gate on. Without it, a deleted/renamed/misconfigured secret would make `test:e2e` skip every real suite and report all-green — a silent regression of the entire safety net. The guard turns "secret missing" from an invisible false pass into a visible failure. (Its correctness was verified live: the run before the secret existed failed at exactly this step.)
+Because the job only runs on trusted events after repository opt-in or an explicit manual request, the preflight is an unconditional presence check: empty key → `exit 1` with a `::error::` annotation naming the secret to configure. This is the crux that makes a self-skipping suite safe to gate on. Without it, a deleted/renamed/misconfigured secret would make `test:e2e` skip every real suite and report all-green — a silent regression of the entire safety net. The guard turns "secret missing" from an invisible false pass into a visible failure. (Its correctness was verified live: the run before the secret existed failed at exactly this step.)
 
 ### Secret mapping and hygiene
 
@@ -93,7 +93,7 @@ None of these require changing the workflow to go public; they are operational s
 
 ## Consequences
 
-A second CI workflow and the first repo secret to maintain. The real-API suite now gates merges (pre-merge on trusted PRs, post-merge on the main branch) and runs nightly, so a real break in the agent's interaction with the external API surfaces in CI rather than only in a developer's local run — at the cost of real (but internally free) API calls on every trusted PR and merge. The preflight makes secret misconfiguration self-announcing instead of silently disabling the net.
+A second CI workflow and the first repo secret to maintain. On repositories that enable automatic runs, the real-API suite gates merges (pre-merge on trusted PRs, post-merge on the main branch) and runs nightly, so a real break in the agent's interaction with the external API surfaces in CI rather than only in a developer's local run — at the cost of real API calls on every trusted PR and merge. The preflight makes secret misconfiguration self-announcing instead of silently disabling the net.
 
 The design carries a documented constraint surface: the `pull_request` trigger's key-exposure tradeoff (drop it to harden), the `if:` gate's dependence on the author-based Dependabot test, and the hard prohibition on `pull_request_target`. The going-public checklist above is the operational companion — this Agent Note is the place a future maintainer should re-read before changing the trigger set or flipping repo visibility, rather than re-deriving the fork/secret model from scratch.
 

@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-10-20-real-api-e2e-opt-in.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-10-20-real-api-e2e-opt-in.md
+/agent-note-repository-opt-in-for-automatic-real-api-e2e:
+  en: 1452d551543061dd
+  zh: e8adb4897984c1ea
+/agent-note-repository-opt-in-for-automatic-real-api-e2e/problem:
+  en: 4f62558ed835fd4b
+  zh: a9965a701c468741
+/agent-note-repository-opt-in-for-automatic-real-api-e2e/decision:
+  en: 18ee33c3a921c597
+  zh: 0c5c906878148625
+/agent-note-repository-opt-in-for-automatic-real-api-e2e/alternatives-considered:
+  en: 21f5b5c155889110
+  zh: 2cf04d7ccfe95b4f
+/agent-note-repository-opt-in-for-automatic-real-api-e2e/consequences:
+  en: e46247f278a76012
+  zh: 9d5765b3e2a5eb70

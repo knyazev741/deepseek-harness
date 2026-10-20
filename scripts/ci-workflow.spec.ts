@@ -975,6 +975,45 @@ describe('bubblewrap preparation script', () => {
 })
 
 describe('DeepSeek e2e workflow', () => {
+  it('requires repository opt-in for automatic runs while retaining manual dispatch', () => {
+    const e2e = workflowJob(loadWorkflow('.github/workflows/e2e.yml'), 'e2e')
+    if (typeof e2e.if !== 'string') throw new TypeError('DeepSeek e2e workflow must define a job condition')
+
+    for (const event of ['push', 'schedule', 'pull_request', 'workflow_dispatch']) {
+      for (const enabled of ['', 'false', 'unexpected', 'true']) {
+        const selected: unknown = runInNewContext(e2e.if, {
+          github: {
+            event_name: event,
+            event: event === 'pull_request'
+              ? { pull_request: { head: { repo: { fork: false } }, user: { login: 'maintainer' } } }
+              : {},
+          },
+          vars: { DSH_REAL_API_E2E_ENABLED: enabled },
+        }, { timeout: 1000 })
+        expect(selected, `${event}, enabled=${enabled}`).toBe(event === 'workflow_dispatch' || enabled === 'true')
+      }
+    }
+  })
+
+  it('skips fork and Dependabot pull requests even when opted in and rerun by a maintainer', () => {
+    const e2e = workflowJob(loadWorkflow('.github/workflows/e2e.yml'), 'e2e')
+    if (typeof e2e.if !== 'string') throw new TypeError('DeepSeek e2e workflow must define a job condition')
+
+    for (const fork of [false, true]) {
+      for (const author of ['contributor', 'dependabot[bot]']) {
+        const selected: unknown = runInNewContext(e2e.if, {
+          github: {
+            event_name: 'pull_request',
+            actor: 'maintainer',
+            event: { pull_request: { head: { repo: { fork } }, user: { login: author } } },
+          },
+          vars: { DSH_REAL_API_E2E_ENABLED: 'true' },
+        }, { timeout: 1000 })
+        expect(selected, `fork=${fork}, author=${author}`).toBe(!fork && author !== 'dependabot[bot]')
+      }
+    }
+  })
+
   it('prepares bubblewrap from the pinned payload without a package transaction', () => {
     const workflow = loadWorkflow('.github/workflows/e2e.yml')
     const e2e = workflowJob(workflow, 'e2e')
@@ -1437,7 +1476,7 @@ describe('npm release workflows', () => {
     })
   })
 
-  it('keeps publication dispatch-only and pack in the PR workflow', () => {
+  it('keeps manual publication outside PR packing with the matching registry locks', () => {
     // pack stays in the PR/master release workflows so a PR proves the set packs.
     for (const file of ['release.yml', 'release-vendor.yml']) {
       const workflow = loadWorkflow(`.github/workflows/${file}`)
@@ -1445,16 +1484,21 @@ describe('npm release workflows', () => {
       expect(Object.keys(workflow.jobs).sort()).toEqual(file === 'release.yml' ? ['dependencies', 'pack'] : ['pack'])
     }
 
-    // publication is workflow_dispatch-only (never a PR check) and keeps the
-    // npm-publish environment plus the shared dist-tag group.
-    for (const file of ['release-publish.yml', 'release-vendor-publish.yml']) {
+    // Manual publishers share their registry lock with the matching automatic job.
+    const automatic = loadWorkflow('.github/workflows/release-main.yml')
+    const publishers = [
+      ['release-publish.yml', 'modules', 'Release-modular-publish'],
+      ['release-vendor-publish.yml', 'release', 'Release-publish'],
+    ] as const
+    for (const [file, job, group] of publishers) {
       const workflow = loadWorkflow(`.github/workflows/${file}`)
       if (!isRecord(workflow.on) || !isRecord(workflow.jobs)) throw new TypeError(`${file} must define on and jobs`)
       expect(Object.keys(workflow.on)).toEqual(['workflow_dispatch'])
       const publish = workflow.jobs.publish
       if (!isRecord(publish)) throw new TypeError(`${file} must define a publish job`)
       expect(publish.environment).toBe('npm-publish')
-      expect(publish.concurrency).toMatchObject({ group: 'Release-publish' })
+      expect(publish.concurrency).toMatchObject({ group, 'cancel-in-progress': false })
+      expect(publish.concurrency).toEqual(workflowJob(automatic, job).concurrency)
     }
   })
 

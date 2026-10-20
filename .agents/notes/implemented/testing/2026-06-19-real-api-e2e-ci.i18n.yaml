@@ -9,23 +9,23 @@
   en: 80cf8dc578552364
   zh: a54441ea02664483
 /agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision:
-  en: 3fbdb8769322e05f
-  zh: f46f68f8eba74d67
+  en: 145ee2b9e4e17da6
+  zh: 4bb81af34214d402
 /agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision/a-separate-workflow-not-a-job-in-ci-yml:
   en: e4745c43611b96bb
   zh: 8fb980401b0c5e9b
-/agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision/cost-is-not-the-constraint-reliability-is:
-  en: 88b945361b1d4804
-  zh: 0887a653945f4dda
+/agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision/coverage-on-configured-repositories:
+  en: 7b4ab07485dcadba
+  zh: e3e7101d58923326
 /agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision/triggers-trusted-events-only:
-  en: 42a2fb15f00aec3a
-  zh: c4775447c863d209
+  en: 341cc13e23341bef
+  zh: 9e3fa8d7e3ea7d8b
 /agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision/the-untrusted-pr-gate:
-  en: e94c28db20896508
-  zh: c8e77c54dceed035
+  en: 3684519f20eddd51
+  zh: daf459a941dbb35d
 /agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision/preflight-fail-loud-never-false-green:
-  en: 07904c7ad53be5ad
-  zh: 67d84d4dc6f082a9
+  en: e159b1007b9833cb
+  zh: 35c27763ee07860b
 /agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/decision/secret-mapping-and-hygiene:
   en: fbbcc9a926dfc943
   zh: 506acdb4e034574b
@@ -48,5 +48,5 @@
   en: 7e7aa3a387a174bc
   zh: 2431a0df2fb478a8
 /agent-note-real-api-e2e-in-ci-against-the-external-deepseek-api/consequences:
-  en: a999af1cbd7776da
-  zh: 5f1fab52fd4eb304
+  en: 8281c83b32e7bfdb
+  zh: 767fe28a896b03a7
