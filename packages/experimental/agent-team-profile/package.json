@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-agent-team-profile",
   "description": "Agent Teams collaboration, tools, and Web UI in one experimental bundle",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"
