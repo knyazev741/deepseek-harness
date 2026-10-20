@@ -7,15 +7,30 @@ import { gt, prerelease, valid } from 'semver'
 import { assertMainSource } from './assert-main.ts'
 import { capture, isEntry } from './process.ts'
 import { packedIdentity, readPublishOrder } from './tarball.ts'
+import { waitForPublicVersions } from './wait-public.ts'
 
 interface RegistryVersion {
   readonly integrity: string
   readonly latest?: string
 }
 
+interface PromotionOptions {
+  readonly skipCli?: boolean
+  readonly timeoutMs?: number
+  readonly pollMs?: number
+}
+
+type PromotionClock = NonNullable<Parameters<typeof waitForPublicVersions>[3]>
+
 /** npm operations supplied separately so preflight refusal can be verified without registry writes. */
 export interface PromotionRegistry {
   read(name: string, version: string): Promise<RegistryVersion>
+  /**
+   * Request a latest-tag update; public reads may still return its previous value.
+   * @param name - Package whose tag to update.
+   * @param version - Exact verified version to select.
+   * @returns After the registry accepts the write.
+   */
   setLatest(name: string, version: string): Promise<void>
 }
 
@@ -25,7 +40,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const publicRegistry: PromotionRegistry = {
   async read(name, version) {
-    const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`)
+    const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(15_000) })
     if (!response.ok) throw new Error(`Cannot inspect ${name}: registry HTTP ${String(response.status)}`)
     const data: unknown = await response.json()
     if (!isRecord(data) || !isRecord(data.versions) || !isRecord(data['dist-tags'])) throw new Error(`Invalid registry metadata for ${name}`)
@@ -37,8 +52,6 @@ const publicRegistry: PromotionRegistry = {
   },
   setLatest(name, version) {
     capture('npm', ['dist-tag', 'add', `${name}@${version}`, 'latest'])
-    const latest: unknown = JSON.parse(capture('npm', ['view', name, 'dist-tags.latest', '--json']))
-    if (latest !== version) throw new Error(`${name}@latest did not settle at ${version}`)
     return Promise.resolve()
   },
 }
@@ -47,11 +60,12 @@ const publicRegistry: PromotionRegistry = {
  * Verify uploaded artifacts before changing tags; a modular publisher can leave the CLI untouched.
  * @param directory - immutable tarballs retained from the successful pack job.
  * @param registry - public npm reader and writer, or an owned test implementation.
- * @param options - Whether this publisher owns only modular package tags.
- * @returns after every latest tag has been verified at the packed version.
+ * @param options - Modular-only ownership and the deadline and interval for public tag propagation.
+ * @param clock - Owned clock and delay for deterministic propagation checks.
+ * @returns After every selected package's latest tag has been verified at its packed version.
  */
 export async function promoteRelease(
-  directory: string, registry: PromotionRegistry = publicRegistry, options: { readonly skipCli?: boolean } = {},
+  directory: string, registry: PromotionRegistry = publicRegistry, options: PromotionOptions = {}, clock?: PromotionClock,
 ): Promise<void> {
   const members = readPublishOrder(directory).map((filename) => {
     const path = join(directory, filename)
@@ -76,15 +90,26 @@ export async function promoteRelease(
   const promoted = [...members.filter(member => member !== cli), ...options.skipCli === true ? [] : [cli]]
   for (const member of promoted) {
     await registry.setLatest(member.name, member.version)
+    await waitForPublicVersions([member], { timeoutMs: options.timeoutMs ?? 120_000, pollMs: options.pollMs ?? 2000 }, async (expected) => {
+      const remote = await registry.read(expected.name, expected.version)
+      if (remote.integrity !== expected.integrity) throw new Error(`${expected.name}@${expected.version} has different public bytes`)
+      if (remote.latest !== undefined && gt(remote.latest, expected.version)) throw new Error(`${expected.name}@latest already names newer ${remote.latest}`)
+      return remote.latest === expected.version ? undefined : `latest still names ${remote.latest ?? '(unset)'}`
+    }, clock)
     console.log(`release promote: ${member.name}@latest = ${member.version}`)
   }
 }
 
 async function main(): Promise<void> {
-  const { values } = parseArgs({ options: { from: { type: 'string' }, 'skip-cli': { type: 'boolean' } } })
+  const { values } = parseArgs({ options: {
+    from: { type: 'string' }, 'skip-cli': { type: 'boolean' },
+    'tag-timeout-ms': { type: 'string', default: '120000' }, 'tag-poll-ms': { type: 'string', default: '2000' },
+  } })
   if (values.from === undefined) throw new Error('usage: promote.ts --from <packed DSH directory> [--skip-cli]')
+  const timeoutMs = Number(values['tag-timeout-ms']), pollMs = Number(values['tag-poll-ms'])
+  if (![timeoutMs, pollMs].every(value => Number.isSafeInteger(value) && value > 0)) throw new Error('Tag deadlines and interval must be positive integers')
   assertMainSource()
-  await promoteRelease(resolve(values.from), publicRegistry, { skipCli: values['skip-cli'] === true })
+  await promoteRelease(resolve(values.from), publicRegistry, { skipCli: values['skip-cli'] === true, timeoutMs, pollMs })
 }
 
 if (isEntry(import.meta.url)) await main()
