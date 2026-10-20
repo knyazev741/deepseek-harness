@@ -224,7 +224,8 @@
     "release:next-main-version": "tsx scripts/release/next-main-version.ts",
     "release:assert-main": "tsx scripts/release/assert-main.ts",
     "release:smoke-web": "tsx scripts/release/smoke-web-install.ts",
-    "release:promote": "tsx scripts/release/promote.ts"
+    "release:promote": "tsx scripts/release/promote.ts",
+    "release:wait-public": "tsx scripts/release/wait-public.ts"
   },
   "devDependencies": {
     "@knyazevai/dsh-hooks-claude-code": "workspace:*",

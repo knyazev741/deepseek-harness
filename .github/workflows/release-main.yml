@@ -21,7 +21,7 @@ jobs:
     if: github.repository == 'knyazev741/deepseek-harness' && github.ref == 'refs/heads/main'
     name: Verify, publish, and promote
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 150
     environment: npm-publish
     steps:
       - uses: actions/checkout@v7.0.1
@@ -92,6 +92,9 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: pnpm run release:publish --family dsh --from dist/npm --dist-tag "candidate-$RELEASE_VERSION"
+
+      - name: Wait for public metadata and downloads after npm scanning
+        run: pnpm run release:wait-public --from dist/npm
 
       - name: Install the public candidate and boot Web on Node 24
         env:

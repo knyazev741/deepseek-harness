@@ -20,7 +20,7 @@ The fork's [Publish main to npm workflow](../../.github/workflows/release-main.y
 <a id="requirements"></a>
 ## Requirements
 
-GitHub Actions needs permission to push version commits and tags. Branch protection remains authoritative: a refused push stops publication. The repository secret `NPM_TOKEN` must authorize public publication, new packages in the fork's npm scope, distribution-tag updates, and unattended publishing under the account's two-factor policy. Rotate that secret when its npm credential expires or changes. The `npm-publish` environment must admit `main` without required reviewers for unattended releases.
+GitHub must have Actions enabled for the fork; its Actions page provides the re-enable control when fork workflows are disabled. GitHub Actions needs permission to push version commits and tags. Branch protection remains authoritative: a refused push stops publication. The repository secret `NPM_TOKEN` must authorize public publication, new packages in the fork's npm scope, distribution-tag updates, and unattended publishing under the account's two-factor policy. Rotate that secret when its npm credential expires or changes. The `npm-publish` environment must admit `main` without required reviewers for unattended releases.
 
 <a id="release-lifecycle"></a>
 ## Release lifecycle
@@ -28,7 +28,9 @@ GitHub Actions needs permission to push version commits and tags. Branch protect
 1. One serialized release reserves a stable version above the source baseline and all published or tagged versions. It commits the family manifests and lockfile, pushes that commit to `main`, and creates its `dsh-v` tag. The workflow's own `GITHUB_TOKEN` push does not start another workflow run.
 2. The release verifies the clean source SHA against remote `main` before building and again before publication. It builds the complete official artifacts and packs the DSH family. Vendored and native runtime dependencies must already be available from public npm.
 3. The entry-only smoke installs just the CLI into a temporary consumer with a fresh npm cache and profile. A loopback registry supplies packed DSH artifacts; external dependencies come from public npm. The normal npm resolver runs with a 1536 MiB Node heap budget, and Chromium must render the workspace picker without client errors.
-4. Publication uploads immutable versions under a version-specific `candidate-` tag. Public-registry smokes repeat installation and browser startup on Node 24 and Node 22. Only then does promotion verify every tarball's public integrity, refuse distribution-tag downgrades, and update the family to `latest`. The CLI tag changes last.
+4. Publication uploads immutable versions under a version-specific `candidate-` tag. A public-availability check waits for matching checksums in both registry metadata views and readable tarballs before consumer installation. It tolerates npm scanning, propagation, and transient network failures for up to 60 minutes, with 15-second polls and individual request deadlines. Public-registry smokes then repeat installation and browser startup on Node 24 and Node 22. Only then does promotion verify every tarball's public integrity, refuse distribution-tag downgrades, and update the family to `latest`. The CLI tag changes last.
+
+npm [scans versions before making them installable](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/); successful upload does not confirm public availability. The visibility check reports pending packages and fails on authorization errors, invalid metadata, checksum conflicts, or an expired deadline.
 
 The workflow retains tarballs, redacted startup logs, browser screenshots, and smoke reports for seven days. It does not copy an existing user's credentials or provider configuration into the consumer and does not make paid model calls.
 
@@ -37,9 +39,9 @@ The workflow retains tarballs, redacted startup logs, browser screenshots, and s
 
 A failure before promotion leaves the CLI's `latest` unchanged; already uploaded candidate versions remain visible by exact version. A failure during promotion may advance other family tags before the CLI changes. A full workflow rerun reserves a new version rather than overwriting published bytes. A newer `main` stops a stale build or publication; the queued run releases the current branch.
 
-Inspect the failed step and its retained evidence before rerunning. Credential failures require a valid `NPM_TOKEN`; source movement requires the current `main`; install or browser failures require a code fix. Disabling peer dependency resolution is not an installation check: it can omit runtime dependencies and fail after npm finishes.
+Inspect the failed step and its retained evidence before rerunning. Credential failures require a valid `NPM_TOKEN`; source movement requires the current `main`; unresolved registry scanning or propagation requires inspecting the reported package status; install or browser failures after public availability require a code fix. Disabling peer dependency resolution is not an installation check: it can omit runtime dependencies and fail after npm finishes.
 
 <a id="dev-note"></a>
 ## Dev Note
 
-The [release-sequence rationale](../../.agents/notes/implemented/process/2026-08-10-npm-release-sequences.md) owns family versioning and immutable publication. The [packed registry](../../scripts/release/packed-registry.ts), [consumer smoke](../../scripts/release/smoke-web-install.ts), and [promotion preflight](../../scripts/release/promote.ts) own the executed checks.
+The [release-sequence rationale](../../.agents/notes/implemented/process/2026-08-10-npm-release-sequences.md) owns family versioning and immutable publication. The [packed registry](../../scripts/release/packed-registry.ts), [consumer smoke](../../scripts/release/smoke-web-install.ts), [public-availability check](../../scripts/release/wait-public.ts), and [promotion preflight](../../scripts/release/promote.ts) own the executed checks.
