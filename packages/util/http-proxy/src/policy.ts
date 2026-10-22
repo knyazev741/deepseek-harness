@@ -71,8 +71,10 @@ export interface ProxyPolicy {
   readonly httpsProxy?: string
   /** The bypass list, already merged with {@link LOOPBACK_NO_PROXY}. Empty when nothing is bypassed. */
   readonly noProxy: string
-  /** Which layer supplied the winning proxy URL; `env` when either field came from the environment. */
-  readonly source: 'env' | 'none'
+  /** Whether proxy addresses came from explicit variables, Windows settings, or neither. */
+  readonly source: 'env' | 'system' | 'none'
+  /** Windows proxy exclusions, matched with Windows wildcard and <local> semantics. */
+  readonly systemBypass?: readonly string[]
 }
 
 /** A policy that proxies nothing. Callers that have not installed a policy resolve URLs against this. */
@@ -203,7 +205,7 @@ function resolveScheme(own: ProxyCandidate, ...fallbacks: (string | undefined)[]
  * @param noProxy - the bypass list as the environment supplied it.
  * @returns the effective bypass list.
  */
-function withLoopback(noProxy: string | undefined): string {
+export function withLoopback(noProxy: string | undefined): string {
   const entries = (noProxy ?? '').split(/[,\s]+/).map(entry => entry.trim()).filter(entry => entry !== '')
   if (entries.includes('*')) return '*'
   const present = new Set(entries.map(entry => entry.toLowerCase()))
@@ -339,5 +341,33 @@ export function proxyForUrl(policy: ProxyPolicy, url: URL): string | undefined {
   const proxy = url.protocol === 'https:' ? policy.httpsProxy : url.protocol === 'http:' ? policy.httpProxy : undefined
   if (proxy === undefined) return undefined
   if (isLoopbackHost(url.hostname)) return undefined
-  return bypassesProxy(policy.noProxy, url) ? undefined : proxy
+  return bypassesProxy(policy.noProxy, url) || bypassesSystemProxy(policy.systemBypass ?? [], url) ? undefined : proxy
+}
+
+/**
+ * Match Windows proxy exclusions without changing the environment's NO_PROXY matching rules.
+ * @param entries - semicolon-separated Windows exclusions split into individual entries.
+ * @param url - outbound request URL.
+ * @returns whether Windows excludes this URL from its manual proxy.
+ */
+export function bypassesSystemProxy(entries: readonly string[], url: URL): boolean {
+  const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/u, '').toLowerCase()
+  for (let entry of entries) {
+    entry = entry.trim().toLowerCase()
+    if (entry === '<local>') {
+      if (!host.includes('.') && !host.includes(':')) return true
+      continue
+    }
+    const scheme = /^(https?):\/\//u.exec(entry)
+    if (scheme !== null) {
+      if (`${scheme[1]}:` !== url.protocol) continue
+      entry = entry.slice(scheme[0].length)
+    }
+    if (entry === '') continue
+    const { host: pattern, port } = splitHostPort(entry)
+    if (port !== undefined && port !== (url.port || (url.protocol === 'https:' ? '443' : '80'))) continue
+    const expression = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')
+    if (new RegExp(`^${expression}$`, 'u').test(host)) return true
+  }
+  return false
 }

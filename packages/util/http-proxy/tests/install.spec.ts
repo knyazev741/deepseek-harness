@@ -64,7 +64,7 @@ const nestedUrl = 'http://127.0.0.1:9'
 
 /** A launch environment built from the names a user would export, in the casings they wrote. */
 function env(values: Record<string, string>): { get(name: string): { value: string } | undefined } {
-  return { get: name => (name in values ? { value: values[name] as string } : undefined) }
+  return { get: name => name in values ? { value: values[name] as string } : name === 'DSH_PROXY_MODE' ? { value: 'environment' } : undefined }
 }
 
 /** The environment of a user who exported one proxy for both schemes. */
@@ -96,6 +96,24 @@ async function withCleanProxyEnv(run: () => Promise<void>): Promise<void> {
 }
 
 describe('installProxyFromEnvironment', () => {
+  it('clears an explicit direct mode for fetch and children and restores the previous proxy', async () => {
+    await withCleanProxyEnv(async () => {
+      const outer = await install(proxyAll())
+      try {
+        process.env.ALL_PROXY = proxyUrl
+        const direct = await install(env({ DSH_PROXY_MODE: 'direct', HTTP_PROXY: proxyUrl }))
+        try {
+          expect(proxyRouteFor(new URL(proxyTarget))).toEqual({ proxied: false })
+          expect(process.env.HTTP_PROXY).toBeUndefined()
+          expect(process.env.ALL_PROXY).toBeUndefined()
+          expect(proxyEnvironmentForChild()).toMatchObject({ HTTP_PROXY: undefined, ALL_PROXY: undefined, NODE_USE_ENV_PROXY: undefined })
+          await expect((await fetch(originUrl)).text()).resolves.toBe('DIRECT')
+        } finally { await direct.dispose() }
+        expect(process.env.ALL_PROXY).toBe(proxyUrl)
+        await expect((await fetch(proxyTarget)).text()).resolves.toBe('VIA-PROXY')
+      } finally { await outer.dispose() }
+    })
+  })
   it('routes the built-in global fetch through the proxy', async () => {
     const { dispose } = await install(proxyAll())
     try {
@@ -452,7 +470,8 @@ describe('the published environment', () => {
 describe('clearedProxyEnv', () => {
   it('names every proxy variable for removal, so a replay reaches its own fixture server', () => {
     const cleared = clearedProxyEnv()
-    expect(Object.keys(cleared).sort()).toEqual([...PROXY_ENV_NAMES].sort())
-    expect(Object.values(cleared).every(value => value === undefined)).toBe(true)
+    expect(Object.keys(cleared).sort()).toEqual([...PROXY_ENV_NAMES, 'DSH_PROXY_MODE'].sort())
+    expect(cleared.DSH_PROXY_MODE).toBe('environment')
+    expect(PROXY_ENV_NAMES.every(name => cleared[name] === undefined)).toBe(true)
   })
 })

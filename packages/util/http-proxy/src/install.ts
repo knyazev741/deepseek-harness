@@ -13,10 +13,10 @@ import {
   POLICY_ENV_NAMES,
   PROXY_ENV_NAMES,
   proxyForUrl,
-  resolveProxyPolicy,
   type EnvLookup,
   type ProxyPolicy,
 } from './policy.ts'
+import { resolveStartupProxy } from './system.ts'
 
 
 /** The active policy, or `undefined` until one is installed. Process-wide, like the dispatcher it tracks. */
@@ -81,7 +81,7 @@ function applyPolicyEnv(policy: ProxyPolicy): () => void {
   inheritedProxyEnv = previousInherited ?? snapshotProxyEnv()
   const published: Record<string, string | undefined> = {}
   for (const [field, names] of Object.entries(POLICY_ENV_NAMES)) {
-    const value = policy[field as keyof typeof POLICY_ENV_NAMES]
+    const value = publishedPolicyValue(policy, field as keyof typeof POLICY_ENV_NAMES)
     for (const name of names) published[name] = value
   }
   const restore = writeProxyEnv(published)
@@ -102,6 +102,12 @@ function snapshotProxyEnv(): Record<string, string | undefined> {
     for (const name of names) snapshot[name] = process.env[name]
   }
   return snapshot
+}
+
+/** Environment readers receive Windows exclusions in NO_PROXY; their wildcard rules remain transport-owned. */
+function publishedPolicyValue(policy: ProxyPolicy, field: keyof typeof POLICY_ENV_NAMES): string | undefined {
+  if (field !== 'noProxy') return policy[field]
+  return [policy.noProxy, ...policy.systemBypass ?? []].filter(Boolean).join(',')
 }
 
 /**
@@ -161,7 +167,7 @@ async function createPolicyDispatcher(policy: ProxyPolicy): Promise<Dispatcher> 
  *
  * Installing replaces undici's global dispatcher, which is what Node's built-in `fetch` resolves, so
  * every caller that issues a plain `fetch()` is covered without knowing this package exists. A policy
- * that proxies nothing installs a direct dispatcher and leaves the environment untouched.
+ * that proxies nothing preserves ambient settings unless direct routing was explicitly requested.
  *
  * A worker thread has its own `globalThis` and so its own dispatcher; installing here does not
  * reach it. No worker installs one today: both this repository ships — the workflow engine and the
@@ -169,16 +175,17 @@ async function createPolicyDispatcher(policy: ProxyPolicy): Promise<Dispatcher> 
  * credentials. A worker that needs the policy has to be handed one explicitly and install it itself.
  *
  * @param policy - the resolved policy to install.
+ * @param forceDirect - replace the ambient dispatcher and clear proxy variables for explicit direct mode.
  * @returns a disposer restoring the previous dispatcher, policy, and environment, then closing the agent.
  */
-async function installGlobalProxy(policy: ProxyPolicy): Promise<() => Promise<void>> {
+async function installGlobalProxy(policy: ProxyPolicy, forceDirect = false): Promise<() => Promise<void>> {
   const previousPolicy = active
   if (policy.source === 'none') {
     // A direct policy mounted over an installed one must actually stop proxying. Recording the policy
     // alone would leave the previous agent as the global dispatcher, so a plain `fetch()` would keep
     // tunnelling while `proxyForUrl()` reported a direct connection — and `mode: 'off'` would be a
     // silent no-op. With nothing installed there is nothing to displace.
-    if (previousPolicy === undefined) {
+    if (previousPolicy === undefined && !forceDirect) {
       active = policy
       return () => {
         active = previousPolicy
@@ -190,13 +197,13 @@ async function installGlobalProxy(policy: ProxyPolicy): Promise<() => Promise<vo
     // spawned child copies. With no policy active there is no normalization to stand behind, so the
     // user's own values return for the window and the outer install's come back when it ends. An
     // install underneath that proxied nothing published nothing, and there is nothing to put back.
-    const restoreEnv = inheritedProxyEnv === undefined ? undefined : writeProxyEnv(inheritedProxyEnv)
     const undici = await import('undici')
     const previous = undici.getGlobalDispatcher()
     const direct = new undici.Agent()
+    const restoreEnv = forceDirect ? clearProcessProxyEnv() : inheritedProxyEnv === undefined ? undefined : writeProxyEnv(inheritedProxyEnv)
     undici.setGlobalDispatcher(direct)
     active = policy
-    installed = undefined
+    installed = forceDirect ? direct : undefined
     return async () => {
       undici.setGlobalDispatcher(previous)
       active = previousPolicy
@@ -205,11 +212,11 @@ async function installGlobalProxy(policy: ProxyPolicy): Promise<() => Promise<vo
       await direct.close()
     }
   }
-  const restoreEnv = applyPolicyEnv(policy)
   const { getGlobalDispatcher, setGlobalDispatcher } = await import('undici')
   const previousDispatcher = getGlobalDispatcher()
   const previousInstalled = installed
   const agent = await createPolicyDispatcher(policy)
+  const restoreEnv = applyPolicyEnv(policy)
   setGlobalDispatcher(agent)
   active = policy
   installed = agent
@@ -219,6 +226,18 @@ async function installGlobalProxy(policy: ProxyPolicy): Promise<() => Promise<vo
     installed = previousInstalled
     restoreEnv()
     await agent.close()
+  }
+}
+
+/** Clear an explicitly disabled proxy for this process and its children, restoring every spelling on disposal. */
+function clearProcessProxyEnv(): () => void {
+  const previous = Object.fromEntries(PROXY_ENV_NAMES.map(name => [name, process.env[name]]))
+  for (const name of PROXY_ENV_NAMES) Reflect.deleteProperty(process.env, name)
+  return () => {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) Reflect.deleteProperty(process.env, name)
+      else process.env[name] = value
+    }
   }
 }
 
@@ -256,16 +275,17 @@ async function installGlobalProxy(policy: ProxyPolicy): Promise<() => Promise<vo
  * A worker thread is deliberately NOT served here — see the workflow engine, which runs
  * model-authored scripts and must not receive a proxy URL that may carry credentials.
  *
- * @returns names to apply to the child environment, where `undefined` means remove, or an empty
- *   object when no proxy is active.
+ * @returns names to apply to the child environment, where `undefined` means remove; explicit direct
+ *   mode removes proxy addresses, while an inactive policy returns an empty object.
  */
 export function proxyEnvironmentForChild(): Readonly<Record<string, string | undefined>> {
   const policy = active
   const inherited = inheritedProxyEnv
+  if (policy?.source === 'none' && installed !== undefined) return { ...clearedProxyEnv(), NODE_USE_ENV_PROXY: undefined }
   if (policy === undefined || policy.source === 'none' || inherited === undefined) return {}
   const overlay: Record<string, string | undefined> = { NODE_USE_ENV_PROXY: '1' }
   for (const [field, names] of Object.entries(POLICY_ENV_NAMES)) {
-    const resolved = policy[field as keyof typeof POLICY_ENV_NAMES]
+    const resolved = publishedPolicyValue(policy, field as keyof typeof POLICY_ENV_NAMES)
     // Naming a scheme in either casing claims that scheme: the child then gets exactly what the
     // user wrote, in the casing they wrote it, rather than a value derived for this process.
     const named = field !== 'noProxy' && names.some(name => inherited[name] !== undefined)
@@ -279,7 +299,7 @@ export function proxyEnvironmentForChild(): Readonly<Record<string, string | und
 }
 
 /**
- * Resolve this process's proxy policy from `env` and install it.
+ * Resolve explicit proxy configuration or Windows manual system settings and install the policy.
  *
  * Resolution, reporting, and installation are one operation because no caller needs them apart: the
  * launcher does all three in sequence before the first plugin mounts, and a policy resolved but not
@@ -287,19 +307,19 @@ export function proxyEnvironmentForChild(): Readonly<Record<string, string | und
  *
  * A value the environment supplies but this package cannot use is reported and skipped rather than
  * thrown: the variable may have been exported for another tool, and a proxy the harness cannot use
- * must not stop the agent from starting.
+ * must not stop the agent from starting. Automatic Windows discovery failures stop startup with
+ * an actionable, address-free error; direct mode explicitly clears proxy variables and dispatchers.
  *
  * @param env - the launch environment, whose own layering already prefers real variables over `.env` files.
- * @param report - receives one message per rejected value, in the order the values were considered.
+ * @param report - receives address-free discovery and rejected-value diagnostics.
  * @returns a disposer restoring the previous dispatcher, policy, and environment.
  */
 export async function installProxyFromEnvironment(
   env: EnvLookup,
   report: (message: string) => void,
 ): Promise<() => Promise<void>> {
-  const { policy, diagnostics } = resolveProxyPolicy(env)
-  for (const diagnostic of diagnostics) report(diagnostic.message)
-  return await installGlobalProxy(policy)
+  const selected = await resolveStartupProxy(env, process.platform, report)
+  return await installGlobalProxy(selected.policy, selected.forceDirect)
 }
 
 /**
@@ -308,8 +328,8 @@ export async function installProxyFromEnvironment(
  * A harness that replays a recorded session must reach its own fixture server, not the proxy a
  * developer or a CI runner exported; `undefined` is how a spawn removes a name it inherits.
  *
- * @returns one entry per proxy name, each `undefined`.
+ * @returns removed address variables and environment-only mode, disabling Windows discovery for isolated children.
  */
-export function clearedProxyEnv(): Record<string, undefined> {
-  return Object.fromEntries(PROXY_ENV_NAMES.map(name => [name, undefined]))
+export function clearedProxyEnv(): Record<string, string | undefined> {
+  return { ...Object.fromEntries(PROXY_ENV_NAMES.map(name => [name, undefined])), DSH_PROXY_MODE: 'environment' }
 }

@@ -28,6 +28,22 @@ npx @knyazevai/dsh web
 
 该命令默认在 `http://127.0.0.1:3080` 启动 Web UI。传入 `--open` 可自动打开浏览器。详见 [Web UI 指南](docs/user/guide/index.zh.md)。
 
+### 在 Windows 上安装一次
+
+如需反复启动，先安装到固定的用户目录：
+
+```powershell
+npm.cmd install --prefix "$env:LOCALAPPDATA\KnyazevAI\Harness" @knyazevai/dsh@latest
+```
+
+之后直接启动已安装的版本：
+
+```powershell
+& "$env:LOCALAPPDATA\KnyazevAI\Harness\node_modules\.bin\dsh.cmd" web
+```
+
+再次执行安装命令即可更新。直接启动使用已安装版本，不查询 npm registry。Windows 默认使用手动设置的系统 HTTP(S) 代理，除非代理环境变量覆盖它；控制方式与限制见[网络代理指南](docs/user/guide/network-proxy.zh.md)。
+
 <a id="run-from-source"></a>
 
 ### 从源码运行

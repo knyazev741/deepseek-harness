@@ -26,6 +26,22 @@ npx @knyazevai/dsh web
 
 The command starts the Web UI at `http://127.0.0.1:3080` by default. Pass `--open` to open the browser automatically. See [Web UI guide](docs/user/guide/index.md).
 
+### Install once on Windows
+
+For repeated launches, install into a permanent user directory once:
+
+```powershell
+npm.cmd install --prefix "$env:LOCALAPPDATA\KnyazevAI\Harness" @knyazevai/dsh@latest
+```
+
+Start the installed build directly on subsequent launches:
+
+```powershell
+& "$env:LOCALAPPDATA\KnyazevAI\Harness\node_modules\.bin\dsh.cmd" web
+```
+
+Repeat the installation command to update. Direct launches use the installed version without an npm registry lookup. Windows automatically uses its manual system HTTP(S) proxy unless proxy environment variables override it; see the [network proxy guide](docs/user/guide/network-proxy.md) for controls and limitations.
+
 ### Run from source
 
 To run from a repository checkout:

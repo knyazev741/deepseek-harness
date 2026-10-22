@@ -13,9 +13,28 @@ env:
   DSH_TELEMETRY_DISABLED: '1'
 
 jobs:
+  windows-proxy:
+    if: github.repository == 'knyazev741/deepseek-harness' && github.ref == 'refs/heads/main'
+    name: Verify Windows proxy support
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v5.0.0
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24.22.0'
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Check proxy routing and the native Windows settings reader
+        run: pnpm exec vitest run packages/util/http-proxy/tests
+
   release:
     if: github.repository == 'knyazev741/deepseek-harness' && github.ref == 'refs/heads/main'
     name: Publish verified CLI
+    needs: windows-proxy
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     environment: npm-publish

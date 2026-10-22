@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.5/windows-system-proxy/guide.md
+/:
+  en: 81d3e29e208f4f0f
+  zh: e8cf26909bedd2ec
+/windows-system-proxy-selection:
+  en: f44dd5556023df98
+  zh: 2b422c170a3184fc
+/windows-system-proxy-selection/change:
+  en: 7e95b8f1b4c601d6
+  zh: 4ed84e0283cdbcc5
+/windows-system-proxy-selection/migration:
+  en: e451a296341f4310
+  zh: e5845beb73be8dfd

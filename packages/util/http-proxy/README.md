@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use this package to apply one outbound HTTP proxy policy to Harness requests that use Node's built-in `fetch`, including LLM, web-search, and HTTP MCP traffic. The launcher reads standard proxy environment variables once, and ordinary `fetch` callers require no extra imports or changes. Local loopback traffic stays direct, while unsupported proxy URLs are reported and skipped for the affected scheme. Public helpers let callers route transports with their own proxy settings, prepare child-process environments, or clear proxy variables for isolated replays.
+Use this package to apply one outbound HTTP proxy policy to Harness requests that use Node's built-in `fetch`, including LLM, web-search, and HTTP MCP traffic. The launcher reads explicit proxy variables or Windows manual system settings once; ordinary `fetch` callers require no extra imports or changes. Local loopback traffic stays direct, while unsupported proxy URLs are reported and skipped for the affected scheme. Public helpers let callers route transports with their own proxy settings, prepare child-process environments, or clear proxy variables for isolated replays.
 
 ## Table of Contents
 
@@ -51,7 +51,11 @@ That gate cannot see inside an SDK, so each outbound call site carries an `egres
 
 Loopback is always bypassed — `localhost`, the whole `127.0.0.0/8` range, `::1`, `0.0.0.0`, and the IPv4-mapped spellings of those. The harness's own Web UI, Connection transport, and every local test server would otherwise route through the proxy and loop. The published bypass list names only the four literal entries an environment reader can match; `proxyForUrl` recognises the range itself, because a list entry cannot express one.
 
+`DSH_PROXY_MODE=auto` is the default: explicit address variables win; otherwise Windows reads the current user's manual HTTP(S) proxy and exclusions. Other platforms stay direct without an explicit proxy. `DSH_PROXY_MODE=environment` disables system discovery; `direct` disables all proxies. Set these controls in the launching environment or `$DSH_HOME/.env`, never a project `.env`. `DSH_SYSTEM_PROXY_TIMEOUT_MS` bounds discovery, defaults to 10000, and accepts integers from 1 to 60000. Restart DSH after changing system settings.
+
 ### Failures
+
+Windows discovery failures, invalid settings, and configured PAC scripts stop startup with an address-free diagnostic and an explicit environment/direct recovery action. No request silently switches from a configured system proxy to a direct route.
 
 A proxy value the package cannot use — a SOCKS or PAC URL, an unparseable string, an unsupported scheme — is reported and skipped, and that scheme connects directly. The variable may have been exported for other tools, so it must not stop the agent from starting.
 
@@ -72,6 +76,7 @@ A proxy value the package cannot use — a SOCKS or PAC URL, an unparseable stri
 |---|---|
 | `src/policy.ts` | Resolution and bypass matching; a diagnostic names the variable, never its value. Imports no transport, so it stays loadable where undici is absent. |
 | `src/install.ts` | The global dispatcher, the active-policy record, the route, and the child environment. Imports undici dynamically. |
+| `src/system.ts` | Windows settings discovery, startup mode validation, and protocol-specific manual proxy parsing. |
 | `src/index.ts` | The package face: four functions and one type. |
 
 ### Bypass matching
@@ -104,7 +109,7 @@ No direct invalidation: the package contributes no request tokens and never muta
 
 These limits define when the package is a poor fit. They are current package constraints.
 
-- **No SOCKS, PAC, or operating-system proxy detection** — only `http(s)://` proxy URLs from the environment. A macOS or Windows system-proxy setting is not read, so a user who only toggled it in a proxy application must still export the variables; a SOCKS URL is reported and that scheme stays direct rather than borrowing another scheme's proxy.
+- **No SOCKS, PAC execution, WPAD, or macOS system detection** — Windows manual HTTP(S) settings are supported; configured PAC scripts require explicit HTTP(S) variables or an explicit direct mode. Windows exclusions use wildcard and `<local>` matching in this process; child tools receive them through `NO_PROXY` and apply their own matching rules.
 - **No custom certificate authority** — a TLS-intercepting corporate proxy needs `NODE_EXTRA_CA_CERTS` set on the process before launch, which this package neither sets nor validates.
 - **A spawned child honors the policy only on a new enough runtime, and only when every value it inherits is one Node accepts** — it reads the published environment through Node's `NODE_USE_ENV_PROXY` (22.21+, 24+), and the engines range admits 22.19 and 22.20, where such a child stays direct. A user whose environment also names a SOCKS or otherwise refused proxy leaves every child Node direct: the flag is withheld so the child can start at all. A child also matches bypass entries with Node's own `NO_PROXY` rules, which differ from this package's in their separators and IPv4-range support. Nothing in this process depends on a Node version: every in-process request reaches the global dispatcher.
 - **Telemetry is direct by design** — the OTLP exporter posts through `node:http`, which no global dispatcher reaches. Routing it would need either an `http.Agent` whose `proxyEnv` option post-dates the lowest supported Node, or the SDK's `fetch` transport, which has no compression while the shipped profile enables gzip. Telemetry is the one channel whose loss costs the user nothing, so it stays where it was; `DSH_TELEMETRY_MODE=DISABLED` turns it off.

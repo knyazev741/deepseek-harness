@@ -4,6 +4,14 @@ English | [中文](network-proxy.zh.md)
 
 DSH routes its outbound requests — model calls, web search, page fetches, and MCP servers over HTTP — through the proxy named by the standard proxy environment variables. It reads them at launch; nothing else needs configuring. A few paths stay direct by design or by runtime limit, listed under "What stays direct" below.
 
+## Automatic Windows setup
+
+With the default `DSH_PROXY_MODE=auto`, Windows uses the current user's manual system HTTP(S) proxy when no proxy address variable was supplied. Enable the proxy application's system-proxy switch, then run DSH normally. Startup prints `Using Windows system proxy` without the address or credentials. Windows exclusions and local loopback addresses stay direct. Restart DSH when system settings change.
+
+Set `DSH_PROXY_MODE=environment` to use only explicit proxy variables, or `DSH_PROXY_MODE=direct` to disable proxies. Save these values in `$DSH_HOME/.env` or export them before starting; project `.env` files cannot set them. Discovery takes at most `DSH_SYSTEM_PROXY_TIMEOUT_MS` milliseconds (10000 by default; 1–60000 allowed).
+
+PAC scripts, WPAD, SOCKS, and macOS system discovery are not supported. A configured PAC script or failed Windows lookup reports an actionable startup error; provide explicit HTTP(S) proxy variables or select a direct mode. TLS certificate verification remains enabled.
+
 ## Export the variables
 
 ```sh
@@ -25,9 +33,9 @@ This is the most common surprise, and it is not specific to DSH. There is no sin
 | The `HTTP_PROXY` / `HTTPS_PROXY` environment variables | `curl`, `git`, `npm`, `pip`, and DSH |
 | TUN mode (a virtual network interface) | Everything, transparently |
 
-The "system proxy" switch in a proxy application such as Clash writes only the first one. Browsers pick it up; command-line tools never see it. That is why exporting the variables is a separate step, and why turning on TUN mode makes both work without any variables at all.
+The "system proxy" switch in a proxy application such as Clash writes only the first one. Browsers pick it up; many command-line tools do not. DSH reads Windows manual system settings in automatic mode. That is why exporting the variables is a separate step, and why turning on TUN mode makes both work without any variables at all.
 
-DSH does not read the operating system's proxy settings. Export the variables, or use TUN mode.
+On macOS, export the variables or use TUN mode. Explicit proxy variables override automatic Windows discovery.
 
 ## Choose what stays direct
 

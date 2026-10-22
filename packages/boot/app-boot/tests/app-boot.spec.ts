@@ -159,7 +159,7 @@ describe('loadLayeredEnv', () => {
     }
   })
 
-  const PROXY = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy'] as const
+  const PROXY = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy', 'DSH_PROXY_MODE', 'DSH_SYSTEM_PROXY_TIMEOUT_MS'] as const
   function clearProxy(): void {
     for (const name of PROXY) Reflect.deleteProperty(process.env, name)
   }
@@ -202,6 +202,23 @@ describe('loadLayeredEnv', () => {
     } finally {
       clear()
       vi.unstubAllEnvs()
+    }
+  })
+
+  it.each(['DSH_PROXY_MODE', 'DSH_SYSTEM_PROXY_TIMEOUT_MS'])('accepts %s only from the user home or inherited environment', (name) => {
+    const home = tmp(), project = tmp()
+    const value = name === 'DSH_PROXY_MODE' ? 'direct' : '12000'
+    writeFileSync(join(home, '.env'), `${name}=${value}\n`)
+    clear(); clearProxy()
+    vi.stubEnv('DSH_HOME', home)
+    try {
+      expect(loadLayeredEnv(NAME, project, vi.fn()).get(name)?.value).toBe(value)
+      clearProxy()
+      writeFileSync(join(project, '.env'), `${name}=${value}\n`)
+      expect(() => loadLayeredEnv(NAME, project, vi.fn())).toThrow('only the launching environment may set')
+      expect(process.env[name]).toBeUndefined()
+    } finally {
+      clear(); clearProxy(); vi.unstubAllEnvs()
     }
   })
 

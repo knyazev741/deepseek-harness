@@ -5,12 +5,15 @@
 /run-dsh-behind-a-network-proxy:
   en: 7659888fbb3e2e0d
   zh: 96c019583f5bf7ab
+/run-dsh-behind-a-network-proxy/automatic-windows-setup:
+  en: 6bce79e8f6993444
+  zh: 75646799e396901a
 /run-dsh-behind-a-network-proxy/export-the-variables:
   en: 6c92d33cc57ced2a
   zh: 653b6ffeb4d102b0
 /run-dsh-behind-a-network-proxy/why-your-browser-is-proxied-but-your-terminal-is-not:
-  en: d565b202923482a1
-  zh: 7eb5a36a3d7504d7
+  en: abc4ddc07db112b7
+  zh: 25d4621677fba443
 /run-dsh-behind-a-network-proxy/choose-what-stays-direct:
   en: 307f5b01e6e09661
   zh: 39eccb0287afc128
