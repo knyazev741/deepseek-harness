@@ -12,6 +12,8 @@ Record each externally perceptible breaking change immediately in an [upgrade gu
 
 **Application launch.** Only `dsh` profiles launch supported Node apps; package bins, demos, and public SDK argv escapes are forbidden ([rule](docs/architecture.md#application-launch)).
 
+**Upstream merges.** Preserve Gonka recovery and Windows system-proxy support; follow [fork maintenance](.fork/README.md#upstream-maintenance), including platform verification before integration or release.
+
 ## Repository layout
 
 ```

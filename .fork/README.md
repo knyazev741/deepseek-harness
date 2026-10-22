@@ -4,6 +4,17 @@ The current integration is tracked by `.fork/features.yaml` and the upstream int
 
 An overlay manifest is a repository-relative inventory of differences from the immutable upstream commit recorded in the manifest. Git remains the source of truth for code; this file records ownership, path coverage, verification targets, and retirement conditions.
 
+## Upstream maintenance
+
+Fetch `upstream` and `origin` before comparing the upstream default branch with `origin/main`. Merge new upstream commits while preserving the required fork behavior in [the feature inventory](features.yaml) and the additional requirements below. Resolve conflicts by behavior; do not accept an entire upstream file or subtree without reviewing the fork differences.
+
+- Preserve [Gonka composition](../packages/bundle/fork-base/README.md), including model routes, configured retries and backoff, first-chunk and stream-idle deadlines, budget recovery, and compaction. Keep [recovery verification](../packages/bundle/fork-base/tests/gonka-recovery.spec.ts) and [transport recovery verification](../packages/llm/llm-retry/tests/transport-recovery.spec.ts).
+- Preserve [Windows proxy selection](../packages/util/http-proxy/src/system.ts) and [startup installation](../packages/util/http-proxy/src/install.ts). Automatic mode discovers the current user's manual HTTP(S) proxy only on Windows without an explicit proxy address. Explicit proxy configuration, bypass rules, loopback exclusions, and `DSH_PROXY_MODE` controls retain their documented precedence and behavior; [the proxy guide](../docs/user/guide/network-proxy.md) owns supported modes and limitations.
+- On macOS and Linux, automatic startup without an explicit proxy must retain the ambient dispatcher and environment, skip Windows settings discovery, and permit direct API requests without a VPN or proxy. Keep the [platform selection tests](../packages/util/http-proxy/tests/system.spec.ts) and [dispatcher preservation tests](../packages/util/http-proxy/tests/install.spec.ts).
+- Keep the [Windows settings reader and large-upload tests](../packages/util/http-proxy/tests/system-reader.spec.ts), the [native Windows reader test](../packages/util/http-proxy/tests/windows.spec.ts), and the required Windows proxy job before publication in [the main release workflow](../.github/workflows/release-main.yml).
+
+Before integrating an upstream merge, run the focused Gonka recovery and HTTP proxy tests and check direct macOS/Linux routing alongside Windows proxy routing. Before publication, require the native Windows job to pass. Provider or transport changes also require a streamed API smoke with a realistic Harness request body; a successful model-list request or a tiny prompt alone does not verify that path. Retire a fork requirement only when a tested upstream implementation preserves its behavior, and update these instructions and verification references together.
+
 ## Command
 
 Without arguments the verifier expects `.fork/overlay.yaml` and fails if that optional manifest is absent. Use `pnpm run verify-fork-overlay -- --manifest fixtures/overlay.yaml` for a fixture manifest. The command accepts no arguments or exactly `--manifest <repository-relative-path>`, rejects traversal and symlink components, reads verification targets without executing them, and exits `1` for invalid input or any diagnostic.
