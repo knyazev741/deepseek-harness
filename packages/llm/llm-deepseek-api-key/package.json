@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-llm-deepseek-api-key",
   "description": "DeepSeek api-key provider authentication and discovery",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

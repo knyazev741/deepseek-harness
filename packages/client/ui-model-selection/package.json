@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-model-selection",
   "description": "Model selection over the shared model catalog, Session projection, and session.selectModel",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

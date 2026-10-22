@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-tool-agent-team",
   "description": "Scoped model-facing Agent Teams tools over ctx.agentTeams",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-settings-session-log",
   "description": "General settings control for Session-log upload with DeepSeek API requests",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

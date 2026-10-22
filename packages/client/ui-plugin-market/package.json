@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-plugin-market",
   "description": "Discover tab of the dsh web Plugins page: browse configured plugin market indexes and install their bundles",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

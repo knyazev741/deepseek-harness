@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-product-analytics",
   "description": "Desktop product event collection and authenticated Host reporting",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

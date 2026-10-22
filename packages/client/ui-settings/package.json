@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-settings",
   "description": "Settings domain base plugin: shared configuration forms and the canonical settings slot-type contract",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

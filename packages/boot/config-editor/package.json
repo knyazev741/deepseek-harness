@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-config-editor",
   "description": "Persist plugin configuration through profile patches and Loader reconciliation",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },

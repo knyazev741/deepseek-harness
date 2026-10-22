@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-otel",
   "description": "Cordis service for independent ordinary-event and byte-bounded Session-log OTLP channels",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publishConfig": {
     "access": "public"
   },
