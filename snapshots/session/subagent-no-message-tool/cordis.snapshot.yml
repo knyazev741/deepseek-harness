@@ -63,6 +63,8 @@
         id: parent
         plugins:
           - name: '@knyazevai/dsh-tool-fs'
+            config:
+              applyPatch: true
           - name: '@knyazevai/dsh-tool-fs-search'
             config:
               sampleOverCapGlobResults: false
@@ -71,6 +73,8 @@
               fetch: true
               searchTimeoutMs: 60000
           - name: '@knyazevai/dsh-tool-subagent-control'
+            config:
+              interrupt: false
     - id: preset-child
       name: '@knyazevai/dsh-agent-preset'
       config:

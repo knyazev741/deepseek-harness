@@ -15,6 +15,9 @@
 - id: tools
   name: '@knyazevai/dsh-tools'
 
+- id: tool-executor-native
+  name: '@knyazevai/dsh-tool-executor-native'
+
 - id: subprocess
   name: '@knyazevai/dsh-subprocess-local'
 

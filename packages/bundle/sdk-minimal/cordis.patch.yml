@@ -23,6 +23,9 @@
     - id: plugin-package-inventory-deepseek
       name: '@knyazevai/dsh-plugin-package-inventory-deepseek'
 
+    - id: deepseek-auth
+      name: '@knyazevai/dsh-deepseek-auth'
+
     - id: llm-deepseek
       name: '@knyazevai/dsh-llm-deepseek-api-key'
       config:
@@ -51,9 +54,6 @@
 
     - id: working-directory
       name: '@knyazevai/dsh-working-directory'
-
-    - id: tool-working-directory
-      name: '@knyazevai/dsh-tool-working-directory'
 
     - id: session-projection
       name: '@knyazevai/dsh-session-projection'
@@ -120,11 +120,15 @@
     - id: tools
       name: '@knyazevai/dsh-tools'
 
+    - id: tool-executor-native
+      name: '@knyazevai/dsh-tool-executor-native'
+
     - id: mcp-resources
       name: '@knyazevai/dsh-mcp-resources'
 
     - id: agent
       name: '@knyazevai/dsh-agent'
+
 
     - id: llm-retry
       name: '@knyazevai/dsh-llm-retry'
@@ -170,3 +174,6 @@
       config:
         root: !!js dshHomePath('sessions')
         compression: none
+
+    - id: session-checkpoint-policy
+      name: '@knyazevai/dsh-session-checkpoint-policy'

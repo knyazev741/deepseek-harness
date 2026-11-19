@@ -1,0 +1,77 @@
+{
+  "name": "@knyazevai/dsh-experimental-subagent-oar",
+  "description": "Experimental one-shot subagents through OAR runtimes",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/subagent-oar"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "icon.svg",
+    "locale/*.json",
+    "lib/index.js",
+    "LICENSE-OAR",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "license": "MIT",
+  "icon": "./icon.svg",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^1.4.0",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@earendil-works/pi-ai": "^1.3.0",
+    "@earendil-works/pi-coding-agent": "^1.3.0",
+    "cross-spawn": "^7.0.6",
+    "undici": "8.10.2",
+    "which": "^2.0.2"
+  },
+  "devDependencies": {
+    "@botiverse/oar": "0.67.0",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-app-boot": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-loader-smoke": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-checkpoint-policy": "workspace:*",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-tool-jobs": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-experimental-tool-subagent-oar": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
+  }
+}

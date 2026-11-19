@@ -1,5 +1,7 @@
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { provideWorkingDirectoryFixture, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
+import { unsupportedModel, provideWorkingDirectoryFixture, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -7,8 +9,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { ToolCallId } from '@knyazevai/dsh-llm'
-import { SESSION_FORMAT_VERSION, Session, SessionId } from '@knyazevai/dsh-session'
+import type { ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { SESSION_FORMAT_VERSION, Session, type SessionId } from '@knyazevai/dsh-session'
 import AgentRegistry from '@knyazevai/dsh-agent'
 import type { Agent } from '@knyazevai/dsh-agent'
 import TerminalSessionService from '@knyazevai/dsh-terminal'
@@ -39,7 +42,7 @@ class PassthroughSandbox extends SandboxProvider {
 }
 
 async function agent(ctx: Context, cwd: string): Promise<Agent> {
-  const id = SessionId('persistent-bash-loader-agent')
+  const id = brandString<SessionId>('persistent-bash-loader-agent')
   const scope = ctx.plugin(() => {})
   const session = Session.create(id, [], {
     version: SESSION_FORMAT_VERSION, id, createdAt: 0, cwd, isSeeded: false,
@@ -48,6 +51,7 @@ async function agent(ctx: Context, cwd: string): Promise<Agent> {
     id,
     options: {},
     session,
+    model: unsupportedModel(),
     inbox: unsupportedInbox(),
     status: 'idle',
     ctx: scope.ctx,
@@ -77,6 +81,7 @@ suite('persistent Bash through a real cordis.yml Loader composition', () => {
       "- name: '@knyazevai/dsh-agent'",
       "- name: '@knyazevai/dsh-system-prompt'",
       "- name: '@knyazevai/dsh-tools'",
+      "- name: '@knyazevai/dsh-tool-executor-native'",
       "- name: '@knyazevai/dsh-terminal'",
       "- name: '@knyazevai/dsh-test-sandbox'",
       "- name: '@knyazevai/dsh-session-projection'",
@@ -113,6 +118,7 @@ suite('persistent Bash through a real cordis.yml Loader composition', () => {
       ['@knyazevai/dsh-agent', AgentRegistry],
       ['@knyazevai/dsh-system-prompt', SystemPrompt],
       ['@knyazevai/dsh-tools', ToolRuntime],
+      ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
       ['@knyazevai/dsh-terminal', TerminalSessionService],
       ['@knyazevai/dsh-test-sandbox', PassthroughSandbox],
       ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
@@ -133,9 +139,9 @@ suite('persistent Bash through a real cordis.yml Loader composition', () => {
 
     const owner = await agent(context, root)
     const signal = new AbortController().signal
-    const execute = (id: string, command: string) => context!.tools.execute({
+    const execute = (id: string, command: string) => executeToolFixture(context!, {
       signal,
-      callId: ToolCallId(id),
+      callId: brandString<ToolCallId>(id),
       name: 'bash',
       arguments: { command },
       agent: owner,
@@ -159,6 +165,14 @@ suite('persistent Bash through a real cordis.yml Loader composition', () => {
       "cat <<'EOF'\nalpha\nbeta\nEOF",
     ))
     expect(heredoc).toBe('alpha\nbeta\n[Command finished with exit code 0]')
+
+    // Interactive bash applies history expansion to typed input before parsing;
+    // it must neither rewrite `!` sequences nor drop the whole wrapper line.
+    const history = text(await execute(
+      'history-expansion',
+      "echo '<!doctype html>' > page.html; cat page.html; echo 'it'; echo hi!!",
+    ))
+    expect(history).toBe('<!doctype html>\nit\nhi!!\n[Command finished with exit code 0]')
 
     const pipeline = text(await execute(
       'pipeline',

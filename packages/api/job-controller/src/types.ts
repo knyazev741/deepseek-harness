@@ -5,7 +5,7 @@
  * @module @knyazevai/dsh-api-job-controller/types
  */
 
-import type { JobId } from '@knyazevai/dsh-jobs/brand'
+import type { JobId } from '@knyazevai/dsh-jobs/types'
 import type { JobChunk, JobView } from '@knyazevai/dsh-jobs/view'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 

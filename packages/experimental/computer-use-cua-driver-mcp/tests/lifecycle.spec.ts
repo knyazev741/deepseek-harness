@@ -1,8 +1,10 @@
 /** The external MCP process is replaced by barriers to pin disposal ordering. */
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import ComputerUse from '@knyazevai/dsh-computer-use'
-import { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/brand'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/types'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
 
@@ -42,6 +44,7 @@ async function context(): Promise<Context> {
   await ctx.plugin(ComputerUse)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   return ctx
 }
 
@@ -56,7 +59,7 @@ describe('installed Cua Driver ownership', () => {
       expect(ctx.computerUse.providerName).toBe('cua-driver-mcp')
       await expect(ctx.plugin(Provider, {})).rejects.toThrow('already registered')
       expect(fake.start).toHaveBeenCalledTimes(1)
-      expect(() => ctx.computerUse.register(ComputerUseProviderName('another-driver'))).toThrow('already registered')
+      expect(() => ctx.computerUse.register(brandString<ComputerUseProviderName>('another-driver'))).toThrow('already registered')
     } finally {
       ready.resolve()
       await first

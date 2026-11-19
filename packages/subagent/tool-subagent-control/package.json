@@ -1,6 +1,6 @@
 {
   "name": "@knyazevai/dsh-tool-subagent-control",
-  "description": "Globally named send_message, interrupt_agent, and list_agents tools over ctx.subagents continuations",
+  "description": "Shared messaging, interruption, and child discovery tools for subagents",
   "version": "0.2.6",
   "publishConfig": {
     "access": "public"
@@ -18,21 +18,17 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./list-agents": {
-      "types": "./lib/types/list-agents.d.ts",
-      "default": "./lib/types/list-agents.js"
-    },
     "./src/*": "./src/*",
     "./package.json": "./package.json",
-    "./locale/*.json": "./locale/*.json",
-    "./list-agents/locale/*.json": "./locale/list-agents/*.json"
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "locale/*.json",
-    "locale/list-agents/*.json",
     "lib/index.js",
-    "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -40,9 +36,19 @@
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
-    "@knyazevai/dsh-tools": "workspace:*"
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-agent-team": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@knyazevai/dsh-agent-team": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@knyazevai/dsh-agent-team": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-agent-loop": "workspace:*",
@@ -56,10 +62,12 @@
     "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-subagent-fork-in-process": "workspace:*",
     "@knyazevai/dsh-subagent-spawn-in-process": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*"
   },
   "dependencies": {
-    "@knyazevai/dsh-brand": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
     "@knyazevai/dsh-util-values": "workspace:*"
   }
 }

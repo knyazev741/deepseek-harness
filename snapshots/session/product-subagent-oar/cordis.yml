@@ -1,0 +1,25 @@
+- insert:
+    - id: experimental-subagent-oar-codex
+      name: '@knyazevai/dsh-experimental-subagent-oar'
+      config:
+        runtime: codex
+        providerName: oar-codex
+        launchArgs:
+          - -c
+          - sandbox_mode="workspace-write"
+    - id: experimental-subagent-oar-claude
+      name: '@knyazevai/dsh-experimental-subagent-oar'
+      config:
+        runtime: claude
+        providerName: oar-claude
+        launchArgs:
+          - --permission-mode
+          - dontAsk
+          - --permission-prompts
+          - none
+    - id: tool-subagent-oar
+      name: '@knyazevai/dsh-experimental-tool-subagent-oar'
+      config:
+        providers:
+          codex: oar-codex
+          claude: oar-claude

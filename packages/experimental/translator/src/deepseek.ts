@@ -3,7 +3,8 @@ import { FiberState, type Context, type Fiber } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { credentialRef } from '@knyazevai/dsh-credentials'
 import { launchEnvironmentOf } from '@knyazevai/dsh-launch-environment'
-import { BlockAssembler, ReasoningEffortId, type LlmRuntime, type GenerateOptions, type RequestUserInput, type FinishReason, type TextBlock } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { BlockAssembler, type ReasoningEffortId, type LlmRuntime, type GenerateOptions, type RequestUserInput, type FinishReason, type TextBlock } from '@knyazevai/dsh-llm'
 import type { Config as AccountNativeConfig } from '@knyazevai/dsh-llm-deepseek-account'
 import type { Config as OfficialNativeConfig } from '@knyazevai/dsh-llm-deepseek-api-key'
 import { deadline, timeoutOf } from '@knyazevai/dsh-timeout'
@@ -72,8 +73,8 @@ function nativeOwner(ctx: Context, provider: PaidTranslationProvider): NativeOwn
   const entry = [...loader.entries()].find(row => row.options.id === directory.settingsNs && row.options.name === OWNER_PACKAGES[provider])
   if (entry?.fiber?.state !== FiberState.ACTIVE) return undefined
   return provider === 'deepseek-account'
-    ? { llm, fiber: entry.fiber, provider, config: entry.fiber.config as AccountNativeConfig }
-    : { llm, fiber: entry.fiber, provider, config: entry.fiber.config as OfficialNativeConfig }
+    ? { llm, fiber: entry.fiber.ctx.fiber, provider, config: entry.fiber.effectiveConfig as AccountNativeConfig }
+    : { llm, fiber: entry.fiber.ctx.fiber, provider, config: entry.fiber.effectiveConfig as OfficialNativeConfig }
 }
 
 function unchanged(ctx: Context, provider: PaidTranslationProvider, previous: EligibleOwner): NativeOwner | undefined {
@@ -163,7 +164,7 @@ export async function translateWithDeepSeek(ctx: Context, spec: PaidTranslationS
       }
     }, { global: true })
     const prepared = await awaitMetadata(() => owner.llm.prepareCall({ provider: spec.provider, model: MODEL,
-      reasoningEffort: ReasoningEffortId('off'), maxTokens: config.deepseekMaxOutputTokens }, timeout.signal), timeout.signal, track)
+      reasoningEffort: brandString<ReasoningEffortId>('off'), maxTokens: config.deepseekMaxOutputTokens }, timeout.signal), timeout.signal, track)
     timeout.signal.throwIfAborted()
     if (await eligible(ctx, spec.provider, timeout.signal, track) === undefined || unchanged(ctx, spec.provider, accepted) === undefined) {
       throw new TranslationError('TRANSLATION_UNAVAILABLE', 'Native Flash translation provider changed before dispatch')

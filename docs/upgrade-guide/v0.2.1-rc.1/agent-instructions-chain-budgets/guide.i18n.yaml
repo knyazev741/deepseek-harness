@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.1-rc.1/agent-instructions-chain-budgets/guide.md
+/:
+  en: 2abfe7e57193a23d
+  zh: f5791da63c26949e
+/size-maxbytes-of-knyazevai-dsh-agent-instructions-per-instruction-chain:
+  en: a1c8dc6e5ec3d8a1
+  zh: 4c24ba555f13a966
+/size-maxbytes-of-knyazevai-dsh-agent-instructions-per-instruction-chain/change:
+  en: 2eda4dceba14c4e9
+  zh: 48c68628ace247af
+/size-maxbytes-of-knyazevai-dsh-agent-instructions-per-instruction-chain/migration:
+  en: 466d27bbdd7daee5
+  zh: 32006b737e8f299e

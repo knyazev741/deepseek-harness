@@ -13,7 +13,7 @@ const roots: string[] = []
 const experimental = '@knyazevai/dsh-experimental-prototype'
 const core = '@knyazevai/dsh-core'
 const base = '@knyazevai/dsh-base'
-const profile = 'packages/boot/app-boot/src/profile.ts'
+const profile = 'packages/util/official-bundles/src/bundles.ts'
 const preset = 'packages/bundle/web-app/presets/standard.patch.yml'
 const patch = 'packages/bundle/base/cordis.patch.yml'
 
@@ -488,6 +488,6 @@ describe('default product isolation', () => {
   ])('rejects absent, empty, or uninspectable default profile definitions', (source) => {
     const root = fixture()
     write(root, profile, source)
-    expect(() => verifyDefaultProductIsolation(root)).toThrow('profile')
+    expect(() => verifyDefaultProductIsolation(root)).toThrow(`${profile}: `)
   })
 })

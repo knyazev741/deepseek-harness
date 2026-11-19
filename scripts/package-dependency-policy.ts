@@ -41,6 +41,7 @@ const DUPLICATE_SAFE_PACKAGES: readonly string[] = [
   '@knyazevai/dsh-typert-protocol',
   '@knyazevai/dsh-util-code-language',
   '@knyazevai/dsh-util-crypto',
+  '@knyazevai/dsh-util-text-search',
   '@knyazevai/dsh-util-values',
 ]
 
@@ -51,21 +52,61 @@ const DUPLICATE_SAFE_PACKAGES: readonly string[] = [
  * prominent heading in the pull request description.
  */
 const SAFE_HOST_DEPENDENCY_EXPORTS = {
-  '@knyazevai/dsh-credentials': ['credentialKey'],
+  '@knyazevai/dsh-atomic-write': ['withFileLock', 'writeFileAtomic'],
   '@knyazevai/dsh-deque': ['Deque'],
-  '@knyazevai/dsh-llm': ['callConfigEquals'],
+  // Builds a dispatcher from the resolved proxy policy; the caller owns and closes it.
+  '@knyazevai/dsh-http-proxy': ['createRouteDispatcher'],
+  // The Liveshare wire codec and identity helpers are stateless functions over caller-owned values.
+  '@knyazevai/dsh-experimental-liveshare-protocol': [
+    'LIVESHARE_CAPABILITIES', 'LIVESHARE_PROTOCOL_VERSION', 'parseRelayFrame', 'parseShareAccessState',
+    'parseTunnelWorkerCommand', 'parseTunnelWorkerEvent', 'rawText', 'sendFrame', 'unsupportedFrameRefusal',
+    'viewerRequestFields', 'identityFromKey', 'identityKeyOf',
+  ],
+  // The shipped profile templates are plain data; a consumer reads their bundle names only.
+  '@knyazevai/dsh-official-bundles': ['PROFILE_TEMPLATES'],
+  // Messages and assembled blocks are plain data. Each caller owns its assembler.
+  '@knyazevai/dsh-llm': ['BlockAssembler', 'callConfigEquals', 'createUserMessage'],
   '@knyazevai/dsh-session-format': ['sessionFormatLogFilename'],
+  '@knyazevai/dsh-storage-domain': ['defineDomain'],
   '@knyazevai/dsh-timeout': ['MAX_TIMER_DELAY_MS'],
+  // Both operate only on the caller's subprocess service and handle; the module memoizes only the binary path.
+  '@knyazevai/dsh-util-ripgrep': ['readRipgrepLines', 'spawnRipgrep'],
   '@deepseek-ai/schemastery': ['default'],
 } as const satisfies HostDependencyExports
 
 /** Runtime exports that require every consumer to resolve the provider's shared peer instance. */
 const PEER_REQUIRED_HOST_EXPORTS = {
+  // Profile settings must match the installed Node provider's configuration schema.
+  '@knyazevai/dsh-ptc-runtime-node/configuration': ['resolvePersistentExecution'],
+  // CUA mounts the installed provider and shares executor error classes with PTC.
+  '@knyazevai/dsh-ptc-runtime-node': ['default'],
+  '@knyazevai/dsh-tool-executor-ptc/run-code': ['RunCodeConfig', 'createRunCodeTool'],
+  // CUA checks UserQuestionError and preserves AttachmentError from image admission; longEdgeDimensions is pure
+  // arithmetic that rides the same peer.
+  '@knyazevai/dsh-attachment': ['admitEncodedImages', 'longEdgeDimensions'],
+  '@knyazevai/dsh-user-questions': ['UserQuestionError'],
+  // The tool registry and every subclass rely on `instanceof` against one HarnessError class.
+  '@knyazevai/dsh-error': ['HarnessError'],
   // `instanceof` checks need the translator's own class instance.
   '@knyazevai/dsh-experimental-translator': ['TranslationError'],
-  '@knyazevai/dsh-scope': ['carrierKeyOf', 'createScope', 'scopeOf', 'scopeTarget'],
-  '@knyazevai/dsh-session': ['SESSION_FORMAT_VERSION'],
+  // Stateless; a safe classification would turn the forge panel's forge and worktree peers into dependencies.
+  '@knyazevai/dsh-experimental-forge': ['changeRequestKey'],
+  '@knyazevai/dsh-experimental-worktree': ['generatedWorktreeName', 'CREATED_RECORD', 'createdWorktreeSchema'],
+  // The forge panel matches ctx.fs failures with `instanceof FsError`.
+  '@knyazevai/dsh-fs': ['FsError'],
+  '@knyazevai/dsh-scope': ['carrierKeyOf', 'createScope', 'scopeOf', 'scopeParentOf', 'scopeTarget'],
+  // appendPluginRecord writes through the Session class's private log; pluginRecordOf is stateless.
+  // The DeepSeek chat importer validates its seed with the installed Session class before storing it.
+  '@knyazevai/dsh-session': ['SESSION_FORMAT_VERSION', 'Session', 'appendPluginRecord', 'pluginRecordOf'],
   '@knyazevai/dsh-session-persistence': ['SessionPersistenceNotFoundError'],
+  // Imported titles follow the installed title service's normalization.
+  '@knyazevai/dsh-session-title': ['normalizeSessionTitle'],
+  // Error classes have instance identity; CUA and Liveshare throw the registry's own copy so `instanceof` against it matches.
+  '@knyazevai/dsh-tools': ['defineTool', 'ToolArgsError', 'ToolContextUnavailableError'],
+  // Readers recognize a deadline's TimeoutReason only by `instanceof` against their own copy.
+  '@knyazevai/dsh-timeout': ['deadline', 'timeoutOf'],
+  // Imported web tool results must render exactly like the installed web tools' results and cards.
+  '@knyazevai/dsh-tool-web': ['fetchMetaFromValue', 'formatFetchOutput', 'formatSearchOutput', 'searchMetaFromValue'],
 } as const satisfies HostDependencyExports
 
 /** Exact import specifier to reviewed runtime exports. */

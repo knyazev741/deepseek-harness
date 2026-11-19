@@ -75,7 +75,7 @@ interface Change {
 }
 
 function trackedFiles(): string[] {
-  const output = execFileSync('git', ['ls-files', '-z'], { cwd: root })
+  const output = execFileSync('git', ['ls-files', '-z'], { cwd: root, maxBuffer: 8 * 1024 * 1024 })
   return output.toString('utf8').split('\0').filter(Boolean).sort()
 }
 

@@ -9,6 +9,7 @@ import LocalSubprocessRuntime from '@knyazevai/dsh-subprocess-local'
 import * as ToolBash from '@knyazevai/dsh-tool-bash'
 import * as ToolTodo from '@knyazevai/dsh-tool-todo'
 import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
+import DeepSeekAuth from '@knyazevai/dsh-deepseek-auth'
 import TokenMeter from '@knyazevai/dsh-token-meter'
 import ToolResultPruner from '@knyazevai/dsh-compaction-tool-result-pruner'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
@@ -70,6 +71,7 @@ export async function codingHarness(workdir: string, options: CodingHarnessOptio
     systemPrompt: { personaPrefix: options.personaPrefix ?? '' },
   })
   await ctx.plugin(AgentLoop, { agents: [] })
+  await ctx.plugin(DeepSeekAuth)
   await ctx.plugin(LlmDeepSeek, {
     ...options.modelContextWindow === undefined && options.modelMaxTokens === undefined ? {} : {
       models: [{

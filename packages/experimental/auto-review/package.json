@@ -24,9 +24,13 @@
   "files": [
     "icon.svg",
     "locale/*.json",
+    "docs",
     "lib/index.js",
     "cordis.patch.yml",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -43,6 +47,7 @@
     "@knyazevai/dsh-util-values": "workspace:*"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-agent-instructions": "workspace:*",
     "@knyazevai/dsh-agent-loop": "workspace:*",
@@ -67,12 +72,16 @@
     "@knyazevai/dsh-subprocess-local": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-tool-bash": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
     "@knyazevai/dsh-tool-fs": "workspace:*",
     "@knyazevai/dsh-tool-subagent": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-user-approval": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-working-directory": "workspace:*"
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

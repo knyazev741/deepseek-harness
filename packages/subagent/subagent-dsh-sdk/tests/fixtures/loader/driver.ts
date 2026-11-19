@@ -2,8 +2,10 @@
 /** Test driver: one delegation turn through a headless Loader composition. */
 
 import { resolveConfigPath } from '@knyazevai/dsh-app-boot'
+import type { SessionId } from '@knyazevai/dsh-session'
 import { runFixtureTurn } from '@knyazevai/dsh-loader-smoke'
 import { bootProductionProfile } from '../../../../../test-support/loader-smoke/tests/fixtures/production-profile.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const configPath = process.argv[2]
 if (configPath === undefined) throw new Error('sdk-subagent cwd driver requires a config path')
@@ -15,9 +17,9 @@ const ctx = await bootProductionProfile({
 })
 try {
   const result = await runFixtureTurn(ctx, { task: 'delegate' })
-  const parent = ctx.agents.roots().find(agent => agent.id === result.sessionId)
+  const parent = ctx.agents.get(brandString<SessionId>(result.sessionId))
   if (parent === undefined) throw new Error('delegating parent is unavailable')
-  await ctx.subagents.waitForChildren(parent)
+  await ctx.subagents.waitForTreeWork(parent)
   await parent.whenIdle()
   await ctx.sessions.flush(parent.session)
 } finally {

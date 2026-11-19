@@ -30,7 +30,7 @@ export async function fixture(legacyPins: string[] = []) {
   ] }]))
   writeFileSync(join(dir, 'cordis.yml'), '[]\n')
   if (legacyPins.length) writeFileSync(join(home, 'settings.yaml'), JSON.stringify({ 'fork-workspace-session-state': { pins: { sessionIds: legacyPins } } }))
-  const profile: ProfileContext = { name: 'test', startedBundles: ['test-bundle'], dir, patchPath: join(dir, 'cordis.patch.yml'), installAnchor: join(home, 'package.json'), cwd: home, home, overlays: [], telemetryDisabledEnv: undefined }
+  const profile: ProfileContext = { name: 'test', startedBundles: ['test-bundle'], dir, patchPath: join(dir, 'cordis.patch.yml'), installAnchor: join(home, 'package.json'), cwd: home, home, overlayPaths: [], telemetryDisabledEnv: undefined }
   const pool = new MemoryMediaPool()
   const start = async () => {
     const ctx = await boot('test', join(dir, 'cordis.yml'), readProfilePatches('test', profile), async (ctx) => {

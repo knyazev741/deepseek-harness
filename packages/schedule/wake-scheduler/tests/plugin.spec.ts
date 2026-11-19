@@ -12,6 +12,7 @@ const PROMPT = 'check the build'
 /** Minimal agent stand-in: identity, queued messages, scoped effect owner, and its tool registry. */
 interface FakeAgent {
   readonly id: string
+  readonly session: { readonly header: { origin: 'subagent' | undefined } }
   readonly messages: UserMessage[]
   followup(message: UserMessage): void
   readonly ctx: {
@@ -68,7 +69,6 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
   const infos: string[] = []
   const warns: string[] = []
   const agents = new Map<string, FakeAgent>()
-  const roots: FakeAgent[] = []
   const created: Array<(payload: { agent: FakeAgent }) => void> = []
   const agentDisposers = new Map<string, Array<() => void>>()
   const lifecycles: Array<() => void> = []
@@ -86,6 +86,7 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
     toolsByAgent.set(id, tools)
     return {
       id,
+      session: { header: { origin: undefined } },
       messages,
       followup: (message: UserMessage): void => { messages.push(message) },
       ctx: {
@@ -108,7 +109,7 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
 
   const register = (agent: FakeAgent, root: boolean): void => {
     agents.set(agent.id, agent)
-    if (root) roots.push(agent)
+    agent.session.header.origin = root ? undefined : 'subagent'
     for (const handler of [...created]) handler({ agent })
   }
 
@@ -123,7 +124,7 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
   const ctx = {
     agents: {
       get: (id: string) => agents.get(id),
-      roots: () => [...roots],
+      list: () => [...agents.values()],
     },
     logger: {
       info: (message: string) => { infos.push(message) },
@@ -155,11 +156,9 @@ function fakeContext(seed: ReadonlyArray<[string, WakeSchedule]> = []): FakeCont
     emittedChild: (agent: FakeAgent) => { register(agent, false) },
     preexisting: (agent: FakeAgent) => {
       agents.set(agent.id, agent)
-      roots.push(agent)
     },
     drop: (agent: FakeAgent) => {
       agents.delete(agent.id)
-      roots.splice(roots.indexOf(agent), 1)
     },
     dispose: () => { for (const disposer of [...lifecycles]) disposer() },
     disposeAgent: (agent: FakeAgent) => { for (const disposer of agentDisposers.get(agent.id) ?? []) disposer() },

@@ -7,15 +7,16 @@
 
 import { randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { CompactionId } from '@knyazevai/dsh-compaction/types'
 import {
-  CompactionId,
   ManualCompactionError,
   compactCheckpointSource,
   toolPairingBalancedAfter,
   toolPairingBalancedBefore,
 } from '@knyazevai/dsh-compaction'
 import type { CompactionResult } from '@knyazevai/dsh-compaction'
-import type { CommandId } from '@knyazevai/dsh-commands/brand'
+import type { CommandId } from '@knyazevai/dsh-commands/types'
 import { createUserMessage, errorChain } from '@knyazevai/dsh-llm'
 import type { Message, UserMessage } from '@knyazevai/dsh-llm'
 import type { TokenMeasurement, TokenMeter } from '@knyazevai/dsh-token-meter'
@@ -54,7 +55,7 @@ type SummarizedCompaction = PreparedCompaction & SummaryResult & {
 
 interface CompactionTransactionOptions {
   /** `current-turn` derives a numbered owner; `null` writes a standalone bracket. */
-  readonly owner: 'current-turn' | null
+  readonly owner: 'current-turn' | 'model-switch' | null
   /** Surface relationship that must survive asynchronous summarization. */
   readonly stability: 'whole-surface' | 'selected-span'
   /** Optional durability checkpoint after a successfully closed bracket. */
@@ -227,13 +228,13 @@ export async function compactSurfaceRegion(
     if (entryState.openTurn === null) {
       throw new Error('compactRegion: no open turn — automatic compaction events must be enclosed in a turn')
     }
-    if (entryState.automaticCompactionBlocked) {
+    if (options.owner === 'current-turn' && entryState.automaticCompactionBlocked) {
       throw new Error('automatic compaction requires a new assistant response after the previous compaction')
     }
     owner = entryState.openTurn
   }
 
-  const compactionId = CompactionId(randomUUID())
+  const compactionId = brandString<CompactionId>(randomUUID())
   const lifecycle = {
     compactionId,
     ...options.sourceCommandId === undefined ? {} : { sourceCommandId: options.sourceCommandId },

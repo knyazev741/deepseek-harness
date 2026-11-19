@@ -53,14 +53,17 @@
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
     "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-client-test-runtime": "workspace:*",
-    "@knyazevai/dsh-host-webserver": "workspace:*"
+    "@knyazevai/dsh-client-config": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
     "lib/protocol.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "dependencies": {
     "@knyazevai/dsh-util-crypto": "workspace:*",

@@ -1,3 +1,4 @@
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,11 +9,14 @@ import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AgentRegistry from '@knyazevai/dsh-agent'
 import type { Agent } from '@knyazevai/dsh-agent'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SystemPrompt, { renderPrompt } from '@knyazevai/dsh-system-prompt'
-import ToolRegistry, { defineContentToolFixture } from '@knyazevai/dsh-tools'
+import ToolRegistry from '@knyazevai/dsh-tools'
+import { defineContentToolFixture } from '@knyazevai/dsh-tool-testkit'
 import { FILE_REFERENCE_PROMPT } from '@knyazevai/dsh-file-reference'
-import LocalFileReferenceService, { WorkspaceFileSearch } from '../src/index.ts'
+import LocalFileReferenceService from '../src/index.ts'
+import { WorkspaceFileSearch } from '../src/search.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const roots: string[] = []
 
@@ -26,9 +30,10 @@ async function harness(): Promise<Context> {
   await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt, { personaPrefix: '' })
   await ctx.plugin(ToolRegistry)
+  await ctx.plugin(SessionProjectionRegistry)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(LocalFileSystem)
-  await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(WorkingDirectory)
   return ctx
 }
@@ -41,7 +46,7 @@ async function stubAgent(
   const root = await mkdtemp(join(tmpdir(), 'dsh-file-reference-service-'))
   roots.push(root)
   await writeFile(join(root, 'README.md'), 'readme')
-  const session = ctx.sessions.create(SessionId(id), { meta: includeCwd ? { cwd: root } : {} })
+  const session = ctx.sessions.create(brandString<SessionId>(id), { meta: includeCwd ? { cwd: root } : {} })
   const agent = {
     id: session.id,
     options: {},
@@ -64,6 +69,7 @@ describe('LocalFileReferenceService', () => {
   it('defers guidance until optional prompt and tool services become available', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     ctx.provide('workingDirectory', { ensure: vi.fn<WorkingDirectory['ensure']>() })
     await ctx.plugin(LocalFileReferenceService)
@@ -73,6 +79,7 @@ describe('LocalFileReferenceService', () => {
       expect(ctx.agents.get(agent.id)).toBe(agent)
       await ctx.plugin(SystemPrompt, { personaPrefix: '' })
       await ctx.plugin(ToolRegistry)
+      await ctx.plugin(NativeToolExecutor)
       ctx.tools.register(defineContentToolFixture({
         name: 'read', description: 'read a file', parameters: {}, execute: () => Promise.resolve([]),
       }))
@@ -137,7 +144,7 @@ describe('LocalFileReferenceService', () => {
     expect(invalidate).toHaveBeenCalledOnce()
     ctx.emit('session/event', agent.session, { type: 'assistant/message', seq: 0, data: {} } as never)
     expect(invalidate).toHaveBeenCalledOnce()
-    const orphan = ctx.sessions.create(SessionId('file-reference-orphan'))
+    const orphan = ctx.sessions.create(brandString<SessionId>('file-reference-orphan'))
     ctx.emit('session/event', orphan, { type: 'tool/result', seq: 0, data: {} } as never)
     expect(invalidate).toHaveBeenCalledOnce()
 

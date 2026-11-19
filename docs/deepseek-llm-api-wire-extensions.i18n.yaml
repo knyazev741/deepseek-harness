@@ -9,8 +9,8 @@
   en: 1da81051addc4b47
   zh: 3e8d7cd3f8c1cdba
 /official-deepseek-llm-api-wire-extensions/request-headers:
-  en: 740e92e903ecb594
-  zh: f934d3c9e5c56bfe
+  en: a55fbcd176b7a7a7
+  zh: ed8b10f6e840cc44
 /official-deepseek-llm-api-wire-extensions/body-extension-transaction:
   en: 48001cfd1281a23b
   zh: d410530ae8aa2823
@@ -18,8 +18,8 @@
   en: 20185945825f0811
   zh: eaea893aa4ffb6a7
 /official-deepseek-llm-api-wire-extensions/dsh-session-log:
-  en: bba383650f1fbd71
-  zh: 585461c4072f69f4
+  en: 614823cc67caed1d
+  zh: 68c0d724e520a918
 /official-deepseek-llm-api-wire-extensions/dsh-session-log/wire-session-header:
   en: ccd8fcd773df21c4
   zh: 7ea020068ad093ae

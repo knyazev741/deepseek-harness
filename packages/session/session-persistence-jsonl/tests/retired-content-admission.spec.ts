@@ -1,6 +1,6 @@
 /** Interpreted retired content must fail before migration publication or recoverable native-tail suppression. */
 import { Context } from '@deepseek-ai/cordis'
-import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 import { SessionFormatUnsupportedError, SessionPersistenceCorruptionError } from '@knyazevai/dsh-session-persistence'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
@@ -9,8 +9,9 @@ import { basename, dirname, join } from 'node:path'
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { generationLogPath } from '../src/format.ts'
 import { compressZstdFrame } from '../src/zstd.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
-const id = SessionId('retired-content-admission')
+const id = brandString<SessionId>('retired-content-admission')
 const wrapper = { type: 'tool-result', toolCallId: 'retired-call', content: [{ type: 'text', text: 'result' }] }
 const modes = (['none', 'zstd'] as const).flatMap(compression =>
   (['read', 'write'] as const).map(access => ({ compression, access })))

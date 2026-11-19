@@ -9,12 +9,13 @@ import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import { createUserMessage } from '@knyazevai/dsh-llm'
 import { DeepSeekAdapter, resolveAdapterOptions } from '@knyazevai/dsh-llm-deepseek'
-import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import * as SubagentSpawn from '@knyazevai/dsh-subagent-spawn-in-process'
 import { end, MODEL, server, sse, start } from '../../../llm/llm-deepseek/tests/helpers.ts'
 import SubagentRuntime, { type SubagentRunEndInfo } from '../src/index.ts'
 import { loadStoredSession } from './persistence-helpers.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 it('continues the parent through default Messages after a reasoning-bearing continuable child settles', async () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-settlement-messages-'))
@@ -49,7 +50,7 @@ it('continues the parent through default Messages after a reasoning-bearing cont
     await ctx.plugin(SubagentRuntime)
     await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
     ctx.llm.registerAdapter(['deepseek-official'], adapter)
-    const parent = await ctx.agentLoop.create(SessionId('parent'), { provider: 'deepseek-official', model: MODEL })
+    const parent = await ctx.agentLoop.create(brandString<SessionId>('parent'), { provider: 'deepseek-official', model: MODEL })
     const ends: SubagentRunEndInfo[] = []
     const settled = Promise.withResolvers<undefined>()
     ctx.on('subagent/end', (info) => {
@@ -61,7 +62,7 @@ it('continues the parent through default Messages after a reasoning-bearing cont
       delivery: 'parent',
       provider: 'spawn',
       label: 'child task',
-      request: { parent, prompt: [{ type: 'text', text: 'child task' }] },
+      parent, prompt: [{ type: 'text', text: 'child task' }],
       signal: new AbortController().signal,
     })
     await settled.promise
@@ -79,17 +80,20 @@ it('continues the parent through default Messages after a reasoning-bearing cont
     expect(requests.map(request => request.path)).toEqual(['/anthropic/v1/messages', '/anthropic/v1/messages'])
     const notice = parent.session.deriveMessages().find(message => message.source.kind === 'subagent-settled')
     const closingContent = [
-      { type: 'text', text: `Background subagent ${started.childId} finished and will do no further work unless you send it more.` },
+      { type: 'text', text: 'Background subagent agent-1 finished and will do no further work unless you send it more.' },
       { type: 'text', text: 'Its closing message:' },
       { type: 'text', text: 'child answer' },
     ]
     expect(notice?.content).toEqual(closingContent)
+    expect(notice?.source).toMatchObject({
+      stopReason: 'completed', senderSessionId: started.childId,
+    })
     const noticeWithContext = [
       ...closingContent,
       {
         type: 'text',
-        text: 'Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\n'
-          + `Current working directory: ${JSON.stringify(process.cwd())}.`,
+        text: '<system-reminder>\nThe following information describes your current session:\n\n'
+          + `Current working directory: ${JSON.stringify(process.cwd())}.\n</system-reminder>`,
       },
     ]
     expect(requests[1]?.body).toMatchObject({ messages: [{ role: 'user', content: noticeWithContext }] })

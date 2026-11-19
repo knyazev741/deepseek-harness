@@ -26,6 +26,9 @@
             disabled: !!js process.platform !== 'win32'
           - id: tool-fs
             name: '@knyazevai/dsh-tool-fs'
+            config:
+              # Set false to drop the apply_patch tool beside edit.
+              applyPatch: false
           - id: tool-fs-search
             name: '@knyazevai/dsh-tool-fs-search'
             config:
@@ -36,6 +39,9 @@
             name: '@knyazevai/dsh-tool-schedule'
           - id: skill-filesystem
             name: '@knyazevai/dsh-skill-filesystem'
+            config:
+              customSkillDirs:
+                - !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@knyazevai/dsh-agent-preset/package.json')), 'skills')
           - id: tool-skill
             name: '@knyazevai/dsh-tool-skill'
           - id: command-goal
@@ -110,14 +116,15 @@
             config:
               - id: tool-subagent-control
                 name: '@knyazevai/dsh-tool-subagent-control'
-              - id: tool-subagent-list-agents
-                name: '@knyazevai/dsh-tool-subagent-control/list-agents'
+                config:
+                  interrupt: false
               - id: tool-subagent
                 name: '@knyazevai/dsh-tool-subagent'
                 config:
                   provider: spawn
                   toolName: subagent
-                  modelSelectionSettings: true
+                  modelSelection: true
+                  modelDiscovery: true
               - id: tool-subagent-fork
                 name: '@knyazevai/dsh-tool-subagent'
                 config:
@@ -140,11 +147,15 @@
             config:
               fetch: true
               searchTimeoutMs: 60000
+          - id: tool-cordis
+            name: '@knyazevai/dsh-tool-cordis'
           - id: present
             name: '@knyazevai/dsh-tool-present'
+          - id: tool-office
+            name: '@knyazevai/dsh-tool-office'
           - id: tool-plugin-manager
             name: '@knyazevai/dsh-plugin-manager/tools'
-            disabled: true
+            disabled: !!js "!ctx.get('profileContext')"
           - id: tool-plugin-market
             name: '@knyazevai/dsh-plugin-market/tools'
             disabled: true

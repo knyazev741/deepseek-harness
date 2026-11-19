@@ -5,11 +5,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Webhooks } from '@octokit/webhooks'
 import type { CredentialRef } from '@knyazevai/dsh-credentials'
 import { snapshotJsonValue } from '@knyazevai/dsh-util-values'
-import {
+import { brandString } from '@knyazevai/dsh-brand'
+import type {
   WebhookDeliveryId,
   WebhookSourceId,
-  type VerifiedWebhookDelivery,
-} from '@knyazevai/dsh-webhook'
+  VerifiedWebhookDelivery,
+} from '@knyazevai/dsh-webhook/types'
+import type {} from '@knyazevai/dsh-webhook'
 import type { WebRoute } from '@knyazevai/dsh-host-webserver'
 import { readBoundedUtf8Body, WebhookHttpError } from './body.ts'
 import type { GitHubJsonObject } from './types.ts'
@@ -99,15 +101,15 @@ export function createGitHubWebhookHandler(
       let verified = false
       try {
         verified = await new Webhooks({ secret: credential.value }).verify(body, signature)
-      } catch {
+      } catch (_verificationFailed) {
         // Octokit verification errors carry no response detail safe or useful to the sender.
       }
       if (!verified) throw new WebhookHttpError(401, 'invalid webhook signature')
       const payload = parsePayload(body)
       const delivery: VerifiedWebhookDelivery<'github'> = {
         kind: 'github',
-        source: WebhookSourceId(config.source),
-        deliveryId: WebhookDeliveryId(deliveryId),
+        source: brandString<WebhookSourceId>(config.source),
+        deliveryId: brandString<WebhookDeliveryId>(deliveryId),
         event: { name: eventName, payload },
         receivedAt: Date.now(),
       }

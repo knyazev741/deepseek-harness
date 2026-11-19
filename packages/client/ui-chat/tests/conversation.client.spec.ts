@@ -1,7 +1,8 @@
 /** Chat-owned event-to-view projection. */
 
 import { describe, expect, it } from 'vitest'
-import { AttachmentId } from '@knyazevai/dsh-attachment'
+import type { AttachmentId } from '@knyazevai/dsh-attachment/types'
+import { brandString } from '@knyazevai/dsh-brand'
 import type { ContentBlock } from '@knyazevai/dsh-api-remotes/client'
 import {
   displayFailure, emptyAssistantBlock, toAssistantBlock, toAssistantBlocks,
@@ -11,7 +12,7 @@ import {
 describe('toAssistantBlock', () => {
   it('classifies the four block shapes', () => {
     const attachment = {
-      attachmentId: AttachmentId(`sha256:${'a'.repeat(64)}`),
+      attachmentId: brandString<AttachmentId>(`sha256:${'a'.repeat(64)}`),
       mediaType: 'image/png' as const,
       bytes: 68,
       width: 1,

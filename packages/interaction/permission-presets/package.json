@@ -43,13 +43,18 @@
     "lib/index.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
-    "lib/typert.remote-client.d.ts"
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
+    "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-shell": "workspace:*",
     "@knyazevai/dsh-commands": "workspace:*",
     "@knyazevai/dsh-sandbox": "workspace:*",
@@ -62,10 +67,12 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
+    "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-shell": "workspace:*",
     "@knyazevai/dsh-commands": "workspace:*",
     "@knyazevai/dsh-sandbox": "workspace:*",
@@ -75,6 +82,7 @@
     "@knyazevai/dsh-typert-protocol": "workspace:*",
     "@knyazevai/dsh-user-approval": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-settings": "workspace:*"
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*"
   }
 }

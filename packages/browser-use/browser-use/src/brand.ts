@@ -1,4 +1,4 @@
-/** Browser-use provider identities. @module @knyazevai/dsh-browser-use/brand */
+/** Browser-use provider identities. @module @knyazevai/dsh-browser-use/src/brand.ts */
 
 import type { Branded } from '@knyazevai/dsh-brand'
 

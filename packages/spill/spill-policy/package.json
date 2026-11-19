@@ -30,7 +30,10 @@
     "locale/*.json",
     "lib/index.js",
     "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -48,12 +51,14 @@
     "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-ptc-runtime-node": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-output-retention": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-spill": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-fs-local": "workspace:*",
@@ -69,6 +74,8 @@
     "@knyazevai/dsh-llm-deepseek": "workspace:*",
     "@knyazevai/dsh-ptc-runtime": "workspace:*",
     "@knyazevai/dsh-attachment-local": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
     "@knyazevai/dsh-tool-fs": "workspace:*",
     "sharp": "0.35.5",
     "@knyazevai/dsh-agent-loop-testkit": "workspace:*"

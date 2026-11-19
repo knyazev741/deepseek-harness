@@ -4,10 +4,10 @@ import type { Context } from '@deepseek-ai/cordis'
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import { brandString } from '@knyazevai/dsh-brand'
-import type { ModelSelection } from '@knyazevai/dsh-agent'
+import type { AgentOptions } from '@knyazevai/dsh-agent'
 import type {} from '@knyazevai/dsh-agent-default-model'
 import type {} from '@knyazevai/dsh-agent-preset-registry'
-import { boundContextSummary, createUserMessage, errorChain, type LlmCallConfig } from '@knyazevai/dsh-llm'
+import { boundContextSummary, createUserMessage, errorChain } from '@knyazevai/dsh-llm'
 import type {} from '@knyazevai/dsh-permission-presets'
 import type { SessionId } from '@knyazevai/dsh-session'
 import type {} from '@knyazevai/dsh-session-title'
@@ -22,12 +22,7 @@ interface ResolvedWebhookSessionRequest {
   readonly prompt: string
   readonly agentPreset: string
   readonly permissionPreset: string
-  readonly modelSelection: ModelSelection
-  readonly agentOptions: {
-    readonly provider: string
-    readonly model: string
-    readonly maxTokens?: number
-  }
+  readonly agentOptions: AgentOptions
 }
 
 /** Require one non-empty string field from an untyped rule result. */
@@ -58,12 +53,9 @@ function resolveRequest(ctx: Context, input: WebhookSessionRequest): ResolvedWeb
   if (model !== undefined && (model === null || typeof model !== 'object' || Array.isArray(model))) {
     throw new TypeError('webhook Session request model must be an object')
   }
-  let agentOptions: ResolvedWebhookSessionRequest['agentOptions']
-  let modelSelection: ModelSelection
+  let agentOptions: AgentOptions
   if (model === undefined) {
-    const selected = ctx.agentDefaultModel.currentSelection()
-    agentOptions = { provider: selected.provider, model: selected.model }
-    modelSelection = { ...selected }
+    agentOptions = { ...ctx.agentDefaultModel.currentSelection() }
   } else {
     const modelRecord = model as Record<string, unknown>
     const provider = requiredString(modelRecord, 'provider')
@@ -78,29 +70,13 @@ function resolveRequest(ctx: Context, input: WebhookSessionRequest): ResolvedWeb
       model: modelId,
       ...(maxTokens === undefined ? {} : { maxTokens }),
     }
-    modelSelection = { provider, model: modelId }
   }
-  return { workspacePath, title, prompt, agentPreset, permissionPreset, modelSelection, agentOptions }
+  return { workspacePath, title, prompt, agentPreset, permissionPreset, agentOptions }
 }
 
 /** Log a rollback failure without replacing the operation's original failure. */
 function reportRollbackFailure(ctx: Context, subject: string, error: unknown): void {
   ctx.logger.warn(`webhook: ${subject} rollback failed: ${errorChain(error)}`)
-}
-
-/** Apply the creation-time selection until its first durable request header exists. */
-function installInitialModelSelection(agentCtx: Context, selection: ModelSelection): void {
-  agentCtx.on('agent/request', async ({ agent }, next): Promise<LlmCallConfig> => {
-    const resolved = await next()
-    if (agent.session.requestHeader() !== undefined
-      || resolved.provider !== selection.provider
-      || resolved.model !== selection.model) return resolved
-    const { reasoningEffort: _inheritedEffort, ...withoutInheritedEffort } = resolved
-    return {
-      ...withoutInheritedEffort,
-      ...selection.reasoningEffort === undefined ? {} : { reasoningEffort: selection.reasoningEffort },
-    }
-  })
 }
 
 /**
@@ -138,7 +114,6 @@ export async function createWebhookSession(
     agentOptions: resolved.agentOptions,
     setup: async (agentCtx) => {
       await ctx.agentPresets.mount(agentCtx, preset.id)
-      installInitialModelSelection(agentCtx, resolved.modelSelection)
     },
   })
 

@@ -1,0 +1,179 @@
+{
+  "name": "@knyazevai/dsh-experimental-liveshare",
+  "description": "Opt-in LiveShare host bundle: share a Session through a separate Relay at the view or bounded-write tier, with forking and attachment uploads as independent switches",
+  "version": "0.2.6",
+  "icon": "./icon.svg",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/liveshare"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./typert": {
+      "types": "./lib/typert.host.d.ts",
+      "default": "./lib/typert.host.js"
+    },
+    "./remote": {
+      "types": "./lib/typert.remote-client.d.ts",
+      "default": "./lib/typert.remote-client.js"
+    },
+    "./types": {
+      "types": "./lib/types/share-api-types.d.ts"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "icon.svg",
+    "locale/*.json",
+    "lib/index.js",
+    "lib/client.js",
+    "cordis.patch.yml",
+    "lib/owner-gateway/cli.js",
+    "lib/retry-backoff-*.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "lib/typert.host.js",
+    "lib/typert.host.d.ts",
+    "lib/typert.remote-client.js",
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
+  ],
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@knyazevai/dsh-atomic-write": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-experimental-liveshare-protocol": "workspace:*",
+    "@knyazevai/dsh-http-proxy": "workspace:*",
+    "@knyazevai/dsh-official-bundles": "workspace:*",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "undici": "8.11.2",
+    "ws": "^8.18.3",
+    "zod": "4.6.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
+  },
+  "devDependencies": {
+    "@knyazevai/dsh-session": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-api-gateway": "workspace:*",
+    "@knyazevai/dsh-api-remote-access": "workspace:*",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-api-settings-controller": "workspace:*",
+    "@knyazevai/dsh-api-workspace-controller": "workspace:*",
+    "@knyazevai/dsh-api-workspace-files": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-client-file-upload": "workspace:*",
+    "@knyazevai/dsh-client-hmr": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-modules": "workspace:*",
+    "@knyazevai/dsh-client-resources": "workspace:*",
+    "@knyazevai/dsh-client-shortcuts": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-agent-preset": "workspace:*",
+    "@knyazevai/dsh-client-ui-approval": "workspace:*",
+    "@knyazevai/dsh-client-ui-attachment": "workspace:*",
+    "@knyazevai/dsh-client-ui-brand-official": "workspace:*",
+    "@knyazevai/dsh-client-ui-chat": "workspace:*",
+    "@knyazevai/dsh-client-ui-commands": "workspace:*",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-deliverables": "workspace:*",
+    "@knyazevai/dsh-client-ui-input-trigger": "workspace:*",
+    "@knyazevai/dsh-client-ui-jobs": "workspace:*",
+    "@knyazevai/dsh-client-ui-layout": "workspace:*",
+    "@knyazevai/dsh-client-ui-plan": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-reference": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-status": "workspace:*",
+    "@knyazevai/dsh-client-ui-settings": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-subagent": "workspace:*",
+    "@knyazevai/dsh-client-ui-theme": "workspace:*",
+    "@knyazevai/dsh-client-ui-tool": "workspace:*",
+    "@knyazevai/dsh-client-ui-trajectory": "workspace:*",
+    "@knyazevai/dsh-client-ui-user-questions": "workspace:*",
+    "@knyazevai/dsh-client-ui-workflow-run": "workspace:*",
+    "@knyazevai/dsh-client-ui-workspace": "workspace:*",
+    "@knyazevai/dsh-client-web": "workspace:*",
+    "@knyazevai/dsh-cua": "workspace:*",
+    "@knyazevai/dsh-experimental-api-speech-to-text": "workspace:*",
+    "@knyazevai/dsh-experimental-claude-code-mods": "workspace:*",
+    "@knyazevai/dsh-experimental-client-ui-cot-translation": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-fs-observation-policy": "workspace:*",
+    "@knyazevai/dsh-fs-sandbox": "workspace:*",
+    "@knyazevai/dsh-host-webserver": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-sandbox": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-fs": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-typert-registry": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@types/ws": "^8.18.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@knyazevai/dsh-error": "workspace:*"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml",
+      "listedByDefault": false
+    },
+    "client": {
+      "inject": [
+        "@knyazevai/dsh-api-remote-access",
+        "@knyazevai/dsh-api-remotes",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-primitives",
+        "@knyazevai/dsh-client-ui-renderer",
+        "@knyazevai/dsh-client-ui-session"
+      ],
+      "platform": "web"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

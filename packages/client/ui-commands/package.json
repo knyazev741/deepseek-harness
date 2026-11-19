@@ -46,6 +46,7 @@
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-api-remotes": "workspace:*",
     "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
@@ -63,12 +64,16 @@
     "@knyazevai/dsh-util-values": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
-    "clsx": "^2.0.0"
+    "clsx": "^2.0.0",
+    "@knyazevai/dsh-util-text-search": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

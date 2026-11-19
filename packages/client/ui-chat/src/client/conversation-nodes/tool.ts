@@ -4,7 +4,7 @@ import type {
   ToolCallBlock, ToolResultNode,
 } from '@knyazevai/dsh-client-ui-conversation/client'
 import { isAppendSurfaceEvent } from '@knyazevai/dsh-session/surface'
-import type {} from '@knyazevai/dsh-tools/types'
+import type {} from '@knyazevai/dsh-tool-executor-ptc/client'
 import { PartialArguments } from '@knyazevai/dsh-util-values'
 import type { ChatNode, ToolChatData } from '../contract/chat-nodes.ts'
 import { CHAT_SYNTHETIC_SEQ_OFFSETS, chatNode, contextLocation } from './common.ts'

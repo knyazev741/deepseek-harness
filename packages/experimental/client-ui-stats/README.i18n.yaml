@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/client-ui-stats/README.md
+/:
+  en: db1b5b42664d338d
+  zh: 6985139d86d1b08f
+/knyazevai-dsh-experimental-client-ui-stats:
+  en: 1d1d18af18167cdb
+  zh: d1f3b3e29d8f901b
+/knyazevai-dsh-experimental-client-ui-stats/summary:
+  en: cd8563fb8d8a9a3f
+  zh: a5fd771cabccedd7
+/knyazevai-dsh-experimental-client-ui-stats/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-experimental-client-ui-stats/use-this-package:
+  en: 0fde622d41dedcbf
+  zh: a5d6e96e732f81ce
+/knyazevai-dsh-experimental-client-ui-stats/use-this-package/when-to-choose-it:
+  en: 17633de83d3021aa
+  zh: ba5e6ebe64337d12
+/knyazevai-dsh-experimental-client-ui-stats/use-this-package/minimal-configuration:
+  en: e001601f2f9779b1
+  zh: 077d3703b8c82774
+/knyazevai-dsh-experimental-client-ui-stats/understand-the-implementation:
+  en: 7e560f4017eed7a8
+  zh: ea7d8b4c0f938dab
+/knyazevai-dsh-experimental-client-ui-stats/further-exploration:
+  en: a4bd5b3d6e77706a
+  zh: 1ba8d7220d7fae01
+/knyazevai-dsh-experimental-client-ui-stats/model-experience:
+  en: 9cc467886fff1f2d
+  zh: 4b10d95f64769bad
+/knyazevai-dsh-experimental-client-ui-stats/model-experience/kv-cache-effect:
+  en: 7605bb868f93b4a8
+  zh: 184ca10ce6680499
+/knyazevai-dsh-experimental-client-ui-stats/known-limitations-and-deferred-work:
+  en: 8ee24151d79ad6b5
+  zh: a5c04eb69a9c2e3c
+/knyazevai-dsh-experimental-client-ui-stats/known-limitations-and-deferred-work/dev-note:
+  en: 458d3696d23ac5dd
+  zh: 0133d47264320c29

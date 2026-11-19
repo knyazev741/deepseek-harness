@@ -12,6 +12,7 @@ import * as ToolBash from '@knyazevai/dsh-tool-bash'
 import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
 import SubagentRuntime from '@knyazevai/dsh-subagent'
 import * as Spawn from '../src/index.ts'
+import DeepSeekAuth from '@knyazevai/dsh-deepseek-auth'
 import * as ToolSubagent from '@knyazevai/dsh-tool-subagent'
 
 /**
@@ -32,6 +33,7 @@ export async function spawnHarness(workdir: string): Promise<Context> {
     systemPrompt: { personaPrefix: 'You are a coding agent. Report only when the requested work is done.' },
   })
   await ctx.plugin(AgentLoop, { agents: [] })
+  await ctx.plugin(DeepSeekAuth)
   await ctx.plugin(LlmDeepSeek)
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(BashEnvPlugin)
@@ -49,5 +51,5 @@ export async function spawnHarness(workdir: string): Promise<Context> {
 export async function waitForIdle(ctx: Context, agent: Agent): Promise<void> {
   do {
     await agent.whenIdle()
-  } while (await ctx.subagents.waitForChildren(agent))
+  } while (await ctx.subagents.waitForTreeWork(agent))
 }

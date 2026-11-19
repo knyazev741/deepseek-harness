@@ -6,12 +6,14 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import LlmRuntime, { createUserMessage, LlmAdapter, ReasoningEffortId } from '@knyazevai/dsh-llm'
+import LlmRuntime, { createUserMessage, LlmAdapter, type ReasoningEffortId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
 import type { GenerateOptions, LlmCallConfig, StreamChunk } from '@knyazevai/dsh-llm'
 import * as LlmPiAi from '@knyazevai/dsh-llm-pi-ai'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import type { Session, SessionSeq } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import AgentRegistry from '@knyazevai/dsh-agent'
 import SessionTitleService from '@knyazevai/dsh-session-title'
 import * as providerPlugin from '@knyazevai/dsh-session-title-first-prompt-llm'
 import { anthropicTextEvents, closeMockServers, mockServer } from '../../../llm/llm-pi-ai/tests/mock-server.ts'
@@ -56,6 +58,7 @@ async function loadComposition(
     "- name: '@knyazevai/dsh-llm'",
     "- name: '@knyazevai/dsh-session'",
     "- name: '@knyazevai/dsh-session-projection'",
+    "- name: '@knyazevai/dsh-agent'",
     "- name: '@knyazevai/dsh-session-title'",
     '  config:',
     '    fallbackMaxWords: 5',
@@ -78,6 +81,7 @@ async function loadComposition(
     ['@knyazevai/dsh-llm', LlmRuntime],
     ['@knyazevai/dsh-session', SessionStore],
     ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+    ['@knyazevai/dsh-agent', AgentRegistry],
     ['@knyazevai/dsh-session-title', SessionTitleService],
     ['@knyazevai/dsh-session-title-first-prompt-llm', providerPlugin],
     ...entryModules,
@@ -109,7 +113,7 @@ async function promptThenRequest(
   id: string,
   config: LlmCallConfig,
 ): Promise<{ session: Session; messageSeq: SessionSeq }> {
-  const session = ctx.sessions.create(SessionId(id))
+  const session = ctx.sessions.create(brandString<SessionId>(id))
   session.append('turn/start', {
     turn: 1,
   })
@@ -185,7 +189,7 @@ describe('session-title Loader composition', () => {
     const { session, messageSeq } = await promptThenRequest(ctx, 'pi-ai-title', {
       provider: 'gateway',
       model: 'adaptive-model',
-      reasoningEffort: ReasoningEffortId('max'),
+      reasoningEffort: brandString<ReasoningEffortId>('max'),
     })
     await vi.waitFor(() => {
       expect(ctx.sessionTitle.get(session)?.source.kind).toBe('provider')

@@ -1,0 +1,84 @@
+{
+  "name": "@knyazevai/dsh-experimental-client-ui-stats",
+  "description": "Per-turn and per-step context, timing, cache, and tool-cost table contributed as an experimental conversation View",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/client-ui-stats"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@knyazevai/dsh-api-session-controller",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-renderer"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-agent-team": "workspace:*",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-llm-retry": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@testing-library/react": "^16.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@knyazevai/dsh-compaction": "workspace:*",
+    "@knyazevai/dsh-session-stats": "workspace:*",
+    "@knyazevai/dsh-token-meter": "workspace:*",
+    "@knyazevai/dsh-user-approval": "workspace:*"
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ]
+}

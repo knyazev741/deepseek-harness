@@ -1,3 +1,4 @@
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,11 +11,12 @@ import AgentRegistry from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import LlmRuntime, { createUserMessage, LlmAdapter, LlmError, resolveRetryPolicy  } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, ResolvedRetryPolicy, StreamChunk } from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
 import * as retry from '../src/index.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 let root: string | undefined
 let context: Context | undefined
@@ -62,8 +64,10 @@ async function loadYaml(lines: readonly string[]): Promise<Context> {
     ['@knyazevai/dsh-llm', LlmRuntime],
     ['@knyazevai/dsh-session', SessionStore],
     ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+
     ['@knyazevai/dsh-system-prompt', SystemPrompt],
     ['@knyazevai/dsh-tools', ToolRuntime],
+    ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
     ['@knyazevai/dsh-agent', AgentRegistry],
     ['@knyazevai/dsh-llm-retry', retry],
     ['@knyazevai/dsh-agent-loop', AgentLoop],
@@ -94,6 +98,7 @@ describe('real Loader composition', () => {
       "- name: '@knyazevai/dsh-session-projection'",
       "- name: '@knyazevai/dsh-system-prompt'",
       "- name: '@knyazevai/dsh-tools'",
+      "- name: '@knyazevai/dsh-tool-executor-native'",
       "- name: '@knyazevai/dsh-agent'",
       "- name: '@knyazevai/dsh-llm-retry'",
       "- name: '@knyazevai/dsh-agent-loop'",
@@ -107,7 +112,7 @@ describe('real Loader composition', () => {
 
     const adapter = new TransientOnceAdapter()
     loaded.llm.registerAdapter(['mock'], adapter)
-    const agent = await loaded.agentLoop.create(SessionId('loader-retry'), { provider: 'mock', model: 'mock' })
+    const agent = await loaded.agentLoop.create(brandString<SessionId>('loader-retry'), { provider: 'mock', model: 'mock' })
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'recover' }], source: { kind: 'user' } }))
     await agent.whenIdle()
 

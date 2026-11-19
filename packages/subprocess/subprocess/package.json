@@ -28,16 +28,21 @@
   "files": [
     "lib/index.js",
     "lib/control.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-http-proxy": "workspace:*"
+    "@knyazevai/dsh-http-proxy": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-http-proxy": "workspace:*",
-    "@knyazevai/dsh-launch-environment": "workspace:*"
+    "@knyazevai/dsh-launch-environment": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
   }
 }

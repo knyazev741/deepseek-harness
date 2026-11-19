@@ -1,0 +1,40 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-agent-team/README.md
+/:
+  en: 7dc6eba0f4471f92
+  zh: 9fdf11a94995a75d
+/knyazevai-dsh-client-ui-agent-team:
+  en: 9f6e7acf7fba5c30
+  zh: df6b3f345adf0094
+/knyazevai-dsh-client-ui-agent-team/summary:
+  en: f856eb1b0b6645d1
+  zh: 91fa3b344ec21e66
+/knyazevai-dsh-client-ui-agent-team/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/knyazevai-dsh-client-ui-agent-team/use-this-package:
+  en: 8a132e3052543d8e
+  zh: b51b602604796800
+/knyazevai-dsh-client-ui-agent-team/use-this-package/inspect-the-task-board:
+  en: 49312c9357e23060
+  zh: ce1a9b52667977e8
+/knyazevai-dsh-client-ui-agent-team/understand-the-implementation:
+  en: 34ad591d4c206d69
+  zh: 0f6796c19f4ebfb8
+/knyazevai-dsh-client-ui-agent-team/further-exploration:
+  en: 5bc48efe19557367
+  zh: c00e5e1a75d0afa8
+/knyazevai-dsh-client-ui-agent-team/model-experience:
+  en: 47ebeba07d72759d
+  zh: 8fe8133f6dd845a9
+/knyazevai-dsh-client-ui-agent-team/model-experience/kv-cache-effect:
+  en: b51b320f5e4dacfc
+  zh: 6695947c3f9fed28
+/knyazevai-dsh-client-ui-agent-team/known-limitations-and-deferred-work:
+  en: 8be0a045f2f42e9e
+  zh: 36f98d5cc1189f7a
+/knyazevai-dsh-client-ui-agent-team/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

@@ -1,4 +1,4 @@
-/** User control for model-selectable subagent delegation in new sessions. */
+/** User control for model-selectable subagent delegation in every session. */
 
 import { Switch } from '@knyazevai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@knyazevai/dsh-client-ui-slots'

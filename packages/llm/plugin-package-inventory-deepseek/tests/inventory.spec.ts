@@ -7,13 +7,14 @@ import { Context, LoggerLevel } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
-import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import { createScope } from '@knyazevai/dsh-scope'
 import AgentPresets from '@knyazevai/dsh-agent-preset-registry'
 import { PluginPackages } from '@knyazevai/dsh-app-boot'
 import DeepSeekLlmApiExtensionRegistry from '@knyazevai/dsh-deepseek-llm-api-extensions'
 import * as PluginInventory from '../src/index.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const contexts: Context[] = []
 const roots: string[] = []
@@ -48,8 +49,8 @@ async function harness(
   await ctx.plugin(Loader)
   if (packageService) await ctx.plugin(PluginPackages)
   ctx.loader.builtins.include = Include
-  await ctx.plugin(AgentRegistry)
   await ctx.plugin(SessionProjectionRegistry)
+  await ctx.plugin(AgentRegistry)
   await ctx.plugin(AgentPresets, { default: 'fixture' })
   await ctx.plugin(DeepSeekLlmApiExtensionRegistry)
   const inventory = enabled === undefined
@@ -192,7 +193,7 @@ describe('DeepSeek plugin package inventory', () => {
     const missing = await ctx.deepseekLlmApiExtensions.prepare({ body: { messages: [] }, signal: SIGNAL, sessionId: 'missing' })
     expect(missing.fields.dsh_plugin_packages?.packages).toEqual([{ name: 'host-only', version: '3.0.0' }])
 
-    const id = SessionId('bare-agent')
+    const id = brandString<SessionId>('bare-agent')
     const agentScope = createScope(ctx, {})
     await ctx.agents.register({ id, ctx: agentScope.ctx, session: { id } } as unknown as Agent)
     const bare = await ctx.deepseekLlmApiExtensions.prepare({ body: { messages: [] }, signal: SIGNAL, sessionId: id })
@@ -260,6 +261,7 @@ describe('DeepSeek plugin package inventory', () => {
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(Loader)
+    await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(DeepSeekLlmApiExtensionRegistry)
     await ctx.plugin(PluginInventory)
@@ -305,7 +307,7 @@ describe('DeepSeek plugin package inventory', () => {
     ] })
     const agentScope = createScope(ctx, {})
     await ctx.agentPresets.mount(agentScope.ctx)
-    const id = SessionId('preset-agent')
+    const id = brandString<SessionId>('preset-agent')
     const agent = { id, ctx: agentScope.ctx, session: { id } } as unknown as Agent
     await ctx.agents.register(agent)
     const modules = ctx.agentPresets.inspectCompositions(agentScope.ctx)

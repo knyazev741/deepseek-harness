@@ -1,5 +1,7 @@
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { provideWorkingDirectoryFixture, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
+import { unsupportedModel, provideWorkingDirectoryFixture, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -7,8 +9,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { ToolCallId } from '@knyazevai/dsh-llm'
-import { Session, SessionId } from '@knyazevai/dsh-session'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm'
+import { Session, type SessionId } from '@knyazevai/dsh-session'
 import AgentRegistry from '@knyazevai/dsh-agent'
 import type { Agent } from '@knyazevai/dsh-agent'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
@@ -40,10 +43,11 @@ class PassthroughSandbox extends SandboxProvider {
 
 async function agent(ctx: Context): Promise<Agent> {
   const scope = ctx.plugin(() => {})
-  const id = SessionId('pty-loader-agent')
+  const id = brandString<SessionId>('pty-loader-agent')
   const session = Session.create(id)
   const value: Agent = {
-    id, options: {}, session, inbox: unsupportedInbox(),
+    id, options: {}, session, model: unsupportedModel(),
+    inbox: unsupportedInbox(),
     status: 'idle',
     ctx: scope.ctx,
     send: () => {},
@@ -69,6 +73,7 @@ suite('terminal real Loader composition through cordis.yml', () => {
       "- name: '@knyazevai/dsh-agent'",
       "- name: '@knyazevai/dsh-system-prompt'",
       "- name: '@knyazevai/dsh-tools'",
+      "- name: '@knyazevai/dsh-tool-executor-native'",
       "- name: '@knyazevai/dsh-terminal'",
       "- name: '@knyazevai/dsh-test-sandbox'",
       "- name: '@knyazevai/dsh-session-projection'",
@@ -99,6 +104,7 @@ suite('terminal real Loader composition through cordis.yml', () => {
       ['@knyazevai/dsh-agent', AgentRegistry],
       ['@knyazevai/dsh-system-prompt', SystemPrompt],
       ['@knyazevai/dsh-tools', ToolRuntime],
+      ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
       ['@knyazevai/dsh-terminal', TerminalSessionService],
       ['@knyazevai/dsh-test-sandbox', PassthroughSandbox],
       ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
@@ -119,16 +125,16 @@ suite('terminal real Loader composition through cordis.yml', () => {
 
     const owner = await agent(context)
     const signal = new AbortController().signal
-    const spawn = await context.tools.execute({
-      signal, callId: ToolCallId('spawn'), name: 'terminal_open', arguments: { type: 'shell', name: 'main', cwd: root }, agent: owner,
+    const spawn = await executeToolFixture(context, {
+      signal, callId: brandString<ToolCallId>('spawn'), name: 'terminal_open', arguments: { type: 'shell', name: 'main', cwd: root }, agent: owner,
     })
     expect(resultText(spawn)).toContain('started terminal session pty-1 (main)')
 
-    await context.tools.execute({
-      signal, callId: ToolCallId('state'), name: 'terminal_send', arguments: { sessionId: 'pty-1', text: 'export KEEP=loader; cd /' }, agent: owner,
+    await executeToolFixture(context, {
+      signal, callId: brandString<ToolCallId>('state'), name: 'terminal_send', arguments: { sessionId: 'pty-1', text: 'export KEEP=loader; cd /' }, agent: owner,
     })
-    const read = await context.tools.execute({
-      signal, callId: ToolCallId('read'), name: 'terminal_send', arguments: { sessionId: 'pty-1', text: 'printf "cwd=%s keep=%s\\n" "$PWD" "$KEEP"' }, agent: owner,
+    const read = await executeToolFixture(context, {
+      signal, callId: brandString<ToolCallId>('read'), name: 'terminal_send', arguments: { sessionId: 'pty-1', text: 'printf "cwd=%s keep=%s\\n" "$PWD" "$KEEP"' }, agent: owner,
     })
     expect(resultText(read)).toContain('cwd=/ keep=loader')
     expect(context.terminals.list(owner)).toHaveLength(1)

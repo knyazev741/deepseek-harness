@@ -32,7 +32,10 @@
     "locale/model-selection-settings/*.json",
     "lib/index.js",
     "lib/model-selection-settings.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -40,8 +43,6 @@
     "@knyazevai/dsh-agent-preset-registry": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
-    "@knyazevai/dsh-session-projection": "workspace:*",
-    "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
@@ -53,8 +54,8 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "4.4.3"
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
@@ -62,12 +63,13 @@
     "@knyazevai/dsh-agent-preset-registry": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
-    "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-session-persistence": "workspace:*",
     "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-subagent-spawn-in-process": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-session-projection": "workspace:*"

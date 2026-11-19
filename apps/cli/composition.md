@@ -54,8 +54,10 @@ flowchart LR
   cfg --> plugin_dsh_base_settings
   plugin_dsh_base_authorization["authorization<br/>@knyazevai/dsh-authorization"]
   cfg --> plugin_dsh_base_authorization
-  plugin_dsh_base_deepseek_account["deepseek-account<br/>@knyazevai/dsh-deepseek-account-platform"]
+  plugin_dsh_base_deepseek_account["deepseek-account<br/>@knyazevai/dsh-deepseek-account"]
   cfg --> plugin_dsh_base_deepseek_account
+  plugin_dsh_base_deepseek_auth["deepseek-auth<br/>@knyazevai/dsh-deepseek-auth"]
+  cfg --> plugin_dsh_base_deepseek_auth
   plugin_dsh_base_credentials["credentials<br/>@knyazevai/dsh-credentials-local"]
   cfg --> plugin_dsh_base_credentials
   plugin_dsh_base_llm_pi_ai["llm-pi-ai<br/>@knyazevai/dsh-llm-pi-ai"]
@@ -68,8 +70,6 @@ flowchart LR
   cfg --> plugin_dsh_base_session_query_sqlite
   plugin_dsh_base_working_directory["working-directory<br/>@knyazevai/dsh-working-directory"]
   cfg --> plugin_dsh_base_working_directory
-  plugin_dsh_base_tool_working_directory["tool-working-directory<br/>@knyazevai/dsh-tool-working-directory"]
-  cfg --> plugin_dsh_base_tool_working_directory
   plugin_dsh_base_session_projection["session-projection<br/>@knyazevai/dsh-session-projection"]
   cfg --> plugin_dsh_base_session_projection
   plugin_dsh_base_storage["storage<br/>@knyazevai/dsh-storage"]
@@ -86,6 +86,8 @@ flowchart LR
   cfg --> plugin_dsh_base_session_telemetry_otel
   plugin_dsh_base_subprocess["subprocess<br/>@knyazevai/dsh-subprocess-local"]
   cfg --> plugin_dsh_base_subprocess
+  plugin_dsh_base_cli_account["cli-account<br/>@knyazevai/dsh-cli-account"]
+  cfg --> plugin_dsh_base_cli_account
   plugin_dsh_base_sandbox["sandbox<br/>@knyazevai/dsh-sandbox-local"]
   cfg --> plugin_dsh_base_sandbox
   plugin_dsh_base_sandbox_policy["sandbox-policy<br/>@knyazevai/dsh-sandbox-policy"]
@@ -120,6 +122,8 @@ flowchart LR
   cfg --> plugin_dsh_base_skill_filesystem
   plugin_dsh_base_tool_skill["tool-skill<br/>@knyazevai/dsh-tool-skill"]
   cfg --> plugin_dsh_base_tool_skill
+  plugin_dsh_base_upstream_skills["upstream-skills<br/>@knyazevai/dsh-upstream-skills"]
+  cfg --> plugin_dsh_base_upstream_skills
   plugin_dsh_base_commands["commands<br/>@knyazevai/dsh-commands"]
   cfg --> plugin_dsh_base_commands
   plugin_dsh_base_command_feedback["command-feedback<br/>@knyazevai/dsh-command-feedback"]
@@ -140,14 +144,16 @@ flowchart LR
   cfg --> plugin_dsh_base_command_compact
   plugin_dsh_base_subagent["subagent<br/>@knyazevai/dsh-subagent"]
   cfg --> plugin_dsh_base_subagent
+  plugin_dsh_base_agent_team["agent-team<br/>@knyazevai/dsh-agent-team"]
+  cfg --> plugin_dsh_base_agent_team
+  plugin_dsh_base_tool_agent_team["tool-agent-team<br/>@knyazevai/dsh-tool-agent-team"]
+  cfg --> plugin_dsh_base_tool_agent_team
   plugin_dsh_base_subagent_spawn_in_process["subagent-spawn-in-process<br/>@knyazevai/dsh-subagent-spawn-in-process"]
   cfg --> plugin_dsh_base_subagent_spawn_in_process
   plugin_dsh_base_subagent_fork_in_process["subagent-fork-in-process<br/>@knyazevai/dsh-subagent-fork-in-process"]
   cfg --> plugin_dsh_base_subagent_fork_in_process
   plugin_dsh_base_tool_subagent_control["tool-subagent-control<br/>@knyazevai/dsh-tool-subagent-control"]
   cfg --> plugin_dsh_base_tool_subagent_control
-  plugin_dsh_base_tool_subagent_list_agents["tool-subagent-list-agents<br/>@knyazevai/dsh-tool-subagent-control/list-agents"]
-  cfg --> plugin_dsh_base_tool_subagent_list_agents
   plugin_dsh_base_tool_subagent["tool-subagent<br/>@knyazevai/dsh-tool-subagent"]
   cfg --> plugin_dsh_base_tool_subagent
   plugin_dsh_base_tool_subagent_fork["tool-subagent-fork<br/>@knyazevai/dsh-tool-subagent"]
@@ -190,6 +196,10 @@ flowchart LR
   cfg --> plugin_dsh_base_mcp_resources
   plugin_dsh_base_tools["tools<br/>@knyazevai/dsh-tools"]
   cfg --> plugin_dsh_base_tools
+  plugin_dsh_base_tool_executor_native["tool-executor-native<br/>@knyazevai/dsh-tool-executor-native"]
+  cfg --> plugin_dsh_base_tool_executor_native
+  plugin_dsh_base_tool_executor_ptc["tool-executor-ptc<br/>@knyazevai/dsh-tool-executor-ptc"]
+  cfg --> plugin_dsh_base_tool_executor_ptc
   plugin_dsh_base_system_prompt["system-prompt<br/>@knyazevai/dsh-system-prompt"]
   cfg --> plugin_dsh_base_system_prompt
   plugin_dsh_base_agent_loop["agent-loop<br/>@knyazevai/dsh-agent-loop"]
@@ -227,14 +237,14 @@ flowchart LR
 | `config-editor` | `@knyazevai/dsh-config-editor` |
 | `settings` | `@knyazevai/dsh-settings` |
 | `authorization` | `@knyazevai/dsh-authorization` |
-| `deepseek-account` | `@knyazevai/dsh-deepseek-account-platform` |
+| `deepseek-account` | `@knyazevai/dsh-deepseek-account` |
+| `deepseek-auth` | `@knyazevai/dsh-deepseek-auth` |
 | `credentials` | `@knyazevai/dsh-credentials-local` |
 | `llm-pi-ai` | `@knyazevai/dsh-llm-pi-ai` |
 | `session-persistence-jsonl` | `@knyazevai/dsh-session-persistence-jsonl` |
 | `attachment-local` | `@knyazevai/dsh-attachment-local` |
 | `session-query-sqlite` | `@knyazevai/dsh-session-query-sqlite` |
 | `working-directory` | `@knyazevai/dsh-working-directory` |
-| `tool-working-directory` | `@knyazevai/dsh-tool-working-directory` |
 | `session-projection` | `@knyazevai/dsh-session-projection` |
 | `storage` | `@knyazevai/dsh-storage` |
 | `storage-json` | `@knyazevai/dsh-storage-json` |
@@ -243,6 +253,7 @@ flowchart LR
 | `otel` | `@knyazevai/dsh-otel` |
 | `session-telemetry-otel` | `@knyazevai/dsh-session-telemetry-otel` |
 | `subprocess` | `@knyazevai/dsh-subprocess-local` |
+| `cli-account` | `@knyazevai/dsh-cli-account` |
 | `sandbox` | `@knyazevai/dsh-sandbox-local` |
 | `sandbox-policy` | `@knyazevai/dsh-sandbox-policy` |
 | `bash-sandbox` | `@knyazevai/dsh-bash-sandbox` |
@@ -260,6 +271,7 @@ flowchart LR
 | `skill` | `@knyazevai/dsh-skill` |
 | `skill-filesystem` | `@knyazevai/dsh-skill-filesystem` |
 | `tool-skill` | `@knyazevai/dsh-tool-skill` |
+| `upstream-skills` | `@knyazevai/dsh-upstream-skills` |
 | `commands` | `@knyazevai/dsh-commands` |
 | `command-feedback` | `@knyazevai/dsh-command-feedback` |
 | `goal` | `@knyazevai/dsh-goal` |
@@ -270,10 +282,11 @@ flowchart LR
 | `compaction-basic` | `@knyazevai/dsh-compaction-basic` |
 | `command-compact` | `@knyazevai/dsh-command-compact` |
 | `subagent` | `@knyazevai/dsh-subagent` |
+| `agent-team` | `@knyazevai/dsh-agent-team` |
+| `tool-agent-team` | `@knyazevai/dsh-tool-agent-team` |
 | `subagent-spawn-in-process` | `@knyazevai/dsh-subagent-spawn-in-process` |
 | `subagent-fork-in-process` | `@knyazevai/dsh-subagent-fork-in-process` |
 | `tool-subagent-control` | `@knyazevai/dsh-tool-subagent-control` |
-| `tool-subagent-list-agents` | `@knyazevai/dsh-tool-subagent-control/list-agents` |
 | `tool-subagent` | `@knyazevai/dsh-tool-subagent` |
 | `tool-subagent-fork` | `@knyazevai/dsh-tool-subagent` |
 | `ptc-runtime` | `@knyazevai/dsh-ptc-runtime-node` |
@@ -295,6 +308,8 @@ flowchart LR
 | `tool-web` | `@knyazevai/dsh-tool-web` |
 | `mcp-resources` | `@knyazevai/dsh-mcp-resources` |
 | `tools` | `@knyazevai/dsh-tools` |
+| `tool-executor-native` | `@knyazevai/dsh-tool-executor-native` |
+| `tool-executor-ptc` | `@knyazevai/dsh-tool-executor-ptc` |
 | `system-prompt` | `@knyazevai/dsh-system-prompt` |
 | `agent-loop` | `@knyazevai/dsh-agent-loop` |
 | `fs-sandbox` | `@knyazevai/dsh-fs-sandbox` |

@@ -49,7 +49,10 @@
     "lib/index.js",
     "lib/client.js",
     "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "dependencies": {
     "@knyazevai/dsh-deque": "workspace:*",
@@ -89,16 +92,21 @@
     "@knyazevai/dsh-user-approval": "workspace:*",
     "@knyazevai/dsh-user-questions": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
-    "zod": "4.4.3",
+    "zod": "4.6.6",
     "@knyazevai/dsh-command-feedback": "workspace:*",
     "@knyazevai/dsh-api-terminal-controller": "workspace:*",
     "@knyazevai/dsh-plugin-manager": "workspace:*",
+    "@knyazevai/dsh-mcp-manager": "workspace:*",
     "@knyazevai/dsh-plugin-market": "workspace:*",
+    "@knyazevai/dsh-client-ui-connector-account": "workspace:*",
     "@knyazevai/dsh-client-ui-plugin-manager": "workspace:*",
-    "@knyazevai/dsh-office-to-pdf": "workspace:*",
-    "@knyazevai/dsh-api-account-controller": "workspace:*",
+    "@knyazevai/dsh-office-kit": "workspace:*",
     "@knyazevai/dsh-deepseek-account": "workspace:*",
     "@knyazevai/dsh-client-product-analytics": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-status": "workspace:*",
+    "@knyazevai/dsh-agent-team": "workspace:*",
+    "@knyazevai/dsh-client-ui-trajectory": "workspace:*",
+    "@knyazevai/dsh-web": "workspace:*",
     "@knyazevai/dsh-fork-workspace-session-state": "workspace:*"
   }
 }

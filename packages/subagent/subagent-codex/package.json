@@ -28,7 +28,10 @@
     "locale/*.json",
     "lib/index.js",
     "cordis.patch.yml",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dsh": {
@@ -53,6 +56,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-app-boot": "workspace:*",

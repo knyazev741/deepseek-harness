@@ -21,9 +21,13 @@
   "files": [
     "icon.svg",
     "locale/*.json",
+    "docs",
     "lib/index.js",
     "cordis.patch.yml",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "repository": {
@@ -37,6 +41,7 @@
     "@knyazevai/dsh-experimental-worktree": "workspace:*"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cordis-plugin-include": "workspace:~",
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
@@ -51,6 +56,8 @@
     "@knyazevai/dsh-session-projection": "workspace:*",
     "@knyazevai/dsh-subprocess-local": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-working-directory": "workspace:*",
     "@knyazevai/dsh-experimental-worktree": "workspace:*",

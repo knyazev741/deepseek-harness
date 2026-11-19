@@ -1,0 +1,120 @@
+{
+  "name": "@knyazevai/dsh-timeline",
+  "description": "Replace Todo in long-running sessions with task trees, a live progress bar, and timed reports",
+  "version": "0.2.6",
+  "icon": "./icon.svg",
+  "type": "module",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/timeline"
+  },
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "icon.svg",
+    "locale/*.json",
+    "docs",
+    "lib/index.js",
+    "lib/client.js",
+    "cordis.patch.yml",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@knyazevai/dsh-client-connection",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-plugin-manager",
+        "@knyazevai/dsh-client-ui-renderer",
+        "@knyazevai/dsh-client-ui-session",
+        "@knyazevai/dsh-client-ui-settings",
+        "@knyazevai/dsh-client-ui-sidebar-right",
+        "@knyazevai/dsh-client-ui-tool",
+        "@knyazevai/dsh-api-session-controller"
+      ]
+    }
+  },
+  "dependencies": {
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-util-crypto": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "zod": "4.6.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-error": "workspace:*",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@deepseek-ai/cosmokit": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-client-ui-commands": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-plugin-manager": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-settings": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-tool": "workspace:*",
+    "@knyazevai/dsh-commands": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@testing-library/react": "^16.1.0",
+    "@types/d3-time": "^3.0.4",
+    "d3-time": "3.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  }
+}

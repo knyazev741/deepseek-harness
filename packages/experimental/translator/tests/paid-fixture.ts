@@ -2,12 +2,13 @@
 import type { ModuleLoaderV2 } from '@deepseek-ai/cordis-plugin-loader'
 import { boot } from '@knyazevai/dsh-app-boot'
 import LlmRuntime from '@knyazevai/dsh-llm'
-import SessionStore, { SESSION_FORMAT_VERSION, SessionId, SessionSeq, type Session, type SessionEvent, type SessionHeader } from '@knyazevai/dsh-session'
+import SessionStore, { SESSION_FORMAT_VERSION, type SessionId, SessionSeq, type Session, type SessionEvent, type SessionHeader } from '@knyazevai/dsh-session'
 import * as JsonlPersistence from '@knyazevai/dsh-session-persistence-jsonl'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import SqliteSessionQuery from '@knyazevai/dsh-session-query-sqlite'
 import * as Official from '@knyazevai/dsh-llm-deepseek-api-key'
+import DeepSeekAuth from '@knyazevai/dsh-deepseek-auth'
 import * as Account from '@knyazevai/dsh-llm-deepseek-account'
-import type { DeepSeekAccount } from '@knyazevai/dsh-deepseek-account'
 import DeepSeekLlmApiExtensionRegistry from '@knyazevai/dsh-deepseek-llm-api-extensions'
 import * as SessionLogDeepSeek from '@knyazevai/dsh-session-log-deepseek'
 import { createLaunchEnvironmentSnapshot } from '@knyazevai/dsh-launch-environment'
@@ -17,6 +18,8 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Translator, { type Config } from '../src/index.ts'
+import { brandString } from '@knyazevai/dsh-brand'
+import { accountStub } from '../../../account/deepseek-account/tests/account-stub.ts'
 
 /** Provider-visible request, without credential values. */
 export interface NativeRequest {
@@ -80,7 +83,7 @@ export async function paidFixture(cleanups: Array<() => Promise<void>>, options:
     else process.env.DSH_HOME = previousHome
   })
   const requests: NativeRequest[] = [], errors: unknown[] = [], handlers = new Set<Promise<void>>()
-  let auditId = SessionId('paid-translation')
+  let auditId = brandString<SessionId>('paid-translation')
   const server = createServer((request, response) => {
     const work = (async () => {
       if (request.method === 'GET' && request.url === '/models') {
@@ -129,12 +132,14 @@ export async function paidFixture(cleanups: Array<() => Promise<void>>, options:
     { id: 'llm', name: '@knyazevai/dsh-llm' },
     { id: 'session', name: '@knyazevai/dsh-session' },
     { id: 'storage', name: '@knyazevai/dsh-session-persistence-jsonl', config: { root: storedRoot, compression: 'none' } },
+    { id: 'deepseek-auth', name: '@knyazevai/dsh-deepseek-auth' },
     { id: 'official-custom-id', name: options.officialName ?? '@knyazevai/dsh-llm-deepseek-api-key', disabled: !withNativeOwners, config: {
       baseURL, apiKeyEnv: 'PAID_TRANSLATION_FIXTURE_KEY', models: options.officialModels ?? [{ id: 'deepseek-flash', name: 'Flash version-independent name' }],
     } },
     { id: 'account-custom-id', name: '@knyazevai/dsh-llm-deepseek-account', disabled: !withNativeOwners, config: { baseURL } },
     { id: 'translator', name: '@knyazevai/dsh-experimental-translator', config: translator },
     ...options.withSessionQuery === true ? [
+      { id: 'projections', name: '@knyazevai/dsh-session-projection' },
       { id: 'query', name: '@knyazevai/dsh-session-query-sqlite', config: { path: join(root, 'query.sqlite'), openAt: 'never' } },
     ] : [],
     ...options.withSessionLog === true ? [
@@ -146,6 +151,8 @@ export async function paidFixture(cleanups: Array<() => Promise<void>>, options:
   const modules = new Map<string, unknown>([
     ['@knyazevai/dsh-llm', LlmRuntime], ['@knyazevai/dsh-session', SessionStore],
     ['@knyazevai/dsh-session-persistence-jsonl', JsonlPersistence], ['@knyazevai/dsh-session-query-sqlite', SqliteSessionQuery],
+    ['@knyazevai/dsh-deepseek-auth', DeepSeekAuth],
+    ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
     [options.officialName ?? '@knyazevai/dsh-llm-deepseek-api-key', Official],
     ['@knyazevai/dsh-llm-deepseek-account', Account], ['@knyazevai/dsh-experimental-translator', Translator],
     ['@knyazevai/dsh-deepseek-llm-api-extensions', DeepSeekLlmApiExtensionRegistry],
@@ -170,9 +177,7 @@ export async function paidFixture(cleanups: Array<() => Promise<void>>, options:
       describe: async () => ({ configured, writable: true }),
       resolve: async () => configured ? { value: 'fixture-native-key', source: 'fixture' } : undefined,
     } as never)
-    host.provide('deepseekAccount', {
-      resolveToken: async (_baseURL: string): Promise<string | undefined> => signedIn ? 'fixture-account-token' : undefined,
-    } as DeepSeekAccount)
+    host.provide('deepseekAccount', accountStub({ token: () => signedIn ? 'fixture-account-token' : undefined }))
   })
   let ctx = await start(), session: Session | undefined
   cleanups.push(async () => { await ctx.fiber.dispose() })

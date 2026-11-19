@@ -12,24 +12,33 @@
   ],
   "dependencies": {
     "koffi": "3.1.1",
-    "@deepseek-ai/libreoffice-kit": "^0.1.5",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh": "workspace:*",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-app-boot": "workspace:*",
     "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-host-webserver": "workspace:*",
-    "@knyazevai/dsh-home-paths": "workspace:*",
+    "@knyazevai/dsh-host-authentication-desktop": "workspace:*",
     "@knyazevai/dsh-jobs": "workspace:*",
     "@knyazevai/dsh-schedule": "workspace:*",
-    "@knyazevai/dsh-tool-workspace-dependencies": "workspace:*",
-    "@knyazevai/dsh-skill-office": "workspace:*",
     "@knyazevai/dsh-deepseek-account": "workspace:*",
-    "@knyazevai/dsh-workspace": "workspace:*"
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@knyazevai/dsh-plugin-manager": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
-    "@deepseek-ai/cordis-plugin-include": "workspace:~",
-    "@knyazevai/dsh-skill": "workspace:*"
+    "ws": "^8.21.3",
+    "@types/ws": "^8.18.1",
+    "@knyazevai/dsh-api-gateway": "workspace:*",
+    "@knyazevai/dsh-api-remote-access": "workspace:*",
+    "@knyazevai/dsh-typert-registry": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-util-workspace-path": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-api-workspace-files": "workspace:*"
   }
 }

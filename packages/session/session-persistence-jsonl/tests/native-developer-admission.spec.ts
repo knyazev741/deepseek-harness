@@ -1,6 +1,6 @@
 /** Native JSONL reads enforce developer relationships before exposing stored data. */
 import { Context } from '@deepseek-ai/cordis'
-import { SESSION_FORMAT_VERSION, SessionId } from '@knyazevai/dsh-session'
+import { SESSION_FORMAT_VERSION, type SessionId } from '@knyazevai/dsh-session'
 import { SessionPersistenceCorruptionError } from '@knyazevai/dsh-session-persistence'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
@@ -9,8 +9,9 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { generationLogPath } from '../src/format.ts'
 import { compressZstdFrame } from '../src/zstd.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
-const id = SessionId('native-developer-admission')
+const id = brandString<SessionId>('native-developer-admission')
 const modes = (['none', 'zstd'] as const).flatMap(compression => (['read', 'write'] as const).map(access => ({ compression, access })))
 const coordinates = { turn: 1, step: 1 }
 const developer = { type: 'developer/message', surfaceOp: 'append', data: {

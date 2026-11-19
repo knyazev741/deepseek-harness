@@ -3,7 +3,7 @@ import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
 import { createMessage, createUserMessage } from '@knyazevai/dsh-llm'
-import { SESSION_FORMAT_VERSION, Session, SessionId } from '@knyazevai/dsh-session'
+import { SESSION_FORMAT_VERSION, Session, type SessionId } from '@knyazevai/dsh-session'
 import type {} from '@knyazevai/dsh-session-title'
 import {
   assertFixtureInventory,
@@ -16,6 +16,7 @@ import {
   type WebScaffold,
 } from './scaffold.ts'
 import { newEnglishPage, saveFailureShot, WEB_FIXTURE_TIME } from './support.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./expected/markdown-inline-code-links', import.meta.url))
 const UI_EXPECTED = fileURLToPath(new URL('./expected/markdown-inline-code-links/ui.expected.md', import.meta.url))
@@ -26,7 +27,7 @@ const LINK_URL = 'http://127.0.0.1:3199/?demo=1'
 
 /** Build a settled assistant reply with linkable URL code and inert code controls. */
 function markdownFixture(linkUrl: string): string {
-  const session = Session.create(SessionId('markdown-inline-code-links-source'))
+  const session = Session.create(brandString<SessionId>('markdown-inline-code-links-source'))
   session.append('turn/start', { turn: 1 })
   const user = session.append('user/message', createUserMessage({
     content: [{ type: 'text', text: 'Show the local preview URL.' }],

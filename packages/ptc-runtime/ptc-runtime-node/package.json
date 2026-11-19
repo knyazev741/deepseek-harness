@@ -1,6 +1,6 @@
 {
   "name": "@knyazevai/dsh-ptc-runtime-node",
-  "description": "Node PTC execution with per-call sandboxed processes or in-memory REPL state",
+  "description": "Node PTC execution with async function, REPL, scoped REPL and VM Script evaluators and optional retained state",
   "version": "0.2.6",
   "publishConfig": {
     "access": "public"
@@ -19,6 +19,10 @@
       "default": "./lib/index.js"
     },
     "./package.json": "./package.json",
+    "./configuration": {
+      "types": "./lib/types/configuration.d.ts",
+      "default": "./lib/configuration.js"
+    },
     "./process": {
       "types": "./lib/types/process-entry.d.ts",
       "default": "./lib/process.js"
@@ -28,9 +32,13 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
+    "lib/configuration.js",
     "lib/process.js",
     "lib/persistent-process.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -45,9 +53,13 @@
   },
   "dependencies": {
     "@knyazevai/dsh-util-values": "workspace:*",
-    "@deepseek-ai/schemastery": "workspace:~"
+    "@deepseek-ai/schemastery": "workspace:~",
+    "acorn": "^8.18.0",
+    "acorn-walk": "^8.3.5",
+    "birpc": "4.2.0"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-ptc-runtime": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
@@ -59,6 +71,7 @@
     "@knyazevai/dsh-fs-local": "workspace:*",
     "@knyazevai/dsh-subprocess-local": "workspace:*",
     "@knyazevai/dsh-session-projection": "workspace:*",
-    "@knyazevai/dsh-sandbox-local": "workspace:*"
+    "@knyazevai/dsh-sandbox-local": "workspace:*",
+    "@knyazevai/dsh-attachment": "workspace:*"
   }
 }

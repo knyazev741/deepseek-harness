@@ -34,9 +34,11 @@
         "@knyazevai/dsh-client-resources",
         "@knyazevai/dsh-client-ui-chat",
         "@knyazevai/dsh-client-ui-conversation",
-        "@knyazevai/dsh-client-ui-primitives",
-        "@knyazevai/dsh-client-ui-sidebar-right",
         "@knyazevai/dsh-client-ui-input-trigger",
+        "@knyazevai/dsh-client-ui-primitives",
+        "@knyazevai/dsh-client-ui-session-panel",
+        "@knyazevai/dsh-client-ui-session-status",
+        "@knyazevai/dsh-client-ui-sidebar-right",
         "@knyazevai/dsh-client-ui-workspace"
       ],
       "platform": "web"
@@ -51,31 +53,37 @@
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
     "@knyazevai/dsh-client-resources": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-client-test-runtime": "workspace:*",
     "@knyazevai/dsh-client-ui-chat": "workspace:*",
     "@knyazevai/dsh-client-ui-conversation": "workspace:*",
     "@knyazevai/dsh-client-ui-input-trigger": "workspace:*",
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-panel": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-status": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-workspace": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-token-meter": "workspace:*",
-    "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@knyazevai/dsh-api-session-controller": "workspace:*",
-    "@knyazevai/dsh-client-connection": "workspace:*",
-    "@knyazevai/dsh-session": "workspace:*",
-    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
-    "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
-    "@knyazevai/dsh-client-ui-session": "workspace:*",
-    "@knyazevai/dsh-client-ui-workspace": "workspace:*"
+    "react-dom": "^18.2.0"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

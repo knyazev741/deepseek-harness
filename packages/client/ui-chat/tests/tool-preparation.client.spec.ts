@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createAssistantMessage, createToolResultMessage, LlmAttemptId, ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { createAssistantMessage, createToolResultMessage, type LlmAttemptId, type ToolCallId } from '@knyazevai/dsh-llm'
 import { AssistantStreamAccumulator } from '@knyazevai/dsh-llm/assistant-stream'
 import type { StreamChunk } from '@knyazevai/dsh-llm'
 import { SessionSeq, type SessionEvent } from '@knyazevai/dsh-session/types'
@@ -11,9 +12,9 @@ import { toolDefinition } from '../src/client/conversation-nodes/tool.ts'
 import { chatViewDefinition } from '../src/client/conversation-nodes/chat-snapshot-builder.ts'
 import { processGroupDefinition } from '../src/client/conversation-nodes/process-groups.ts'
 
-const attemptId = LlmAttemptId('preparing-test')
-const first = ToolCallId('write-one')
-const second = ToolCallId('write-two')
+const attemptId = brandString<LlmAttemptId>('preparing-test')
+const first = brandString<ToolCallId>('write-one')
+const second = brandString<ToolCallId>('write-two')
 const args = '{"file_path":"hello.txt","content":"hello"}'
 
 function entry(event: SessionEvent): SessionLiveEventEntry {
@@ -275,7 +276,7 @@ describe('Tool preparation and durable replay', () => {
 
   it('keeps five command preparations below the Assistant message through dispatch and Step end', () => {
     const h = harness()
-    const ids = Array.from({ length: 5 }, (_, index) => ToolCallId(`command-${index}`))
+    const ids = Array.from({ length: 5 }, (_, index) => brandString<ToolCallId>(`command-${index}`))
     const command = '{"command":"echo hello"}'
     const text = 'Running five commands'
     h.assembler.append({ type: 'transient', event: {

@@ -6,7 +6,8 @@
 
 import type { Context, Fiber } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/brand'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/types'
 import * as McpClient from '@knyazevai/dsh-mcp-client'
 import type {} from '@knyazevai/dsh-computer-use'
 
@@ -63,7 +64,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   // unload concurrently and could otherwise admit another live driver.
   let child!: Fiber
   ctx.effect(function* () {
-    yield ctx.computerUse.register(ComputerUseProviderName('cua-driver-mcp'))
+    yield ctx.computerUse.register(brandString<ComputerUseProviderName>('cua-driver-mcp'))
     child = ctx.plugin(McpClient, connection)
     yield child.dispose
   }, 'computer-use-cua-driver-mcp.connection')

@@ -52,7 +52,7 @@ async function fixture() {
   writeFileSync(join(dir, 'cordis.yml'), '[]\n')
   const profile: ProfileContext = {
     name: 'test', startedBundles: ['test-bundle'], dir, patchPath: join(dir, 'cordis.patch.yml'),
-    installAnchor: join(home, 'package.json'), cwd: home, home, overlays: [], telemetryDisabledEnv: undefined,
+    installAnchor: join(home, 'package.json'), cwd: home, home, overlayPaths: [], telemetryDisabledEnv: undefined,
   }
   const runtime = {
     async apply(ctx: Context) {
@@ -172,7 +172,7 @@ it.each([false, true])('waits for an admitted preference write before creating a
     const selection = ctx.commands.execute(first, '/permission danger-full-access', [], new AbortController().signal)
     running.push(selection)
     await editing.promise
-    const remote = createSessionTestRemote(ctx, {
+    const remote = await createSessionTestRemote(ctx, {
       defaultModelSelection: () => ({ provider: 'fixture', model: 'unused' }), cwd: profile.cwd,
     })
     let returned = false

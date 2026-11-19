@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import type { JobId } from '@knyazevai/dsh-jobs/brand'
+import type { JobId } from '@knyazevai/dsh-jobs/types'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import { ClientJobsModel } from '../src/client/model.ts'
 import { ClientJobs } from '../src/client/service.ts'

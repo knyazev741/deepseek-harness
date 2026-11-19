@@ -2,16 +2,17 @@
 import { describe, expect, it } from 'vitest'
 import { createDeveloperMessage, projectToolUpdates } from '@knyazevai/dsh-llm'
 import type { ContentBlock, ToolSchema } from '@knyazevai/dsh-llm'
-import { Session, SessionId, SessionLogOffset, SessionSeq } from '@knyazevai/dsh-session'
+import { Session, type SessionId, SessionLogOffset, SessionSeq } from '@knyazevai/dsh-session'
 import type { SessionEvent } from '@knyazevai/dsh-session'
 import { ToolHistoryProjection } from '../src/tool-history.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const search: ToolSchema = { name: 'search', description: 'Search', parameters: {} }
 const fetch: ToolSchema = { name: 'fetch', description: 'Fetch', parameters: {} }
 const config = { provider: 'test', model: 'test' }
 
 function opened(tools: ToolSchema[]) {
-  const session = Session.create(SessionId('tool-history'))
+  const session = Session.create(brandString<SessionId>('tool-history'))
   session.append('turn/start', { turn: 1 })
   session.append('step/start', { turn: 1, step: 1 })
   session.append('request/header', { reason: 'initial', header: { config, tools } })

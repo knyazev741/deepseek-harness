@@ -19,11 +19,16 @@
       "default": "./lib/index.js"
     },
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -31,7 +36,6 @@
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
-    "@knyazevai/dsh-session-projection": "workspace:*",
     "@knyazevai/dsh-session-query": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-timeout": "workspace:*",
@@ -56,6 +60,8 @@
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-timeout": "workspace:*",
     "@knyazevai/dsh-tool-call-timeout-policy": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*"
   }
 }

@@ -10,7 +10,8 @@ import type { Volatile } from '@deepseek-ai/cordis'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { ModelSelection } from '@knyazevai/dsh-agent'
-import { ReasoningEffortId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ReasoningEffortId } from '@knyazevai/dsh-llm'
 import type {} from '@knyazevai/dsh-config-editor'
 
 declare module '@deepseek-ai/cordis' {
@@ -37,7 +38,7 @@ function selection(settings: { provider: string; model: string; reasoningEffort?
     model: settings.model,
     ...settings.reasoningEffort === undefined
       ? {}
-      : { reasoningEffort: ReasoningEffortId(settings.reasoningEffort) },
+      : { reasoningEffort: brandString<ReasoningEffortId>(settings.reasoningEffort) },
   }
 }
 

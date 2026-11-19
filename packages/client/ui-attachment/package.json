@@ -34,7 +34,9 @@
         "@knyazevai/dsh-client-ui-conversation",
         "@knyazevai/dsh-client-ui-renderer",
         "@knyazevai/dsh-client-ui-trajectory",
-        "@knyazevai/dsh-client-ui-tool"
+        "@knyazevai/dsh-client-ui-tool",
+        "@knyazevai/dsh-client-ui-file-drag",
+        "@knyazevai/dsh-client-ui-context-menu"
       ],
       "platform": "web"
     }
@@ -45,6 +47,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-client-locale": "workspace:*",
     "@knyazevai/dsh-client-ui-chat": "workspace:*",
@@ -57,13 +60,19 @@
     "react-dom": "^18.2.0",
     "@knyazevai/dsh-attachment": "workspace:*",
     "@knyazevai/dsh-client-ui-tool": "workspace:*",
-    "clsx": "^2.0.0"
+    "clsx": "^2.0.0",
+    "@knyazevai/dsh-client-ui-file-drag": "workspace:*",
+    "@knyazevai/dsh-util-file-drag": "workspace:*",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"

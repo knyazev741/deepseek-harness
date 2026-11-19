@@ -1,6 +1,8 @@
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
 // Proves `allowParallelInProgress` is real configurability and not a constant:
 // the flag is set in a cordis.yml booted through the real Loader, and both faces
 // it controls — the model-facing description and the accepted input — follow it.
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -9,15 +11,16 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { ToolCallId } from '@knyazevai/dsh-llm'
-import { Session, SessionId } from '@knyazevai/dsh-session'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm/types'
+import { Session, type SessionId } from '@knyazevai/dsh-session'
 import AgentRegistry from '@knyazevai/dsh-agent'
 import type { Agent } from '@knyazevai/dsh-agent'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import * as ToolTodo from '@knyazevai/dsh-tool-todo'
-import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
+import { unsupportedModel, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
 
 let root: string | undefined
 let context: Context | undefined
@@ -31,10 +34,11 @@ afterEach(async () => {
 
 async function agent(ctx: Context): Promise<Agent> {
   const scope = ctx.plugin(() => {})
-  const id = SessionId('todo-loader-agent')
+  const id = brandString<SessionId>('todo-loader-agent')
   const session = Session.create(id)
   const value: Agent = {
-    id, options: {}, session, inbox: unsupportedInbox(),
+    id, options: {}, session, model: unsupportedModel(),
+    inbox: unsupportedInbox(),
     status: 'idle', ctx: scope.ctx,
     followup: () => {}, steer: () => {}, inject: () => {}, send: () => {}, cancel() {},
     runMaintenance: task => task(new AbortController().signal),
@@ -60,6 +64,7 @@ async function boot(configLines: readonly string[]): Promise<Context> {
     "- name: '@knyazevai/dsh-agent'",
     "- name: '@knyazevai/dsh-system-prompt'",
     "- name: '@knyazevai/dsh-tools'",
+    "- name: '@knyazevai/dsh-tool-executor-native'",
     "- name: '@knyazevai/dsh-session-projection'",
     "- name: '@knyazevai/dsh-tool-todo'",
     ...configLines.length > 0 ? ['  config:', ...configLines] : [],
@@ -75,6 +80,7 @@ async function boot(configLines: readonly string[]): Promise<Context> {
     ['@knyazevai/dsh-agent', AgentRegistry],
     ['@knyazevai/dsh-system-prompt', SystemPrompt],
     ['@knyazevai/dsh-tools', ToolRuntime],
+    ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
     ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
     ['@knyazevai/dsh-tool-todo', ToolTodo],
   ])
@@ -104,15 +110,16 @@ describe('tool-todo real Loader composition through cordis.yml', () => {
     expect(description).not.toContain('several only')
 
     const owner = await agent(ctx)
-    const result = await ctx.tools.execute({
+    const result = await executeToolFixture(ctx, {
       signal: new AbortController().signal,
-      callId: ToolCallId('parallel'),
+      callId: brandString<ToolCallId>('parallel'),
       name: 'todo_write',
       arguments: { todos: PARALLEL_TODOS },
       agent: owner,
     })
     expect(result.isError).toBe(true)
     expect(resultText(result)).toContain('at most one task may be in_progress')
+    expect(result.error?.info).toEqual({ name: 'ToolArgsError', code: 'INVALID_ARGS' })
     expect(owner.session.snapshotEvents().some(e => e.type === 'todo/write')).toBe(false)
   }, 30_000)
 
@@ -122,9 +129,9 @@ describe('tool-todo real Loader composition through cordis.yml', () => {
     expect(description).toContain('several only when work runs in parallel')
 
     const owner = await agent(ctx)
-    const result = await ctx.tools.execute({
+    const result = await executeToolFixture(ctx, {
       signal: new AbortController().signal,
-      callId: ToolCallId('parallel-enabled'),
+      callId: brandString<ToolCallId>('parallel-enabled'),
       name: 'todo_write',
       arguments: { todos: PARALLEL_TODOS },
       agent: owner,

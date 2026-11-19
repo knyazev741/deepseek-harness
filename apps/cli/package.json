@@ -16,9 +16,17 @@
   },
   "files": [
     "lib/*.js",
+    "lib/*.js.map",
     "lib/types/*.d.ts",
+    "lib/types/*.d.ts.map",
+    "docs",
+    "src",
     "bin.mjs"
   ],
+  "scripts": {
+    "prepack": "tsx ../../scripts/stage-dsh-docs.ts",
+    "postpack": "tsx ../../scripts/stage-dsh-docs.ts --clean"
+  },
   "license": "MIT",
   "dependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -39,7 +47,6 @@
     "@knyazevai/dsh-compaction-basic": "workspace:*",
     "@knyazevai/dsh-compaction-tool-result-pruner": "workspace:*",
     "@knyazevai/dsh-cordis-client-runner": "workspace:*",
-    "@knyazevai/dsh-experimental-agent-team-profile": "workspace:*",
     "@knyazevai/dsh-experimental-inspector-profile": "workspace:*",
     "@knyazevai/dsh-fs-local": "workspace:*",
     "@knyazevai/dsh-goal": "workspace:*",
@@ -49,6 +56,7 @@
     "@knyazevai/dsh-jobs-local": "workspace:*",
     "@knyazevai/dsh-launch-environment": "workspace:*",
     "@knyazevai/dsh-mcp-client": "workspace:*",
+    "@knyazevai/dsh-official-bundles": "workspace:*",
     "@knyazevai/dsh-persona": "workspace:*",
     "@knyazevai/dsh-plan-mode": "workspace:*",
     "@knyazevai/dsh-pwsh-local": "workspace:*",
@@ -56,6 +64,7 @@
     "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-sdk-app": "workspace:*",
     "@knyazevai/dsh-sdk-minimal": "workspace:*",
+    "@knyazevai/dsh-session-persistence-sqlite": "workspace:*",
     "@knyazevai/dsh-session-projection": "workspace:*",
     "@knyazevai/dsh-session-reference": "workspace:*",
     "@knyazevai/dsh-skill": "workspace:*",
@@ -107,11 +116,19 @@
     "@knyazevai/dsh-experimental-ralph-bundle": "workspace:*",
     "@knyazevai/dsh-experimental-session-titles-bundle": "workspace:*",
     "@knyazevai/dsh-experimental-terminal-bundle": "workspace:*",
+    "@knyazevai/dsh-experimental-liveshare": "workspace:*",
     "@knyazevai/dsh-experimental-session-search": "workspace:*",
     "@knyazevai/dsh-experimental-tool-worktree": "workspace:*",
-    "@knyazevai/dsh-experimental-plugin-market-bundle": "workspace:*"
+    "@knyazevai/dsh-cua-bundle": "workspace:*",
+    "@knyazevai/dsh-cua-mcp": "workspace:*",
+    "@knyazevai/dsh-timeline": "workspace:*",
+    "@knyazevai/dsh-experimental-plugin-market-bundle": "workspace:*",
+    "@knyazevai/dsh-personalized-recommendations": "workspace:*",
+    "@knyazevai/dsh-experimental-forge-bundle": "workspace:*",
+    "@knyazevai/dsh-deepseek-chat-import": "workspace:*"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-skill-badge": "workspace:*",
     "@knyazevai/dsh-webhook-github": "workspace:*",
     "@knyazevai/dsh-webhook": "workspace:*",
@@ -127,9 +144,8 @@
     "@knyazevai/dsh-bash-local": "workspace:*",
     "@knyazevai/dsh-credentials-local": "workspace:*",
     "@knyazevai/dsh-deepseek-llm-api-extensions": "workspace:*",
-    "@knyazevai/dsh-experimental-agent-team": "workspace:*",
-    "@knyazevai/dsh-experimental-ptc-runtime-python": "workspace:*",
-    "@knyazevai/dsh-experimental-tool-agent-team": "workspace:*",
+    "@knyazevai/dsh-agent-team": "workspace:*",
+    "@knyazevai/dsh-tool-agent-team": "workspace:*",
     "@knyazevai/dsh-fs-observation-policy": "workspace:*",
     "@knyazevai/dsh-fs-sandbox": "workspace:*",
     "@knyazevai/dsh-host-frontend-static": "workspace:*",
@@ -158,13 +174,15 @@
     "@knyazevai/dsh-subagent-spawn-in-process": "workspace:*",
     "@knyazevai/dsh-subprocess-local": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-user-approval": "workspace:*",
     "@types/js-yaml": "^4.0.9",
     "@types/ws": "8.18.1",
     "ajv": "^8.20.0",
     "execa": "^10.0.1",
-    "ws": "8.21.3"
+    "ws": "8.21.3",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   },
   "exports": {
     "./profile-boot": {
@@ -175,6 +193,6 @@
     "./package.json": "./package.json"
   },
   "engines": {
-    "node": "^22.19.0 || >=24.0.0"
+    "node": ">=24.9.0"
   }
 }

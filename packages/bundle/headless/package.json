@@ -24,14 +24,19 @@
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/startup.js",
     "cordis.patch.yml",
     "lib/json-stream-*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dsh": {
@@ -55,7 +60,10 @@
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-query": "workspace:*",
     "@knyazevai/dsh-fs": "workspace:*",
-    "@knyazevai/dsh-subagent": "workspace:*"
+    "@knyazevai/dsh-permission-presets": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-user-approval": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -68,9 +76,18 @@
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-query": "workspace:*",
     "@knyazevai/dsh-fs": "workspace:*",
-    "@knyazevai/dsh-subagent": "workspace:*"
+    "@knyazevai/dsh-permission-presets": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-user-approval": "workspace:*"
   },
   "peerDependenciesMeta": {
+    "@knyazevai/dsh-permission-presets": {
+      "optional": true
+    },
+    "@knyazevai/dsh-sandbox-policy": {
+      "optional": true
+    },
     "@knyazevai/dsh-subagent": {
       "optional": true
     }

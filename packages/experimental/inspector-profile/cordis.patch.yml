@@ -6,3 +6,5 @@
         captureFetch: true
     - id: session-inspector
       name: '@knyazevai/dsh-experimental-session-inspector'
+    - id: client-ui-stats
+      name: '@knyazevai/dsh-experimental-client-ui-stats'

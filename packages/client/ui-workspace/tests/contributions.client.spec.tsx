@@ -18,6 +18,15 @@ import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
+const browserSeats = {
+  useSectionScroller: () => ({ bindScrollerRef: () => {} }),
+  useWorkspaceActionRequest: <T,>(select: (value: null) => T) => select(null),
+  settleWorkspaceAction: () => {},
+  useContextMenuTarget: <T,>(select: (value: null) => T) => select(null),
+  useContextMenu: () => ({ getTriggerProps: () => ({}) }),
+  renderFactorySlot: () => null,
+} satisfies Partial<WorkspaceBrowserProps>
+
 const sid = (id: string) => id as SessionId
 const wid = (id: string) => id as WorkspaceId
 const session = (id: string): SessionSummary => ({
@@ -101,6 +110,7 @@ describe('workspace contributions', () => {
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
       ...allowAllAccess,
+      ...browserSeats,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
@@ -153,6 +163,7 @@ describe('workspace contributions', () => {
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
       ...allowAllAccess,
+      ...browserSeats,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
@@ -191,6 +202,7 @@ describe('workspace contributions', () => {
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
       ...allowAllAccess,
+      ...browserSeats,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
@@ -235,6 +247,7 @@ describe('workspace contributions', () => {
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
       ...allowAllAccess,
+      ...browserSeats,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,
@@ -269,6 +282,7 @@ describe('workspace contributions', () => {
     const controls = createWorkspaceShortcutControls()
     const props: WorkspaceBrowserProps = {
       ...allowAllAccess,
+      ...browserSeats,
       useShortcuts: hook([]), useWorkspaceShortcuts: bindSnapshotSelector(controls.state),
       requestSearch: controls.search, requestAddWorkspace: controls.add, closeAddWorkspace: controls.closeAdd,
       setDirectoryBusy: controls.directoryBusy, requestSessionRename: controls.rename,

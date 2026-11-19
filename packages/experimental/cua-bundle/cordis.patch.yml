@@ -1,0 +1,15 @@
+- insert:
+    - id: cua-provider-registry
+      name: '@knyazevai/dsh-computer-use'
+    - id: cua-macos
+      name: '@knyazevai/dsh-cua-macos'
+      disabled: !!js process.platform !== 'darwin'
+      config:
+        agentPreset: ptc
+    - id: cua-windows
+      name: '@knyazevai/dsh-cua-windows'
+      disabled: !!js process.platform !== 'win32'
+      config:
+        agentPreset: ptc
+    - id: ui-cua
+      name: '@knyazevai/dsh-cua'

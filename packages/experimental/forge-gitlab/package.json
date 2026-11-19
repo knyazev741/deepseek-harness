@@ -1,0 +1,61 @@
+{
+  "name": "@knyazevai/dsh-forge-gitlab",
+  "description": "GitLab provider for the experimental forge registry, read and written through the GitLab CLI on the host",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./locale/*.json": "./locale/*.json",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/forge-gitlab"
+  },
+  "dependencies": {
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "diff": "^9.0.0",
+    "execa": "^10.0.1",
+    "p-limit": "7.3.3",
+    "zod": "4.6.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-experimental-forge": "workspace:*",
+    "@knyazevai/dsh-experimental-forge-session": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-experimental-forge": "workspace:*",
+    "@knyazevai/dsh-experimental-forge-session": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@knyazevai/dsh-experimental-forge-session": {
+      "optional": true
+    }
+  }
+}

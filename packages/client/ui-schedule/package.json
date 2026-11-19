@@ -54,11 +54,14 @@
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-api-remote-access": "workspace:*",
     "@knyazevai/dsh-api-remotes": "workspace:*",
     "@knyazevai/dsh-api-session-controller": "workspace:*",
     "@knyazevai/dsh-api-workspace-controller": "workspace:*",
     "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-client-test-runtime": "workspace:*",
     "@knyazevai/dsh-client-ui-conversation": "workspace:*",
     "@knyazevai/dsh-client-ui-layout": "workspace:*",
@@ -72,17 +75,22 @@
     "@knyazevai/dsh-client-ui-workspace": "workspace:*",
     "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-util-time": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@testing-library/react": "^16.3.3",
     "clsx": "^2.1.1",
     "@deepseek-ai/cordis": "workspace:~",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "@knyazevai/dsh-util-text-search": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

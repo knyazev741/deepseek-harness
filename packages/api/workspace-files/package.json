@@ -56,12 +56,14 @@
     "@knyazevai/dsh-deque": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "4.4.3"
+    "zod": "4.6.6",
+    "@knyazevai/dsh-util-ripgrep": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-api-gateway": "workspace:*",
     "@knyazevai/dsh-api-remote-access": "workspace:*",
@@ -73,7 +75,11 @@
     "@knyazevai/dsh-sandbox-policy": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-persistence": "workspace:*",
-    "@knyazevai/dsh-util-workspace-path": "workspace:*"
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@knyazevai/dsh-util-workspace-path": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*"
   },
   "files": [
     "locale/*.json",
@@ -81,9 +87,13 @@
     "lib/client.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
-    "lib/typert.remote-client.d.ts"
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
   ]
 }

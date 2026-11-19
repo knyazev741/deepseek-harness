@@ -42,11 +42,12 @@
     "@knyazevai/dsh-storage-domain": "workspace:*",
     "@knyazevai/dsh-storage-json": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-token-meter": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"

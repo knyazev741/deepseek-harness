@@ -1,10 +1,11 @@
 /** Developer surface positions and admission remain distinct from unknown ignorable records. */
 import { describe, expect, it } from 'vitest'
-import { Session, SessionId, SessionLogOffset } from '@knyazevai/dsh-session'
+import { Session, type SessionId, SessionLogOffset } from '@knyazevai/dsh-session'
 import type { SessionEvent, SessionHeader } from '@knyazevai/dsh-session'
 import { SessionFormatEventCollector } from '@knyazevai/dsh-session-format'
 import type { SessionFormatArtifact, SessionFormatEvent, SessionFormatJsonValue } from '@knyazevai/dsh-session-format'
 import { assertV4RowAdmission, releasedV4SessionFormatCodec as codec, restoreReleasedV4Artifact } from '../src/index.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 type Row = {
   type: string
@@ -44,7 +45,7 @@ describe('V4 developer relationship admission', () => {
       ...coordinates, message: { id: 'replacement', role: 'system', source: { kind: 'system-prompt' }, content: [{ type: 'text', text: 'Updated' }] },
     } }
     const input = restore([...begin, system, emptyDeveloper, replacement])
-    const session = Session.fromRestore(SessionId(input.header.id), input.events as SessionEvent[],
+    const session = Session.fromRestore(brandString<SessionId>(input.header.id), input.events as SessionEvent[],
       input.header as unknown as SessionHeader, SessionLogOffset(0), 'detached')
     expect(session.surface.nodes).toEqual([4, 3])
     expect(session.deriveMessages().map(message => message.id)).toEqual(['replacement'])

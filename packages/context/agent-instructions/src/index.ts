@@ -15,7 +15,6 @@ import { isDeepStrictEqual } from 'node:util'
 import type { Agent, PreStepDecision } from '@knyazevai/dsh-agent'
 import { createUserMessage } from '@knyazevai/dsh-llm'
 import type { Session, UserMessage } from '@knyazevai/dsh-session'
-import type {} from '@knyazevai/dsh-session-projection'
 import type { ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@knyazevai/dsh-tools'
 import { Config, resolveConfig, workspaceBaselineIdentity, type ResolvedConfig } from './config.ts'
 import { findProjectRoot, loadBaselineInstructionSet } from './files.ts'
@@ -33,7 +32,7 @@ import { instructionCandidateGroup, instructionScopeKey, scopeForDisplayPath, ty
 
 export { Config, name }
 /** Services required by workspace instruction projection. */
-export const inject = ['sessionProjections', 'workingDirectory']
+export const inject = ['agents', 'workingDirectory']
 export {
   discoverBaselineInstructionFiles,
   loadBaselineInstructions,
@@ -303,10 +302,7 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   const stepIsOpen = (session: Session): boolean => {
-    const boundary = ctx.sessionProjections.stateOf(session, 'turnBoundary')
-    if (boundary === undefined) {
-      throw new Error('agent-instructions requires the turnBoundary session projection')
-    }
+    const boundary = ctx.agents.turnBoundaryOf(session)
     return boundary.openTurnStartSeq !== null
       && boundary.lastStepBoundary?.kind === 'start'
       && boundary.lastStepBoundary.seq > boundary.openTurnStartSeq

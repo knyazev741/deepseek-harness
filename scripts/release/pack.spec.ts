@@ -306,9 +306,11 @@ describe('release pack CLI', () => {
 
   it('validates every parallel tarball before recording the publish order', async () => {
     const root = fixture()
-    packageFixture(root, 'packages/util/alpha', '@knyazevai/dsh-alpha')
-    packageFixture(root, 'packages/util/zebra', '@knyazevai/dsh-zebra', { files: ['lib/index.js', 'src/index.ts'] })
-    write(join(root, 'packages/util/zebra/src/index.ts'), 'export const source = 1\n')
+    packageFixture(root, 'packages/util/alpha', '@deepseek-ai/alpha')
+    packageFixture(root, 'apps/cli', '@knyazevai/dsh', { files: ['lib/index.js', 'src/bin.ts'] })
+    packageFixture(root, 'packages/subagent/subagent-claude-code', '@knyazevai/dsh-subagent-claude-code')
+    packageFixture(root, 'packages/subagent/subagent-codex', '@knyazevai/dsh-subagent-codex')
+    write(join(root, 'apps/cli/src/bin.ts'), 'export const bin = 1\n')
     write(join(root, 'apps/web/dist/index.html'), '<main></main>')
     write(join(root, 'apps/web/dist/theme.css'), ':root { --dsw-font-family: sans-serif; }')
     writeClientBuildRecord(root, officialClientBuildEnvironment(root, { DSH_CLIENT_COMMIT_HASH: commit }))
@@ -316,8 +318,8 @@ describe('release pack CLI', () => {
     const result = await runPack(root, ['--family', 'dsh', '--concurrency', '8'])
 
     expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain('@knyazevai/dsh-zebra publishes source file package/src/index.ts')
-    expect(readdirSync(join(root, 'packed')).filter(name => name.endsWith('.tgz'))).toHaveLength(2)
+    expect(result.stderr).toContain('@knyazevai/dsh packed no documentation')
+    expect(readdirSync(join(root, 'packed')).filter(name => name.endsWith('.tgz'))).toHaveLength(4)
     expect(existsSync(join(root, 'packed', PUBLISH_ORDER_FILE))).toBe(false)
   })
 

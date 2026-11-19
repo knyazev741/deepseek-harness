@@ -2,7 +2,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { ContentBlock } from '@knyazevai/dsh-llm'
-import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 import type {
   SubagentCapabilities,
   SubagentProvider,
@@ -11,6 +11,7 @@ import type {
   SubagentStartRequest,
   SubagentStopReason,
 } from '@knyazevai/dsh-subagent'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const DEFAULT_CAPABILITIES: SubagentCapabilities = {
   agentOptions: true,
@@ -88,7 +89,7 @@ class ScriptedSubagentProvider implements SubagentProvider {
     })
 
     return {
-      id: SessionId(`scripted-subagent:${this.name}:${request.parent.id}:${++this.started}`),
+      id: brandString<SessionId>(`scripted-subagent:${this.name}:${request.parent.id}:${++this.started}`),
       result,
       dispose(): Promise<void> {
         state.cancelled = true

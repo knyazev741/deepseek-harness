@@ -7,11 +7,11 @@ import { fileURLToPath } from 'node:url'
 import {
   initProfile,
   PROFILE_PATCH_FILENAME,
-  PROFILE_TEMPLATES,
   readProfileManifest,
   resolveProfileDir,
   writeProfileManifest,
 } from '@knyazevai/dsh-app-boot'
+import { PROFILE_TEMPLATES } from '@knyazevai/dsh-official-bundles'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { execa } from 'execa'
 import { initializeProfileFromDefault } from '../src/profile-boot.ts'

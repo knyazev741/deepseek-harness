@@ -1,4 +1,6 @@
 /** Loader composition with a real stdio child and a scripted external model. */
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,12 +10,13 @@ import { Context, FiberState } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import ComputerUse from '@knyazevai/dsh-computer-use'
-import { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/brand'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ComputerUseProviderName } from '@knyazevai/dsh-computer-use/types'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
-import LlmRuntime, { LlmAdapter, ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
+import LlmRuntime, { LlmAdapter, type ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import AgentRegistry from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
@@ -40,7 +43,7 @@ class ScreenshotModel extends LlmAdapter {
   async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     this.requests.push(options)
     if (this.requests.length === 1) {
-      const id = ToolCallId('screenshot-call')
+      const id = brandString<ToolCallId>('screenshot-call')
       const args = '{"display":0}'
       yield { type: 'block-start', index: 0, blockType: 'tool-call' }
       yield { type: 'tool-call-delta', index: 0, id, name: TOOL, argumentsDelta: args }
@@ -63,11 +66,13 @@ async function load(mode?: string): Promise<{ ctx: Context; root: string; model:
     ['@knyazevai/dsh-computer-use', ComputerUse],
     ['@knyazevai/dsh-system-prompt', SystemPrompt],
     ['@knyazevai/dsh-tools', ToolRuntime],
+    ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
     ['@knyazevai/dsh-llm', LlmRuntime],
     ['@knyazevai/dsh-session', SessionStore],
     ['@knyazevai/dsh-agent', AgentRegistry],
     ['@knyazevai/dsh-agent-loop', AgentLoop],
     ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+
     ['@knyazevai/dsh-attachment-local', LocalAttachmentStore],
     ['@fixture/model', { inject: ['llm'], apply(ctx: Context) { ctx.effect(() => ctx.llm.registerAdapter(['fixture'], model)) } }],
     ['@knyazevai/dsh-experimental-computer-use-cua-driver-mcp', Provider],
@@ -131,7 +136,7 @@ describe('installed Cua Driver Loader composition', () => {
     const fibers = [...ctx.loader.entries()].flatMap(entry => entry.fiber === undefined ? [] : [entry.fiber])
     expect(fibers.every(fiber => fiber.state === FiberState.ACTIVE)).toBe(true)
     expect(ctx.computerUse.providerName).toBe('cua-driver-mcp')
-    const agent = await ctx.agentLoop.create(SessionId('computer-use-composition'), { provider: 'fixture', model: 'vision' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('computer-use-composition'), { provider: 'fixture', model: 'vision' })
     const idle = new Promise<void>((resolve) => {
       const dispose = ctx.on('agent/status', ({ agent: subject, status }) => {
         if (subject === agent && status === 'idle') { dispose(); resolve() }
@@ -163,14 +168,14 @@ describe('installed Cua Driver Loader composition', () => {
 
   it('retains exclusive ownership when the external process disconnects and reconnects', async () => {
     const { ctx, root } = await load()
-    await ctx.tools.execute({ name: 'mcp__cua-driver-mcp__disconnect', arguments: {}, callId: ToolCallId('disconnect'), signal: new AbortController().signal })
+    await executeToolFixture(ctx, { name: 'mcp__cua-driver-mcp__disconnect', arguments: {}, callId: brandString<ToolCallId>('disconnect'), signal: new AbortController().signal })
     expect(ctx.computerUse.providerName).toBe('cua-driver-mcp')
-    expect(() => ctx.computerUse.register(ComputerUseProviderName('replacement'))).toThrow('already registered')
+    expect(() => ctx.computerUse.register(brandString<ComputerUseProviderName>('replacement'))).toThrow('already registered')
     await vi.waitFor(async () => {
       expect((await driverEvents(root)).filter(event => event.event === 'initialize')).toHaveLength(2)
     }, { timeout: 10_000 })
     await vi.waitFor(async () => {
-      const result = await ctx.tools.execute({ name: TOOL, arguments: { display: 2 }, callId: ToolCallId('reconnected'), signal: new AbortController().signal })
+      const result = await executeToolFixture(ctx, { name: TOOL, arguments: { display: 2 }, callId: brandString<ToolCallId>('reconnected'), signal: new AbortController().signal })
       expect(result.isError).not.toBe(true)
       expect(result.content[0]).toEqual({ type: 'text', text: 'Display 2' })
     })

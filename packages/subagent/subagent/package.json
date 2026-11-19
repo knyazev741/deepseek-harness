@@ -18,10 +18,6 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./internal": {
-      "types": "./lib/types/internal.d.ts",
-      "default": "./lib/types/internal.js"
-    },
     "./client": {
       "types": "./lib/types/client.d.ts",
       "default": "./lib/types/client.js"
@@ -43,10 +39,14 @@
     "lib/index.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
-    "lib/typert.remote-client.d.ts"
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
   ],
   "license": "MIT",
   "dependencies": {
@@ -54,7 +54,7 @@
     "@knyazevai/dsh-chunked-list": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -94,9 +94,6 @@
     "@knyazevai/dsh-session-persistence": {
       "optional": true
     },
-    "@knyazevai/dsh-session-projection": {
-      "optional": true
-    },
     "@knyazevai/dsh-session-query": {
       "optional": true
     },
@@ -112,6 +109,7 @@
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-agent-preset-registry": "workspace:*",
     "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-sandbox": "workspace:*",
     "@knyazevai/dsh-sandbox-policy": "workspace:*",
@@ -121,6 +119,7 @@
     "@knyazevai/dsh-session-projection": "workspace:*",
     "@knyazevai/dsh-session-query": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*",
     "@knyazevai/dsh-user-approval": "workspace:*",

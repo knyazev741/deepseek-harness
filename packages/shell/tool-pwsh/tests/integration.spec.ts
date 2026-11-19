@@ -1,6 +1,6 @@
 /**
  * Integration tests: the REAL `@knyazevai/dsh-pwsh-local` executor plus the
- * `pwsh` tool, exercised through `ctx.tools.execute()` with a real PowerShell
+ * `pwsh` tool, exercised through `executeToolFixture()` with a real PowerShell
  * process. These verify the world — actual commands run, stdout/stderr come
  * back, exit codes render, timeouts abort, background jobs settle through the
  * generic job runtime, and per-session cwd resolution works. The suite
@@ -8,7 +8,9 @@
  * PowerShell); the fake-executor suite (tools.spec.ts) carries the coverage
  * gate.
  */
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
 
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { provideWorkingDirectoryFixture } from '@knyazevai/dsh-agent-loop-testkit'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -16,7 +18,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { Context } from '@deepseek-ai/cordis'
-import { ToolCallId } from '@knyazevai/dsh-llm'
+import type { ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED } from '@knyazevai/dsh-tools'
 import LocalJobRegistry from '@knyazevai/dsh-jobs-local'
@@ -40,9 +43,9 @@ let ctx: Context
 
 let callCounter = 0
 function call(name: string, args: unknown, agentObj?: object, signal?: AbortSignal) {
-  return ctx.tools.execute({
+  return executeToolFixture(ctx, {
     signal: signal ?? testToolSignal,
-    callId: ToolCallId(`it-${++callCounter}`),
+    callId: brandString<ToolCallId>(`it-${++callCounter}`),
     name,
     arguments: args,
     ...agentObj ? { agent: agentObj as never } : {},
@@ -63,6 +66,7 @@ describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
     provideWorkingDirectoryFixture(ctx)
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     await ctx.plugin(LocalJobRegistry)
     await ctx.plugin(ToolJobs)
     await ctx.plugin(LocalSubprocessRuntime)

@@ -1,0 +1,3 @@
+- insert:
+    - id: notion
+      name: '@knyazevai/dsh-notion'

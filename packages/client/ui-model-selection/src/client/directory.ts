@@ -4,9 +4,10 @@
  * Session's durable selection projection, then submit through the same
  * selectModel call. A switch made in either entry updates this shared state.
  */
+import type { ModelSelectionProjection } from '@knyazevai/dsh-agent/types'
 import type { TrackProductEvent } from '@knyazevai/dsh-client-product-analytics/client'
 import type {
-  ModelCatalogFailure, ModelProviderGroup, ModelSelection, ModelSelectionProjection,
+  ModelCatalogFailure, ModelProviderGroup, ModelSelection,
 } from '@knyazevai/dsh-api-session-controller/types'
 import type { SessionId } from '@knyazevai/dsh-api-remotes/client'
 import type { RemoteResult, TypertClientRemote } from '@knyazevai/dsh-typert-protocol'

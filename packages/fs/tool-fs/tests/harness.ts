@@ -7,6 +7,7 @@ import LocalFileSystem from '@knyazevai/dsh-fs-local'
 import * as FsPolicy from '@knyazevai/dsh-fs-observation-policy'
 import * as ToolFs from '@knyazevai/dsh-tool-fs'
 import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
+import DeepSeekAuth from '@knyazevai/dsh-deepseek-auth'
 
 /**
  * Build the real fs-tool stack for with-key e2e tests. Agents have no session
@@ -17,6 +18,7 @@ export async function fsHarness(fsCwd: string, persona = ''): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx, { systemPrompt: { personaPrefix: persona } })
   await ctx.plugin(AgentLoop, { agents: [] })
+  await ctx.plugin(DeepSeekAuth)
   await ctx.plugin(LlmDeepSeek)
   await ctx.plugin(LocalFileSystem, { cwd: fsCwd })
   await ctx.plugin(WorkingDirectory, { defaultDirectory: fsCwd })

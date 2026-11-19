@@ -1,0 +1,71 @@
+{
+  "name": "@knyazevai/dsh-tool-session-list",
+  "description": "Read-only paginated Workspace and Session metadata tools",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/session-query/tool-session-list"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session-title": "workspace:*",
+    "@knyazevai/dsh-session-persistence": "workspace:*",
+    "@knyazevai/dsh-storage": "workspace:*",
+    "@knyazevai/dsh-storage-domain": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
+    "@knyazevai/dsh-storage-json": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@knyazevai/dsh-session-projection-cache": {
+      "optional": true
+    },
+    "@knyazevai/dsh-session-title": {
+      "optional": true
+    }
+  }
+}

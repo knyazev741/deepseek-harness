@@ -25,16 +25,23 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "diff": "^9.0.0",
     "@deepseek-ai/schemastery": "workspace:~",
-    "@knyazevai/dsh-util-code-language": "workspace:*"
+    "@knyazevai/dsh-util-code-language": "workspace:*",
+    "@knyazevai/dsh-fs-patch": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*"
   },
   "peerDependencies": {
     "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-fs": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-sandbox": "workspace:*",
@@ -51,6 +58,7 @@
     "@knyazevai/dsh-agent-loop": "workspace:*",
     "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
     "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-fs": "workspace:*",
     "@knyazevai/dsh-fs-local": "workspace:*",
     "@knyazevai/dsh-fs-observation-policy": "workspace:*",
@@ -61,12 +69,17 @@
     "@knyazevai/dsh-sandbox-policy": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-user-approval": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-session-projection": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-ptc-runtime": "workspace:*",
-    "@knyazevai/dsh-working-directory": "workspace:*"
+    "@knyazevai/dsh-fs-sandbox": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   }
 }

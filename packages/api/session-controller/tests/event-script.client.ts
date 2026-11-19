@@ -1,5 +1,6 @@
+import { brandString } from '@knyazevai/dsh-brand'
 import {
-  ToolCallId, createMessage, createToolResultMessage, createUserMessage,
+  type ToolCallId, createMessage, createToolResultMessage, createUserMessage,
 } from '@knyazevai/dsh-llm'
 import { SessionSeq } from '@knyazevai/dsh-session/types'
 // Minimal SessionEvent builders for orchestration tests (shape mirrors what the
@@ -8,7 +9,7 @@ import type { ContentBlock } from '@knyazevai/dsh-llm/types'
 import type { SessionEvent } from '@knyazevai/dsh-session/types'
 import type {
   SessionEventEntry,
-  SessionPage,
+  SessionEventsPage,
   SessionWireEvent,
 } from '../src/types.ts'
 
@@ -71,7 +72,7 @@ export const ev = {
         turn,
         step,
         message: createToolResultMessage({
-          callId: ToolCallId(callId),
+          callId: brandString<ToolCallId>(callId),
           content: text(body),
           isError: false,
         }),
@@ -185,8 +186,9 @@ export function entries(events: readonly SessionEvent[]): SessionEventEntry[] {
 }
 
 /** Build one view-less history response value. */
-export function historyValue(events: readonly SessionEvent[], hasMore = false): SessionPage {
+export function historyValue(events: readonly SessionEvent[], hasMore = false): SessionEventsPage {
   return {
+    cursor: events.at(-1)?.seq ?? -1,
     records: entries(events),
     hasMore,
   }

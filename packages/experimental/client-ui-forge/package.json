@@ -1,0 +1,145 @@
+{
+  "name": "@knyazevai/dsh-experimental-client-ui-forge",
+  "description": "Session panel entries for a Session's change requests, with a worktree option for new Sessions and its Host Remote",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/client-ui-forge"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./remote": {
+      "types": "./lib/typert.remote-client.d.ts",
+      "default": "./lib/typert.remote-client.js"
+    },
+    "./typert": {
+      "types": "./lib/typert.host.d.ts",
+      "default": "./lib/typert.host.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./types": {
+      "types": "./lib/types/types.d.ts"
+    }
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@knyazevai/dsh-api-remote-access",
+        "@knyazevai/dsh-api-remotes",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-layout",
+        "@knyazevai/dsh-client-ui-plugin-manager",
+        "@knyazevai/dsh-client-ui-session-panel",
+        "@knyazevai/dsh-client-ui-settings",
+        "@knyazevai/dsh-client-ui-sidebar-right",
+        "@knyazevai/dsh-client-ui-workspace"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-experimental-worktree": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-experimental-forge": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "diff": "^9.0.0",
+    "zod": "4.6.6",
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-storage-domain": "workspace:*",
+    "picomatch": "^4.0.7"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-api-remote-access": "workspace:*",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-api-workspace-controller": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-layout": "workspace:*",
+    "@knyazevai/dsh-client-ui-plugin-manager": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-panel": "workspace:*",
+    "@knyazevai/dsh-client-ui-settings": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-workspace": "workspace:*",
+    "@knyazevai/dsh-experimental-forge": "workspace:*",
+    "@knyazevai/dsh-experimental-forge-github": "workspace:*",
+    "@knyazevai/dsh-experimental-forge-session": "workspace:*",
+    "@knyazevai/dsh-experimental-worktree": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-sandbox": "workspace:*",
+    "@knyazevai/dsh-sandbox-local": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-session-projection-cache": "workspace:*",
+    "@knyazevai/dsh-session-query": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-util-text-search": "workspace:*",
+    "@knyazevai/dsh-util-workspace-path": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@testing-library/react": "^16.3.3",
+    "@types/picomatch": "^4.0.3",
+    "clsx": "^2.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "lib/typert.host.js",
+    "lib/typert.host.d.ts",
+    "lib/typert.remote-client.js",
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
+  ]
+}

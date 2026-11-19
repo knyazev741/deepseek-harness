@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { SessionFormatEventCollector, type SessionFormatEvent, type SessionFormatJsonObject } from '@knyazevai/dsh-session-format'
 import { createSessionFormatCatalogWithChildren, sessionFormatCatalog } from '@knyazevai/dsh-session-format-catalog'
-import { Session, SessionId, SessionLogOffset, type SessionEvent, type SessionHeader } from '@knyazevai/dsh-session'
+import { Session, type SessionId, SessionLogOffset, type SessionEvent, type SessionHeader } from '@knyazevai/dsh-session'
 import { imageOffloadProjection } from '@knyazevai/dsh-compaction-image-offload/projection'
 import { createSessionFormatV3ToV4 } from '../src/index.ts'
 import { remapV3References } from '../src/references.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const header = { type: 'session', version: 3, id: 'restart', createdAt: 1, isSeeded: false, delegationDepth: 0 }
-const nativeHeader: SessionHeader = { version: 4, id: SessionId(header.id), createdAt: 1, isSeeded: false, delegationDepth: 0 }
+const nativeHeader: SessionHeader = { version: 4, id: brandString<SessionId>(header.id), createdAt: 1, isSeeded: false, delegationDepth: 0 }
 const user = (id: string) => ({ id, role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: id }] })
 const row = (type: string, data: SessionFormatJsonObject) => ({ type, data })
 const splice = () => row('agent/inbox/spliced', { target: 'next-turn', inserted: [user('next')] })

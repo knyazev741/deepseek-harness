@@ -25,7 +25,10 @@
   "files": [
     "lib/index.js",
     "cordis.patch.yml",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dsh": {
@@ -52,6 +55,7 @@
     "@knyazevai/dsh-sdk-app": "workspace:*",
     "@knyazevai/dsh-sdk-jsonrpc-server": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-checkpoint-policy": "workspace:*",
     "@knyazevai/dsh-session-log-deepseek": "workspace:*",
     "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
     "@knyazevai/dsh-session-projection": "workspace:*",
@@ -62,12 +66,13 @@
     "@knyazevai/dsh-terminal-bash": "workspace:*",
     "@knyazevai/dsh-token-meter": "workspace:*",
     "@knyazevai/dsh-tool-bash-persistent": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
     "@knyazevai/dsh-tool-fs": "workspace:*",
     "@knyazevai/dsh-tool-pwsh-persistent": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-working-directory": "workspace:*",
-    "@knyazevai/dsh-tool-working-directory": "workspace:*",
-    "@knyazevai/dsh-fs-local": "workspace:*"
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"

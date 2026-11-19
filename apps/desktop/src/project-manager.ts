@@ -22,9 +22,8 @@ import {
 import type { DesktopPaths } from './paths.ts'
 import type { DesktopRelease } from './release.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
-import {
-  initProfile, PROFILE_TEMPLATES, removeLinkProjections, sanitizeProfile, type ProfileTemplate,
-} from '@knyazevai/dsh-app-boot'
+import { initProfile, removeLinkProjections, sanitizeProfile } from '@knyazevai/dsh-app-boot'
+import { PROFILE_TEMPLATES, type ProfileTemplate } from '@knyazevai/dsh-official-bundles'
 
 const PROJECT_NAME = '@knyazevai/dsh-desktop-runtime'
 const DSH_PACKAGE = '@knyazevai/dsh'

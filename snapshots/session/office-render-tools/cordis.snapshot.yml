@@ -47,13 +47,20 @@
               - id: deepseek-v4-pro
 
 - insert:
+    - id: office-kit
+      name: '@knyazevai/dsh-office-kit'
+      config:
+        outputDirectory: !!js dshHomePath('office-kit', 'outputs')
+
+    - id: tool-office
+      name: '@knyazevai/dsh-tool-office'
+
     - id: skill-office
       name: '@knyazevai/dsh-skill-office'
       disabled: false
       config:
         assetRoot: !!js process.cwd() + '/office-skills'
-        node: !!js process.cwd() + '/office-node'
-        cli: !!js process.cwd() + '/render-cli.cjs'
+        pythonEnvironment: user
 
 - id: tool-bash
   disabled: true

@@ -60,6 +60,8 @@
         id: parent
         plugins:
           - name: '@knyazevai/dsh-tool-fs'
+            config:
+              applyPatch: true
           - name: '@knyazevai/dsh-tool-fs-search'
             config:
               sampleOverCapGlobResults: false

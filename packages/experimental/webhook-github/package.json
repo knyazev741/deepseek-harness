@@ -23,15 +23,20 @@
       "default": "./lib/types/types.js"
     },
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json",
     "./examples/*": "./examples/*"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "examples/github-review/cordis.yml",
     "examples/github-review/github-ready-review-rule.mjs",
     "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -42,6 +47,7 @@
     "@knyazevai/dsh-webhook": "workspace:*"
   },
   "dependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "@octokit/webhooks": "^14.2.0"

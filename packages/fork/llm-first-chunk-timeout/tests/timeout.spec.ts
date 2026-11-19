@@ -1,4 +1,4 @@
-import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,11 +12,8 @@ import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import * as FirstChunkTimeout from '../src/index.ts'
 import { CompactionEngine } from '@knyazevai/dsh-compaction'
 import type { RequestErrorAction } from '@knyazevai/dsh-agent'
-import AgentRegistry from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
-import SystemPrompt from '@knyazevai/dsh-system-prompt'
-import ToolRuntime from '@knyazevai/dsh-tools'
+import { SessionId } from '@knyazevai/dsh-session'
 
 
 interface Deferred<T> {
@@ -873,6 +870,10 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     class RecoveryAdapter extends LlmAdapter {
       readonly requests: GenerateOptions[] = []
 
+      override resolveModel(provider: string, model: string) {
+        return Promise.resolve({ provider, id: model, name: model })
+      }
+
       async * stream(request: GenerateOptions): AsyncIterable<StreamChunk> {
         this.requests.push(request)
         if (this.requests.length === 1) {
@@ -887,12 +888,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
 
     const ctx = new Context()
     contexts.push(ctx)
-    await ctx.plugin(LlmRuntime)
-    await ctx.plugin(SessionStore)
-    await ctx.plugin(SessionProjectionRegistry)
-    await ctx.plugin(SystemPrompt)
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(AgentRegistry)
+    await mountAgentLoopTestDependencies(ctx)
     await ctx.plugin(FirstChunkTimeout, { firstChunkIdleTimeoutMs: 5 })
     const fake = new FakeCompaction(ctx)
     await ctx.plugin(AgentLoop, { agents: [] })

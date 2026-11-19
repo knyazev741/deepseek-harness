@@ -1,6 +1,5 @@
 import type { SessionEvent } from '@knyazevai/dsh-session/types'
-import type { CommandId } from '@knyazevai/dsh-commands/brand'
-import type {} from '@knyazevai/dsh-commands/types'
+import type { CommandId } from '@knyazevai/dsh-commands/types'
 import type {
   ConversationNodeDefinition,
 } from '@knyazevai/dsh-client-ui-conversation/client'

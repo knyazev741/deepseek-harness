@@ -2,14 +2,16 @@
 import type { ModuleLoaderV2 } from '@deepseek-ai/cordis-plugin-loader'
 import { boot } from '@knyazevai/dsh-app-boot'
 import LlmRuntime from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import * as JsonlPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import * as Official from '@knyazevai/dsh-llm-deepseek-api-key'
+import DeepSeekAuth from '@knyazevai/dsh-deepseek-auth'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
 import Translator from '../src/index.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const enabled = process.env.DSH_TRANSLATION_DEEPSEEK_LIVE === '1' && (process.env.DEEPSEEK_API_KEY?.length ?? 0) > 0
 
@@ -24,12 +26,14 @@ it.skipIf(!enabled)('translates a small independent billed query with exact Flas
       { id: 'llm', name: '@knyazevai/dsh-llm' },
       { id: 'sessions', name: '@knyazevai/dsh-session' },
       { id: 'storage', name: '@knyazevai/dsh-session-persistence-jsonl', config: { root: join(root, 'sessions'), compression: 'none' } },
+      { id: 'deepseek-auth', name: '@knyazevai/dsh-deepseek-auth' },
       { id: 'official-live-owner', name: '@knyazevai/dsh-llm-deepseek-api-key' },
       { id: 'translator', name: '@knyazevai/dsh-experimental-translator', config: { deepseekMaxOutputTokens: 128 } },
     ]))
     const modules = new Map<string, unknown>([
       ['@knyazevai/dsh-llm', LlmRuntime], ['@knyazevai/dsh-session', SessionStore],
       ['@knyazevai/dsh-session-persistence-jsonl', JsonlPersistence],
+      ['@knyazevai/dsh-deepseek-auth', DeepSeekAuth],
       ['@knyazevai/dsh-llm-deepseek-api-key', Official], ['@knyazevai/dsh-experimental-translator', Translator],
     ])
     const ctx = await boot('paid-translation-live', configPath, [], (host) => {
@@ -47,7 +51,7 @@ it.skipIf(!enabled)('translates a small independent billed query with exact Flas
       host.loader.internal = source
     })
     close = async () => { await ctx.fiber.dispose() }
-    const session = ctx.sessions.create(SessionId('paid-live-translation'), { meta: { cwd: root } })
+    const session = ctx.sessions.create(brandString<SessionId>('paid-live-translation'), { meta: { cwd: root } })
     await using _writer = await ctx.sessionPersistence.create(session.header)
     expect(await ctx.translator.availableProviders()).toContain('deepseek-official')
     const result = await ctx.translator.translate(ctx.translator.resolve({ provider: 'deepseek-official', text: 'Hello world.',

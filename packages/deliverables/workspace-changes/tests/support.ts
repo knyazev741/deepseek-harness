@@ -4,7 +4,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
-import { ToolCallId, createAssistantMessage, createToolResultMessage } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { type ToolCallId, createAssistantMessage, createToolResultMessage } from '@knyazevai/dsh-llm'
 import type { Session } from '@knyazevai/dsh-session'
 import type {} from '@knyazevai/dsh-tools'
 import type {} from '@knyazevai/dsh-fs'
@@ -34,7 +35,7 @@ export function startTurn(session: Session, turn: number): void {
 
 /** Log one settled tool call with an optional result `meta`. */
 export function toolCall(session: Session, turn: number, name: string, args: unknown, result: { meta?: unknown; isError?: boolean } = {}) {
-  const callId = ToolCallId(`call-${++callNumber}`)
+  const callId = brandString<ToolCallId>(`call-${++callNumber}`)
   const serialized = JSON.stringify(args)
   session.append('assistant/message', {
     stream: [], turn, step: 1,

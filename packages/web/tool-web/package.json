@@ -25,7 +25,10 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -36,12 +39,14 @@
     "@knyazevai/dsh-web": "workspace:*"
   },
   "dependencies": {
+    "@knyazevai/dsh-output-retention": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "@joplin/turndown-plugin-gfm": "^1.0.67",
     "turndown": "^7.2.4"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
@@ -50,12 +55,16 @@
     "@knyazevai/dsh-spill-policy": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-tool-call-timeout-policy": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-web": "workspace:*",
+    "@knyazevai/dsh-web-deepseek-api": "workspace:*",
     "@knyazevai/dsh-web-fetch-http": "workspace:*",
-    "@knyazevai/dsh-web-search-exa": "workspace:*",
     "@types/turndown": "^5.0.6",
     "@knyazevai/dsh-scope": "workspace:*",
-    "@knyazevai/dsh-token-meter": "workspace:*"
+    "@knyazevai/dsh-token-meter": "workspace:*",
+    "@knyazevai/dsh-launch-environment": "workspace:*",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   }
 }

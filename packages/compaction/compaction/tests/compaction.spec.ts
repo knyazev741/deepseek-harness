@@ -2,14 +2,15 @@ import { createUserMessage } from '@knyazevai/dsh-llm'
 import type { ContextFormed } from '@knyazevai/dsh-llm'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { CompactionId } from '@knyazevai/dsh-compaction/types'
 import {
-  CompactionId,
   CompactionEngine,
   compactCheckpointSource,
   isCompactCheckpointSource,
 } from '@knyazevai/dsh-compaction'
 import type { CompactionResult, CompactionTrigger } from '@knyazevai/dsh-compaction'
-import { Session, SessionId } from '@knyazevai/dsh-session'
+import { Session, type SessionId } from '@knyazevai/dsh-session'
 import type { SessionSeq } from '@knyazevai/dsh-session'
 import type { CompactionAgentContext } from '@knyazevai/dsh-compaction'
 import type { ManualCompactAgentContext } from '@knyazevai/dsh-compaction'
@@ -61,7 +62,7 @@ class StubCompactionEngine extends CompactionEngine {
     const endIndex = surface.indexOf(end)
     if (startIndex < 0 || endIndex < startIndex) throw new Error('stub compact range is invalid')
     const shadowedSeqs = surface.slice(startIndex, endIndex + 1)
-    const compactionId = CompactionId('stub-compaction')
+    const compactionId = brandString<CompactionId>('stub-compaction')
     // Minimal stub honoring the lock + log-only event contract.
     const startEvent = session.append('compaction/start', { compactionId, turn: 0 })
     const summaryEvent = session.append('compaction/summary', {
@@ -117,7 +118,7 @@ describe('CompactionEngine seam', () => {
   it('exposes the abstract contract methods', async () => {
     const ctx = new Context()
     const svc = new StubCompactionEngine(ctx)
-    const session = Session.create(SessionId('s'))
+    const session = Session.create(brandString<SessionId>('s'))
     expect(await svc.compactIfNeeded(stubAgent(session), 'pressure', new AbortController().signal)).toBeNull()
     const signal = new AbortController().signal
     expect(await svc.compactNow({
@@ -130,7 +131,7 @@ describe('CompactionEngine seam', () => {
   it('compaction/* events merge into SessionEventMap and are log-only', async () => {
     const ctx = new Context()
     const svc = new StubCompactionEngine(ctx)
-    const session = Session.create(SessionId('s'))
+    const session = Session.create(brandString<SessionId>('s'))
     const original = session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'original' }],
       source: { kind: 'user' },
@@ -162,7 +163,7 @@ describe('CompactionEngine seam', () => {
   it('threads the cancellation signal through to the backend', async () => {
     const ctx = new Context()
     const svc = new StubCompactionEngine(ctx)
-    const session = Session.create(SessionId('s'))
+    const session = Session.create(brandString<SessionId>('s'))
     const controller = new AbortController()
     const original = session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'original' }],

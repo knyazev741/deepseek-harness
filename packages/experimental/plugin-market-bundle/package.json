@@ -1,6 +1,6 @@
 {
   "name": "@knyazevai/dsh-experimental-plugin-market-bundle",
-  "description": "Experimental custom plugin markets: a Discover tab that browses and installs bundles from plugin market indexes",
+  "description": "Experimental custom plugin indexes: a Discover tab that browses and installs bundles from plugin indexes",
   "version": "0.2.6",
   "icon": "./icon.svg",
   "publishConfig": {
@@ -27,9 +27,13 @@
   "files": [
     "icon.svg",
     "locale/*.json",
+    "docs",
     "lib/index.js",
     "cordis.patch.yml",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dependencies": {

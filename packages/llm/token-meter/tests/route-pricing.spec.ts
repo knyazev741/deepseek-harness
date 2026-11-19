@@ -1,13 +1,14 @@
 import { imageOffloadProjection } from '@knyazevai/dsh-compaction-image-offload/projection'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import {
-  LlmRuntime, LlmAdapter, createMessage, createToolResultMessage, createUserMessage, projectFilesToText, ToolCallId,
+  LlmRuntime, LlmAdapter, createMessage, createToolResultMessage, createUserMessage, projectFilesToText, type ToolCallId,
 } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, LlmImageRequestPricing, Message, StreamChunk, TokenUsage, UserMessage } from '@knyazevai/dsh-llm'
-import { AttachmentId } from '@knyazevai/dsh-attachment'
+import type { AttachmentId } from '@knyazevai/dsh-attachment/types'
+import { brandString } from '@knyazevai/dsh-brand'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@knyazevai/dsh-attachment'
-import { Session, SessionId, canonicalHeader } from '@knyazevai/dsh-session'
+import { Session, type SessionId, canonicalHeader } from '@knyazevai/dsh-session'
 import type { EpochHeader } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import TokenMeter from '@knyazevai/dsh-token-meter'
@@ -37,7 +38,7 @@ const fixedPricing: LlmImageRequestPricing = {
 
 function imageRef(name: string): ImageAttachmentRef {
   return {
-    attachmentId: AttachmentId(`sha256:${name.padEnd(8, '0')}`),
+    attachmentId: brandString<AttachmentId>(`sha256:${name.padEnd(8, '0')}`),
     mediaType: 'image/png',
     bytes: 2048,
     width: 800,
@@ -58,7 +59,7 @@ function imageMessage(name: string, text = 'look at this'): UserMessage {
 
 function fileRef(name: string): FileAttachmentRef {
   return {
-    attachmentId: AttachmentId(`sha256:${'ab'.repeat(32)}`),
+    attachmentId: brandString<AttachmentId>(`sha256:${'ab'.repeat(32)}`),
     name,
     bytes: 2_447_000_000,
   }
@@ -76,6 +77,7 @@ interface Harness {
 
 async function harness(pricing: (model: string) => LlmImageRequestPricing | undefined): Promise<Harness> {
   const ctx = new Context()
+  onTestFinished(async () => { await ctx.fiber.dispose() })
   new SessionProjectionRegistry(ctx)
   ctx.provide('attachments', {
     fileHostPath: (ref: FileAttachmentRef) => `/host/${ref.name}`,
@@ -85,8 +87,9 @@ async function harness(pricing: (model: string) => LlmImageRequestPricing | unde
   } as never)
   const llm = new LlmRuntime(ctx)
   llm.registerAdapter(['mock'], new PricingAdapter(pricing))
-  const meter = new TokenMeter(ctx)
-  return { ctx, meter, session: Session.create(SessionId('route-priced'), undefined, undefined, undefined, [imageOffloadProjection]) }
+  await ctx.plugin(TokenMeter)
+  const meter = ctx.tokenMeter
+  return { ctx, meter, session: Session.create(brandString<SessionId>('route-priced'), undefined, undefined, undefined, [imageOffloadProjection]) }
 }
 
 /** Route price of one image-bearing message under the fixed pricing double. */
@@ -230,7 +233,7 @@ describe('request projection pricing', () => {
     expect(after.nodes.map(node => node.heuristicTokens)).toEqual(before.nodes.map(node => node.heuristicTokens))
     const breakdown = ctx.sessionProjections.snapshot(session).values.contextBreakdown
     expect(breakdown?.messageTokens).toBe(after.nodes.reduce((total, node) => total + node.heuristicTokens, 0))
-    const restored = Session.create(SessionId('offloaded-restored'), session.snapshotEvents(), undefined, undefined, [imageOffloadProjection])
+    const restored = Session.create(brandString<SessionId>('offloaded-restored'), session.snapshotEvents(), undefined, undefined, [imageOffloadProjection])
     expect(meter.measure(restored).surfaceTokens).toBe(after.surfaceTokens)
   })
 
@@ -277,7 +280,7 @@ describe('request projection pricing', () => {
   it('prices tool-result images through the same route pricing', async () => {
     const { meter, session } = await harness(() => fixedPricing)
     const result = createToolResultMessage({
-      callId: ToolCallId('call-1'),
+      callId: brandString<ToolCallId>('call-1'),
       content: [
         { type: 'text', text: 'screenshot below' },
         { type: 'image', attachment: imageRef('nested') },
@@ -288,7 +291,7 @@ describe('request projection pricing', () => {
     session.append('request/header', { header: header('vision'), reason: 'initial' })
     const measurement = meter.measure(session)
     const imageFree = estimateMessage(createToolResultMessage({
-      callId: ToolCallId('call-1'),
+      callId: brandString<ToolCallId>('call-1'),
       content: [{ type: 'text', text: 'screenshot below' }],
       isError: false,
     }))

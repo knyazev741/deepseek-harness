@@ -1,6 +1,6 @@
 {
   "name": "@knyazevai/dsh-tool-schedule",
-  "description": "Model-facing reminder management tools (schedule_create, schedule_list, schedule_update, schedule_delete) over the Host ctx.schedule service",
+  "description": "Model-facing scheduled task tools (schedule_create, schedule_list, schedule_view, schedule_edit) over the Host ctx.schedule service",
   "version": "0.2.6",
   "publishConfig": {
     "access": "public"
@@ -19,28 +19,42 @@
       "default": "./lib/index.js"
     },
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
+  "dependencies": {
+    "@knyazevai/dsh-brand": "workspace:*"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-ptc-runtime": "workspace:*",
     "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
-    "@knyazevai/dsh-tools": "workspace:*"
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-agent-preset-registry": "workspace:*"
   }
 }

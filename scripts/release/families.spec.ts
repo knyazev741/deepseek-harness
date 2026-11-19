@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { officialClientBuildEnvironment, writeClientBuildRecord } from '../client-build-environment.ts'
-import { ON_DEMAND_BUNDLES } from '../../packages/boot/app-boot/src/official-bundles.ts'
+import { ON_DEMAND_BUNDLES } from '../../packages/util/official-bundles/src/bundles.ts'
 import { releaseFamily, type ReleaseMember } from './families.ts'
 import { compareVersions, nextVendorVersion, planShared, reachesPayload } from './bump.ts'
 
@@ -50,8 +50,7 @@ describe('release families', () => {
     expect(members
       .filter(member => member.directory.startsWith('packages/experimental/'))
       .map(member => member.name)).toEqual([
-      '@knyazevai/dsh-experimental-agent-team-profile',
-      '@knyazevai/dsh-experimental-agent-team',
+      '@knyazevai/dsh-action-cards',
       '@knyazevai/dsh-experimental-api-speech-to-text',
       '@knyazevai/dsh-experimental-auto-review',
       '@knyazevai/dsh-experimental-badge-skill-bundle',
@@ -60,22 +59,39 @@ describe('release families', () => {
       '@knyazevai/dsh-experimental-browser-use-runtime',
       '@knyazevai/dsh-experimental-browser-use-stagehand-native',
       '@knyazevai/dsh-experimental-claude-code-mods',
-      '@knyazevai/dsh-experimental-client-ui-agent-team',
+      '@knyazevai/dsh-client-ui-action-cards',
       '@knyazevai/dsh-experimental-client-ui-claude-code-mods',
       '@knyazevai/dsh-experimental-client-ui-cot-translation',
+      '@knyazevai/dsh-client-ui-creation-recommendations',
+      '@knyazevai/dsh-experimental-client-ui-forge',
+      '@knyazevai/dsh-client-ui-plugin-recommendations',
+      '@knyazevai/dsh-experimental-client-ui-stats',
       '@knyazevai/dsh-experimental-client-ui-voice-input',
       '@knyazevai/dsh-experimental-computer-use-cua-driver-mcp',
       '@knyazevai/dsh-experimental-computer-use-cua-driver-native',
       '@knyazevai/dsh-experimental-cot-translation-bundle',
-      '@knyazevai/dsh-experimental-cua-macos',
+      '@knyazevai/dsh-creation-recommendations',
+      '@knyazevai/dsh-cua-bundle',
+      '@knyazevai/dsh-cua-macos',
+      '@knyazevai/dsh-cua-mcp',
+      '@knyazevai/dsh-cua-windows',
       '@knyazevai/dsh-cua',
+      '@knyazevai/dsh-deepseek-chat-import',
+      '@knyazevai/dsh-experimental-forge-bundle',
+      '@knyazevai/dsh-experimental-forge-github',
+      '@knyazevai/dsh-forge-gitlab',
+      '@knyazevai/dsh-experimental-forge-session',
+      '@knyazevai/dsh-experimental-forge',
       '@knyazevai/dsh-hook-protocol',
       '@knyazevai/dsh-hooks-claude-code',
       '@knyazevai/dsh-hooks-codex',
       '@knyazevai/dsh-experimental-inspector-profile',
       '@knyazevai/dsh-experimental-inspector',
+      '@knyazevai/dsh-experimental-liveshare-protocol',
+      '@knyazevai/dsh-experimental-liveshare',
+      '@knyazevai/dsh-personalized-recommendations',
       '@knyazevai/dsh-experimental-plugin-market-bundle',
-      '@knyazevai/dsh-experimental-ptc-runtime-python',
+      '@knyazevai/dsh-plugin-recommendations',
       '@knyazevai/dsh-experimental-ralph-bundle',
       '@knyazevai/dsh-experimental-session-inspector',
       '@knyazevai/dsh-experimental-session-search',
@@ -84,10 +100,13 @@ describe('release families', () => {
       '@knyazevai/dsh-skill-badge',
       '@knyazevai/dsh-experimental-speech-to-text-sensevoice',
       '@knyazevai/dsh-experimental-speech-to-text',
+      '@knyazevai/dsh-experimental-subagent-oar',
       '@knyazevai/dsh-experimental-terminal-bundle',
-      '@knyazevai/dsh-experimental-tool-agent-team',
+      '@knyazevai/dsh-terminal-panel',
+      '@knyazevai/dsh-timeline',
       '@knyazevai/dsh-tool-ralph',
       '@knyazevai/dsh-tool-session-query',
+      '@knyazevai/dsh-experimental-tool-subagent-oar',
       '@knyazevai/dsh-tool-terminal',
       '@knyazevai/dsh-experimental-tool-worktree',
       '@knyazevai/dsh-experimental-translator',
@@ -247,7 +266,7 @@ describe('release families', () => {
     const dsh = member('apps/cli', '@knyazevai/dsh')
     const providers = ON_DEMAND_BUNDLES.map(name => member(`packages/subagent/${name}`, name))
     const plan = releaseFamily('dsh').publishOrder([dsh, ...providers])
-    expect(plan.order.map(entry => entry.name)).toEqual([...ON_DEMAND_BUNDLES, dsh.name])
+    expect(plan.order.map(entry => entry.name)).toEqual([...ON_DEMAND_BUNDLES.toSorted(), dsh.name])
     expect(dsh.manifest).toEqual({})
     expect(plan.droppedPeerEdges).toEqual([])
   })
@@ -263,8 +282,8 @@ describe('release families', () => {
       peerDependencies: { '@knyazevai/dsh': 'workspace:*' },
     }))
     const plan = releaseFamily('dsh').publishOrder([dsh, ...providers])
-    expect(plan.order.map(entry => entry.name)).toEqual([...ON_DEMAND_BUNDLES, dsh.name])
-    expect(plan.droppedPeerEdges).toEqual(ON_DEMAND_BUNDLES.map(name => ({ consumer: name, peer: dsh.name })))
+    expect(plan.order.map(entry => entry.name)).toEqual([...ON_DEMAND_BUNDLES.toSorted(), dsh.name])
+    expect(plan.droppedPeerEdges).toEqual(ON_DEMAND_BUNDLES.toSorted().map(name => ({ consumer: name, peer: dsh.name })))
   })
 
   it.each(['dependencies', 'optionalDependencies', 'peerDependencies'])(
@@ -385,16 +404,30 @@ describe('release families', () => {
     ])
   })
 
-  it('applies the harness payload policy to dsh and keeps upstream payloads for vendored packages', () => {
+  it('accepts the harness payload and keeps upstream payloads for vendored packages', () => {
     const dsh = releaseFamily('dsh')
     const vendor = releaseFamily('vendor')
     const harness = member('packages/a/library', '@knyazevai/dsh-library')
     const vendored = member('vendor/cordis', '@deepseek-ai/cordis')
 
-    expect(() => { dsh.validatePayload(harness, ['package/lib/index.js', 'package/src/index.ts']) })
-      .toThrow(/publishes source file/)
+    expect(() => { dsh.validatePayload(harness, ['package/lib/index.js', 'package/lib/index.js.map', 'package/src/index.ts']) }).not.toThrow()
     expect(() => { vendor.validatePayload(vendored, ['package/lib/index.js', 'package/src/index.ts']) }).not.toThrow()
     expect(() => { vendor.validatePayload(vendored, []) }).toThrow(/empty tarball/)
+  })
+
+  it('requires the installed package payload the staging hook supplies', () => {
+    const dsh = releaseFamily('dsh')
+    const installed = member('apps/cli', '@knyazevai/dsh')
+
+    expect(() => { dsh.validatePayload(installed, ['package/lib/index.js', 'package/src/bin.ts']) })
+      .toThrow(/@knyazevai\/dsh packed no documentation/)
+    expect(() => { dsh.validatePayload(installed, ['package/lib/index.js', 'package/docs/guide.md', 'package/src/bin.ts']) })
+      .toThrow(/@knyazevai\/dsh packed no upgrade guide index/)
+    const docs = ['package/docs/guide.md', 'package/docs/upgrade-guide/README.md']
+    expect(() => { dsh.validatePayload(installed, ['package/lib/index.js', ...docs]) })
+      .toThrow(/@knyazevai\/dsh packed no source/)
+    expect(() => { dsh.validatePayload(installed, ['package/lib/index.js', ...docs, 'package/src/bin.ts']) })
+      .not.toThrow()
   })
 
   it('drives the installed entry only for the family that publishes one', () => {

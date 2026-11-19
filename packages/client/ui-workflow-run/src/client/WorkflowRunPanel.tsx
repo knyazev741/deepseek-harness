@@ -10,7 +10,7 @@ import type { PropsLocale, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import type { SessionListState, SessionTarget } from '@knyazevai/dsh-api-session-controller/client'
 import { shallowEqual } from '@knyazevai/dsh-client-store'
 import type { SessionId } from '@knyazevai/dsh-session/types'
-import type { SessionStatusSnapshot } from '@knyazevai/dsh-client-ui-session/client'
+import type { SessionStatusSnapshot } from '@knyazevai/dsh-client-ui-session-status/client'
 import type { WorkflowRunKey } from './locales.ts'
 import type {
   WorkflowRunMemberData, WorkflowRunPhaseData, WorkflowRunStatus,

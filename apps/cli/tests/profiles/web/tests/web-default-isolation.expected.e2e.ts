@@ -7,7 +7,7 @@ import { modulePackage } from './runtime-roster.ts'
 import { experimentalRuntimeReferences } from './runtime-roster-isolation.ts'
 import { withDefaultWeb, webGet } from './default-web-process.ts'
 
-const experimentalName = '@knyazevai/dsh-experimental-client-ui-agent-team'
+const experimentalName = '@knyazevai/dsh-experimental-client-ui-voice-input'
 
 it('boots default Web with the shipped Schedule rows, without experimental modules, time context, or an active built-in Browser', async (test) => {
   await withDefaultWeb(test, async ({ url, request }) => {
@@ -37,6 +37,9 @@ it('boots default Web with the shipped Schedule rows, without experimental modul
     // The shipped composition mounts the Host Schedule service and its task
     // page; the clock stays preset-level, so neither plane carries a row for it.
     expect(roster.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: '@knyazevai/dsh-agent-team', state: FiberState.ACTIVE }),
+      expect.objectContaining({ name: '@knyazevai/dsh-tool-agent-team', state: FiberState.ACTIVE }),
+      expect.objectContaining({ name: '@knyazevai/dsh-client-ui-agent-team', state: FiberState.ACTIVE }),
       expect.objectContaining({ name: '@knyazevai/dsh-schedule', state: FiberState.ACTIVE }),
       expect.objectContaining({ name: '@knyazevai/dsh-client-ui-schedule', state: FiberState.ACTIVE }),
     ]))
@@ -50,7 +53,7 @@ it('boots default Web with the shipped Schedule rows, without experimental modul
     const mounted = contaminated.plugins.filter(plugin => plugin.modules.some(url => modulePackage(url) === experimentalName))
     expect(mounted).toEqual([expect.objectContaining({ state: FiberState.ACTIVE })])
     expect(experimentalRuntimeReferences(contaminated)).toEqual(expect.arrayContaining([
-      expect.stringContaining('/packages/experimental/client-ui-agent-team/'),
+      expect.stringContaining('/packages/experimental/client-ui-voice-input/'),
     ]))
   })
 })

@@ -7,15 +7,20 @@ export type {} from '@knyazevai/dsh-client-product-analytics/remote'
 import agentPresetsRemote from '@knyazevai/dsh-agent-preset-registry/remote'
 import userQuestionsRemote from '@knyazevai/dsh-user-questions/remote'
 import commandsRemote from '@knyazevai/dsh-commands/remote'
-import accountRemote from '@knyazevai/dsh-api-account-controller/remote'
+import agentTeamsRemote from '@knyazevai/dsh-agent-team/remote'
+export type {} from '@knyazevai/dsh-agent-team/remote'
+import accountRemote from '@knyazevai/dsh-deepseek-account/remote'
 import settingsControllerRemote from '@knyazevai/dsh-api-settings-controller/remote'
-import officeToPdfRemote from '@knyazevai/dsh-office-to-pdf/remote'
+import officeKitRemote from '@knyazevai/dsh-office-kit/remote'
 import goalsRemote from '@knyazevai/dsh-goal/remote'
 import scheduleRemote from '@knyazevai/dsh-schedule/remote'
 import llmRemote from '@knyazevai/dsh-llm/remote'
 import dynamicRemote from '@knyazevai/dsh-cordis-host-runner/remote'
 import pluginManagerRemote from '@knyazevai/dsh-plugin-manager/remote'
+import mcpManagerRemote from '@knyazevai/dsh-mcp-manager/remote'
+import toolResultsRemote from '@knyazevai/dsh-client-ui-trajectory/remote'
 import pluginRegistryProbeRemote from '@knyazevai/dsh-client-ui-plugin-manager/remote'
+import connectorAccountsRemote from '@knyazevai/dsh-client-ui-connector-account/remote'
 import pluginMarketRemote from '@knyazevai/dsh-plugin-market/remote'
 import pluginInventoryRemote from '@knyazevai/dsh-host-plugin-inventory/remote'
 import messageFeedbackRemote from '@knyazevai/dsh-message-feedback/remote'
@@ -24,39 +29,48 @@ import sessionFeedbackRemote from '@knyazevai/dsh-command-feedback/remote'
 import fileUploadsRemote from '@knyazevai/dsh-client-file-upload/remote'
 import sessionReferencesRemote from '@knyazevai/dsh-session-reference/remote'
 import subagentsRemote from '@knyazevai/dsh-subagent/remote'
+import sessionStatusRemote from '@knyazevai/dsh-client-ui-session-status/remote'
+export type {} from '@knyazevai/dsh-client-ui-session-status/remote'
 import sessionRemote from '@knyazevai/dsh-api-session-controller/remote'
 import jobRemote from '@knyazevai/dsh-api-job-controller/remote'
 import workspaceRemote from '@knyazevai/dsh-api-workspace-controller/remote'
 import terminalRemote from '@knyazevai/dsh-api-terminal-controller/remote'
 import workspaceFilesRemote from '@knyazevai/dsh-api-workspace-files/remote'
+import webRemote from '@knyazevai/dsh-web/remote'
 import type { ClientRemote } from '@knyazevai/dsh-api-gateway/client'
 
 export type * from '@knyazevai/dsh-fork-workspace-session-state/types'
 export type {} from '@knyazevai/dsh-fork-workspace-session-state/remote'
 export type { ClientRemote } from '@knyazevai/dsh-api-gateway/client'
 export type {
-  BundleInfo, BundleRowInfo, ChangeResult, IncompatiblePlugin, InspectOptions, InstallBundleOptions, InstallSpecKind, ManagementError,
-  PackageResult,
+  BundleDetail, BundleInfo, BundleRowInfo, ChangeResult, IncompatiblePlugin, InspectOptions, InstallBundleOptions, InstallSpecKind,
+  ManagementError, PackageResult,
   PluginChange, PluginEntryId, PluginInfo, PluginInspectProblem, PluginInstallCancellation, PluginInstallFailureKind,
   PluginInstallLogChunk, PluginInstallProgress, PluginInstallRequestId, PluginRegistries, PluginSpecInspection,
+  PluginUpdateProgress, PluginUpdateResult, PluginUpdateStep, PluginVersion, PluginVersionList, RegistryAttempt,
   ReadOnlyReason, Registry, RestartReason,
 } from '@knyazevai/dsh-plugin-manager/types'
+export type { McpManagedServerStatus, McpManagedServerView } from '@knyazevai/dsh-mcp-manager/types'
 export type {} from '@knyazevai/dsh-plugin-manager/remote'
+export type {} from '@knyazevai/dsh-mcp-manager/remote'
 export type {} from '@knyazevai/dsh-client-ui-plugin-manager/remote'
+export type {} from '@knyazevai/dsh-client-ui-connector-account/remote'
+export type {} from '@knyazevai/dsh-client-ui-trajectory/remote'
 export type {} from '@knyazevai/dsh-plugin-market/remote'
 export type {
   MarketCompatibility, MarketIndexSummary, MarketInstallation, MarketInstallationStatus, MarketListingEntry, MarketListingVersion,
-  MarketQuery, MarketSearchResult, MarketSort,
+  MarketQuery, MarketSearchResult, MarketSort, PluginDetail, PluginDetailDocumentId, PluginDetailOrigin,
 } from '@knyazevai/dsh-plugin-market/types'
 export type { PluginInventorySnapshot } from '@knyazevai/dsh-host-plugin-inventory/types'
 export type {} from '@knyazevai/dsh-agent-preset-registry/remote'
 export type {} from '@knyazevai/dsh-user-questions/remote'
 export type {} from '@knyazevai/dsh-commands/remote'
+export type {} from '@knyazevai/dsh-web/remote'
 export type {} from '@knyazevai/dsh-api-settings-controller/remote'
-export type {} from '@knyazevai/dsh-api-account-controller/remote'
+export type {} from '@knyazevai/dsh-deepseek-account/remote'
 export type {} from '@knyazevai/dsh-goal/remote'
 export type {} from '@knyazevai/dsh-schedule/remote'
-export type {} from '@knyazevai/dsh-office-to-pdf/remote'
+export type {} from '@knyazevai/dsh-office-kit/remote'
 export type {} from '@knyazevai/dsh-llm/remote'
 export type {} from '@knyazevai/dsh-host-plugin-inventory/remote'
 export type {} from '@knyazevai/dsh-message-feedback/remote'
@@ -83,6 +97,7 @@ export type { ApiRemoteForwardedEvent } from '../types.ts'
 // signatures `$on` hands to a listener, so a consumer reads the very
 // declaration the Host emits rather than a flattened restatement of it.
 export type {} from '@knyazevai/dsh-commands/types'
+export type {} from '@knyazevai/dsh-web/types'
 export type {} from '@knyazevai/dsh-cordis-host-runner/types'
 export type {} from '@knyazevai/dsh-credentials/types'
 export type {} from '@knyazevai/dsh-llm/types'
@@ -190,13 +205,16 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   try {
     for (const contribution of [
       forkWorkspaceSessionStateRemote,
-      productAnalyticsRemote, agentPresetsRemote, commandsRemote, settingsControllerRemote, accountRemote,
+      productAnalyticsRemote, agentPresetsRemote, commandsRemote, agentTeamsRemote, settingsControllerRemote, accountRemote,
       goalsRemote, llmRemote, dynamicRemote, scheduleRemote,
-      pluginInventoryRemote, pluginManagerRemote, pluginMarketRemote, pluginRegistryProbeRemote,
+      pluginInventoryRemote, pluginManagerRemote, mcpManagerRemote, pluginMarketRemote, pluginRegistryProbeRemote,
+      connectorAccountsRemote,
+      toolResultsRemote,
       messageFeedbackRemote, sessionFeedbackRemote,
       fileUploadsRemote, sessionReferencesRemote,
-      permissionPresetsRemote, subagentsRemote, sessionRemote, jobRemote, workspaceRemote, workspaceFilesRemote, terminalRemote,
-      officeToPdfRemote, userQuestionsRemote,
+      permissionPresetsRemote, subagentsRemote, sessionRemote, sessionStatusRemote, jobRemote,
+      workspaceRemote, workspaceFilesRemote, terminalRemote,
+      officeKitRemote, userQuestionsRemote, webRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }

@@ -3,44 +3,44 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/tool-worktree/README.md
 /:
-  en: 7c7c8316f315eee0
-  zh: dfd3abcef256029e
+  en: be8ddda9a016791f
+  zh: 0bad4fc0c3ce0988
 /knyazevai-dsh-experimental-tool-worktree:
   en: 66308c4a887143ab
   zh: 3426489152afba7d
 /knyazevai-dsh-experimental-tool-worktree/summary:
-  en: f0df470fd16d8d29
-  zh: 5f2d371d844b0568
+  en: ad053750132f42c3
+  zh: 14e72801140ff7ac
 /knyazevai-dsh-experimental-tool-worktree/table-of-contents:
   en: d152484eb41ac6b4
   zh: 2f8a621b991260a1
 /knyazevai-dsh-experimental-tool-worktree/use-this-package:
-  en: e0a8becceb7da792
-  zh: f23ae1c2005992ac
+  en: 89ead1515cc6f41b
+  zh: 1f6ad40050cd222c
 /knyazevai-dsh-experimental-tool-worktree/understand-the-implementation:
-  en: c03f875211ab69a8
-  zh: 8f49b82f90a60223
+  en: 01d5f02b2b840cf0
+  zh: db3c4f57ce636b34
 /knyazevai-dsh-experimental-tool-worktree/further-exploration:
   en: 6ec5bb0f5bfbbaa4
   zh: 45009dd139621d0e
 /knyazevai-dsh-experimental-tool-worktree/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
-/knyazevai-dsh-experimental-tool-worktree/model-experience/creation-tool:
-  en: 4062fcaa4794bed7
-  zh: b56d35fc675fc430
-/knyazevai-dsh-experimental-tool-worktree/model-experience/creation-tool/what-the-model-sees:
-  en: 0f532d97752eb99e
-  zh: 6873b5c7f7fbbfa5
-/knyazevai-dsh-experimental-tool-worktree/model-experience/creation-tool/token-effect:
+/knyazevai-dsh-experimental-tool-worktree/model-experience/worktree-tools:
+  en: 079a9a4d389cc1e4
+  zh: c61df4be4bc259e5
+/knyazevai-dsh-experimental-tool-worktree/model-experience/worktree-tools/what-the-model-sees:
+  en: d36102ceaa0aeea0
+  zh: fbe417d28af7bf12
+/knyazevai-dsh-experimental-tool-worktree/model-experience/worktree-tools/token-effect:
   en: 6c3f73ba01233a36
   zh: d64d87a425db4fbd
-/knyazevai-dsh-experimental-tool-worktree/model-experience/creation-tool/kv-cache-effect:
+/knyazevai-dsh-experimental-tool-worktree/model-experience/worktree-tools/kv-cache-effect:
   en: 365f8ccedfa61bbb
   zh: aa328044ba2528b8
 /knyazevai-dsh-experimental-tool-worktree/known-limitations-and-deferred-work:
-  en: 7cfc071dfc3f9c83
-  zh: f36ae822e801db12
+  en: 34a1eea5a4fb5cd0
+  zh: ab445f8a2d43b22f
 /knyazevai-dsh-experimental-tool-worktree/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 3bb0c20c93f16f98

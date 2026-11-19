@@ -68,6 +68,10 @@
   name: '@knyazevai/dsh-tool-skill'
   disabled: true
 
+- id: upstream-skills
+  name: '@knyazevai/dsh-upstream-skills'
+  disabled: true
+
 - id: tool-jobs
   name: '@knyazevai/dsh-tool-jobs'
   disabled: true
@@ -82,10 +86,6 @@
 
 - id: tool-subagent-control
   name: '@knyazevai/dsh-tool-subagent-control'
-  disabled: true
-
-- id: tool-subagent-list-agents
-  name: '@knyazevai/dsh-tool-subagent-control/list-agents'
   disabled: true
 
 - id: tool-subagent

@@ -1,0 +1,32 @@
+# Keyless replay counterpart to cordis.yml.
+- id: llm-deepseek
+  name: '@knyazevai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- insert:
+    - id: terminal-controller-fixture
+      name: './terminal-controller-fixture.mjs'
+    - id: optional-persistent-terminals
+      name: cordis:group
+      group: true
+      isolate:
+        terminals: true
+      config:
+        - id: pty
+          name: '@knyazevai/dsh-terminal'
+        - id: terminal-panel
+          name: '@knyazevai/dsh-terminal-panel'
+        - id: tool-terminal
+          name: '@knyazevai/dsh-tool-terminal'
+    - id: llm-replay
+      name: '@knyazevai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            models:
+              - id: deepseek-v4-flash
+              - id: deepseek-v4-pro
+
+- id: plugin-package-inventory-deepseek
+  disabled: true

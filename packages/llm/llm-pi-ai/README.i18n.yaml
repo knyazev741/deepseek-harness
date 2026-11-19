@@ -21,8 +21,8 @@
   en: f3b761c7c7ecb82f
   zh: e10d999aa348ef86
 /knyazevai-dsh-llm-pi-ai/use-this-package/configure-provider-routes:
-  en: a687d1edf266b379
-  zh: f0365e10264aa458
+  en: 89424da2760d6166
+  zh: 90b70112edf3e1e7
 /knyazevai-dsh-llm-pi-ai/use-this-package/sign-in-to-a-provider:
   en: c36f66438638ae08
   zh: 066a2fc4cb97c86f
@@ -36,8 +36,8 @@
   en: 92f554e1718614ca
   zh: f17ed3ad3e5d28e2
 /knyazevai-dsh-llm-pi-ai/use-this-package/discover-models-from-endpoints:
-  en: 957faadcf0f19119
-  zh: bed7c0703e61a4dd
+  en: 47c9d072b435c859
+  zh: 4082c2e1bf7a1941
 /knyazevai-dsh-llm-pi-ai/use-this-package/failures-and-recovery:
   en: 3c1edbc63de24a1a
   zh: 01592718c3a2c79f
@@ -45,11 +45,14 @@
   en: 1598ac8a8bb9b6bf
   zh: fdd089c5ae7722cd
 /knyazevai-dsh-llm-pi-ai/understand-the-implementation/design-philosophy:
-  en: 8aba1113937b368a
-  zh: 804a4ca672a776df
+  en: db1ac8ccca2d858b
+  zh: 1d7cd4153aad22b0
+/knyazevai-dsh-llm-pi-ai/understand-the-implementation/request-headers:
+  en: 615ca9834bf6544f
+  zh: 2d70b548f99000d1
 /knyazevai-dsh-llm-pi-ai/understand-the-implementation/source-map:
-  en: 64912b8a3a336419
-  zh: 33a245969b4194f6
+  en: 01520c709ee2202c
+  zh: de919d3f2ff61046
 /knyazevai-dsh-llm-pi-ai/understand-the-implementation/registration-and-directory:
   en: 0c6df3e8b6a75372
   zh: 476666a6f209542c
@@ -57,8 +60,8 @@
   en: 477d277e9ac35c8f
   zh: 96870ca333fb6510
 /knyazevai-dsh-llm-pi-ai/understand-the-implementation/replay-and-vocabulary:
-  en: 73242ca9b8a98c76
-  zh: 4ab98526ae70bd23
+  en: e68f92d78150d341
+  zh: 45850c739a7329d3
 /knyazevai-dsh-llm-pi-ai/further-exploration:
   en: f32f5890b92a7e79
   zh: eca85a04fb041932
@@ -69,20 +72,20 @@
   en: e7348db3f7115960
   zh: 5fd5fb09d7d09982
 /knyazevai-dsh-llm-pi-ai/model-experience/provider-request-through-pi-ai/what-the-model-sees:
-  en: 948e7c8ec2ffda92
-  zh: 72bd6c7a4691a355
+  en: f618a730aaa904ce
+  zh: 0b77a5b799b049e3
 /knyazevai-dsh-llm-pi-ai/model-experience/provider-request-through-pi-ai/token-effect:
   en: 820221e8ae37aa61
   zh: 7e6ff4db10067fc0
 /knyazevai-dsh-llm-pi-ai/model-experience/provider-request-through-pi-ai/kv-cache-effect:
-  en: 8c1f842a95ab46fb
-  zh: d6dd124c82f1d96b
+  en: 6613d52e459d86da
+  zh: 7d0627e7ff8299e8
 /knyazevai-dsh-llm-pi-ai/model-experience/provider-response:
   en: 802d7ff60a1d03ff
   zh: c41c56e28f3e8680
 /knyazevai-dsh-llm-pi-ai/model-experience/provider-response/what-the-model-sees:
-  en: 9b7d6b95ec2c4351
-  zh: 356ac01aef9e8bed
+  en: 94ca496012c92fa9
+  zh: 9539b08924b5022d
 /knyazevai-dsh-llm-pi-ai/model-experience/provider-response/token-effect:
   en: f002b21d0f4c3df0
   zh: 388c8ed4676ed1af
@@ -90,8 +93,8 @@
   en: b6bd570c0159ba08
   zh: 7d2d91eea6a8d830
 /knyazevai-dsh-llm-pi-ai/known-limitations-and-deferred-work:
-  en: ee870ac2ac87decc
-  zh: 9e66c5e7400c4bc6
+  en: fdbe8ce850250b66
+  zh: d8b9a06a996850c1
 /knyazevai-dsh-llm-pi-ai/known-limitations-and-deferred-work/dev-note:
   en: 3678dd0f6642c2a5
   zh: 75cbdd064cc64282

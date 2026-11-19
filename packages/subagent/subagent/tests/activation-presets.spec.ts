@@ -17,10 +17,11 @@ import type { Agent } from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import AgentPresets from '@knyazevai/dsh-agent-preset-registry'
-import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import SubagentRuntime from '@knyazevai/dsh-subagent'
 import { mountLocalActivations, startPreparedActivation } from './local-activation.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'activation-presets')
 
@@ -51,7 +52,7 @@ async function setupPresetHost(
   const adapter = new MockAdapter(script)
   ctx.llm.registerAdapter(['mock'], adapter)
   const handle = await ctx.agents.create({
-    sessionId: SessionId('parent'),
+    sessionId: brandString<SessionId>('parent'),
     agentOptions: { provider: 'mock', model: 'mock' },
     setup: async (agentCtx: Context) => void await ctx.agentPresets.mount(agentCtx, 'coding'),
   })

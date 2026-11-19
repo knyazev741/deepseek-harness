@@ -10,7 +10,7 @@
 
 import { brandString } from '@knyazevai/dsh-brand'
 import { CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE, isContextWindowExceededError, isQuotaExceededError, LlmError, QUOTA_EXCEEDED_CODE } from '@knyazevai/dsh-llm'
-import type { FinishReason, StreamChunk, TokenUsage, ToolCallId } from '@knyazevai/dsh-llm'
+import type { BuiltinLlmFailureCode, FinishReason, StreamChunk, TokenUsage, ToolCallId } from '@knyazevai/dsh-llm'
 import { isContextOverflow } from '@earendil-works/pi-ai/utils/overflow'
 import type { AssistantMessage, AssistantMessageEvent, Usage as PiUsage } from '@earendil-works/pi-ai'
 import { toPiReplayState } from './replay.ts'
@@ -31,6 +31,12 @@ export function mapUsage(usage: PiUsage): TokenUsage {
   }
 }
 
+// pi-ai's SDK-backed providers render an HTTP failure as `<status> <body>`
+// (Anthropic and OpenAI SDK `APIError`, pi-messages `<status> <statusText>: …`).
+// The body can quote another hop's status, such as a gateway 500 that embeds its
+// upstream's 401, so when a message leads with a status the status rules read
+// only that status; other wordings scan the whole message.
+
 // XXX(pi-ai upstream): pi-ai flattens the caught error to `error.message`
 // (api/anthropic-messages.js: `errorMessage = error instanceof Error ?
 // error.message : JSON.stringify(error)`), discarding the original Error and its
@@ -46,25 +52,16 @@ function piAiHttpStatus(message: string): number | undefined {
   return value === undefined ? undefined : Number(value)
 }
 
-function classifyPiAiError(message: string): string {
-  // Gateways may wrap an upstream status in the response text, for example
-  // `502: {"message":"Upstream returned HTTP 400."}`. The outer status is
-  // the status pi-ai actually received and must win over nested text; otherwise
-  // a transient gateway failure becomes a terminal INVALID_REQUEST.
-  const status = piAiHttpStatus(message)
-  if (status === 401 || status === 403) return 'AUTH'
-  if (status === 429) return isQuotaExceededError(message) ? QUOTA_EXCEEDED_CODE : 'RATE_LIMIT'
-  if (status === 413) return 'INVALID_REQUEST'
-  if (status === 400) return isQuotaExceededError(message) ? QUOTA_EXCEEDED_CODE : 'INVALID_REQUEST'
-  if (status !== undefined && status >= 500) return 'SERVER'
-
+function classifyPiAiError(message: string): BuiltinLlmFailureCode {
+  const statusSource = piAiHttpStatus(message)?.toString() ?? message
+  if (/\b(?:401|403)\b/.test(statusSource)) return 'AUTH'
   if (isQuotaExceededError(message)) return QUOTA_EXCEEDED_CODE
-  if (/\b429\b|rate.?limit/i.test(message)) return 'RATE_LIMIT'
+  if (/\b429\b/.test(statusSource) || /rate.?limit/i.test(message)) return 'RATE_LIMIT'
   // A rejected request body (gateway or provider size cap): resending the
   // same request cannot succeed, so it is invalid, not transient.
-  if (/\b413\b|failed to buffer the request body:\s*length limit exceeded|payload too large|request body too large/i.test(message)) return 'INVALID_REQUEST'
-  if (/\b400\b|invalid.?request/i.test(message)) return 'INVALID_REQUEST'
-  if (/\b5\d\d\b/.test(message)) return 'SERVER'
+  if (/\b413\b/.test(statusSource) || /failed to buffer the request body:\s*length limit exceeded|payload too large|request body too large/i.test(message)) return 'INVALID_REQUEST'
+  if (/\b400\b/.test(statusSource) || /invalid.?request/i.test(message)) return 'INVALID_REQUEST'
+  if (/\b5\d\d\b/.test(statusSource)) return 'SERVER'
   if (/\btime(?:d)?\s*out\b|timeout/i.test(message)) return 'TIMEOUT'
   // A stream truncated before the provider's terminal event: each pi-ai provider
   // throws its own wording when the wire closes mid-response without a terminal
@@ -127,15 +124,15 @@ export function mapStopReason(message: AssistantMessage, contextWindow?: number)
     case 'toolUse': return { kind: 'tool-calls' }
     case 'pending': return {
       kind: 'error',
-      failure: { message: `pi-ai stream for model "${message.model}" ended pending`, code: 'PI_AI_ERROR' },
+      failure: { message: `pi-ai stream for model "${message.model}" ended pending`, code: 'PI_AI_ERROR' satisfies BuiltinLlmFailureCode },
     }
     case 'deferred': return {
       kind: 'error',
-      failure: { message: `pi-ai deferred response for model "${message.model}" is not supported`, code: 'PI_AI_ERROR' },
+      failure: { message: `pi-ai deferred response for model "${message.model}" is not supported`, code: 'PI_AI_ERROR' satisfies BuiltinLlmFailureCode },
     }
     case 'aborted': return {
       kind: 'aborted',
-      failure: { message: message.errorMessage ?? 'pi-ai stream aborted', code: 'ABORTED' },
+      failure: { message: message.errorMessage ?? 'pi-ai stream aborted', code: 'ABORTED' satisfies BuiltinLlmFailureCode },
     }
     case 'error': {
       const text = message.errorMessage ?? 'pi-ai stream error'
@@ -153,18 +150,23 @@ export function mapStopReason(message: AssistantMessage, contextWindow?: number)
  * @param callerSignal - caller cancellation state; an aborted caller makes any
  *   in-band terminal error an aborted finish.
  * @param requestedModel - request model identity recorded for durable replay.
+ * @param prefixDigest - request-context digest recorded for durable replay.
  * @returns the harness chunks, ending with `usage` then `finish`; throws
- *   `LlmError` (`STREAM_CLOSED`) if the source ends without a terminal event.
+ *   `LlmError` (`STREAM_CLOSED`) if the source ends without a terminal event, or
+ *   `MALFORMED_RESPONSE` when completed tool arguments are invalid. Length-limited
+ *   output retains its terminal reason so the assembler can discard incomplete calls.
  */
 export async function* toStreamChunks(
   events: AsyncIterable<AssistantMessageEvent>,
   contextWindow?: number,
   callerSignal?: AbortSignal,
   requestedModel?: string,
+  prefixDigest?: string,
 ): AsyncGenerator<StreamChunk> {
   // pi-ai contentIndex ↔ our block index map 1:1 (both count blocks from 0
   // in stream order), but we track ids per index for tool calls.
   const toolIds = new Map<number, { id: string; name: string }>()
+  let argumentsError: string | undefined
 
   for await (const event of events) {
     switch (event.type) {
@@ -209,6 +211,10 @@ export async function* toStreamChunks(
         break
       }
       case 'toolcall_end':
+        if (event.toolCall.argumentsError !== undefined) {
+          argumentsError ??= `Tool call "${event.toolCall.name}": ${event.toolCall.argumentsError}`
+          break
+        }
         yield {
           type: 'block-end',
           index: event.contentIndex,
@@ -224,10 +230,13 @@ export async function* toStreamChunks(
         break
       case 'done':
         yield { type: 'usage', usage: mapUsage(event.message.usage) }
+        if (argumentsError !== undefined && event.message.stopReason !== 'length') {
+          throw new LlmError(argumentsError, 'MALFORMED_RESPONSE')
+        }
         yield {
           type: 'finish',
           reason: mapStopReason(event.message, contextWindow),
-          replayState: toPiReplayState(event.message, requestedModel),
+          replayState: toPiReplayState(event.message, requestedModel, prefixDigest),
         }
         return
       case 'error':

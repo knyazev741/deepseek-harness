@@ -1,5 +1,6 @@
 /** Root-fiber shutdown drains buffered session events durably (both mount orders). */
 
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { describe, expect, it, afterEach } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { mkdtemp, rm } from 'node:fs/promises'
@@ -7,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createUserMessage } from '@knyazevai/dsh-llm'
 import LlmRuntime from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
@@ -15,6 +16,7 @@ import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const dirs: string[] = []
 afterEach(async () => { for (const d of dirs.splice(0)) await rm(d, { recursive: true, force: true }) })
@@ -36,6 +38,7 @@ async function mount(order: 'backend-first' | 'loop-first'): Promise<{ ctx: Cont
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(AgentRegistry)
   if (order === 'backend-first') {
     await ctx.plugin(JsonlSessionPersistence, { root })
@@ -51,7 +54,7 @@ async function mount(order: 'backend-first' | 'loop-first'): Promise<{ ctx: Cont
 describe.each(['backend-first', 'loop-first'] as const)('root shutdown drain (%s)', (order) => {
   it('persists buffered turn events without an explicit flush before dispose', async () => {
     const { ctx, root } = await mount(order)
-    const sessionId = SessionId('shutdown-drain')
+    const sessionId = brandString<SessionId>('shutdown-drain')
     const handle = await ctx.agents.create({ sessionId, agentOptions: { provider: 'mock', model: 'mock' } })
     handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'q' }], source: { kind: 'user' } }))
     await waitForIdle(ctx, handle.agent)

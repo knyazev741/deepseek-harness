@@ -3,16 +3,16 @@ import { readFileSync } from 'node:fs'
 import { onTestFinished, describe, expect, it, vi } from 'vitest'
 import * as yaml from 'js-yaml'
 import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry from '@knyazevai/dsh-agent'
+import { brandString } from '@knyazevai/dsh-brand'
+import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import type { Agent } from '@knyazevai/dsh-agent'
-import LlmRuntime, { createUserMessage, LlmAdapter, LlmError, resolveRetryPolicy, ToolCallId } from '@knyazevai/dsh-llm'
+import { createUserMessage, LlmAdapter, LlmError, resolveRetryPolicy } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, ResolvedRetryPolicy, RetryPolicyConfig, StreamChunk } from '@knyazevai/dsh-llm'
 import * as retry from '@knyazevai/dsh-llm-retry'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
-import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
-import SystemPrompt from '@knyazevai/dsh-system-prompt'
-import ToolRuntime, { defineContentToolFixture } from '@knyazevai/dsh-tools'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { ToolCallId } from '@knyazevai/dsh-llm/types'
+import { defineContentToolFixture } from '@knyazevai/dsh-tool-testkit'
 
 type Response = Error | Iterable<StreamChunk> | AsyncIterable<StreamChunk>
 
@@ -26,6 +26,10 @@ class RecoveringAdapter extends LlmAdapter {
 
   constructor(private readonly responses: Response[], private readonly policy = shippedPolicy()) {
     super()
+  }
+
+  override resolveModel(provider: string, model: string) {
+    return Promise.resolve({ provider, id: model, name: model })
   }
 
   override providerRetryPolicy(): ResolvedRetryPolicy {
@@ -60,17 +64,12 @@ async function harness(responses: Response[]): Promise<{ ctx: Context; agent: Ag
     }
   })
   vi.useFakeTimers()
-  await ctx.plugin(LlmRuntime)
-  await ctx.plugin(SessionStore)
-  await ctx.plugin(SessionProjectionRegistry)
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  await ctx.plugin(AgentRegistry)
+  await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(retry)
   await ctx.plugin(AgentLoop, { agents: [] })
   const adapter = new RecoveringAdapter(responses)
   ctx.effect(() => ctx.llm.registerAdapter(['knyazev-ai'], adapter))
-  const agent = await ctx.agentLoop.create(SessionId('gonka-recovery'), { provider: 'knyazev-ai', model: 'deepseek-v4-flash' })
+  const agent = await ctx.agentLoop.create(brandString<SessionId>('gonka-recovery'), { provider: 'knyazev-ai', model: 'deepseek-v4-flash' })
   return { ctx, agent, adapter }
 }
 
@@ -84,7 +83,7 @@ const failureCodes = ['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'FIRST_CHUNK_T
 describe('Gonka shipped persistent recovery', () => {
   it.each(failureCodes)('finishes after 45 consecutive %s failures with no ten-minute waits', async (code) => {
     const { agent, adapter } = await harness([
-      ...Array.from({ length: 45 }, () => new LlmError('provider unavailable', code)), reply('done'),
+      ...Array.from({ length: 45 }, () => LlmError.fromFailure({ message: 'provider unavailable', code })), reply('done'),
     ])
     start(agent)
     await vi.advanceTimersByTimeAsync(450_000)
@@ -102,7 +101,7 @@ describe('Gonka shipped persistent recovery', () => {
   })
 
   it('keeps a completed tool result while retrying the next model request', async () => {
-    const id = ToolCallId('once')
+    const id = brandString<ToolCallId>('once')
     const toolCall: StreamChunk[] = [
       { type: 'block-start', index: 0, blockType: 'tool-call' },
       { type: 'tool-call-delta', index: 0, id, name: 'once', argumentsDelta: '{}' },
@@ -130,7 +129,7 @@ describe('Gonka shipped persistent recovery', () => {
   })
 
   it('retries a failed partial tool stream without executing it', async () => {
-    const id = ToolCallId('discarded')
+    const id = brandString<ToolCallId>('discarded')
     async function* interrupted(): AsyncIterable<StreamChunk> {
       yield { type: 'block-start', index: 0, blockType: 'tool-call' }
       yield { type: 'tool-call-delta', index: 0, id, name: 'once', argumentsDelta: '{}' }

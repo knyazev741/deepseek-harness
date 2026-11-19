@@ -3,23 +3,23 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/schedule/README.md
 /:
-  en: f9ec298bef2d07af
-  zh: 9673967495f91150
-/schedule-host-owned-reminders:
-  en: 4002053eaf6dc600
-  zh: 95fcbc7c14129229
-/schedule-host-owned-reminders/summary:
-  en: 3b980815b19b4583
-  zh: 5c22a5f81ce26674
-/schedule-host-owned-reminders/table-of-contents:
+  en: c57bc81198c6afee
+  zh: ce1d4a8809665f56
+/schedule-host-owned-scheduled-tasks:
+  en: fea93c6e5daa4066
+  zh: 389d44d484652638
+/schedule-host-owned-scheduled-tasks/summary:
+  en: 0f461e39d56de625
+  zh: b40b2b301406574a
+/schedule-host-owned-scheduled-tasks/table-of-contents:
   en: 1eb35b015a6c423f
   zh: a8a3dceee2c9e943
-/schedule-host-owned-reminders/packages:
-  en: fff757f600c953ec
-  zh: 5958e14c1d450770
-/schedule-host-owned-reminders/related-documentation:
-  en: fd5c8619b793f229
-  zh: e069ffdf82dec3ff
-/schedule-host-owned-reminders/dev-note:
+/schedule-host-owned-scheduled-tasks/packages:
+  en: bb0cfbcd0560d575
+  zh: 88673d4382475a25
+/schedule-host-owned-scheduled-tasks/related-documentation:
+  en: 00cdf1bc8b1a6df3
+  zh: 24f2c82b6b9c7239
+/schedule-host-owned-scheduled-tasks/dev-note:
   en: 5de1d6304e00c58f
   zh: 8d8225361cfa29e5

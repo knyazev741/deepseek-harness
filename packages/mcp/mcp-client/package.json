@@ -18,37 +18,60 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./types": {
+      "types": "./lib/types/types.d.ts",
+      "default": "./lib/types/types.js"
+    },
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
     "@knyazevai/dsh-attachment": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-subprocess": "workspace:*",
     "@knyazevai/dsh-timeout": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-mcp-resources": "workspace:*",
-    "@knyazevai/dsh-system-prompt": "workspace:*"
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-authorization": "workspace:*",
+    "@knyazevai/dsh-host-webserver": "workspace:*",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-output-retention": "workspace:*"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~",
     "@modelcontextprotocol/client": "2.2.0",
-    "@knyazevai/dsh-util-values": "workspace:*"
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@modelcontextprotocol/core": "2.2.0",
+    "zod": "4.6.6"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-attachment": "workspace:*",
     "@knyazevai/dsh-attachment-local": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-subprocess": "workspace:*",
     "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@modelcontextprotocol/server-everything": "^2026.8.31",
     "@modelcontextprotocol/server-filesystem": "^2026.8.31",
@@ -56,15 +79,27 @@
     "@knyazevai/dsh-http-proxy": "workspace:*",
     "@modelcontextprotocol/server": "2.2.0",
     "@modelcontextprotocol/node": "2.0.0",
-    "zod": "4.4.3",
     "@knyazevai/dsh-mcp-resources": "workspace:*",
-    "@knyazevai/dsh-system-prompt": "workspace:*"
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-authorization": "workspace:*",
+    "@knyazevai/dsh-host-webserver": "workspace:*",
+    "@knyazevai/dsh-credentials-local": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-output-retention": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@knyazevai/dsh-mcp-resources": {
       "optional": true
     },
     "@knyazevai/dsh-system-prompt": {
+      "optional": true
+    },
+    "@knyazevai/dsh-authorization": {
+      "optional": true
+    },
+    "@knyazevai/dsh-host-webserver": {
       "optional": true
     }
   }

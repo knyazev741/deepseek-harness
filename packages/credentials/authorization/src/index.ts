@@ -28,7 +28,7 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { CredentialKey, CredentialRecord } from '@knyazevai/dsh-credentials'
-import { HarnessError } from '@knyazevai/dsh-llm'
+import { HarnessError } from '@knyazevai/dsh-error'
 
 import type {
   AuthorizationEntry, AuthorizationMethod, AuthorizationNotice, AuthorizationOutcome, AuthorizationPrompt,

@@ -6,14 +6,13 @@
  * The seam itself lives in `@knyazevai/dsh-compaction`, which re-exports these
  * contracts; this module is a pure type/value/predicate outlet (no cordis
  * imports, no module augmentation) so client and wire programs can name the
- * checkpoint source without loading the host plugin's Context merges — the
- * `dsh-commands/brand` shape.
+ * checkpoint source without loading the host plugin's Context merges.
  *
  * @module @knyazevai/dsh-compaction/checkpoint
  */
 
 import type { MessageSource } from '@knyazevai/dsh-llm/message'
-import type { CommandId } from '@knyazevai/dsh-commands/brand'
+import type { CommandId } from '@knyazevai/dsh-commands/types'
 import type { CompactionId } from './brand.ts'
 
 const COMPACT_CHECKPOINT_MARKER = Object.freeze({ kind: 'compact-checkpoint' } as const)

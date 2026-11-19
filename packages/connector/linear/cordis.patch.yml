@@ -1,0 +1,3 @@
+- insert:
+    - id: linear
+      name: '@knyazevai/dsh-linear'

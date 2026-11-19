@@ -6,7 +6,7 @@
  */
 
 import type { Branded } from '@knyazevai/dsh-brand'
-import type { SessionId } from '@knyazevai/dsh-session/types'
+import type { SessionHeader, SessionId } from '@knyazevai/dsh-session/types'
 import type { TypertResource } from '@knyazevai/dsh-typert-protocol'
 
 /**
@@ -98,6 +98,12 @@ export interface Workspace {
    * candidates. This does not admit new sessions or recreate directories.
    */
   readonly sessionIds: readonly SessionId[]
+
+  /**
+   * List the stored headers of the current members.
+   * @returns a new array with one header per entry of {@link sessionIds}, in the same order.
+   */
+  getSessionHeaders(): readonly SessionHeader[]
 
   /**
    * Replace the display title durably.

@@ -4,8 +4,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { subset, valid, validRange } from 'semver'
-import { validateTarballPayload } from '../publication-payload.ts'
-import { tarballName } from './families.ts'
+import { releaseFamily, tarballName } from './families.ts'
 import { npmCliPath } from './npm.ts'
 import { capture, isEntry } from './process.ts'
 import { packedManifest, PUBLISH_ORDER_FILE, readPublishOrder, tarballFiles } from './tarball.ts'
@@ -118,7 +117,11 @@ export function packEntry(source: string, destination: string): string {
     for (const file of files) {
       if (!file.startsWith('package/') || file.split('/').includes('..') || file.startsWith('package/node_modules/')) throw new Error(`Entry input contains unexpected member ${file}`)
     }
-    validateTarballPayload(files, manifest.name)
+    if (typeof manifest.version !== 'string') throw new Error(`Invalid packed version ${filename}`)
+    const directory = isRecord(manifest.repository) && typeof manifest.repository.directory === 'string'
+      ? manifest.repository.directory
+      : ''
+    releaseFamily('dsh').validatePayload({ directory, name: manifest.name, version: manifest.version, manifest }, files)
     archives.set(manifest.name, { path, files, manifest })
   }
   const plan = planEntry([...archives.values()].map(archive => archive.manifest))
@@ -146,7 +149,7 @@ export function packEntry(source: string, destination: string): string {
         npm_config_cache: join(root, 'cache'), npm_config_userconfig: join(root, '.npmrc'), npm_config_globalconfig: join(root, 'global.npmrc') },
     })
     const packed = join(output, filename), files = tarballFiles(packed), actual = new Set(files)
-    validateTarballPayload(files, CLI)
+    releaseFamily('dsh').validatePayload({ directory: 'apps/cli', name: CLI, version: plan.version, manifest: plan.manifest }, files)
     for (const file of expected) if (!actual.has(file)) throw new Error(`Entry archive omitted runtime file ${file}`)
     mkdirSync(destination, { recursive: true })
     copyFileSync(packed, join(destination, filename))

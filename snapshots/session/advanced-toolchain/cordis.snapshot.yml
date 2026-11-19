@@ -20,10 +20,11 @@
   config:
     maxBytes: 65536
 
-- id: tools
-  name: '@knyazevai/dsh-tools'
-  config:
-    mode: native
+- id: tool-executor-native
+  disabled: false
+
+- id: tool-executor-ptc
+  disabled: true
 
 - id: system-prompt
   name: '@knyazevai/dsh-system-prompt'

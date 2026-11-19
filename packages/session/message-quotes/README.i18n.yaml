@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/session/message-quotes/README.md
+/:
+  en: 3747c4c75b3f49e0
+  zh: 5b0b9248cb91d91b
+/knyazevai-dsh-message-quotes:
+  en: ed6d2de3ca2de270
+  zh: 3875388e34406c49
+/knyazevai-dsh-message-quotes/summary:
+  en: a4646537fb9c8371
+  zh: d4a008fe576720c6
+/knyazevai-dsh-message-quotes/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 405b30feaf48c087
+/knyazevai-dsh-message-quotes/use-this-package:
+  en: 5a2c3edf0a026abe
+  zh: aec2f54b6d833591
+/knyazevai-dsh-message-quotes/understand-the-implementation:
+  en: e5c91bdecff724e5
+  zh: 655c2528d111ac32
+/knyazevai-dsh-message-quotes/further-exploration:
+  en: bcf07b5197b746ce
+  zh: 206f79eb606baac7
+/knyazevai-dsh-message-quotes/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-message-quotes/model-experience/quoted-message-text:
+  en: 4570ae90b328ddf5
+  zh: 5c2c95075c5e0fa4
+/knyazevai-dsh-message-quotes/model-experience/quoted-message-text/what-the-model-sees:
+  en: 913152fe14c493f6
+  zh: 3bdf114beaff1e04
+/knyazevai-dsh-message-quotes/model-experience/quoted-message-text/token-effect:
+  en: af92deb8bf69432b
+  zh: 2582520fcb9b982e
+/knyazevai-dsh-message-quotes/model-experience/quoted-message-text/kv-cache-effect:
+  en: 626c54bc58b74f8f
+  zh: 82a5a8a445734d64
+/knyazevai-dsh-message-quotes/known-limitations-and-deferred-work:
+  en: 4d2c9783f0268d55
+  zh: 40d6d48ceed3194c
+/knyazevai-dsh-message-quotes/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

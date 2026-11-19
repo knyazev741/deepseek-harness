@@ -1,5 +1,5 @@
 import type { SessionEvent } from '@knyazevai/dsh-session/types'
-import type {} from '@knyazevai/dsh-tools/types'
+import type {} from '@knyazevai/dsh-tool-executor-ptc/client'
 import type {
   ConversationNode, RunningToolCall, ToolCallBlock, ToolResultNode,
 } from '@knyazevai/dsh-client-ui-conversation/client'

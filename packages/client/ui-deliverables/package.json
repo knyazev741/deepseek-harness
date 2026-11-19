@@ -37,7 +37,8 @@
         "@knyazevai/dsh-client-ui-renderer",
         "@knyazevai/dsh-client-ui-sidebar-right",
         "@knyazevai/dsh-client-ui-tool",
-        "@knyazevai/dsh-client-ui-settings"
+        "@knyazevai/dsh-client-ui-settings",
+        "@knyazevai/dsh-client-ui-context-menu"
       ],
       "platform": "web"
     }
@@ -51,6 +52,7 @@
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-api-remotes": "workspace:*",
     "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
@@ -80,13 +82,17 @@
     "@knyazevai/dsh-fs-local": "workspace:*",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-sandbox-policy": "workspace:*",
-    "@knyazevai/dsh-client-ui-settings": "workspace:*"
+    "@knyazevai/dsh-client-ui-settings": "workspace:*",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "dependencies": {
     "@knyazevai/dsh-typert-protocol": "workspace:*"

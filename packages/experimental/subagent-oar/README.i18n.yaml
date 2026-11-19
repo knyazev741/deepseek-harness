@@ -1,0 +1,67 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/subagent-oar/README.md
+/:
+  en: e2a966cf2f6d7f5f
+  zh: e19b979aeef0d29a
+/knyazevai-dsh-experimental-subagent-oar:
+  en: af8ada70f1872185
+  zh: 89469f088a6b1fef
+/knyazevai-dsh-experimental-subagent-oar/summary:
+  en: 75bc60daa998f16a
+  zh: 31f09b5ed600232d
+/knyazevai-dsh-experimental-subagent-oar/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 8d1e20b826450ffe
+/knyazevai-dsh-experimental-subagent-oar/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/knyazevai-dsh-experimental-subagent-oar/use-this-package/compose-a-profile:
+  en: 28fb0b3b7c54847c
+  zh: f12a7af52c8a1886
+/knyazevai-dsh-experimental-subagent-oar/use-this-package/what-you-get:
+  en: e4b715738e3f238d
+  zh: 0c6d561b99d4b07e
+/knyazevai-dsh-experimental-subagent-oar/use-this-package/configure-a-runtime-instance:
+  en: be1c6784804acaab
+  zh: a7eeabc3ddab356f
+/knyazevai-dsh-experimental-subagent-oar/understand-the-implementation:
+  en: ba50ae754617fbaf
+  zh: d808f24ea87fe549
+/knyazevai-dsh-experimental-subagent-oar/further-exploration:
+  en: 089fe63b9b457247
+  zh: 482382e68e5c4e2e
+/knyazevai-dsh-experimental-subagent-oar/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-experimental-subagent-oar/model-experience/child-request:
+  en: 1796fa78833bfc2b
+  zh: b78af12284632249
+/knyazevai-dsh-experimental-subagent-oar/model-experience/child-request/what-the-model-sees:
+  en: 16dd6345fbe5b557
+  zh: adbd8e9b2f4d247f
+/knyazevai-dsh-experimental-subagent-oar/model-experience/child-request/token-effect:
+  en: 51b1a72453170ef9
+  zh: 521ff4e9e9a84186
+/knyazevai-dsh-experimental-subagent-oar/model-experience/child-request/kv-cache-effect:
+  en: 26a77ed7165e7414
+  zh: 61d802041b7663c6
+/knyazevai-dsh-experimental-subagent-oar/model-experience/parent-results-indirectly:
+  en: cc55ad2a7e04a064
+  zh: e7d3d72a5b1e80e3
+/knyazevai-dsh-experimental-subagent-oar/model-experience/parent-results-indirectly/what-the-model-sees:
+  en: 2d1cdcc92211fdec
+  zh: 016169e5fb65eb86
+/knyazevai-dsh-experimental-subagent-oar/model-experience/parent-results-indirectly/token-effect:
+  en: 99d04595c61a32fc
+  zh: 47f6253729070269
+/knyazevai-dsh-experimental-subagent-oar/model-experience/parent-results-indirectly/kv-cache-effect:
+  en: ba649995f08b9e09
+  zh: a153047f0c25645a
+/knyazevai-dsh-experimental-subagent-oar/known-limitations-and-deferred-work:
+  en: 8eec39a3eb58a185
+  zh: 68feb7901d4b50b9
+/knyazevai-dsh-experimental-subagent-oar/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

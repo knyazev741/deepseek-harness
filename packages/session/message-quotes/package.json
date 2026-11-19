@@ -1,0 +1,72 @@
+{
+  "name": "@knyazevai/dsh-message-quotes",
+  "description": "Selected-text quotation and Markdown blockquote presentation",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/session/message-quotes"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json",
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    }
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~"
+  },
+  "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-api-session-controller": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-ui-chat": "workspace:*",
+    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "react": "^18.2.0",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@knyazevai/dsh-api-session-controller",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-chat",
+        "@knyazevai/dsh-client-ui-conversation",
+        "@knyazevai/dsh-client-ui-renderer"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  }
+}

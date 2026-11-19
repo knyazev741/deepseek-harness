@@ -57,6 +57,7 @@
     "@knyazevai/dsh-client-locale": "workspace:*",
     "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-user-questions": "workspace:*",
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
@@ -71,12 +72,16 @@
     "clsx": "^2.0.0",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-client-ui-chat": "workspace:*",
-    "@knyazevai/dsh-client-ui-tool": "workspace:*"
+    "@knyazevai/dsh-client-ui-tool": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

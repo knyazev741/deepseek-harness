@@ -26,6 +26,9 @@
             disabled: !!js process.platform !== 'win32'
           - id: tool-fs
             name: '@knyazevai/dsh-tool-fs'
+            config:
+              # Set true to add the apply_patch tool beside edit.
+              applyPatch: false
           - id: tool-fs-search
             name: '@knyazevai/dsh-tool-fs-search'
             config:
@@ -110,14 +113,15 @@
             config:
               - id: tool-subagent-control
                 name: '@knyazevai/dsh-tool-subagent-control'
-              - id: tool-subagent-list-agents
-                name: '@knyazevai/dsh-tool-subagent-control/list-agents'
+                config:
+                  interrupt: false
               - id: tool-subagent
                 name: '@knyazevai/dsh-tool-subagent'
                 config:
                   provider: spawn
                   toolName: subagent
-                  modelSelectionSettings: true
+                  modelSelection: true
+                  modelDiscovery: true
               - id: tool-subagent-fork
                 name: '@knyazevai/dsh-tool-subagent'
                 config:
@@ -142,12 +146,12 @@
             config:
               fetch: true
               searchTimeoutMs: 60000
-          - id: tool-presentation
-            name: '@knyazevai/dsh-agent-tool-presentation'
-            config:
-              mode: ptc
+          - id: tool-executor-ptc
+            name: '@knyazevai/dsh-tool-executor-ptc'
           - id: present
             name: '@knyazevai/dsh-tool-present'
+          - id: tool-office
+            name: '@knyazevai/dsh-tool-office'
           - id: tool-plugin-manager
             name: '@knyazevai/dsh-plugin-manager/tools'
             disabled: true

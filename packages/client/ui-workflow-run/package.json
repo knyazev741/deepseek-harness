@@ -35,6 +35,7 @@
         "@knyazevai/dsh-client-ui-conversation",
         "@knyazevai/dsh-client-ui-renderer",
         "@knyazevai/dsh-client-ui-session",
+        "@knyazevai/dsh-client-ui-session-status",
         "@knyazevai/dsh-client-ui-workspace"
       ],
       "platform": "web"
@@ -48,7 +49,10 @@
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -65,6 +69,7 @@
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-status": "workspace:*",
     "@knyazevai/dsh-client-ui-workspace": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-tool-workflow": "workspace:*",

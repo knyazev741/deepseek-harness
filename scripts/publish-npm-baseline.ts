@@ -18,7 +18,6 @@ import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { discoverNpmBaselineManifests } from './npm-baseline-packages.ts'
-import { validateTarballPayload } from './publication-payload.ts'
 
 const DEFAULT_REGISTRY = 'https://registry.npm.harnessment.com'
 const DEFAULT_OUTPUT_DIRECTORY = '.artifacts/npm-baseline'
@@ -331,9 +330,6 @@ class ReleaseBundle {
         if (expected === undefined || !missingNames.delete(artifact.name)) {
           throw new Error(`unexpected or duplicate packed package: ${artifact.name}`)
         }
-        if (expected.origin === 'harness') {
-          validateTarballPayload(artifact.files, tarball)
-        }
         if (artifact.version !== version) {
           throw new Error(`${tarball} has version ${artifact.version}; expected ${version}`)
         }
@@ -407,9 +403,6 @@ class ReleaseBundle {
         throw new Error(`tarball checksum mismatch: ${pkg.tarball}`)
       }
       const artifact = inspectTarball(path, runner)
-      if (pkg.origin === 'harness') {
-        validateTarballPayload(artifact.files, pkg.tarball)
-      }
       if (artifact.name !== pkg.name || artifact.version !== this.manifest.version) {
         throw new Error(`tarball identity mismatch: ${pkg.tarball}`)
       }

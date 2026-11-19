@@ -12,7 +12,9 @@ import type {} from '@knyazevai/dsh-ptc-runtime'
 import type {} from '@knyazevai/dsh-sandbox-policy'
 import type {} from '@knyazevai/dsh-working-directory'
 import z from '@deepseek-ai/schemastery'
-import WorkflowEngine, { WorkflowError, WorkflowRunId } from '@knyazevai/dsh-workflow'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { WorkflowRunId } from '@knyazevai/dsh-workflow/types'
+import WorkflowEngine, { WorkflowError } from '@knyazevai/dsh-workflow'
 import type { WorkflowRun, WorkflowRunInfo, WorkflowStartRequest } from '@knyazevai/dsh-workflow'
 import { PtcWorkflowRun } from './host.ts'
 import { validateMeta } from './meta.ts'
@@ -136,7 +138,7 @@ class PtcWorkflowEngine extends WorkflowEngine {
     assertBodyParses(request.script, meta.name)
     const subagentProvider = resolveSubagentProvider(this.ctx, this.config.provider, request.subagentProvider)
     const maxTotalAgents = resolveMaxTotalAgents(request.maxTotalAgents, this.config.maxTotalAgents)
-    const id = WorkflowRunId(randomUUID())
+    const id = brandString<WorkflowRunId>(randomUUID())
     const info: WorkflowRunInfo = { id, meta }
     const limits: WorkerLimits = {
       maxConcurrentAgents: this.config.maxConcurrentAgents === 0
@@ -181,6 +183,7 @@ class PtcWorkflowEngine extends WorkflowEngine {
       this.emitWorkflowEvent('workflow/end', info, {
         stopReason: settled.stopReason,
         ...settled.error !== undefined ? { error: settled.error } : {},
+        ...settled.errorCode !== undefined ? { errorCode: settled.errorCode } : {},
         agentsStarted: settled.agentsStarted,
       })
     })

@@ -40,7 +40,9 @@
         "@knyazevai/dsh-client-ui-layout",
         "@knyazevai/dsh-client-ui-renderer",
         "@knyazevai/dsh-client-ui-session",
-        "@knyazevai/dsh-client-ui-sidebar"
+        "@knyazevai/dsh-client-ui-session-status",
+        "@knyazevai/dsh-client-ui-sidebar",
+        "@knyazevai/dsh-client-ui-context-menu"
       ],
       "platform": "web"
     }
@@ -53,23 +55,32 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"
   },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "workspace:~"
+  },
   "devDependencies": {
-    "@knyazevai/dsh-api-remote-access": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-api-remotes": "workspace:*",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-agent-preset-registry": "workspace:*",
+    "@knyazevai/dsh-api-remote-access": "workspace:*",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
     "@knyazevai/dsh-api-session-controller": "workspace:*",
     "@knyazevai/dsh-api-workspace-controller": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-client-config": "workspace:*",
     "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-product-analytics": "workspace:*",
+    "@knyazevai/dsh-client-shortcuts": "workspace:*",
     "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*",
     "@knyazevai/dsh-client-ui-conversation": "workspace:*",
     "@knyazevai/dsh-client-ui-layout": "workspace:*",
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-status": "workspace:*",
     "@knyazevai/dsh-client-ui-sidebar": "workspace:*",
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
     "@knyazevai/dsh-jobs": "workspace:*",
@@ -77,17 +88,19 @@
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-util-text-search": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@knyazevai/dsh-util-workspace-path": "workspace:*",
     "clsx": "^2.0.0",
-    "react": "^18.2.0",
-    "@knyazevai/dsh-client-shortcuts": "workspace:*",
-    "@knyazevai/dsh-client-product-analytics": "workspace:*"
+    "react": "^18.2.0"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

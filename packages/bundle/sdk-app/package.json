@@ -20,12 +20,17 @@
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "cordis.patch.yml",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dsh": {
@@ -35,11 +40,23 @@
   },
   "dependencies": {
     "@knyazevai/dsh-cmdline": "workspace:*",
+    "@knyazevai/dsh-office-kit": "workspace:*",
     "@knyazevai/dsh-sdk-jsonrpc-server": "workspace:*",
+    "@knyazevai/dsh-tool-office": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "commander": "^15.0.0",
     "@knyazevai/dsh-skill-office": "workspace:*",
-    "@knyazevai/dsh-tool-workspace-dependencies": "workspace:*"
+    "@knyazevai/dsh-tool-workspace-dependencies": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-client-file-upload": "workspace:*",
+    "@knyazevai/dsh-workspace": "workspace:*",
+    "@knyazevai/dsh-schedule": "workspace:*",
+    "@knyazevai/dsh-time-context": "workspace:*",
+    "@knyazevai/dsh-tool-schedule": "workspace:*",
+    "@knyazevai/dsh-tool-ask-user": "workspace:*",
+    "@knyazevai/dsh-tool-present": "workspace:*",
+    "@knyazevai/dsh-file-reference-local": "workspace:*",
+    "@knyazevai/dsh-deliverable-file-references": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"

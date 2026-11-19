@@ -25,7 +25,10 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -33,16 +36,19 @@
     "@knyazevai/dsh-app-boot": "workspace:*",
     "@knyazevai/dsh-home-paths": "workspace:*",
     "@knyazevai/dsh-shell": "workspace:*",
-    "@knyazevai/dsh-tools": "workspace:*"
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-app-boot": "workspace:*",
     "@knyazevai/dsh-home-paths": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-shell": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*"

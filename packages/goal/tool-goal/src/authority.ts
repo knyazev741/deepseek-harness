@@ -6,7 +6,6 @@ import type { GoalView } from '@knyazevai/dsh-goal'
 import { HarnessError } from '@knyazevai/dsh-llm'
 import type { SessionEvent, SessionSeq } from '@knyazevai/dsh-session'
 import type { ToolRunContext } from '@knyazevai/dsh-tools'
-import type {} from '@knyazevai/dsh-session-projection'
 
 /** The calling agent plus the immutable event cut and open-turn start seq used for authority checks. */
 export interface GoalToolExecution {
@@ -32,8 +31,8 @@ function openTurnEvents(
 ): Pick<GoalToolExecution, 'events' | 'openTurnStartSeq'> {
   // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
   const events = agent.session.snapshotEvents()
-  const boundary = ctx.sessionProjections.stateOf(agent.session, 'turnBoundary')
-  if (boundary === undefined || boundary.openTurnStartSeq === null) {
+  const boundary = ctx.agents.turnBoundaryOf(agent.session)
+  if (boundary.openTurnStartSeq === null) {
     reject('goal tools require an open model turn', 'GOAL_TOOL_DRIVER_REQUIRED')
   }
   return { events, openTurnStartSeq: boundary.openTurnStartSeq }
@@ -78,7 +77,7 @@ function someOpenTurnEvent(
  * producers must supply their own source rather than inheriting this authority.
  */
 function hasDirectHumanInput(ctx: Context, execution: GoalToolExecution): boolean {
-  if (!ctx.agents.roots().includes(execution.agent)) return false
+  if (ctx.agents.get(execution.agent.id) !== execution.agent || execution.agent.session.header.origin === 'subagent') return false
   return someOpenTurnEvent(execution, event =>
     event.type === 'user/message' && event.data.source.kind === 'user')
 }

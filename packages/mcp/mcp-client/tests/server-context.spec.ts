@@ -1,8 +1,11 @@
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt, { renderPrompt } from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
-import { ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm/types'
 import McpResources from '@knyazevai/dsh-mcp-resources'
 import { createScope } from '@knyazevai/dsh-scope'
 import { registerServerContext } from '../src/server-context.ts'
@@ -15,6 +18,7 @@ async function setup() {
   roots.push(ctx)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(McpResources)
   return ctx
 }
@@ -34,9 +38,9 @@ describe('MCP server context', () => {
     expect(renderPrompt(await ctx.systemPrompt.assemble())).toContain(instructions)
     await fiber.dispose()
     expect(renderPrompt(await ctx.systemPrompt.assemble())).not.toContain('MCP server: docs')
-    const result = await ctx.tools.execute({
+    const result = await executeToolFixture(ctx, {
       name: 'list_mcp_resources', arguments: { server: 'docs' },
-      callId: ToolCallId('disposed-resource'), signal: new AbortController().signal,
+      callId: brandString<ToolCallId>('disposed-resource'), signal: new AbortController().signal,
     })
     expect(result.isError).toBe(true)
   })

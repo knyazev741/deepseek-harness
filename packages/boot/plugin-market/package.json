@@ -35,35 +35,48 @@
       "default": "./lib/typert.remote-client.js"
     },
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
     "lib/worker.cjs",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
-    "lib/typert.remote-client.d.ts"
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
   ],
   "license": "MIT",
   "dependencies": {
     "@knyazevai/dsh-app-boot": "workspace:*",
+    "@knyazevai/dsh-atomic-write": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-package-manifest": "workspace:*",
+    "@knyazevai/dsh-plugin-detail": "workspace:*",
     "@knyazevai/dsh-plugin-market-index": "workspace:*",
     "@knyazevai/dsh-timeout": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
+    "execa": "^10.0.1",
+    "hosted-git-info": "^9.0.3",
     "minisearch": "^7.2.0",
     "semver": "^7.8.5",
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@knyazevai/dsh-plugin-manager": "workspace:*",
     "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*"
   },
@@ -77,13 +90,19 @@
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/cosmokit": "workspace:~",
     "@knyazevai/dsh-app-boot": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-config-editor": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-plugin-manager": "workspace:*",
     "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@types/hosted-git-info": "^3.0.5",
     "@types/semver": "^7.8.0"
   }
 }

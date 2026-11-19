@@ -22,6 +22,7 @@
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
     },
+    "./assets/*": "./lib/assets/*",
     "./src/*": "./src/*",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json"
@@ -31,6 +32,7 @@
       "inject": [
         "@knyazevai/dsh-api-session-controller",
         "@knyazevai/dsh-api-workspace-controller",
+        "@knyazevai/dsh-client-connection",
         "@knyazevai/dsh-client-locale",
         "@knyazevai/dsh-client-ui-conversation",
         "@knyazevai/dsh-client-ui-input-trigger",
@@ -39,7 +41,9 @@
         "@knyazevai/dsh-client-ui-session",
         "@knyazevai/dsh-client-ui-settings",
         "@knyazevai/dsh-client-ui-sidebar-right",
-        "@knyazevai/dsh-client-ui-workspace"
+        "@knyazevai/dsh-client-ui-workspace",
+        "@knyazevai/dsh-client-ui-file-drag",
+        "@knyazevai/dsh-client-ui-context-menu"
       ],
       "platform": "web"
     }
@@ -61,6 +65,7 @@
     "@knyazevai/dsh-api-workspace-files": "workspace:*",
     "@knyazevai/dsh-attachment": "workspace:*",
     "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
     "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-client-ui-approval": "workspace:*",
@@ -70,6 +75,7 @@
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-status": "workspace:*",
     "@knyazevai/dsh-client-ui-settings": "workspace:*",
     "@knyazevai/dsh-client-ui-sidebar-browser": "workspace:*",
     "@knyazevai/dsh-client-ui-sidebar-documentpreview": "workspace:*",
@@ -85,14 +91,16 @@
     "@knyazevai/dsh-session-turn-outline": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
     "@knyazevai/dsh-token-meter": "workspace:*",
-    "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-util-workspace-path": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
     "@tanstack/react-virtual": "3.14.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "@knyazevai/dsh-settings": "workspace:*",
-    "@knyazevai/dsh-client-product-analytics": "workspace:*"
+    "@knyazevai/dsh-client-product-analytics": "workspace:*",
+    "@knyazevai/dsh-client-ui-file-drag": "workspace:*",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~"
@@ -101,6 +109,10 @@
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/assets",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

@@ -1,0 +1,96 @@
+{
+  "name": "@knyazevai/dsh-client-ui-connector-account",
+  "description": "Connector account surfaces: the Host registry CLI app plugins and MCP connectors register their accounts with, and the Plugins page section, title tag, activation prompt, and notices it serves over one Remote",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/client/ui-connector-account"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./types": {
+      "types": "./lib/types/types.d.ts"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json",
+    "./typert": {
+      "types": "./lib/typert.host.d.ts",
+      "default": "./lib/typert.host.js"
+    },
+    "./remote": {
+      "types": "./lib/typert.remote-client.d.ts",
+      "default": "./lib/typert.remote-client.js"
+    },
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@knyazevai/dsh-api-remotes",
+        "@knyazevai/dsh-client-locale",
+        "@knyazevai/dsh-client-ui-layout",
+        "@knyazevai/dsh-client-ui-plugin-manager"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "zod": "4.6.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-api-gateway": "workspace:*",
+    "@knyazevai/dsh-api-remotes": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
+    "@knyazevai/dsh-client-test-runtime": "workspace:*",
+    "@knyazevai/dsh-client-ui-layout": "workspace:*",
+    "@knyazevai/dsh-client-ui-plugin-manager": "workspace:*",
+    "@knyazevai/dsh-client-ui-primitives": "workspace:*",
+    "@knyazevai/dsh-client-ui-renderer": "workspace:*",
+    "@knyazevai/dsh-client-ui-slots": "workspace:*",
+    "@knyazevai/dsh-package-manifest": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@testing-library/react": "^16.3.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "lib/typert.host.js",
+    "lib/typert.host.d.ts",
+    "lib/typert.remote-client.js",
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
+  ]
+}

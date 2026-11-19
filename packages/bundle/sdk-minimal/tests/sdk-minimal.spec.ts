@@ -3,9 +3,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import * as yaml from 'js-yaml'
 import { describe, expect, it } from 'vitest'
-import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
+import { parseEntryYaml } from '@deepseek-ai/cordis-plugin-include'
 
 function packageName(specifier: string): string {
   return specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0]!
@@ -19,10 +18,7 @@ describe('dsh-sdk-minimal bundle', () => {
       dsh?: { bundle?: { patch?: string } }
     }
     expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
-    const patches = yaml.load(
-      readFileSync(resolve(root, manifest.dsh!.bundle!.patch!), 'utf8'),
-      { schema: entryListSchema },
-    ) as Array<{ insert?: Array<{ id?: string; inject?: string[]; name?: string; config?: Record<string, unknown>; disabled?: unknown }> }>
+    const patches = parseEntryYaml(readFileSync(resolve(root, manifest.dsh!.bundle!.patch!), 'utf8')) as Array<{ insert?: Array<{ id?: string; inject?: string[]; name?: string; config?: Record<string, unknown>; disabled?: unknown }> }>
     expect(patches).toHaveLength(1)
     const rows = patches[0]?.insert ?? []
     expect(rows.map(row => [row.id, row.name])).toEqual([
@@ -31,13 +27,13 @@ describe('dsh-sdk-minimal bundle', () => {
       ['deepseek-llm-api-extensions', '@knyazevai/dsh-deepseek-llm-api-extensions'],
       ['session-log-deepseek', '@knyazevai/dsh-session-log-deepseek'],
       ['plugin-package-inventory-deepseek', '@knyazevai/dsh-plugin-package-inventory-deepseek'],
+      ['deepseek-auth', '@knyazevai/dsh-deepseek-auth'],
       ['llm-deepseek', '@knyazevai/dsh-llm-deepseek-api-key'],
       ['sandbox', '@knyazevai/dsh-sandbox-local'],
       ['filesystem', '@knyazevai/dsh-fs-local'],
       ['attachment-local', '@knyazevai/dsh-attachment-local'],
       ['tool-fs', '@knyazevai/dsh-tool-fs'],
       ['working-directory', '@knyazevai/dsh-working-directory'],
-      ['tool-working-directory', '@knyazevai/dsh-tool-working-directory'],
       ['session-projection', '@knyazevai/dsh-session-projection'],
       ['token-meter', '@knyazevai/dsh-token-meter'],
       ['compaction-basic', '@knyazevai/dsh-compaction-basic'],
@@ -53,6 +49,7 @@ describe('dsh-sdk-minimal bundle', () => {
       ['session-title', '@knyazevai/dsh-session-title'],
       ['system-prompt', '@knyazevai/dsh-system-prompt'],
       ['tools', '@knyazevai/dsh-tools'],
+      ['tool-executor-native', '@knyazevai/dsh-tool-executor-native'],
       ['mcp-resources', '@knyazevai/dsh-mcp-resources'],
       ['agent', '@knyazevai/dsh-agent'],
       ['llm-retry', '@knyazevai/dsh-llm-retry'],
@@ -61,6 +58,7 @@ describe('dsh-sdk-minimal bundle', () => {
       ['persistent-bash', '@knyazevai/dsh-tool-bash-persistent'],
       ['persistent-pwsh', '@knyazevai/dsh-tool-pwsh-persistent'],
       ['sessions', '@knyazevai/dsh-session-persistence-jsonl'],
+      ['session-checkpoint-policy', '@knyazevai/dsh-session-checkpoint-policy'],
     ])
     expect(rows.find(row => row.id === 'sdk-app-startup')?.config).toEqual({ profile: 'sdk-minimal' })
     expect(rows.find(row => row.id === 'sdk-jsonrpc-server')).toMatchObject({

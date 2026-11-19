@@ -1,0 +1,67 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/mcp/mcp-manager/README.md
+/:
+  en: 706845526cca8ee3
+  zh: 8807cb31259da85a
+/knyazevai-dsh-mcp-manager:
+  en: 68a6b8255cb9e2c3
+  zh: 50f3960a868858ce
+/knyazevai-dsh-mcp-manager/summary:
+  en: d2b26c63ca0e837b
+  zh: ea377b20252a0fbe
+/knyazevai-dsh-mcp-manager/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: f14f34fce35a8d90
+/knyazevai-dsh-mcp-manager/use-this-package:
+  en: 1127dc36b3fca712
+  zh: 09349d9f4d6233c4
+/knyazevai-dsh-mcp-manager/use-this-package/when-to-choose-it:
+  en: 5a005b1ef5f53881
+  zh: d8bae243d10b2da5
+/knyazevai-dsh-mcp-manager/use-this-package/minimal-configuration:
+  en: e5e9e0de507ad025
+  zh: 73bbb656a834181d
+/knyazevai-dsh-mcp-manager/use-this-package/managing-configured-servers:
+  en: 765209b5639c4be2
+  zh: 48211813d2d25afc
+/knyazevai-dsh-mcp-manager/use-this-package/registering-a-server-from-a-plugin:
+  en: 313bcb35b12be8e1
+  zh: a85f75db6b138547
+/knyazevai-dsh-mcp-manager/use-this-package/observing-and-recovering:
+  en: 93154c31a85aa340
+  zh: 3931c7ac2e99f4f2
+/knyazevai-dsh-mcp-manager/use-this-package/oauth-authorization:
+  en: 86ad23ffe9337ec1
+  zh: 33671e9bacf7eb6e
+/knyazevai-dsh-mcp-manager/use-this-package/remote-operations:
+  en: e892aedf3ab29b12
+  zh: 6c469e621b8f95ca
+/knyazevai-dsh-mcp-manager/understand-the-implementation:
+  en: 8a74186fa5bfe79d
+  zh: c7c952876ca2992b
+/knyazevai-dsh-mcp-manager/understand-the-implementation/design-philosophy:
+  en: 8140d6676c500bda
+  zh: def13c78fd7949db
+/knyazevai-dsh-mcp-manager/understand-the-implementation/source-map:
+  en: 874fe61698123da8
+  zh: 85f9cb1eb4881cbc
+/knyazevai-dsh-mcp-manager/understand-the-implementation/lifecycle-notes:
+  en: ca31d0c252cc42ac
+  zh: e9c4c537a6b10426
+/knyazevai-dsh-mcp-manager/further-exploration:
+  en: 4396e37d6a5194a5
+  zh: ef7c6f9e7d30d091
+/knyazevai-dsh-mcp-manager/model-experience:
+  en: 622033747c4c0066
+  zh: 821213fd61a98105
+/knyazevai-dsh-mcp-manager/model-experience/kv-cache-effect:
+  en: 7a8d0bf11425040b
+  zh: b39181f89ba4fbe8
+/knyazevai-dsh-mcp-manager/known-limitations-and-deferred-work:
+  en: c26f7e40e621bc2d
+  zh: 49ce0f2ec6b89dab
+/knyazevai-dsh-mcp-manager/known-limitations-and-deferred-work/dev-note:
+  en: 22b977acde90c5b7
+  zh: 756afde34c9bcd99

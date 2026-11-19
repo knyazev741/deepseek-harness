@@ -21,15 +21,7 @@ import {
   type FileSearchConfig,
 } from './search.ts'
 
-export {
-  DEFAULT_FILE_SEARCH_EXCLUDED_DIRECTORIES,
-  DEFAULT_FILE_SEARCH_MAX_ENTRIES,
-  DEFAULT_FILE_SEARCH_MAX_RESULTS,
-  WorkspaceFileSearch,
-} from './search.ts'
 export type { FileSearchConfig } from './search.ts'
-export { FILE_REFERENCE_PROMPT } from '@knyazevai/dsh-file-reference'
-export { activeAtToken, formatFileMention } from '@knyazevai/dsh-file-reference/grammar'
 
 /** Local file-reference discovery configuration. */
 export interface Config {

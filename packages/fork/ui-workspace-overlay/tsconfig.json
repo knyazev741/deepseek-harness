@@ -14,7 +14,7 @@
     { "path": "../../api/session-controller/tsconfig.client.json" },
     { "path": "../../client/ui-primitives" },
     { "path": "../../client/ui-slots" },
-    { "path": "../../client/ui-workspace" },
+    { "path": "../../client/ui-workspace/tsconfig.client.json" },
     { "path": "../session-source" },
     { "path": "../workspace-session-state/tsconfig.client.json" },
     { "path": "../../runtime-diagnostics/invariants" }

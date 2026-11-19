@@ -1,4 +1,3 @@
-import { createUserMessage } from '@knyazevai/dsh-llm'
 /**
  * Loop-level tool-order determinism: the request/header event — and therefore the frozen
  * request the adapter receives — carries the assembly's canonical tool order (system-prompt's
@@ -6,19 +5,23 @@ import { createUserMessage } from '@knyazevai/dsh-llm'
  * happened to register in. Registration order is a concurrent loading artifact
  * and must not leak downstream.
  */
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
+import { createUserMessage } from '@knyazevai/dsh-llm'
 
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId, foldRequestHeader } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId, foldRequestHeader } from '@knyazevai/dsh-session'
 import SystemPrompt, { TOOL_ORDER_REST } from '@knyazevai/dsh-system-prompt'
 import type { Config as SystemPromptConfig } from '@knyazevai/dsh-system-prompt'
-import ToolRuntime, { defineContentToolFixture } from '@knyazevai/dsh-tools'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import { defineContentToolFixture } from '@knyazevai/dsh-tool-testkit'
 import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 async function harness(adapter: MockAdapter, toolOrder?: SystemPromptConfig['toolOrder']) {
   const ctx = new Context()
@@ -27,6 +30,7 @@ async function harness(adapter: MockAdapter, toolOrder?: SystemPromptConfig['too
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt, { personaPrefix: 'stable base', ...toolOrder !== undefined ? { toolOrder } : {} })
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(AgentLoop, { agents: [] })
   ctx.llm.registerAdapter(['mock'], adapter)
@@ -60,7 +64,7 @@ async function runTurn(registrationOrder: string[], toolOrder?: SystemPromptConf
   const adapter = new MockAdapter([textResponse('done')])
   const ctx = await harness(adapter, toolOrder)
   for (const name of registrationOrder) registerNamed(ctx, name)
-  const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+  const agent = await ctx.agentLoop.create(brandString<SessionId>('a1'), { provider: 'mock', model: 'mock' })
   agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
   await waitForIdle(ctx, agent)
   return { ctx, agent, adapter }
@@ -99,7 +103,7 @@ describe('loop-level canonical tool order', () => {
     const adapter = new MockAdapter([textResponse('never sent')])
     const ctx = await harness(adapter, ['ghost', TOOL_ORDER_REST])
     registerNamed(ctx, 'alpha')
-    const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('a1'), { provider: 'mock', model: 'mock' })
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await waitForIdle(ctx, agent)
     expect(adapter.requests).toHaveLength(0)

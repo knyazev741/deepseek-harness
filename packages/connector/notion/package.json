@@ -1,0 +1,67 @@
+{
+  "name": "@knyazevai/dsh-notion",
+  "description": "Notion plugin: Notion's hosted MCP server, authorized through the shared MCP manager",
+  "version": "0.2.6",
+  "icon": "./icon.svg",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/connector/notion"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./locale/*.json": "./locale/*.json",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "icon.svg",
+    "locale/*.json",
+    "docs",
+    "lib/index.js",
+    "cordis.patch.yml",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "workspace:~"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-client-ui-connector-account": "workspace:*",
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-mcp-account": "workspace:*",
+    "@knyazevai/dsh-mcp-manager": "workspace:*",
+    "@knyazevai/dsh-mcp-resources": "workspace:*",
+    "@knyazevai/dsh-scope": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*"
+  }
+}

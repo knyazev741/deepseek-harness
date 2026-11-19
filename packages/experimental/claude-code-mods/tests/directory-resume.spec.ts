@@ -7,10 +7,11 @@ import { Context } from '@deepseek-ai/cordis'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import LocalFileSystem from '@knyazevai/dsh-fs-local'
-import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import WorkingDirectory from '@knyazevai/dsh-working-directory'
 import ClaudeCodeMods, { defineMod } from '../src/index.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 it('reports the final committed cwd when a persisted Session resumes, retaining its original project', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-mods-resume-directory-')))
@@ -41,12 +42,12 @@ it('reports the final committed cwd when a persisted Session resumes, retaining 
   }
   try {
     const first = await mount()
-    const handle = await first.agents.create({ sessionId: SessionId('directory-resume'), meta: { cwd: origin } })
+    const handle = await first.agents.create({ sessionId: brandString<SessionId>('directory-resume'), meta: { cwd: origin } })
     await first.workingDirectory.set(handle.agent, current)
     await handle.dispose()
     await first.fiber.dispose()
     const second = await mount()
-    const resumed = await second.agents.resume({ resumeSessionId: SessionId('directory-resume') })
+    const resumed = await second.agents.resume({ resumeSessionId: brandString<SessionId>('directory-resume') })
     expect(observed).toEqual([{ cwd: origin, root: origin, payload: origin }, { cwd: current, root: origin, payload: current }])
     expect(resumed.agent.session.header.cwd).toBe(origin)
     expect(second.workingDirectory.get(resumed.agent.session)).toBe(current)

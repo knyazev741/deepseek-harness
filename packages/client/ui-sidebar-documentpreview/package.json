@@ -36,7 +36,9 @@
         "@knyazevai/dsh-client-ui-session",
         "@knyazevai/dsh-api-remotes",
         "@knyazevai/dsh-client-locale",
-        "@knyazevai/dsh-client-ui-settings"
+        "@knyazevai/dsh-client-ui-settings",
+        "@knyazevai/dsh-client-ui-file-drag",
+        "@knyazevai/dsh-client-ui-context-menu"
       ],
       "platform": "web"
     }
@@ -50,6 +52,7 @@
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-api-gateway": "workspace:*",
     "@knyazevai/dsh-api-remotes": "workspace:*",
@@ -64,9 +67,10 @@
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
     "@knyazevai/dsh-client-ui-settings": "workspace:*",
+    "@knyazevai/dsh-client-ui-sidebar-files": "workspace:*",
     "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
-    "@knyazevai/dsh-office-to-pdf": "workspace:*",
+    "@knyazevai/dsh-office-kit": "workspace:*",
     "@knyazevai/dsh-host-webserver": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-util-workspace-path": "workspace:*",
@@ -84,14 +88,20 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.0",
+    "@knyazevai/dsh-client-ui-file-drag": "workspace:*",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*",
+    "@knyazevai/dsh-client-config": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
     "lib/client.*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~"

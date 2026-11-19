@@ -12,11 +12,14 @@
   en: cc03e6b75206661b
   zh: 99e41f4143198352
 /knyazevai-dsh/profiles:
-  en: fbbccefed0aa4bf7
-  zh: 74876aced6ad2f0a
+  en: e0fc8a6775d2b6a5
+  zh: b32706a4578cd4a4
 /knyazevai-dsh/optional-overlays:
   en: 3a40ddc44e55f79c
   zh: 8d3949132e1ef93c
+/knyazevai-dsh/installed-payload:
+  en: c19f3d56f611f173
+  zh: 5002a7a318414960
 /knyazevai-dsh/development:
   en: 87b16c6ce185903d
   zh: b83991dd89607c22

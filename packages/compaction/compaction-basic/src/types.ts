@@ -4,6 +4,12 @@
  * @module @knyazevai/dsh-compaction-basic/types
  */
 
+declare module '@knyazevai/dsh-llm/types' {
+  interface LlmRequestPurposeMap {
+    'compaction': true
+  }
+}
+
 import type { LlmCallConfig } from '@knyazevai/dsh-llm'
 
 /** Policy fields shared by the default policy and exact model overrides. */

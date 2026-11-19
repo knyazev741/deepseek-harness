@@ -35,8 +35,10 @@
         "@knyazevai/dsh-client-ui-layout",
         "@knyazevai/dsh-client-ui-renderer",
         "@knyazevai/dsh-client-ui-session",
+        "@knyazevai/dsh-client-ui-session-status",
         "@knyazevai/dsh-client-ui-settings",
-        "@knyazevai/dsh-client-ui-workspace"
+        "@knyazevai/dsh-client-ui-workspace",
+        "@knyazevai/dsh-client-ui-context-menu"
       ],
       "platform": "web"
     }
@@ -58,7 +60,6 @@
     "@knyazevai/dsh-api-session-controller": "workspace:*",
     "@knyazevai/dsh-api-workspace-controller": "workspace:*",
     "@knyazevai/dsh-attachment": "workspace:*",
-    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
     "@knyazevai/dsh-client-file-upload": "workspace:*",
     "@knyazevai/dsh-client-store": "workspace:*",
@@ -67,6 +68,7 @@
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-status": "workspace:*",
     "@knyazevai/dsh-client-ui-settings": "workspace:*",
     "@knyazevai/dsh-client-ui-workspace": "workspace:*",
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
@@ -86,7 +88,6 @@
     "react": "^18.2.0",
     "@lexical/headless": "^0.49.0",
     "react-dom": "^18.2.0",
-    "zod": "4.4.3",
     "lexical": "^0.49.0",
     "clsx": "^2.0.0",
     "@lexical/utils": "^0.49.0",
@@ -96,12 +97,21 @@
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-settings": "workspace:*",
     "@knyazevai/dsh-client-shortcuts": "workspace:*",
-    "@knyazevai/dsh-client-product-analytics": "workspace:*"
+    "@knyazevai/dsh-client-product-analytics": "workspace:*",
+    "@knyazevai/dsh-message-quotes": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
+    "zod": "4.6.6",
+    "@knyazevai/dsh-client-ui-context-menu": "workspace:*",
+    "@knyazevai/dsh-client-config": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

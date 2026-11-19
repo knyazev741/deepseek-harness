@@ -37,29 +37,34 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.browser.js",
     "lib/client.node.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-scope": "workspace:*"
   },
   "devDependencies": {
+    "@knyazevai/dsh-credentials": "workspace:*",
+    "@knyazevai/dsh-host-authentication-token": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-attachment": "workspace:*",
-    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-host-webserver": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
-    "@knyazevai/dsh-typert-protocol": "workspace:*"
+    "@knyazevai/dsh-typert-protocol": "workspace:*",
+    "@knyazevai/dsh-client-config": "workspace:*"
   }
 }

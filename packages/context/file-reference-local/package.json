@@ -18,10 +18,6 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./search": {
-      "types": "./lib/types/search.d.ts",
-      "default": "./lib/types/search.js"
-    },
     "./src/*": "./src/*",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json"
@@ -29,8 +25,10 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dependencies": {
@@ -45,9 +43,12 @@
     "@knyazevai/dsh-working-directory": "workspace:*"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-file-reference": "workspace:*",
     "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tool-testkit": "workspace:*",
     "@knyazevai/dsh-tools": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-working-directory": "workspace:*",

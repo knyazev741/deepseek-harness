@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.2-rc.3/client-hmr-plugin-events-stream/guide.md
+/:
+  en: 23fe085e0a17de9f
+  zh: 1f66aa70838a957a
+/plugin-events-stream-and-synced-browser-configuration:
+  en: 2cd6093e448761ba
+  zh: 66910abc17effed8
+/plugin-events-stream-and-synced-browser-configuration/change:
+  en: afe5a4cbb848464b
+  zh: 26bee3cfdcd9054f
+/plugin-events-stream-and-synced-browser-configuration/migration:
+  en: fcab987324e65372
+  zh: 0c4f4c9ef2346018

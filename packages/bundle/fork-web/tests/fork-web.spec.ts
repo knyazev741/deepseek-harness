@@ -8,8 +8,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import * as yaml from 'js-yaml'
-import { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
+import { applyEntryPatches, parseEntryYaml } from '@deepseek-ai/cordis-plugin-include'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 
 interface Manifest {
@@ -35,7 +34,7 @@ interface Row extends EntryOptions {
 const root = fileURLToPath(new URL('..', import.meta.url))
 
 function readPatch(path: string): Patch[] {
-  const parsed = yaml.load(readFileSync(resolve(root, path), 'utf8'), { schema: entryListSchema })
+  const parsed = parseEntryYaml(readFileSync(resolve(root, path), 'utf8'))
   if (!Array.isArray(parsed)) throw new TypeError('fork-web patch must be an entry list')
   return parsed as Patch[]
 }
@@ -50,7 +49,7 @@ function flattenInsertRows(patches: Patch[]): Row[] {
 
 function compose(bundlePaths: readonly string[]): Row[] {
   const layers = bundlePaths.map(path => readPatch(path))
-  return applyEntryPatches([], layers.flat(), () => {})
+  return applyEntryPatches([], layers.flat(), () => {}).data as Row[]
 }
 
 describe('dsh-fork-web bundle', () => {

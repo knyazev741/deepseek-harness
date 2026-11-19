@@ -18,9 +18,9 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./brand": {
-      "types": "./lib/types/brand.d.ts",
-      "default": "./lib/types/brand.js"
+    "./types": {
+      "types": "./lib/types/types.d.ts",
+      "default": "./lib/types/types.js"
     },
     "./view": {
       "types": "./lib/types/view.d.ts",
@@ -32,12 +32,15 @@
   "files": [
     "lib/index.js",
     "lib/types/**/*.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
     "@knyazevai/dsh-agent": "workspace:*",
-    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-workspace": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~"
@@ -50,6 +53,7 @@
   "devDependencies": {
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-workspace": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~"

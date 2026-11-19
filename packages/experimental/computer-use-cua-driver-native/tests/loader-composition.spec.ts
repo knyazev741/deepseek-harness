@@ -1,5 +1,7 @@
 /** Real Loader and AgentLoop composition with only external native/model fixtures. */
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
 
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,9 +14,10 @@ import AgentRegistry from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import ComputerUseRegistry from '@knyazevai/dsh-computer-use'
 import LocalAttachmentStore from '@knyazevai/dsh-attachment-local'
-import LlmRuntime, { LlmAdapter, ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import LlmRuntime, { LlmAdapter, type ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
@@ -33,7 +36,7 @@ class VisualModel extends LlmAdapter {
   async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     this.requests.push(options)
     if (this.requests.length === 1) {
-      const call = { type: 'tool-call' as const, id: ToolCallId('native-window'), name: 'cua_driver_native__get_window_state', arguments: '{"pid":9,"window_id":7}' }
+      const call = { type: 'tool-call' as const, id: brandString<ToolCallId>('native-window'), name: 'cua_driver_native__get_window_state', arguments: '{"pid":9,"window_id":7}' }
       yield { type: 'block-start', index: 0, blockType: 'tool-call' }
       yield { type: 'block-end', index: 0, block: call }
       yield { type: 'finish', reason: { kind: 'tool-calls' } }
@@ -63,8 +66,10 @@ it('loads from cordis.yml and logs the native screenshot before the next model r
     ['@knyazevai/dsh-llm', LlmRuntime],
     ['@knyazevai/dsh-session', SessionStore],
     ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+
     ['@knyazevai/dsh-system-prompt', SystemPrompt],
     ['@knyazevai/dsh-tools', ToolRuntime],
+    ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
     ['@knyazevai/dsh-agent', AgentRegistry],
     ['@knyazevai/dsh-agent-loop', AgentLoop],
     ['@knyazevai/dsh-attachment-local', LocalAttachmentStore],
@@ -92,7 +97,7 @@ it('loads from cordis.yml and logs the native screenshot before the next model r
   for (const entry of context.loader.entries()) await entry.fiber?.await()
   const model = new VisualModel()
   context.llm.registerAdapter(['native-fixture'], model)
-  const agent = await context.agentLoop.create(SessionId('native-loader'), { provider: 'native-fixture', model: 'vision' })
+  const agent = await context.agentLoop.create(brandString<SessionId>('native-loader'), { provider: 'native-fixture', model: 'vision' })
   const idle: PromiseWithResolvers<void> = Promise.withResolvers()
   const stop = context.on('agent/status', ({ agent: subject, status }) => {
     if (subject === agent && status === 'idle') idle.resolve()
@@ -116,8 +121,8 @@ it('loads from cordis.yml and logs the native screenshot before the next model r
   expect(Buffer.from(stored.data).toString('base64')).toBe(screenshotBase64)
   expect(JSON.stringify(model.requests[1]?.messages)).toContain(JSON.stringify(image.attachment))
   expect(JSON.stringify(toolResult.content)).not.toContain(screenshotBase64)
-  const direct = await context.tools.execute({
-    agent, signal: new AbortController().signal, callId: ToolCallId('programmatic-window'),
+  const direct = await executeToolFixture(context, {
+    agent, signal: new AbortController().signal, callId: brandString<ToolCallId>('programmatic-window'),
     name: 'cua_driver_native__get_window_state', arguments: { pid: 9, window_id: 7 },
   })
   if (direct.isError) throw new Error('Programmatic native screenshot failed')

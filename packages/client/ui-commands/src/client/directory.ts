@@ -7,7 +7,7 @@
  */
 import type { CommandDescriptor } from '@knyazevai/dsh-commands/types'
 import type { SessionId } from '@knyazevai/dsh-session/types'
-import { resolveCommand } from './resolution.ts'
+import { resolveCommand } from '@knyazevai/dsh-commands/builtin'
 
 export type { CommandDescriptor } from '@knyazevai/dsh-commands/types'
 

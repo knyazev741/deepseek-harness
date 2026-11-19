@@ -1,15 +1,16 @@
 /** The Session projection that records which preset a Session runs. */
 
 import { describe, expect, it } from 'vitest'
-import { SESSION_FORMAT_VERSION, SessionId, SessionSeq } from '@knyazevai/dsh-session'
+import { SESSION_FORMAT_VERSION, type SessionId, SessionSeq } from '@knyazevai/dsh-session'
 import type { SessionEvent, SessionHeader } from '@knyazevai/dsh-session'
 import { agentPresetProjectionDefinition } from '../src/session.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 /** A header carrying the creation-time preset, if any. */
 function header(agentPreset?: string): SessionHeader {
   return {
     version: SESSION_FORMAT_VERSION,
-    id: SessionId('s'),
+    id: brandString<SessionId>('s'),
     createdAt: 1,
     isSeeded: false,
     delegationDepth: 0,

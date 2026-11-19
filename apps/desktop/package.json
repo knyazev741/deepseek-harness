@@ -4,6 +4,9 @@
   "version": "0.2.6",
   "private": true,
   "license": "MIT",
+  "author": {
+    "name": "Hangzhou DeepSeek Artificial Intelligence Co., Ltd."
+  },
   "type": "module",
   "main": "lib/main.js",
   "scripts": {
@@ -12,6 +15,7 @@
     "bundle": "tsdown --config-loader native",
     "dev": "tsx scripts/dev.ts",
     "start": "tsx scripts/dev.ts --skip-build",
+    "test:updates:channels": "pnpm run build && node scripts/test-update-channels.mjs",
     "test:updates:local": "pnpm run build && node scripts/test-local-updater.mjs",
     "prepare:runtime": "tsx scripts/prepare-runtime.ts",
     "render:tray-icon": "tsx scripts/render-tray-icon.ts",
@@ -40,20 +44,27 @@
     "upload:win:x64": "tsx scripts/upload-target.ts win-x64",
     "upload:latest:mac:arm64": "tsx scripts/upload-target.ts mac-arm64 --latest",
     "upload:latest:mac:x64": "tsx scripts/upload-target.ts mac-x64 --latest",
-    "upload:latest:win:x64": "tsx scripts/upload-target.ts win-x64 --latest"
+    "upload:latest:win:x64": "tsx scripts/upload-target.ts win-x64 --latest",
+    "purge:latest": "tsx scripts/upload-target.ts --latest --purge-only"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
     "semver": "^7.8.5",
     "ws": "^8.21.3",
     "@knyazevai/dsh-api-gateway": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-app-boot": "workspace:*",
+    "@knyazevai/dsh-client-connection": "workspace:*",
+    "@knyazevai/dsh-host-authentication-desktop": "workspace:*",
+    "@knyazevai/dsh-host-webserver": "workspace:*",
     "@knyazevai/dsh-client-ui-settings-general": "workspace:*",
     "@knyazevai/dsh-client-ui-sidebar-browser": "workspace:*",
     "@knyazevai/dsh-home-paths": "workspace:*",
+    "@knyazevai/dsh-official-bundles": "workspace:*",
     "@deepseek-ai/node-addon-system": "workspace:~",
     "@electron/get": "^5.1.0",
     "@electron/notarize": "2.5.0",
@@ -79,6 +90,12 @@
     "@knyazevai/dsh-client-ui-theme": "workspace:*",
     "@knyazevai/dsh-client-shortcuts": "workspace:*",
     "@knyazevai/dsh-atomic-write": "workspace:*",
-    "@knyazevai/dsh-client-product-analytics": "workspace:*"
+    "@knyazevai/dsh-client-product-analytics": "workspace:*",
+    "@knyazevai/dsh-plugin-manager": "workspace:*",
+    "zod": "4.6.6",
+    "@knyazevai/dsh-util-file-drag": "workspace:*",
+    "@knyazevai/dsh-client-ui-file-actions": "workspace:*",
+    "tencentcloud-sdk-nodejs-teo": "4.1.330",
+    "@knyazevai/dsh-desktop-publisher": "workspace:*"
   }
 }

@@ -27,14 +27,14 @@
   en: 80195c9b61b29737
   zh: 0a187f3f52814b90
 /knyazevai-dsh-tool-pwsh/use-this-package/foreground-commands-as-jobs:
-  en: 4a487e48ef146846
-  zh: 0a34dc49bffb03af
+  en: e2ac7a741c287b92
+  zh: a9e95c0a84671f45
 /knyazevai-dsh-tool-pwsh/use-this-package/windows-specific-sandbox-behavior:
   en: 76f3f791f53d1005
   zh: e5b262db24e6eb83
 /knyazevai-dsh-tool-pwsh/use-this-package/what-can-go-wrong:
-  en: 2932fd2495165fd4
-  zh: dc5cb8b2ee367859
+  en: 8dbde3a60461cb0f
+  zh: c12764dfaaeda6cc
 /knyazevai-dsh-tool-pwsh/understand-the-implementation:
   en: 165313776a851b51
   zh: 828f48807036aff0
@@ -108,8 +108,8 @@
   en: 2d4f2c8605eccab3
   zh: 67f1f0218f73c6bf
 /knyazevai-dsh-tool-pwsh/model-experience/tool-errors/what-the-model-sees:
-  en: afe1bcca39594ea4
-  zh: ffda1a69455b4c80
+  en: ff11a3297f601410
+  zh: 5f79fadd64d17ae8
 /knyazevai-dsh-tool-pwsh/model-experience/tool-errors/token-effect:
   en: 243bad012dd99c7f
   zh: 5ee74905020bd49a

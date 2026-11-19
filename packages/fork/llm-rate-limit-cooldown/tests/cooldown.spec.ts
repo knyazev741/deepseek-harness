@@ -1,8 +1,10 @@
-import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { SessionId } from '@knyazevai/dsh-session/types'
+import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import { onTestFinished, afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Events, Fiber } from '@deepseek-ai/cordis'
-import LlmRuntime, {
+import {
   createUserMessage,
   LlmAdapter,
   LlmError,
@@ -15,11 +17,7 @@ import type {
   RetryPolicyConfig,
   StreamChunk,
 } from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
 import type { Agent, RequestErrorAction } from '@knyazevai/dsh-agent'
-import SystemPrompt from '@knyazevai/dsh-system-prompt'
-import ToolRuntime from '@knyazevai/dsh-tools'
-import AgentRegistry from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import type { SessionEvent } from '@knyazevai/dsh-session'
 import * as retry from '@knyazevai/dsh-llm-retry'
@@ -30,6 +28,10 @@ type ScriptEntry = Error | Iterable<StreamChunk> | AsyncIterable<StreamChunk>
 
 class ScriptedAdapter extends LlmAdapter {
   readonly requests: GenerateOptions[] = []
+
+  override resolveModel(provider: string, model: string) {
+    return Promise.resolve({ provider, id: model, name: model })
+  }
   private retryPolicies: Readonly<Record<string, ResolvedRetryPolicy | undefined>> = {}
 
   constructor(private readonly entries: ScriptEntry[]) {
@@ -109,14 +111,9 @@ async function harness(
     ...(options.cooldownMs !== undefined ? { cooldownMs: options.cooldownMs } : {}),
     ...(options.retryableCodes !== undefined ? { retryableCodes: options.retryableCodes } : {}),
   }
-  await ctx.plugin(LlmRuntime)
-  await ctx.plugin(SessionStore)
-  await ctx.plugin(SessionProjectionRegistry)
-  await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
-  await ctx.plugin(AgentRegistry)
+  await mountAgentLoopTestDependencies(ctx)
   if (options.includeRetry) {
-    await ctx.plugin(Object.assign((inner: Context) => { retry.apply(inner, {}, { random: () => 0.5 }) }, { inject: retry.inject }))
+    await ctx.plugin(Object.assign((inner: Context) => retry.apply(inner, {}, { random: () => 0.5 }), { inject: retry.inject }))
   }
   const fiber = await ctx.plugin(Object.assign((inner: Context) => { cooldown.apply(inner, pluginConfig) }, { inject: cooldown.inject }))
   adapter.configureRetryPolicies({ mock: options.retryPolicy })
@@ -207,7 +204,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-success'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-success'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
@@ -238,7 +235,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-quota'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-quota'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
@@ -267,7 +264,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-piai'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-piai'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
@@ -288,7 +285,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-delegate-code'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-delegate-code'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
@@ -314,7 +311,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-server-success'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-server-success'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
@@ -335,7 +332,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-delegate-budget'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-delegate-budget'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
@@ -349,7 +346,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     const { ctx, disposeAdapter } = await harness(adapter, {})
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-delegate-nopolicy'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-delegate-nopolicy'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
@@ -376,7 +373,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-cancel'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-cancel'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     // The two fast retries exhaust the budget and land the third attempt in the cooldown wait.
@@ -404,7 +401,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
         backoff: { initialDelayMs: 1, maxDelayMs: 1, jitterRatio: 0 },
       }),
     })
-    const agent = await ctx.agentLoop.create(SessionId('cooldown-dispose'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-dispose'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await waitForRequests(adapter, 3)
@@ -421,7 +418,7 @@ describe('Gonka persistent recovery', () => {
     'PI_AI_ERROR', 'STREAM_CLOSED', 'EMPTY_RESPONSE', 'AUTH', 'INVALID_REQUEST', 'CONTEXT_WINDOW_EXCEEDED'])(
     'finishes after repeated exhausted budgets for %s and records every cooldown', async (code) => {
       const adapter = new ScriptedAdapter([
-        ...Array.from({ length: 45 }, () => new LlmError('provider unavailable', code, {})), textResponse('done'),
+        ...Array.from({ length: 45 }, () => LlmError.fromFailure({ message: 'provider unavailable', code })), textResponse('done'),
       ])
       const { ctx, disposeAdapter } = await harness(adapter, {
         includeRetry: true, cooldownMs: 1, retryableCodes: ['*'],
@@ -430,7 +427,7 @@ describe('Gonka persistent recovery', () => {
       })
       context = ctx
       disposed = disposeAdapter
-      const agent = await ctx.agentLoop.create(SessionId(`persistent-${code}`), { provider: 'mock', model: 'mock' })
+      const agent = await ctx.agentLoop.create(brandString<SessionId>(`persistent-${code}`), { provider: 'mock', model: 'mock' })
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
       await agent.whenIdle()
       expect(adapter.requests).toHaveLength(46)
@@ -453,7 +450,7 @@ describe('Gonka persistent recovery', () => {
     context = ctx
     disposed = disposeAdapter
     await ctx.plugin(retry)
-    const agent = await ctx.agentLoop.create(SessionId('default-wait'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('default-wait'), { provider: 'mock', model: 'mock' })
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await vi.advanceTimersByTimeAsync(1)
     expect(adapter.requests).toHaveLength(2)
@@ -476,7 +473,7 @@ describe('Gonka persistent recovery', () => {
     })
     context = ctx
     disposed = disposeAdapter
-    const agent = await ctx.agentLoop.create(SessionId(scenario), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>(scenario), { provider: 'mock', model: 'mock' })
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
     expect(adapter.requests).toHaveLength(2)

@@ -1,12 +1,15 @@
+import AgentRegistry from '@knyazevai/dsh-agent'
 import { createUserMessage } from '@knyazevai/dsh-llm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime from '@knyazevai/dsh-llm'
 import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import DeepSeekAuth from '@knyazevai/dsh-deepseek-auth'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SessionTitleService from '@knyazevai/dsh-session-title'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import * as FirstMessageTitleProvider from '@knyazevai/dsh-session-title-first-prompt-llm'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const contexts: Context[] = []
 
@@ -19,9 +22,11 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY)('first-prompt title provider with
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
+    await ctx.plugin(DeepSeekAuth)
     await ctx.plugin(LlmDeepSeek, { thinking: 'disabled' })
     await ctx.plugin(SessionStore)
     await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
     await ctx.plugin(SessionTitleService, {
       fallbackMaxWords: 5,
       fallbackMaxBytes: 40,
@@ -36,7 +41,7 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY)('first-prompt title provider with
       provider: 'deepseek-official',
       model: 'deepseek-v4-flash',
     })
-    const session = ctx.sessions.create(SessionId('real-title-provider'))
+    const session = ctx.sessions.create(brandString<SessionId>('real-title-provider'))
     session.append('turn/start', {
       turn: 1,
     })

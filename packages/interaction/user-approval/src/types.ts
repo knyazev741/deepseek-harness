@@ -8,7 +8,7 @@
 import type { Branded } from '@knyazevai/dsh-brand'
 import type { Scoped } from '@knyazevai/dsh-scope'
 import type { Agent } from '@knyazevai/dsh-agent/types'
-import type { ToolCallId } from '@knyazevai/dsh-llm/brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm/types'
 
 /**
  * Pairs one `approval/asked` audit event with its `approval/decided`.

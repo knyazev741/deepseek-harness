@@ -3,12 +3,13 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import { createUserMessage, LlmAdapter, ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { createUserMessage, LlmAdapter, type ToolCallId } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@knyazevai/dsh-llm'
-import { SessionId } from '@knyazevai/dsh-session'
+import type { SessionId } from '@knyazevai/dsh-session'
 import { mountAgentLoopTestDependencies, mountAgentLoopTestHarness } from '@knyazevai/dsh-agent-loop-testkit'
 import TokenMeter from '@knyazevai/dsh-token-meter'
-import { defineContentToolFixture } from '@knyazevai/dsh-tools'
+import { defineContentToolFixture } from '@knyazevai/dsh-tool-testkit'
 import BasicCompaction from '@knyazevai/dsh-compaction-basic'
 import { expect, it } from 'vitest'
 
@@ -27,7 +28,7 @@ class CompactionAdapter extends LlmAdapter {
     else this.conversation.push(options)
     if (!summarizing && this.conversation.length === 1) {
       yield { type: 'block-start', index: 0, blockType: 'tool-call' }
-      yield { type: 'block-end', index: 0, block: { type: 'tool-call', id: ToolCallId('work-call'), name: 'work', arguments: '{}' } }
+      yield { type: 'block-end', index: 0, block: { type: 'tool-call', id: brandString<ToolCallId>('work-call'), name: 'work', arguments: '{}' } }
       yield { type: 'finish', reason: { kind: 'tool-calls' } }
     } else {
       const text = summarizing ? 'Earlier work completed.' : 'TASK COMPLETE'
@@ -55,7 +56,7 @@ it('retains required cwd in the first request after proactive compaction with op
       auto: true, thresholdRatio: 0.5, headroomTokens: 0, retainTokens: 20, maxTokens: 32, compactionRetries: 0,
     })
     const harness = await mountAgentLoopTestHarness(ctx)
-    const agent = await harness.create(SessionId('compaction-admission'), { provider: 'mock', model: 'mock' }, { cwd: root })
+    const agent = await harness.create(brandString<SessionId>('compaction-admission'), { provider: 'mock', model: 'mock' }, { cwd: root })
     agent.followup(createUserMessage({
       content: [{ type: 'text', text: 'Old context evidence. '.repeat(700) + 'Do work once, then finish.' }], source: { kind: 'user' },
     }))

@@ -135,7 +135,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
       return
     }
     if (installed.has(agent)) return
-    if (!ctx.agents.roots().includes(agent)) return
+    if (ctx.agents.get(agent.id) !== agent || agent.session.header.origin === 'subagent') return
     const cleanup: Cleanup = agent.ctx.effect(() => {
       const disposeTools = registerWakeTools(agent.ctx, agent, {
         store: activeStore,
@@ -172,11 +172,11 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   ready.scheduler = new WakeScheduler<Agent>({
     store: ready.store,
     logger: ctx.logger,
-    isLive: target => ctx.agents.get(target.id) === target && ctx.agents.roots().includes(target),
+    isLive: target => ctx.agents.get(target.id) === target && target.session.header.origin !== 'subagent',
   })
   const scheduler = ready.scheduler
 
-  for (const agent of ctx.agents.roots()) pending.add(agent)
+  for (const agent of ctx.agents.list()) pending.add(agent)
   for (const agent of [...pending]) {
     pending.delete(agent)
     install(agent)

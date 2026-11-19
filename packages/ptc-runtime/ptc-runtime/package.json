@@ -23,15 +23,22 @@
   },
   "files": [
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-sandbox": "workspace:*"
+    "@knyazevai/dsh-sandbox": "workspace:*",
+    "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
-    "@knyazevai/dsh-sandbox": "workspace:*"
+    "@knyazevai/dsh-sandbox": "workspace:*",
+    "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
   }
 }

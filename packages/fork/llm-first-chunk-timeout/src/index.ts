@@ -10,7 +10,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { LlmError, type GenerateOptions, type StreamChunk } from '@knyazevai/dsh-llm'
+import { type GenerateOptions, type StreamChunk } from '@knyazevai/dsh-llm'
 import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import { createRecovery, FIRST_CHUNK_TIMEOUT_CODE } from './recovery.ts'
 
@@ -301,7 +301,7 @@ function doneResult(): StreamResult {
 
 /** Build the terminal chunk emitted when this plugin's first-read timer wins. */
 function timeoutChunk(timeoutMs: number): StreamChunk {
-  const failure = new LlmError(`first LLM chunk idle timeout after ${timeoutMs}ms`, FIRST_CHUNK_TIMEOUT_CODE).failure
+  const failure = { message: `first LLM chunk idle timeout after ${timeoutMs}ms`, code: FIRST_CHUNK_TIMEOUT_CODE }
   return { type: 'finish', reason: { kind: 'error', failure } }
 }
 

@@ -1,6 +1,6 @@
 /** Per-job observation generations: anchor, coalesced output, terminal status. */
 
-import type { JobId } from '@knyazevai/dsh-jobs/brand'
+import type { JobId } from '@knyazevai/dsh-jobs/types'
 import type { JobChunk, JobRegistry, JobStatus, JobView } from '@knyazevai/dsh-jobs'
 import type { JobFollowFrame, JobFollowRequest } from './types.ts'
 import { OutputWaiter, sleep } from './wake.ts'

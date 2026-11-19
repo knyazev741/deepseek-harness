@@ -17,10 +17,15 @@
     root: !!js dshHomePath('sessions')
     compression: none
 
-- id: tools
-  name: '@knyazevai/dsh-tools'
+- id: tool-executor-native
+  disabled: true
+
+- id: tool-executor-ptc
+  disabled: false
+
+- id: ptc-runtime
   config:
-    mode: ptc
+    maxOutputBytes: 4096
 
 - id: system-prompt
   name: '@knyazevai/dsh-system-prompt'
@@ -48,8 +53,9 @@
     - id: computer-use
       name: '@knyazevai/dsh-computer-use'
     - id: cua-native
-      name: '@knyazevai/dsh-experimental-cua-macos'
+      name: '@knyazevai/dsh-cua-macos'
       config:
+        agentPreset: false
         helperPath: !!js process.cwd() + '/native-helper.mjs'
 
 - id: user-questions

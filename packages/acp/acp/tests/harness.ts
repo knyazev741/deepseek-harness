@@ -18,9 +18,11 @@ import {
   type SessionNotification,
   type Stream,
 } from '@agentclientprotocol/sdk'
-import AttachmentStore, { AttachmentError, AttachmentId } from '@knyazevai/dsh-attachment'
+import AttachmentStore, { AttachmentError } from '@knyazevai/dsh-attachment'
+import type { AttachmentId } from '@knyazevai/dsh-attachment/types'
+import { brandString } from '@knyazevai/dsh-brand'
 import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment, StoredImageAttachment } from '@knyazevai/dsh-attachment'
-import { type GenerateOptions, LlmAdapter, ReasoningEffortId, type LlmResolvedModelInfo, type StreamChunk } from '@knyazevai/dsh-llm'
+import { type GenerateOptions, LlmAdapter, type ReasoningEffortId, type LlmResolvedModelInfo, type StreamChunk } from '@knyazevai/dsh-llm'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
@@ -73,10 +75,10 @@ class MockAdapter extends LlmAdapter {
       ...model === 'mock' ? {
         reasoning: {
           efforts: [
-            { id: ReasoningEffortId('low'), name: 'Low' },
-            { id: ReasoningEffortId('high'), name: 'High' },
+            { id: brandString<ReasoningEffortId>('low'), name: 'Low' },
+            { id: brandString<ReasoningEffortId>('high'), name: 'High' },
           ],
-          defaultEffort: ReasoningEffortId('high'),
+          defaultEffort: brandString<ReasoningEffortId>('high'),
         },
       } : {},
     })
@@ -131,7 +133,7 @@ class MemoryAttachmentStore extends AttachmentStore {
     this.saved.push(input)
     const digest = createHash('sha256').update(input.data).digest('hex')
     const ref: ImageAttachmentRef = {
-      attachmentId: AttachmentId(`sha256:${digest}`),
+      attachmentId: brandString<AttachmentId>(`sha256:${digest}`),
       mediaType: input.mediaType,
       bytes: input.data.byteLength,
       width: 1,

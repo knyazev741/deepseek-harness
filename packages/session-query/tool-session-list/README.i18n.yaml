@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/session-query/tool-session-list/README.md
+/:
+  en: 3475319e48226347
+  zh: 68361c3ff00d966f
+/knyazevai-dsh-tool-session-list:
+  en: 98be04fa82dce57c
+  zh: 6bbbc5d42d925d2b
+/knyazevai-dsh-tool-session-list/summary:
+  en: e4e61ecb4f56e250
+  zh: 815fd87f03e766f1
+/knyazevai-dsh-tool-session-list/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 5acc0d3807846b6e
+/knyazevai-dsh-tool-session-list/use-this-package:
+  en: 388849d88b975263
+  zh: df6db1e31c9bba7c
+/knyazevai-dsh-tool-session-list/use-this-package/access-and-composition:
+  en: 0bf65fbc8660134a
+  zh: f4f7b3a0049d3196
+/knyazevai-dsh-tool-session-list/use-this-package/listing-behavior:
+  en: beca2c5b06a172ac
+  zh: 600b63caa3b001a7
+/knyazevai-dsh-tool-session-list/use-this-package/failures:
+  en: 95ee3e3c0ecedadd
+  zh: 933d267402ceec74
+/knyazevai-dsh-tool-session-list/understand-the-implementation:
+  en: ac9f08e72d3f7e64
+  zh: 231196ddbb82b779
+/knyazevai-dsh-tool-session-list/further-exploration:
+  en: 06d8fa5cb2d63b6b
+  zh: 2635b93fccf3dbc9
+/knyazevai-dsh-tool-session-list/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/knyazevai-dsh-tool-session-list/model-experience/tool-schemas-and-results:
+  en: cadc497841430a21
+  zh: af4cc374d7d16917
+/knyazevai-dsh-tool-session-list/model-experience/tool-schemas-and-results/what-the-model-sees:
+  en: 3f611512bfbec1b8
+  zh: 029e157bf755d959
+/knyazevai-dsh-tool-session-list/model-experience/tool-schemas-and-results/token-effect:
+  en: e699317cafee83d9
+  zh: 912c0ce1a9f3957f
+/knyazevai-dsh-tool-session-list/model-experience/tool-schemas-and-results/kv-cache-effect:
+  en: 0e201fbbe37798d8
+  zh: fd4bd41e7393c234
+/knyazevai-dsh-tool-session-list/known-limitations-and-deferred-work:
+  en: 2c53c1fc603e0ff2
+  zh: 99a58f1e0e3c27fc
+/knyazevai-dsh-tool-session-list/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: e88aeb617ffb74ea

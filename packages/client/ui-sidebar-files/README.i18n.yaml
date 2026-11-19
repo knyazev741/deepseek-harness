@@ -3,32 +3,41 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/client/ui-sidebar-files/README.md
 /:
-  en: d6514e0d092a210b
-  zh: 9980cb0f4fc6f903
+  en: d7dbdeee1744fac0
+  zh: 35dc07a9e797f855
 /knyazevai-dsh-client-ui-sidebar-files:
   en: 510fcdd61f7fbf65
   zh: 699ff5675cc9e76c
 /knyazevai-dsh-client-ui-sidebar-files/summary:
-  en: 1605ae92aee5c231
-  zh: ad519ddb9e338892
+  en: 46067f0415ea2e76
+  zh: f0b48804ad460a05
 /knyazevai-dsh-client-ui-sidebar-files/table-of-contents:
-  en: 9411fb4809692e09
-  zh: dd13990d39c5be7f
+  en: 81cb6e051699a7b4
+  zh: 566d0278acae69fa
 /knyazevai-dsh-client-ui-sidebar-files/what-it-registers:
-  en: 67f25a2437406bbd
-  zh: 291b653450232d29
+  en: eab3b2e0297691fb
+  zh: 523d5d793e8c333f
+/knyazevai-dsh-client-ui-sidebar-files/the-navigator:
+  en: 3424600b15bde2d2
+  zh: 2cf1c99ffef2ad50
 /knyazevai-dsh-client-ui-sidebar-files/the-tree:
-  en: 430c6cf942144561
-  zh: d005701f31dfa52b
+  en: 6c40b30b8fa3257e
+  zh: a569bc7c05e5fdee
+/knyazevai-dsh-client-ui-sidebar-files/search:
+  en: 02e1823fe0c273ea
+  zh: b6bc5c2665dc0037
+/knyazevai-dsh-client-ui-sidebar-files/reusable-tree-factory:
+  en: 55541654f6667318
+  zh: 415e6a9e465fc7e8
 /knyazevai-dsh-client-ui-sidebar-files/model-experience:
   en: a18a43f6842f1371
   zh: 69f2a2b35f06dfc7
 /knyazevai-dsh-client-ui-sidebar-files/model-experience/kv-cache-effect:
-  en: 5a6febb45089991a
-  zh: b17ed755fd098b83
+  en: 39debadcc6cefd24
+  zh: cc212c8377851a91
 /knyazevai-dsh-client-ui-sidebar-files/known-limitations-and-deferred-work:
-  en: c0e1831d8975186c
-  zh: 332aac8738458bb0
+  en: 14bd8ccb7c54ed17
+  zh: cc2c3181d7859251
 /knyazevai-dsh-client-ui-sidebar-files/known-limitations-and-deferred-work/dev-note:
-  en: d8b51fb935f38650
-  zh: fee9d330ecf8ec0e
+  en: 753149828a165920
+  zh: a4daff5bb946b14e

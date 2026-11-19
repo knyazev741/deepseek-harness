@@ -5,7 +5,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { SessionReference } from '@knyazevai/dsh-api-session-controller/client'
 import { createSnapshotStore } from '@knyazevai/dsh-client-store'
 import { makeTranslate, TestSessions } from '@knyazevai/dsh-client-test-runtime'
-import { SessionId } from '@knyazevai/dsh-session/types'
+import type { SessionId } from '@knyazevai/dsh-session/types'
 import { $nodesOfType } from 'lexical'
 import { expect, it, onTestFinished, vi } from 'vitest'
 import type { DraftSnapshot } from '../src/client/contract/draft-editor.ts'
@@ -15,6 +15,7 @@ import { TextRefNode } from '../src/client/input/editor/text-ref.ts'
 import { SessionInputShell } from '../src/client/input/facade.ts'
 import { InputHub } from '../src/client/input/hub.ts'
 import { zh } from '../src/client/locales.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 const mention = '@src/main.ts'
 const saved: DraftSnapshot = {
@@ -26,7 +27,7 @@ const saved: DraftSnapshot = {
 }
 
 async function storedSession(draft: unknown) {
-  const id = SessionId(`draft-hub-${randomUUID()}`)
+  const id = brandString<SessionId>(`draft-hub-${randomUUID()}`)
   const key = `dsh.conversation.${id}`
   const previous = localStorage.getItem(key)
   onTestFinished(() => {

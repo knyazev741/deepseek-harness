@@ -7,7 +7,7 @@
  * without depending on dsh-llm; see that package's README for the
  * nominal-typing policy.
  *
- * @module @knyazevai/dsh-llm/brand
+ * @module @knyazevai/dsh-llm/src/brand.ts
  */
 
 import { brandString, type Branded } from '@knyazevai/dsh-brand'

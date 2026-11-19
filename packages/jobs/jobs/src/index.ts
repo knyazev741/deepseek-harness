@@ -14,7 +14,8 @@ import type { SessionId } from '@knyazevai/dsh-session'
 import { installJobArchiveAdmission } from './archive-admission.ts'
 import type { JobEvents, JobId, JobOutputRead, JobRead, JobSpec, JobView } from './types.ts'
 
-export { JobId } from './types.ts'
+export { JobId } from './brand.ts'
+export { JOB_ERROR_CODES, JobError, type JobErrorCode } from './error.ts'
 export type {
   JobAppendOptions,
   JobChannel,

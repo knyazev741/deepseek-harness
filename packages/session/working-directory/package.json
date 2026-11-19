@@ -18,12 +18,22 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./types": {
+      "types": "./lib/types/types.d.ts",
+      "default": "./lib/types/types.js"
+    },
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -33,11 +43,11 @@
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-projection": "workspace:*",
-    "@knyazevai/dsh-system-prompt": "workspace:*"
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*"
   },
   "devDependencies": {
-    "@knyazevai/dsh-sandbox-policy": "workspace:*",
-    "@knyazevai/dsh-user-approval": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-fs": "workspace:*",
@@ -47,11 +57,10 @@
     "@knyazevai/dsh-system-prompt": "workspace:*",
     "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
     "@knyazevai/dsh-fs-local": "workspace:*",
-    "@knyazevai/dsh-tool-working-directory": "workspace:*",
-    "@knyazevai/dsh-tools": "workspace:*"
+    "@knyazevai/dsh-error": "workspace:*"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   }
 }

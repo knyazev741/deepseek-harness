@@ -8,8 +8,9 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import type { Agent } from '@knyazevai/dsh-agent'
 import CommandRuntime from '@knyazevai/dsh-commands'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { CompactionId } from '@knyazevai/dsh-compaction/types'
 import {
-  CompactionId,
   CompactionEngine,
   type CompactionAgentContext,
   type CompactionResult,
@@ -17,9 +18,9 @@ import {
   type ManualCompactAgentContext,
 } from '@knyazevai/dsh-compaction'
 import * as commandCompact from '@knyazevai/dsh-command-compact'
-import { Session, SessionId, SessionSeq } from '@knyazevai/dsh-session'
+import { Session, type SessionId, SessionSeq } from '@knyazevai/dsh-session'
 
-const COMPACTION_ID = CompactionId('loader-command-compact-test')
+const COMPACTION_ID = brandString<CompactionId>('loader-command-compact-test')
 
 const RESULT: CompactionResult = {
   compactionId: COMPACTION_ID,
@@ -112,7 +113,7 @@ describe('command-compact real Loader composition', () => {
     })
     await context.loader.await()
 
-    const session = Session.create(SessionId('loader-command-compact'))
+    const session = Session.create(brandString<SessionId>('loader-command-compact'))
     const agent = {
       session,
       status: 'idle',

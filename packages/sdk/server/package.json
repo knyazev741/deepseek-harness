@@ -19,11 +19,16 @@
       "default": "./lib/index.js"
     },
     "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
+    "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "dependencies": {
@@ -34,13 +39,20 @@
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-agent": "workspace:*",
     "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-commands": "workspace:*",
+    "@knyazevai/dsh-goal": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-llm-deepseek-api-key": "workspace:*",
+    "@knyazevai/dsh-permission-presets": "workspace:*",
+    "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-sdk-protocol": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
-    "@knyazevai/dsh-working-directory": "workspace:*"
+    "@knyazevai/dsh-user-approval": "workspace:*",
+    "@knyazevai/dsh-user-questions": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -49,14 +61,32 @@
     "@knyazevai/dsh-agent-loop": "workspace:*",
     "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
     "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-command-compact": "workspace:*",
+    "@knyazevai/dsh-command-goal": "workspace:*",
+    "@knyazevai/dsh-commands": "workspace:*",
+    "@knyazevai/dsh-compaction-basic": "workspace:*",
+    "@knyazevai/dsh-fs": "workspace:*",
+    "@knyazevai/dsh-goal": "workspace:*",
+    "@knyazevai/dsh-goal-round-driver": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
     "@knyazevai/dsh-llm-deepseek-api-key": "workspace:*",
+    "@knyazevai/dsh-permission-presets": "workspace:*",
+    "@knyazevai/dsh-plan-mode": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-schedule": "workspace:*",
     "@knyazevai/dsh-scope": "workspace:*",
     "@knyazevai/dsh-sdk-protocol": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-persistence-jsonl": "workspace:*",
     "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-shell": "workspace:*",
     "@knyazevai/dsh-subagent": "workspace:*",
-    "@knyazevai/dsh-working-directory": "workspace:*"
+    "@knyazevai/dsh-token-meter": "workspace:*",
+    "@knyazevai/dsh-tool-goal": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-user-approval": "workspace:*",
+    "@knyazevai/dsh-user-questions": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   }
 }

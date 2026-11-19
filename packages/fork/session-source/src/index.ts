@@ -46,16 +46,16 @@ function hasSourceMarker(session: Session): boolean {
 }
 
 /**
- * Register the optional projection and the synchronous session-created marker.
+ * Register the optional projection and the source marker after the Session accepts appends.
  * @param ctx - context carrying the session service.
  * @param config - validated environment-key configuration.
  */
 export function apply(ctx: Context, config: Config = { enabledWhenEnv: 'GITHUB_ACTIONS' }): void {
-  ctx.inject(['sessionProjections'], (projectionCtx) => {
-    projectionCtx.sessionProjections.register(forkSessionSourceProjectionDefinition)
+  ctx.inject(['sessionProjections'], async (projectionCtx) => {
+    await projectionCtx.sessionProjections.register(forkSessionSourceProjectionDefinition)
   })
   ctx.inject(['sessions'], (sessionCtx) => {
-    sessionCtx.on('session/created', (session) => {
+    sessionCtx.on('session/append-ready', (session) => {
       if (process.env[config.enabledWhenEnv] !== 'true' || hasSourceMarker(session)) return
       appendPluginRecord(session, 'plugin:fork/session-source', SOURCE_EVENT_DATA)
     }, { global: true })

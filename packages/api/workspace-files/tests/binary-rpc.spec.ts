@@ -6,8 +6,7 @@ import SessionStore from '@knyazevai/dsh-session'
 import TypertRegistry from '@knyazevai/dsh-typert-registry'
 import TypertGateway from '@knyazevai/dsh-api-gateway'
 import RemoteAccessService from '@knyazevai/dsh-api-remote-access'
-import { HostConnectionService } from '@knyazevai/dsh-client-connection/src/rpc-host.ts'
-import type { BrowserAuth } from '@knyazevai/dsh-client-connection/src/browser-auth.ts'
+import { ConnectionAuthentication, HostConnectionService } from '@knyazevai/dsh-client-connection'
 import { createWebConnectionRpc } from '@knyazevai/dsh-client-connection/src/client/rpc.ts'
 import WorkspaceFiles, { type WorkspaceByteReadOptions } from '../src/index.ts'
 import { openWorkspace, type Harness } from './harness.ts'
@@ -22,8 +21,14 @@ beforeEach(async () => {
   await ctx.plugin(TypertRegistry)
   await ctx.plugin(RemoteAccessService)
   await ctx.plugin(TypertGateway)
-  await ctx.plugin((scope) => { new HostConnectionService(scope, [], {} as BrowserAuth) })
-  await ctx.plugin(WorkspaceFiles, { maxBytes: 8, maxFileBytes: 4, maxLines: 100, maxEntries: 100 })
+  await ctx.plugin((scope) => { new ConnectionAuthentication(scope); new HostConnectionService(scope, []) })
+  await ctx.plugin(WorkspaceFiles, {
+    maxBytes: 8,
+    maxFileBytes: 4,
+    maxLines: 100,
+    maxEntries: 100,
+    search: { maxResults: 100, maxEntries: 1000, graceMs: 3000, timeoutMs: 30000, stderrMaxBytes: 65536 },
+  })
   ctx.sessions.create(harness.scope.sessionId, { meta: { cwd: harness.workspace, origin: 'subagent' } })
   const connection = ctx.get('connection') as HostConnectionService
   const handler = connection.createSharedFetchHandler('/api')

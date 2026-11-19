@@ -15,17 +15,17 @@
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /knyazevai-dsh-app-boot/use-this-package:
-  en: f6fa378225009c8f
-  zh: 324c0e4640bb1358
+  en: 8e42ac55d685e0f1
+  zh: e9e8804af1b2df2b
 /knyazevai-dsh-app-boot/use-this-package/when-to-use-it:
   en: 2fdfe02f2ed4a258
   zh: d748228ece579c4a
 /knyazevai-dsh-app-boot/use-this-package/starting-the-app:
-  en: 4a424cd401556f20
-  zh: 0b34dd18e0db6cea
+  en: 65bf2834b81f87da
+  zh: c864ac60a3005b99
 /knyazevai-dsh-app-boot/use-this-package/profiles:
-  en: 724b85955769970a
-  zh: 70dbd5bc50a25066
+  en: c98bfdef47758813
+  zh: 61f8d064b3a0ac80
 /knyazevai-dsh-app-boot/use-this-package/previewing-the-effective-configuration:
   en: 646a0ccdd7881ad1
   zh: e3696acb1573dd7b
@@ -33,17 +33,17 @@
   en: c4a301652b851ce9
   zh: 784871e19cd9db0a
 /knyazevai-dsh-app-boot/use-this-package/reading-plugin-display-metadata:
-  en: a9afb263b03d112c
-  zh: 31f5e797cd953c15
+  en: 62f8d281b705bf1d
+  zh: 3d71123be8643f59
 /knyazevai-dsh-app-boot/use-this-package/startup-and-reload-failures:
-  en: dc13dfa1f79292e4
-  zh: d51682ced7a18ac2
+  en: 53a9bfee48468abe
+  zh: 34d36ae0e46d8e49
 /knyazevai-dsh-app-boot/understand-the-implementation:
   en: f4a2695cb4c8a570
   zh: 89837235d2f376cf
 /knyazevai-dsh-app-boot/understand-the-implementation/design-notes:
-  en: 6d1c7f6ef333b737
-  zh: a12486adbf6ec7d7
+  en: d4c292c3efc3fce2
+  zh: 6632e14fb947a4dc
 /knyazevai-dsh-app-boot/understand-the-implementation/helper-behavior:
   en: 6fa850d1bb000d0e
   zh: aa83a40a9d3db295

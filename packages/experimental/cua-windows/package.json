@@ -1,0 +1,93 @@
+{
+  "name": "@knyazevai/dsh-cua-windows",
+  "description": "Windows C# computer use through shared application and window objects",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/cua-windows"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-computer-use": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-user-questions": "workspace:*"
+  },
+  "dependencies": {
+    "zod": "4.6.6",
+    "@knyazevai/dsh-cua": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@knyazevai/dsh-native-command": "workspace:*",
+    "@knyazevai/dsh-atomic-write": "workspace:*"
+  },
+  "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop": "workspace:*",
+    "@knyazevai/dsh-agent-loop-testkit": "workspace:*",
+    "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-attachment-local": "workspace:*",
+    "@knyazevai/dsh-computer-use": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-subprocess": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-llm-deepseek": "workspace:*",
+    "@knyazevai/dsh-ptc-runtime-node": "workspace:*",
+    "@knyazevai/dsh-sandbox-local": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "sharp": "^0.35.3",
+    "@knyazevai/dsh-ptc-runtime": "workspace:*",
+    "@knyazevai/dsh-user-questions": "workspace:*",
+    "@knyazevai/dsh-settings": "workspace:*",
+    "@knyazevai/dsh-app-boot": "workspace:*",
+    "@knyazevai/dsh-config-editor": "workspace:*",
+    "@knyazevai/dsh-hmr": "workspace:*",
+    "@deepseek-ai/cordis-plugin-timer": "workspace:~"
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "native/bin",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "scripts": {
+    "build:native": "dotnet publish native/entry/CuaWindows.csproj --configuration Release --self-contained false --output native/bin/local -p:EnableWindowsTargeting=true",
+    "build:native:x64": "dotnet publish native/entry/CuaWindows.csproj --configuration Release --runtime win-x64 --self-contained true --output native/bin/win-x64 -p:EnableWindowsTargeting=true",
+    "build:native:arm64": "dotnet publish native/entry/CuaWindows.csproj --configuration Release --runtime win-arm64 --self-contained true --output native/bin/win-arm64 -p:EnableWindowsTargeting=true"
+  },
+  "os": [
+    "win32",
+    "linux"
+  ]
+}

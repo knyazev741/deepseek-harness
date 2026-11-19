@@ -22,10 +22,6 @@
       "types": "./lib/types/types.d.ts",
       "default": "./lib/types/types.js"
     },
-    "./brand": {
-      "types": "./lib/types/brand.d.ts",
-      "default": "./lib/types/brand.js"
-    },
     "./message": {
       "types": "./lib/types/message.d.ts",
       "default": "./lib/types/message.js"
@@ -51,19 +47,24 @@
     "lib/index.js",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
-    "lib/typert.remote-client.d.ts"
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
+    "@knyazevai/dsh-error": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~"
   },
   "dependencies": {
     "@knyazevai/dsh-util-crypto": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
-    "zod": "4.4.3",
+    "zod": "4.6.6",
     "@knyazevai/dsh-timeout": "workspace:*",
     "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
@@ -71,6 +72,8 @@
   },
   "devDependencies": {
     "@knyazevai/dsh-attachment": "workspace:*",
+    "@knyazevai/dsh-error": "workspace:*",
+    "@knyazevai/dsh-package-manifest": "workspace:*",
     "@deepseek-ai/cordis": "workspace:~"
   }
 }

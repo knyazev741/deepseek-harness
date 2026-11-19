@@ -1,11 +1,12 @@
 /** Card and waterfall settlement edges the composer and plugin specs do not reach. */
 import { describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@knyazevai/dsh-session/types'
-import { ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm'
 import { createWaterfallRequest, PendingQuestion } from '../src/client/contract/slots.ts'
 
 const SID = 's1' as SessionId
-const CALL = ToolCallId('call-1')
+const CALL = brandString<ToolCallId>('call-1')
 const QUESTIONS = [{ id: 'mode', question: 'Choose a mode' }]
 const ANSWER = { answers: [{ id: 'mode', selected: ['Fast'] }] }
 

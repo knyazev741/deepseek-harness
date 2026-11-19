@@ -2,8 +2,8 @@
 import { createReadStream } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { Readable, Writable } from 'node:stream'
-import { cosOperation } from './cos-operation.ts'
-import { createDesktopCos, DESKTOP_COS_REGION } from './desktop-cos.ts'
+import { cosOperation } from '@knyazevai/dsh-desktop-publisher/cos-operation.ts'
+import { createDesktopCos, DESKTOP_COS_REGION } from '@knyazevai/dsh-desktop-publisher/desktop-cos.ts'
 import { loadDesktopPackageEnvironment } from './desktop-package-environment.mjs'
 import type { InstalledUpdatePublicationStore, InstalledUpdateRemoteObject } from './installed-update-publication.ts'
 

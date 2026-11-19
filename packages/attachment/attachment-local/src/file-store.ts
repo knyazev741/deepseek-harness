@@ -3,7 +3,9 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { join } from 'node:path'
-import { AttachmentError, AttachmentId } from '@knyazevai/dsh-attachment'
+import { AttachmentError } from '@knyazevai/dsh-attachment'
+import type { AttachmentId } from '@knyazevai/dsh-attachment/types'
+import { brandString } from '@knyazevai/dsh-brand'
 import type {
   FileAttachmentRef, SaveFileAttachment, SaveFileStreamAttachment,
 } from '@knyazevai/dsh-attachment'
@@ -94,7 +96,7 @@ export async function saveFileVerbatim(
 ): Promise<FileAttachmentRef> {
   const sha256 = createHash('sha256').update(input.data).digest('hex')
   const ref: FileAttachmentRef = {
-    attachmentId: AttachmentId(`sha256:${sha256}`),
+    attachmentId: brandString<AttachmentId>(`sha256:${sha256}`),
     name: fileLeafName(input.name),
     bytes: input.data.byteLength,
   }
@@ -122,7 +124,7 @@ export async function saveFileStreamVerbatim(
     input.signal,
   )
   const ref: FileAttachmentRef = {
-    attachmentId: AttachmentId(`sha256:${stored.sha256}`),
+    attachmentId: brandString<AttachmentId>(`sha256:${stored.sha256}`),
     name,
     bytes: stored.bytes,
   }

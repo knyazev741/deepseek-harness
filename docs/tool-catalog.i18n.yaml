@@ -9,14 +9,14 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 2d27eb81557c0272
-  zh: 6bf03ede55595815
+  en: 34b3a7659028eced
+  zh: 383815ae4b085f8a
 /tool-schema-catalog/knyazevai-dsh-plugin-manager:
   en: 85856f288bc83689
   zh: 85856f288bc83689
 /tool-schema-catalog/knyazevai-dsh-plugin-manager/plugin-manager:
-  en: 67902de24627eb86
-  zh: 5595fa74d709b5c8
+  en: 7ae32aa7505c5db9
+  zh: 4aeded9825a80b51
 /tool-schema-catalog/knyazevai-dsh-plugin-market:
   en: 7e4cec1c9c73ab06
   zh: 7e4cec1c9c73ab06
@@ -60,14 +60,14 @@
   en: 8bd69edd3063180f
   zh: 8bd69edd3063180f
 /tool-schema-catalog/knyazevai-dsh-tool-ask-user/ask-user-question:
-  en: a6e0c07bb29e1093
-  zh: f45cda846fe303e4
-/tool-schema-catalog/knyazevai-dsh-tools:
-  en: aeaf5f411bc2b5c3
-  zh: aeaf5f411bc2b5c3
-/tool-schema-catalog/knyazevai-dsh-tools/run-code:
-  en: abd4250bdae8c028
-  zh: 9fe9890250723222
+  en: 632bc47a06aec513
+  zh: 29c3d7fb4058a7f8
+/tool-schema-catalog/knyazevai-dsh-tool-executor-ptc:
+  en: 6fb94ea6ef30c798
+  zh: 6fb94ea6ef30c798
+/tool-schema-catalog/knyazevai-dsh-tool-executor-ptc/run-code:
+  en: 7603b48d43082cde
+  zh: 3325376beee64be3
 /tool-schema-catalog/knyazevai-dsh-plan-mode:
   en: f421a52f54c6da38
   zh: f421a52f54c6da38
@@ -78,14 +78,26 @@
   en: ca6ba545e340619c
   zh: ca6ba545e340619c
 /tool-schema-catalog/knyazevai-dsh-tool-bash/bash:
-  en: 706a3884a3b0171f
-  zh: 54163c84397794f7
+  en: 94b12da743b8797b
+  zh: 222cfe4540c21c5d
+/tool-schema-catalog/knyazevai-dsh-tool-office:
+  en: 4e249464e05dcce8
+  zh: 4e249464e05dcce8
+/tool-schema-catalog/knyazevai-dsh-tool-office/office-convert:
+  en: e63dea0f631fbb15
+  zh: c564452c0ae91632
+/tool-schema-catalog/knyazevai-dsh-tool-office/office-recalculate:
+  en: 27a0ac973b1b9387
+  zh: 29b4dd44a3a6b1ef
+/tool-schema-catalog/knyazevai-dsh-tool-office/office-render:
+  en: 8065110d634574f3
+  zh: 212415c1c4cb0e4b
 /tool-schema-catalog/knyazevai-dsh-tool-present:
   en: 1bff902798469a16
   zh: 1bff902798469a16
 /tool-schema-catalog/knyazevai-dsh-tool-present/present:
-  en: 48cda9e9b43c050f
-  zh: 678a0d42fe865c3c
+  en: e1b387cc6da499dd
+  zh: a40ea22eb3f91daa
 /tool-schema-catalog/knyazevai-dsh-tool-pwsh:
   en: 6e9c28e8b6061e64
   zh: 6e9c28e8b6061e64
@@ -95,12 +107,9 @@
 /tool-schema-catalog/knyazevai-dsh-tool-cordis:
   en: 36afae586782b9a9
   zh: 36afae586782b9a9
-/tool-schema-catalog/knyazevai-dsh-tool-cordis/cordis-inspect-list:
-  en: 594e5b42047969cc
-  zh: 72189ca21345c210
-/tool-schema-catalog/knyazevai-dsh-tool-cordis/cordis-inspect-query:
-  en: 1979321b02ede39f
-  zh: 1ea7d9cadfdd6ced
+/tool-schema-catalog/knyazevai-dsh-tool-cordis/cordis-inspect:
+  en: 66911e3faa9f769e
+  zh: 91055cbb1b06adb1
 /tool-schema-catalog/knyazevai-dsh-tool-bash-persistent:
   en: 364573afa8b769cb
   zh: 364573afa8b769cb
@@ -122,6 +131,9 @@
 /tool-schema-catalog/knyazevai-dsh-tool-fs:
   en: 82133ffffe530cbf
   zh: 82133ffffe530cbf
+/tool-schema-catalog/knyazevai-dsh-tool-fs/apply-patch:
+  en: 50b4939c9a1d96ac
+  zh: e733cc1156e2853c
 /tool-schema-catalog/knyazevai-dsh-tool-fs/edit:
   en: 5b6a252adde51af6
   zh: 7aa172a5d8b9cbd2
@@ -132,8 +144,8 @@
   en: f6f7a1140066ce04
   zh: d528e01a0939795a
 /tool-schema-catalog/knyazevai-dsh-tool-fs/write:
-  en: 1e9c4a582af5cae7
-  zh: 0c5d6ba27c115e17
+  en: 112de137c28dc7d2
+  zh: d8a12cb19abe597a
 /tool-schema-catalog/knyazevai-dsh-tool-fs-search:
   en: efc5bb9ed2f51c33
   zh: efc5bb9ed2f51c33
@@ -162,8 +174,17 @@
   en: 60a8805611533884
   zh: 50e4ac6e7f7b9b0a
 /tool-schema-catalog/knyazevai-dsh-tool-terminal/terminal-signal:
-  en: d8f19b9d84ba9b44
-  zh: da4614b6df360eab
+  en: 0fd0b9f697613552
+  zh: 249b1ec8781bf1ec
+/tool-schema-catalog/knyazevai-dsh-terminal-panel:
+  en: c221e594c49551c4
+  zh: c221e594c49551c4
+/tool-schema-catalog/knyazevai-dsh-terminal-panel/user-terminal-list:
+  en: cf8134d5a4b5205e
+  zh: 4c435304529c4fcd
+/tool-schema-catalog/knyazevai-dsh-terminal-panel/user-terminal-read:
+  en: e4c1e6a208315c2c
+  zh: 04e78aa2074db11a
 /tool-schema-catalog/knyazevai-dsh-tool-goal:
   en: f46b51d2ea121b4a
   zh: f46b51d2ea121b4a
@@ -180,17 +201,17 @@
   en: 048b0958ae807046
   zh: 048b0958ae807046
 /tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-create:
-  en: 606fc2b8d62ba044
-  zh: 7523e106168c2ab2
-/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-delete:
-  en: 5fc994535c95cd6b
-  zh: 1910b545d7b92379
+  en: 7237e492f01fb8fb
+  zh: 2fd2bea81919baf6
+/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-edit:
+  en: 08db239b9e1c3e8f
+  zh: c3860a8f20a01965
 /tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-list:
-  en: 5bcfc051e364df29
-  zh: b77e60c123800eb1
-/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-update:
-  en: b790faaa97474c05
-  zh: a7ab7d4b20c52212
+  en: e2c657d431fd02a8
+  zh: 7651bf05938eff69
+/tool-schema-catalog/knyazevai-dsh-tool-schedule/schedule-view:
+  en: 0909004cb4ef5c1f
+  zh: 858711899d8d9bcb
 /tool-schema-catalog/knyazevai-dsh-tool-lsp:
   en: 7338fb69393c40ba
   zh: 7338fb69393c40ba
@@ -207,8 +228,17 @@
   en: 6e65f33ddcb48124
   zh: 6e65f33ddcb48124
 /tool-schema-catalog/knyazevai-dsh-tool-skill/skill:
-  en: 8b0a66cbf59620d9
-  zh: 47d2c82f556c10d2
+  en: 1649063d6448402a
+  zh: 0fa6861494fffe09
+/tool-schema-catalog/knyazevai-dsh-tool-session-list:
+  en: 34a218aee1ee37bc
+  zh: 34a218aee1ee37bc
+/tool-schema-catalog/knyazevai-dsh-tool-session-list/list-session:
+  en: 8a04c79a2d8ef256
+  zh: 06e93b69aa95c6e9
+/tool-schema-catalog/knyazevai-dsh-tool-session-list/list-workspace:
+  en: 13ecef35678438e1
+  zh: ab54cbf0bce79c74
 /tool-schema-catalog/knyazevai-dsh-tool-session-query:
   en: 69009e6b3e398079
   zh: 69009e6b3e398079
@@ -225,29 +255,38 @@
   en: c7bc2ee2892bf0e9
   zh: 1cd6a5d6f7494ca1
 /tool-schema-catalog/knyazevai-dsh-tool-session-query/session-trace:
-  en: 37d7a2e1a2c8a12d
-  zh: 3daf364be1356a37
+  en: 3468f7288ff5064e
+  zh: 8d4f187c362610a8
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-subagent-oar:
+  en: 7e43313ae2c26409
+  zh: 7e43313ae2c26409
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-subagent-oar/subagent-oar:
+  en: 1d7a13e58baaf751
+  zh: eae93b7c8981998a
 /tool-schema-catalog/knyazevai-dsh-tool-subagent:
   en: 29a66c8e7f99cc8b
   zh: 29a66c8e7f99cc8b
 /tool-schema-catalog/knyazevai-dsh-tool-subagent/list-subagent-models:
-  en: c89084b31ffccbce
-  zh: d7b3b7000f2d2be9
+  en: 1fa8a23ffccd029f
+  zh: 5d1b9d618976d580
 /tool-schema-catalog/knyazevai-dsh-tool-subagent/subagent:
-  en: b7615e67ddbe5964
-  zh: d0b7dfea663ad285
+  en: f110581df0d3398e
+  zh: 7cc9066068143e1f
 /tool-schema-catalog/knyazevai-dsh-tool-subagent-control:
   en: ab92c185742908ba
   zh: ab92c185742908ba
 /tool-schema-catalog/knyazevai-dsh-tool-subagent-control/interrupt-agent:
-  en: 9190a32df5e10ddd
-  zh: 48e1b05956d63e26
+  en: a622b15cc2598d51
+  zh: ece4b2af6a11c49c
 /tool-schema-catalog/knyazevai-dsh-tool-subagent-control/list-agents:
-  en: ae22e8543d123c39
-  zh: 0991a73ef49bcdea
+  en: 8d50c6e19c9517ab
+  zh: 6ae97d046c5915db
 /tool-schema-catalog/knyazevai-dsh-tool-subagent-control/send-message:
-  en: a1aca9ed9d3d41db
-  zh: 66b6443e2997d7b1
+  en: b53326fedeab850d
+  zh: ecb75b6ce31da009
+/tool-schema-catalog/knyazevai-dsh-tool-subagent-control/wait-agent:
+  en: a654617d1c365d5f
+  zh: d944edc9b89f048b
 /tool-schema-catalog/knyazevai-dsh-tool-jobs:
   en: ca27f157691a3b0b
   zh: ca27f157691a3b0b
@@ -258,56 +297,38 @@
   en: 0c37fb1fed979d72
   zh: 5ea9d07f5a4a8a6c
 /tool-schema-catalog/knyazevai-dsh-tool-jobs/job-output:
-  en: 5f8a9d5e554a3cb9
-  zh: c92b3be6f06f274b
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team:
-  en: 86b45d4a0d89b298
-  zh: 86b45d4a0d89b298
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/interrupt-agent:
-  en: c3c7af05ceb9f8c9
-  zh: ec379e0b42110c6a
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/list-agents:
-  en: f9457f033f75f00a
-  zh: a2d60ec44118c34c
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/send-message:
-  en: ec50e6a0b86aecc6
-  zh: 29c8728536a5adf1
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/spawn-teammate:
-  en: 02d6cc746e234b99
-  zh: 49bc60ac098bca48
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-create:
-  en: 91e84febe063c3bd
-  zh: 550555d0f44f603b
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-get:
-  en: 1c6ae0aba0b8041d
-  zh: f8d634387b74121d
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-list:
-  en: 2084d494aae8798a
-  zh: e4c136c91028a7b1
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/team-task-update:
-  en: 2eac7360ba68b1bd
-  zh: b5d676bf288c245e
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-agent-team/wait-agent:
-  en: 5bb47b9f3db08262
-  zh: e7769c53962aa0ef
+  en: d890c92020d7c146
+  zh: 1b206eddd74a768d
+/tool-schema-catalog/knyazevai-dsh-tool-agent-team:
+  en: 6b6591b078d8c5a8
+  zh: 6b6591b078d8c5a8
+/tool-schema-catalog/knyazevai-dsh-tool-agent-team/team-task-create:
+  en: ac9ed819b705b4b8
+  zh: 306477d2d457369a
+/tool-schema-catalog/knyazevai-dsh-tool-agent-team/team-task-get:
+  en: bca1abf330638c19
+  zh: 903bfa977f75c046
+/tool-schema-catalog/knyazevai-dsh-tool-agent-team/team-task-list:
+  en: 8001eda7e9ff6a25
+  zh: 2414761029f21404
+/tool-schema-catalog/knyazevai-dsh-tool-agent-team/team-task-update:
+  en: fcfdd67e8741b8f4
+  zh: c6b8177c561e274b
 /tool-schema-catalog/knyazevai-dsh-tool-todo:
   en: 96331670ef1d9fc0
   zh: 96331670ef1d9fc0
 /tool-schema-catalog/knyazevai-dsh-tool-todo/todo-write:
-  en: 7fb59473343bc0f7
-  zh: 3f3eec2acd8d9279
-/tool-schema-catalog/knyazevai-dsh-tool-working-directory:
-  en: 9b8c72b5dbf200bf
-  zh: 9b8c72b5dbf200bf
-/tool-schema-catalog/knyazevai-dsh-tool-working-directory/working-directory:
-  en: d1cc13d2f9a88954
-  zh: edc325bc19c79945
+  en: 7a88fa64bdb7c917
+  zh: 130249e32304d1b0
 /tool-schema-catalog/knyazevai-dsh-experimental-tool-worktree:
   en: 8c4bdc080ac7edf2
   zh: 8c4bdc080ac7edf2
-/tool-schema-catalog/knyazevai-dsh-experimental-tool-worktree/create-worktree:
-  en: 4c8546825f45ee78
-  zh: f64457d84c086558
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-worktree/enter-worktree:
+  en: fb9a393b6fe3523f
+  zh: 02de205e99537ef2
+/tool-schema-catalog/knyazevai-dsh-experimental-tool-worktree/exit-worktree:
+  en: 762197d6e6dbd15b
+  zh: 85a6bd566a742e3c
 /tool-schema-catalog/knyazevai-dsh-tool-workflow:
   en: 2ea545a60e43e25f
   zh: 2ea545a60e43e25f

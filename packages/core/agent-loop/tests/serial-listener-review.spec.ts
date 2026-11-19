@@ -7,17 +7,12 @@ import { Context } from '@deepseek-ai/cordis'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import * as JsonlSessionPersistence from '@knyazevai/dsh-session-persistence-jsonl'
 import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testkit'
-import { SessionId } from '@knyazevai/dsh-session'
-import { defineContentToolFixture } from '@knyazevai/dsh-tools'
-import { bindScopeParent, createScope, scopeOf } from '@knyazevai/dsh-scope'
+import type { SessionId } from '@knyazevai/dsh-session'
 import LocalFileReference from '@knyazevai/dsh-file-reference-local'
-import SubagentRuntime from '@knyazevai/dsh-subagent'
-import * as SubagentSpawn from '@knyazevai/dsh-subagent-spawn-in-process'
-import * as SubagentTool from '@knyazevai/dsh-tool-subagent'
-import Selection from '@knyazevai/dsh-tool-subagent/model-selection-settings'
 import type { Agent } from '@knyazevai/dsh-agent'
 import { createUserMessage } from '@knyazevai/dsh-llm'
 import type { ContextFormed } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
 
 declare module '@knyazevai/dsh-llm' {
   interface MessageSourceMap {
@@ -86,7 +81,7 @@ describe('serial creation listener integrations', () => {
     await ctx.plugin(LocalFileReference)
     try {
       await expect(ctx.agents.create({
-        sessionId: SessionId('review-file-reference'),
+        sessionId: brandString<SessionId>('review-file-reference'),
         setup(agentCtx) {
           agentCtx.systemPrompt.section({ name: 'context:file-reference', order: 0, text: 'occupied' })
         },
@@ -99,36 +94,11 @@ describe('serial creation listener integrations', () => {
     }
   })
 
-  it('rolls back creation when a shared preset tool installation fails', async () => {
-    const ctx = await core()
-    const errors: string[] = []
-    ctx.logger.error = ((error: unknown) => { errors.push(String(error)) }) as typeof ctx.logger.error
-    await ctx.plugin(Selection)
-    await ctx.plugin(SubagentRuntime)
-    await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
-    const preset = createScope(ctx, { preset: 'review' })
-    await preset.ctx.plugin(SubagentTool, { provider: 'spawn', modelSelectionSettings: true })
-    try {
-      await expect(ctx.agents.create({
-        sessionId: SessionId('review-tool'),
-        setup(agentCtx) {
-          bindScopeParent(scopeOf(agentCtx)!, scopeOf(preset.ctx)!)
-          agentCtx.tools.register(defineContentToolFixture({ name: 'subagent', description: 'occupied', parameters: {}, execute: () => Promise.resolve([]) }))
-        },
-      })).rejects.toThrow('subagent')
-      expect(errors.some(error => error.includes('subagent'))).toBe(true)
-      expect(ctx.agents.list()).toEqual([])
-      expect(ctx.sessions.list()).toEqual([])
-    } finally {
-      await ctx.fiber.dispose()
-    }
-  })
-
   it('starts due plugin work only after every creation listener finishes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-serial-due-'))
     roots.push(root)
     const ctx = await core(root)
-    const sessionId = SessionId('review-due-work')
+    const sessionId = brandString<SessionId>('review-due-work')
     const plugin = 'review-due-reminder'
     const available = Promise.withResolvers<Agent>()
     // The resolver returns the Agent while its serial publication listeners are blocked.

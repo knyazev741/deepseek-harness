@@ -3,6 +3,7 @@
 - name: '@knyazevai/dsh-session-projection'
 - name: '@knyazevai/dsh-system-prompt'
 - name: '@knyazevai/dsh-tools'
+- name: '@knyazevai/dsh-tool-executor-native'
 - name: '@knyazevai/dsh-agent'
 - name: '@knyazevai/dsh-agent-loop'
   config:
@@ -11,6 +12,7 @@
   config:
     path: {{credentials}}
     watch: false
+- name: '@knyazevai/dsh-deepseek-auth'
 - name: '@knyazevai/dsh-llm-deepseek-api-key'
   config:
     apiKeyEnv: DEEPSEEK_API_KEY

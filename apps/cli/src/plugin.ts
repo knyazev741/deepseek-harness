@@ -1,7 +1,8 @@
 /** Profile package management and explicit, exact-version compatibility approvals. */
 import { runPluginCommand, runProfilePnpm, setProfileVersionExemption, type PackageOperationOptions } from '@knyazevai/dsh-plugin-manager/operations'
 import { INSTALL_ANCHOR } from './profile-boot.ts'
-import { DEFAULT_PROFILE_BUNDLES, initProfile, PROFILE_TEMPLATES, readProfileCompatibility, resolveProfileDir, type ProfileContext } from '@knyazevai/dsh-app-boot'
+import { initProfile, readProfileCompatibility, resolveProfileDir, type ProfileContext } from '@knyazevai/dsh-app-boot'
+import { PROFILE_TEMPLATES, DEFAULT_PROFILE_BUNDLES } from '@knyazevai/dsh-official-bundles'
 import { withFileLock } from '@knyazevai/dsh-atomic-write'
 import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'

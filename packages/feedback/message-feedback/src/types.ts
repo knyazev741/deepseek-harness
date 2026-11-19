@@ -6,7 +6,7 @@
  */
 
 import type { Branded } from '@knyazevai/dsh-brand'
-import type { MessageId } from '@knyazevai/dsh-llm/brand'
+import type { MessageId } from '@knyazevai/dsh-llm/types'
 import type { SessionId } from '@knyazevai/dsh-session/types'
 import type { FeedbackCategory } from '@knyazevai/dsh-command-feedback/types'
 

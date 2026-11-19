@@ -9,20 +9,23 @@
   en: 7885edff00618e70
   zh: 2d4e431929eba57b
 /knyazevai-dsh-tools/summary:
-  en: 8c0a34155997a980
-  zh: ae6031db472b33e3
+  en: ad53df5cc542fc32
+  zh: 1ab915da46e01d20
 /knyazevai-dsh-tools/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /knyazevai-dsh-tools/use-this-package:
-  en: dec8e6df8cc94bc2
-  zh: e2f1f15ea7afd7b3
+  en: d382227271bf92ae
+  zh: 1f66b181418c91b9
 /knyazevai-dsh-tools/use-this-package/register-a-tool:
-  en: 9d2e6caa39c53d62
-  zh: 096a777f828c7565
-/knyazevai-dsh-tools/use-this-package/configure-the-presentation-mode:
-  en: ddcfe68cc344efdb
-  zh: 62aee34be7bf2b2f
+  en: 1808e2a95ee21584
+  zh: 40c40da7d1418407
+/knyazevai-dsh-tools/use-this-package/conditional-tools:
+  en: eb80334754c2493a
+  zh: b431635ec1f4664f
+/knyazevai-dsh-tools/use-this-package/select-an-executor:
+  en: bdf27b6f339ea866
+  zh: b89205eedea1db0a
 /knyazevai-dsh-tools/use-this-package/restrict-tools-per-agent:
   en: c6f98b2283cc2e47
   zh: c2cdce5d13473f15
@@ -36,23 +39,23 @@
   en: ce7e776e9d516bdb
   zh: 59d2751743db7795
 /knyazevai-dsh-tools/understand-the-implementation/design-concept:
-  en: 92e8af53e6067bad
+  en: 516a6195a21e742b
   zh: 33c7b99b42c5acac
 /knyazevai-dsh-tools/understand-the-implementation/source-map:
-  en: c14e20d6a5c4c408
-  zh: ab9dc0fd38006749
+  en: 2dee0a37e0c1fa38
+  zh: 0963cba32685612e
 /knyazevai-dsh-tools/understand-the-implementation/execution-and-cancellation:
-  en: dc44a88997777988
-  zh: 56454aeace1c8b77
+  en: 5f289c5a05345776
+  zh: c2b488e03fa38deb
 /knyazevai-dsh-tools/understand-the-implementation/ptc-mode:
-  en: 387700aa396f7ca2
-  zh: d440b283027e4fbd
+  en: 83cf9a5077158879
+  zh: 80508a70a3674226
 /knyazevai-dsh-tools/understand-the-implementation/extension-points:
   en: c2a14d6f22bc9428
   zh: 89c1414fca465931
 /knyazevai-dsh-tools/further-exploration:
-  en: 10880560ec4eaacb
-  zh: 2b0407ffaeede314
+  en: 61327b7e63d11b9e
+  zh: c3dfc3d961949041
 /knyazevai-dsh-tools/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -60,29 +63,14 @@
   en: 483b01d9bb2cb49a
   zh: 1d95095e76fb0996
 /knyazevai-dsh-tools/model-experience/normal-tool-schemas/what-the-model-sees:
-  en: 7768e09b0f2d4b7f
-  zh: 5e204e5fb317733b
+  en: bcc79de7b8a1b021
+  zh: c39c97781bf9ea5e
 /knyazevai-dsh-tools/model-experience/normal-tool-schemas/token-effect:
   en: d594b71ff5e4cc87
   zh: dcec1ea0dd2a0fa6
 /knyazevai-dsh-tools/model-experience/normal-tool-schemas/kv-cache-effect:
   en: 7c5e75964e020b2c
   zh: d50d0402d15232d9
-/knyazevai-dsh-tools/model-experience/ptc-mode-schema-and-system-prompt:
-  en: eaefd7303f22977d
-  zh: 9c425f9501128224
-/knyazevai-dsh-tools/model-experience/ptc-mode-schema-and-system-prompt/what-the-model-sees:
-  en: e4ce906a55818e0a
-  zh: 4d24d6ac99b7c5b3
-/knyazevai-dsh-tools/model-experience/ptc-mode-schema-and-system-prompt/what-the-model-sees/typescript-ptc-mode-sdk-instructions-with-bash:
-  en: 3a8df15e4ae32f9e
-  zh: fc4a800ba363e835
-/knyazevai-dsh-tools/model-experience/ptc-mode-schema-and-system-prompt/token-effect:
-  en: 12296fcafc14562c
-  zh: f8e9351bb8c6437d
-/knyazevai-dsh-tools/model-experience/ptc-mode-schema-and-system-prompt/kv-cache-effect:
-  en: 78906628d634441f
-  zh: 492f133aea50cfe3
 /knyazevai-dsh-tools/model-experience/tool-call-history-and-results:
   en: a8503137ad03720c
   zh: 611a2dadf7c0c706
@@ -96,8 +84,8 @@
   en: 2fbf2175168e8244
   zh: ad59a120b54a0996
 /knyazevai-dsh-tools/known-limitations-and-deferred-work:
-  en: e370ee457a051f20
-  zh: e5711767016b58ae
+  en: 230c7df4887cbead
+  zh: ad1586a92b764bb2
 /knyazevai-dsh-tools/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 3bb0c20c93f16f98

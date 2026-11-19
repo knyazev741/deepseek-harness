@@ -12,7 +12,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as yaml from 'js-yaml'
 import { Context } from '@deepseek-ai/cordis'
-import { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
+import { applyEntryPatches, parseEntryYaml } from '@deepseek-ai/cordis-plugin-include'
 import AgentDefaultModelConfig from '@knyazevai/dsh-agent-default-model'
 import LlmRuntime from '@knyazevai/dsh-llm'
 import * as LlmPiAi from '@knyazevai/dsh-llm-pi-ai'
@@ -49,7 +49,7 @@ function readManifest(): Manifest {
 }
 
 function readPatch(path: string): Patch[] {
-  const parsed = yaml.load(readFileSync(resolve(root, path), 'utf8'), { schema: entryListSchema })
+  const parsed = parseEntryYaml(readFileSync(resolve(root, path), 'utf8'))
   if (!Array.isArray(parsed)) throw new TypeError('fork-base patch must be an entry list')
   return parsed as Patch[]
 }
@@ -119,7 +119,7 @@ describe('dsh-fork-base bundle', () => {
     const base = readPatch(resolve(root, '../base/cordis.patch.yml'))
     const overlay = readPatch('./cordis.patch.yml')
     const upstreamRows = flattenInsertRows(base)
-    const rows = applyEntryPatches(upstreamRows, overlay, () => {})
+    const { data: rows } = applyEntryPatches(upstreamRows, overlay, () => {})
     const ids = rows.map(row => row.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(rows.some(row => row.name?.toLowerCase().includes('codex'))).toBe(false)
@@ -195,7 +195,7 @@ describe('dsh-fork-base bundle', () => {
       expect(ids.indexOf(id)).toBeGreaterThan(ids.indexOf('settings'))
     }
 
-    const later = applyEntryPatches(rows, [
+    const { data: later } = applyEntryPatches(rows, [
       {
         id: 'llm-pi-ai',
         config: {
@@ -280,7 +280,7 @@ describe('dsh-fork-base bundle', () => {
         ['@knyazevai/dsh-llm-pi-ai', LlmPiAi],
         ['@knyazevai/dsh-agent-default-model', AgentDefaultModelConfig],
       ])
-      const profile: ProfileContext = { name: 'test', dir: rootDir, home: rootDir, cwd: rootDir, startedBundles: ['test-bundle'], patchPath: resolve(rootDir, 'cordis.patch.yml'), installAnchor: resolve(rootDir, 'package.json'), overlays: [], telemetryDisabledEnv: undefined }
+      const profile: ProfileContext = { name: 'test', dir: rootDir, home: rootDir, cwd: rootDir, startedBundles: ['test-bundle'], patchPath: resolve(rootDir, 'cordis.patch.yml'), installAnchor: resolve(rootDir, 'package.json'), overlayPaths: [], telemetryDisabledEnv: undefined }
       ctx = await boot('test', configPath, readProfilePatches('test', profile), (ctx) => {
         ctx.provide('profileContext', profile)
         ctx.loader.builtins.editor = ConfigEditor
@@ -341,7 +341,7 @@ describe('dsh-fork-base bundle', () => {
 
   it('keeps the upstream base patch bytes unchanged', () => {
     const basePath = resolve(root, '../base/cordis.patch.yml')
-    const upstream = execFileSync('git', ['show', '687f282e8625c6b8d11ff58211a90524be2e4317:packages/bundle/base/cordis.patch.yml'], { encoding: 'utf8' })
+    const upstream = execFileSync('git', ['show', '2e39e70496aa02986ca6a820c5d497e816b69d7e:packages/bundle/base/cordis.patch.yml'], { encoding: 'utf8' })
     expect(readFileSync(basePath, 'utf8')).toBe(upstream.replaceAll('@deepseek-ai' + '/dsh', '@knyazevai/dsh'))
   })
 })

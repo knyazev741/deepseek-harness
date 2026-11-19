@@ -68,15 +68,18 @@
     "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
     "@knyazevai/dsh-client-ui-user-questions": "workspace:*",
     "@knyazevai/dsh-client-resources": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
     "@knyazevai/dsh-typert-protocol": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
-    "@knyazevai/dsh-tools": "workspace:*",
     "@knyazevai/dsh-util-crypto": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

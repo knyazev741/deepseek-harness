@@ -9,12 +9,13 @@
  * idle→running→idle, while teardown is a registry lifecycle.
  */
 
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime from '@knyazevai/dsh-llm'
 import { createUserMessage, LlmAdapter } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, StreamChunk } from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
 import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
@@ -22,6 +23,7 @@ import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import fc from 'fast-check'
+import { brandString } from '@knyazevai/dsh-brand'
 
 /** A never-exhausting adapter: every model call returns the same short reply. */
 class EchoAdapter extends LlmAdapter {
@@ -43,6 +45,7 @@ async function harness() {
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(AgentLoop, { agents: [] })
   ctx.llm.registerAdapter(['mock'], new EchoAdapter())
@@ -113,7 +116,7 @@ describe('agent loop scheduling properties', () => {
       async (texts) => {
         const ctx = await harness()
         try {
-          const agent = await ctx.agentLoop.create(SessionId('a'), { provider: 'mock', model: 'mock' })
+          const agent = await ctx.agentLoop.create(brandString<SessionId>('a'), { provider: 'mock', model: 'mock' })
           const { seen: trace } = recordStatus(ctx, agent)
           const idle = nextIdle(ctx, agent)
           // Send all in one synchronous tick: they queue before the loop wakes.
@@ -141,7 +144,7 @@ describe('agent loop scheduling properties', () => {
       async (texts) => {
         const ctx = await harness()
         try {
-          const agent = await ctx.agentLoop.create(SessionId('a'), { provider: 'mock', model: 'mock' })
+          const agent = await ctx.agentLoop.create(brandString<SessionId>('a'), { provider: 'mock', model: 'mock' })
           for (const text of texts) {
             const idle = nextIdle(ctx, agent)
             agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
@@ -166,7 +169,7 @@ describe('agent loop scheduling properties', () => {
       async (steps) => {
         const ctx = await harness()
         try {
-          const agent = await ctx.agentLoop.create(SessionId('a'), { provider: 'mock', model: 'mock' })
+          const agent = await ctx.agentLoop.create(brandString<SessionId>('a'), { provider: 'mock', model: 'mock' })
           // Capture before each send; the last waiter covers the final turn, and
           // awaiting an already-settled earlier waiter is harmless.
           let lastIdle: Promise<void> | undefined

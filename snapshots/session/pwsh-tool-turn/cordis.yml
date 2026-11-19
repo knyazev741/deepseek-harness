@@ -68,6 +68,10 @@
   name: '@knyazevai/dsh-tool-skill'
   disabled: true
 
+- id: upstream-skills
+  name: '@knyazevai/dsh-upstream-skills'
+  disabled: true
+
 - id: tool-bash
   name: '@knyazevai/dsh-tool-bash'
   disabled: true

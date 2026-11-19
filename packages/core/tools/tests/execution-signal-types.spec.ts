@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import { ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm'
 import { defineTool } from '@knyazevai/dsh-tools'
 import type {
   ToolDispatchExecution,
@@ -15,7 +16,7 @@ function inputAndExecutionContracts(
   run: ToolRunContext,
 ): void {
   // @ts-expect-error -- every typed invocation must supply a caller-owned signal.
-  const missingSignal: ToolExecutionInput = { callId: ToolCallId('missing'), name: 'probe', arguments: {} }
+  const missingSignal: ToolExecutionInput = { callId: brandString<ToolCallId>('missing'), name: 'probe', arguments: {} }
   void missingSignal
 
   // @ts-expect-error -- caller input is readonly after construction.

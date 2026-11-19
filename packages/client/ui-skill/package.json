@@ -69,12 +69,16 @@
     "react-dom": "^18.2.0",
     "@knyazevai/dsh-client-ui-sidebar-right": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
-    "@knyazevai/dsh-util-workspace-path": "workspace:*"
+    "@knyazevai/dsh-util-workspace-path": "workspace:*",
+    "@knyazevai/dsh-util-text-search": "workspace:*"
   },
   "files": [
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ]
 }

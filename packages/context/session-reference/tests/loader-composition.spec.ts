@@ -1,5 +1,7 @@
 /** Real Loader composition preserves retrievable source text outside the bounded preview. */
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
 
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -9,7 +11,8 @@ import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import { agentEvents, type Agent } from '@knyazevai/dsh-agent'
-import { createUserMessage, ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import { createUserMessage, type ToolCallId } from '@knyazevai/dsh-llm'
 import * as systemPromptPlugin from '@knyazevai/dsh-system-prompt'
 import * as toolsPlugin from '@knyazevai/dsh-tools'
 import * as fsPlugin from '@knyazevai/dsh-fs-local'
@@ -17,7 +20,7 @@ import * as toolFsPlugin from '@knyazevai/dsh-tool-fs'
 import * as sessionPlugin from '@knyazevai/dsh-session'
 import * as sessionProjectionPlugin from '@knyazevai/dsh-session-projection'
 import * as workingDirectoryPlugin from '@knyazevai/dsh-working-directory'
-import { Session, SessionId } from '@knyazevai/dsh-session'
+import { Session, type SessionId } from '@knyazevai/dsh-session'
 import * as queryPlugin from '@knyazevai/dsh-session-query-sqlite'
 import * as referencePlugin from '@knyazevai/dsh-session-reference'
 import * as spillPlugin from '@knyazevai/dsh-spill-local'
@@ -51,6 +54,7 @@ describe('session-reference real Loader composition', () => {
       ['@knyazevai/dsh-working-directory', workingDirectoryPlugin],
       ['@knyazevai/dsh-system-prompt', systemPromptPlugin],
       ['@knyazevai/dsh-tools', toolsPlugin],
+      ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
       ['@knyazevai/dsh-fs-local', fsPlugin],
       ['@knyazevai/dsh-tool-fs', toolFsPlugin],
       ['@knyazevai/dsh-session-query-sqlite', queryPlugin],
@@ -68,15 +72,16 @@ describe('session-reference real Loader composition', () => {
     await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(configPath).href } })
     await ctx.loader.await()
 
-    const target = ctx.sessions.create(SessionId('reference-target'))
+    const target = ctx.sessions.create(brandString<SessionId>('reference-target'))
     const agent = { id: target.id, ctx, session: target } as Agent
     const direct = createUserMessage({
       content: [{ type: 'text', text: 'Use ' + referencePlugin.formatSessionReferenceMention({
-        sessionId: SessionId('reference-source'), label: 'Research',
+        sessionId: brandString<SessionId>('reference-source'), label: 'Research',
       }) }],
       source: { kind: 'user' },
     })
     const decision = await agentEvents(ctx, agent).waterfall('agent/pre-step', {
+      modelSelection: { provider: 'mock', model: 'mock' },
       messages: [direct], turn: 1, step: 1, signal: new AbortController().signal,
     }, () => Promise.resolve({ kind: 'enter' as const, messages: [direct] }))
     expect(decision.kind).toBe('enter')
@@ -110,8 +115,8 @@ describe('session-reference real Loader composition', () => {
     const readLines: string[] = []
     let totalLines = Infinity
     for (let offset = 1; offset <= totalLines; offset += 7) {
-      const read = await ctx.tools.execute({
-        name: 'read', callId: ToolCallId(`read-${offset}`),
+      const read = await executeToolFixture(ctx, {
+        name: 'read', callId: brandString<ToolCallId>(`read-${offset}`),
         arguments: { file_path: notice.fullSnapshot.locator, offset, limit: 7 },
         signal: new AbortController().signal,
       })
@@ -135,10 +140,10 @@ describe('session-reference real Loader composition', () => {
     expect(await readdir(spillRoot)).toEqual([dirname(notice.fullSnapshot.locator).split(/[\\/]/).at(-1)])
 
     const captured = target.deriveMessages()
-    ctx.sessions.get(SessionId('reference-source'))!.append('user/message', createUserMessage({
+    ctx.sessions.get(brandString<SessionId>('reference-source'))!.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'LATER_SOURCE_MUTATION' }], source: { kind: 'user' },
     }), { surfaceOp: 'append' })
-    expect(Session.create(SessionId('replayed-target'), target.snapshotEvents()).deriveMessages()).toEqual(captured)
+    expect(Session.create(brandString<SessionId>('replayed-target'), target.snapshotEvents()).deriveMessages()).toEqual(captured)
     expect(await readFile(notice.fullSnapshot.locator, 'utf8')).toBe(transcript)
   })
 })

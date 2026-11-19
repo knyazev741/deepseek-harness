@@ -1,0 +1,97 @@
+{
+  "name": "@knyazevai/dsh-experimental-forge-session",
+  "description": "Binds change requests to the Session that created, pushed, or tracked them",
+  "version": "0.2.6",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./types": {
+      "types": "./lib/types/types.d.ts"
+    },
+    "./locale/*.json": "./locale/*.json",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "locale/*.json",
+    "lib/index.js",
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "packages/experimental/forge-session"
+  },
+  "dependencies": {
+    "@knyazevai/dsh-timeout": "workspace:*",
+    "@knyazevai/dsh-util-values": "workspace:*",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "shell-quote": "^1.12.0",
+    "zod": "4.6.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-experimental-forge": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-shell": "workspace:*",
+    "@knyazevai/dsh-shell-env": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*"
+  },
+  "devDependencies": {
+    "@knyazevai/dsh-brand": "workspace:*",
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-agent": "workspace:*",
+    "@knyazevai/dsh-agent-loop": "workspace:*",
+    "@knyazevai/dsh-bash-local": "workspace:*",
+    "@knyazevai/dsh-experimental-forge": "workspace:*",
+    "@knyazevai/dsh-experimental-forge-github": "workspace:*",
+    "@knyazevai/dsh-forge-gitlab": "workspace:*",
+    "@knyazevai/dsh-fs-local": "workspace:*",
+    "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-session": "workspace:*",
+    "@knyazevai/dsh-session-projection": "workspace:*",
+    "@knyazevai/dsh-shell-env": "workspace:*",
+    "@knyazevai/dsh-subprocess-local": "workspace:*",
+    "@knyazevai/dsh-system-prompt": "workspace:*",
+    "@knyazevai/dsh-tool-bash": "workspace:*",
+    "@knyazevai/dsh-tool-executor-native": "workspace:*",
+    "@knyazevai/dsh-tools": "workspace:*",
+    "@knyazevai/dsh-working-directory": "workspace:*",
+    "@knyazevai/dsh-shell": "workspace:*",
+    "@knyazevai/dsh-sandbox-policy": "workspace:*",
+    "@knyazevai/dsh-tool-executor-ptc": "workspace:*",
+    "@knyazevai/dsh-ptc-runtime-node": "workspace:*",
+    "@knyazevai/dsh-sandbox-local": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@knyazevai/dsh-shell": {
+      "optional": true
+    },
+    "@knyazevai/dsh-shell-env": {
+      "optional": true
+    },
+    "@knyazevai/dsh-tools": {
+      "optional": true
+    },
+    "@knyazevai/dsh-sandbox-policy": {
+      "optional": true
+    }
+  }
+}

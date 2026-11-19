@@ -3,13 +3,14 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@knyazevai/dsh-agent'
 import Schema from '@deepseek-ai/schemastery'
-import { BrowserUseProviderName } from '@knyazevai/dsh-browser-use/brand'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { BrowserUseProviderName } from '@knyazevai/dsh-browser-use/types'
 import * as McpClient from '@knyazevai/dsh-mcp-client'
 import { createScope } from '@knyazevai/dsh-scope'
 import type { Scope } from '@knyazevai/dsh-scope'
-import { SessionResources } from './index.ts'
+import { BrowserSessionError, SessionResources } from './index.ts'
 import type {} from '@knyazevai/dsh-browser-use'
-import type {} from '@knyazevai/dsh-tools'
+import { ToolContextUnavailableError } from '@knyazevai/dsh-tools'
 import type {} from '@knyazevai/dsh-system-prompt'
 import type {} from '@knyazevai/dsh-working-directory'
 
@@ -126,7 +127,7 @@ export function mountSessionMcp(ctx: Context, options: SessionMcpOptions): void 
   }
 
   ctx.effect(function* () {
-    yield ctx.browserUse.register(BrowserUseProviderName(options.name))
+    yield ctx.browserUse.register(brandString<BrowserUseProviderName>(options.name))
     resources = new SessionResources(ctx, {
       label: options.name,
       exclusive: options.exclusive,
@@ -141,7 +142,7 @@ export function mountSessionMcp(ctx: Context, options: SessionMcpOptions): void 
             if (!exec.name.startsWith(toolPrefix)) return next()
             if (exec.agent !== agent) {
               if (ctx.tools.get(exec.name, exec.agent) !== ctx.tools.get(exec.name, agent)) return next()
-              throw new Error(`${options.name}: browser tool belongs to another Session`)
+              throw new BrowserSessionError(`${options.name}: browser tool belongs to another Session`, 'BROWSER_FOREIGN_SESSION')
             }
             return next()
           })
@@ -199,8 +200,9 @@ export function mountSessionMcp(ctx: Context, options: SessionMcpOptions): void 
       && (exec.arguments as { server?: unknown }).server === options.name
     if (!exec.name.startsWith(toolPrefix) && !ownResource) return next()
     const agent = exec.agent
-    if (agent === undefined || clients.get(agent)?.status !== 'ready') {
-      throw new Error(`${options.name}: browser tool belongs to another Session`)
+    if (agent === undefined) throw new ToolContextUnavailableError(`${options.name}: browser tools require a calling Agent`)
+    if (clients.get(agent)?.status !== 'ready') {
+      throw new BrowserSessionError(`${options.name}: browser tool belongs to another Session`, 'BROWSER_FOREIGN_SESSION')
     }
     return resources.run(agent, exec.signal, async (_scope, combined) => {
       const original = exec.signal

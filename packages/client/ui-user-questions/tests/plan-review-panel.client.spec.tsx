@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
+import { contextMenuHook } from '@knyazevai/dsh-client-test-runtime'
 import type { GlobalStandardProps } from '@knyazevai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { allowAllAccess } from '@knyazevai/dsh-client-test-runtime'
 import type { SessionId } from '@knyazevai/dsh-session/types'
-import type { ToolCallId } from '@knyazevai/dsh-llm/brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm/types'
 import {
   createWaterfallRequest, PendingQuestion, planReviewOf, type QuestionComposerProps, type QuestionWait,
 } from '../src/client/contract/slots.ts'
@@ -42,7 +43,7 @@ const sessionState: SessionState = {
   openState: 'open',
   openError: null,
   hasMore: false,
-  loadingOlder: false,
+  loadingOlder: false, historyLoadStatus: 'idle', historyWasPartial: false,
   promptError: null,
   blank: false,
   lastAgentError: null,
@@ -125,12 +126,14 @@ const kit: Omit<QuestionComposerProps, 'matched'> = {
   useSessionRetainInfo: () => undefined,
   useWorkspaces: selector => selector(workspaceState),
   ...allowAllAccess,
+  useContextMenu: contextMenuHook(),
   useConversation: selector => selector(conversationState),
   useChat: selector => selector(chatState),
   useTrajectory: selector => selector(trajectoryState),
   useProjection: (() => undefined),
   useInput: selector => selector(inputState),
   inputActions: {
+    insertQuote: () => false,
     captureInsertion: () => ({ start: 0, end: 0, draftRev: 0 }),
     insertText: () => false,
     setDraft: () => { throw new Error('unused') },

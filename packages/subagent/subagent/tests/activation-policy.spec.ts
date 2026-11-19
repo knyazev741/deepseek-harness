@@ -15,12 +15,13 @@ import { mountAgentLoopTestDependencies } from '@knyazevai/dsh-agent-loop-testki
 import SandboxedFileSystem from '@knyazevai/dsh-fs-sandbox'
 import type { ContentBlock } from '@knyazevai/dsh-llm'
 import SandboxPolicyService, { setSandboxMode } from '@knyazevai/dsh-sandbox-policy'
-import { Session, SessionId, type SessionEvent } from '@knyazevai/dsh-session'
+import { Session, type SessionId, type SessionEvent } from '@knyazevai/dsh-session'
 import * as ToolFs from '@knyazevai/dsh-tool-fs'
 import ApprovalService from '@knyazevai/dsh-user-approval'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import SubagentRuntime from '@knyazevai/dsh-subagent'
 import { mountLocalActivations, startPreparedActivation } from './local-activation.ts'
+import { brandString } from '@knyazevai/dsh-brand'
 
 type Script = ConstructorParameters<typeof MockAdapter>[0]
 
@@ -50,7 +51,7 @@ async function setupWalled(script: Script): Promise<{ ctx: Context; parent: Agen
   await ctx.plugin(AgentLoop, { agents: [] })
   ctx.llm.registerAdapter(['mock'], new MockAdapter(script))
   const parent = await ctx.agentLoop.create(
-    SessionId('parent'),
+    brandString<SessionId>('parent'),
     { provider: 'mock', model: 'mock' },
     { cwd: workspace },
   )
@@ -185,6 +186,7 @@ describe('in-process policy inheritance', () => {
       expect(contextText).toContain('Approval prompts are disabled')
       // The statement rides runtime context; the system node (surface node 0) stays uniform.
       expect(contextText).toContain('You are a delegated subagent')
+      expect(contextText).toContain('Other user messages come from the human user')
       const systemHead = child.session.deriveMessages()[0]
       if (systemHead?.role !== 'system') throw new Error('child surface node 0 is not a system message')
       expect(child.session.surface.nodes[0]).toBe(systemNode.seq)
@@ -228,8 +230,8 @@ describe('in-process policy inheritance', () => {
       await expect(readFile(blocked, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
       expect(ctx.sandboxPolicy.overrideOf(child.session)).toBe('read-only')
 
-      setSandboxMode(child.session, 'danger-full-access')
-      expect(ctx.sandboxPolicy.overrideOf(child.session)).toBe('danger-full-access')
+      expect(() => { setSandboxMode(child.session, 'danger-full-access') }).toThrow('cannot append outside a SessionStore')
+      expect(ctx.sandboxPolicy.overrideOf(child.session)).toBe('read-only')
     } finally {
       await run.dispose()
     }

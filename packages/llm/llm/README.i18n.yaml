@@ -15,20 +15,20 @@
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /knyazevai-dsh-llm/use-this-package:
-  en: 33738e61ce410ac0
-  zh: 363760460f4d4bed
+  en: b6259a28a0fa875c
+  zh: 174d3b73a117c3d0
 /knyazevai-dsh-llm/use-this-package/when-to-choose-it:
   en: c3ecb5a1421f27db
   zh: 4bbd3c0e513845e1
 /knyazevai-dsh-llm/use-this-package/minimal-composition:
-  en: 9d481d19dc52e404
-  zh: aa09cf4462e93ba6
+  en: 09b2d6442e62e2f9
+  zh: 226c831f92a81dd4
 /knyazevai-dsh-llm/use-this-package/what-you-can-do:
-  en: dc61eb86585f6e0d
-  zh: 9c0d6b240dfd2cda
+  en: a014fceea3118b3b
+  zh: 7c33b96d110480e1
 /knyazevai-dsh-llm/use-this-package/failures-and-recovery:
-  en: 311d8c92447b7094
-  zh: 68cf5cb1c3853cc1
+  en: 47f4dab3c377a4cd
+  zh: 49ac1c366de19136
 /knyazevai-dsh-llm/understand-the-implementation:
   en: 9630d7e26193a512
   zh: 94222c2a487c4b8c
@@ -36,8 +36,8 @@
   en: 12d0444c18a397c7
   zh: 9d4a5468b4bb7fcd
 /knyazevai-dsh-llm/understand-the-implementation/source-map:
-  en: ae1618577f4e8364
-  zh: a6e8ab1563c08dfb
+  en: fbdadaf319e03d9c
+  zh: edec7c5ef22b37ac
 /knyazevai-dsh-llm/understand-the-implementation/main-flow:
   en: c95d4947745e39bb
   zh: ec37b969f27629e2
@@ -54,8 +54,8 @@
   en: a81634136baef72f
   zh: b92dda883986b0e1
 /knyazevai-dsh-llm/known-limitations-and-deferred-work:
-  en: 13b0ea60cda69dfa
-  zh: 3130709fe2aa9e13
+  en: c165e91a2a2356f7
+  zh: 86533d642282c2fd
 /knyazevai-dsh-llm/known-limitations-and-deferred-work/dev-note:
   en: ecbc333b88e14d88
   zh: 77c725d92efd8646

@@ -1,8 +1,11 @@
 /** Explicit opt-in compatibility check against an installed Cua Driver executable. */
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { isAbsolute } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import ComputerUse from '@knyazevai/dsh-computer-use'
-import { ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
 import { expect, it } from 'vitest'
@@ -32,6 +35,7 @@ it.skipIf(executable === undefined || executable === '')(
       await ctx.plugin(ComputerUse)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
+      await ctx.plugin(NativeToolExecutor)
       const provider = await ctx.plugin(Provider, {
         command: executable,
         args: driverArguments(),
@@ -43,10 +47,10 @@ it.skipIf(executable === undefined || executable === '')(
       expect(schemas.every(tool => tool.name.startsWith('mcp__cua-driver-mcp__'))).toBe(true)
       const permissions = ctx.tools.get('mcp__cua-driver-mcp__check_permissions')
       expect(permissions).toBeDefined()
-      const result = await ctx.tools.execute({
+      const result = await executeToolFixture(ctx, {
         name: 'mcp__cua-driver-mcp__check_permissions',
         arguments: { prompt: false },
-        callId: ToolCallId('installed-driver-permissions'),
+        callId: brandString<ToolCallId>('installed-driver-permissions'),
         signal,
       })
       expect(result.isError).toBe(false)

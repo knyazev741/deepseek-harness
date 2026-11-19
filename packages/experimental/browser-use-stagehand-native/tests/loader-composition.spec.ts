@@ -1,5 +1,6 @@
 /** A real Loader and AgentLoop exercise independently configured browser inference and durable screenshots. */
 
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,9 +13,10 @@ import AgentRegistry from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import BrowserUseRegistry from '@knyazevai/dsh-browser-use'
 import LocalAttachmentStore from '@knyazevai/dsh-attachment-local'
-import LlmRuntime, { LlmAdapter, ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import LlmRuntime, { LlmAdapter, type ToolCallId, createUserMessage } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, LlmResolvedModelInfo, StreamChunk } from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
@@ -50,7 +52,7 @@ class BrowserModel extends LlmAdapter {
     if (this.mainRequests.length <= 2) {
       const first = this.mainRequests.length === 1
       yield { type: 'block-end', index: 0, block: {
-        type: 'tool-call', id: ToolCallId(first ? 'extract-heading' : 'screenshot'),
+        type: 'tool-call', id: brandString<ToolCallId>(first ? 'extract-heading' : 'screenshot'),
         name: first ? 'stagehand_extract' : 'stagehand_screenshot',
         arguments: first ? '{"instruction":"Extract the heading"}' : '{}',
       } }
@@ -78,8 +80,10 @@ it('loads browser tools from cordis.yml, logs browser results, and admits the sc
     ['@knyazevai/dsh-llm', LlmRuntime],
     ['@knyazevai/dsh-session', SessionStore],
     ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
+
     ['@knyazevai/dsh-system-prompt', SystemPrompt],
     ['@knyazevai/dsh-tools', ToolRuntime],
+    ['@knyazevai/dsh-tool-executor-native', NativeToolExecutor],
     ['@knyazevai/dsh-agent', AgentRegistry],
     ['@knyazevai/dsh-agent-loop', AgentLoop],
     ['@knyazevai/dsh-attachment-local', LocalAttachmentStore],
@@ -108,7 +112,7 @@ it('loads browser tools from cordis.yml, logs browser results, and admits the sc
   for (const entry of context.loader.entries()) await entry.fiber?.await()
   const model = new BrowserModel()
   context.llm.registerAdapter(['fixture'], model)
-  const agent = await context.agentLoop.create(SessionId('stagehand-loader'), { provider: 'fixture', model: 'vision' })
+  const agent = await context.agentLoop.create(brandString<SessionId>('stagehand-loader'), { provider: 'fixture', model: 'vision' })
   agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Extract the heading and take a screenshot.' }], source: { kind: 'user' } }))
   await agent.whenIdle()
   expect(model.mainRequests).toHaveLength(3)

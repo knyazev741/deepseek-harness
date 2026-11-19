@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/forge-session/README.md
+/:
+  en: 04fd3e698332ce87
+  zh: 283b365b1f909e0b
+/knyazevai-dsh-experimental-forge-session:
+  en: 8ce2385e7064fdb3
+  zh: ef8746805032d8d7
+/knyazevai-dsh-experimental-forge-session/summary:
+  en: a2dc75469efca968
+  zh: 8ad999264b50026f
+/knyazevai-dsh-experimental-forge-session/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 2f8a621b991260a1
+/knyazevai-dsh-experimental-forge-session/use-this-package:
+  en: d8cb4ab05091185b
+  zh: 7a647c7ae3789e2e
+/knyazevai-dsh-experimental-forge-session/understand-the-implementation:
+  en: d0ba8f59ffcd625c
+  zh: 1d89347f14e34701
+/knyazevai-dsh-experimental-forge-session/further-exploration:
+  en: afd5ea387dc53920
+  zh: 1f2d48bdd1abeef7
+/knyazevai-dsh-experimental-forge-session/model-experience:
+  en: c2866463fc210ca0
+  zh: 0e66693bfd75264b
+/knyazevai-dsh-experimental-forge-session/model-experience/kv-cache-effect:
+  en: 1bdaeb7d102c23d8
+  zh: 37a3f0bd58f68363
+/knyazevai-dsh-experimental-forge-session/known-limitations-and-deferred-work:
+  en: 9d43a72b847b2d50
+  zh: c8165607bb5704f1
+/knyazevai-dsh-experimental-forge-session/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

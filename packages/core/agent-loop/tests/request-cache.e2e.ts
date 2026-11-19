@@ -1,15 +1,19 @@
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { createUserMessage } from '@knyazevai/dsh-llm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime from '@knyazevai/dsh-llm'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
-import ToolRuntime, { defineContentToolFixture } from '@knyazevai/dsh-tools'
+import ToolRuntime from '@knyazevai/dsh-tools'
+import { defineContentToolFixture } from '@knyazevai/dsh-tool-testkit'
 import AgentRegistry, { type Agent } from '@knyazevai/dsh-agent'
 
 import AgentLoop from '@knyazevai/dsh-agent-loop'
 import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import * as LlmDeepSeek from '@knyazevai/dsh-llm-deepseek-api-key'
+import DeepSeekAuth from '@knyazevai/dsh-deepseek-auth'
+import { brandString } from '@knyazevai/dsh-brand'
 
 /**
  * With-key proof that log-derived requests translate into real provider cache hits: a
@@ -45,8 +49,10 @@ async function loopHarness(): Promise<Context> {
   await created.plugin(SessionProjectionRegistry)
   await created.plugin(SystemPrompt, { personaPrefix: SYSTEM })
   await created.plugin(ToolRuntime)
+  await created.plugin(NativeToolExecutor)
   await created.plugin(AgentRegistry)
   await created.plugin(AgentLoop, { agents: [] })
+  await created.plugin(DeepSeekAuth)
   await created.plugin(LlmDeepSeek)
   created.tools.register(defineContentToolFixture({
     name: 'lookup',
@@ -73,7 +79,7 @@ function waitForIdle(context: Context, agent: Agent): Promise<void> {
 describe.skipIf(!process.env.DEEPSEEK_API_KEY)('log-derived request cache hits (real API)', () => {
   it('every request after the first hits the provider prefix cache', async () => {
     ctx = await loopHarness()
-    const agent = await ctx.agentLoop.create(SessionId('cache-e2e'), { provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cache-e2e'), { provider: 'deepseek-official', model: 'deepseek-v4-flash' })
 
     // Turn 1: forces a tool call → at least two steps (two model requests).
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Look up the key "deploy-color" with the lookup tool and tell me the value.' }], source: { kind: 'user' } }))

@@ -6,13 +6,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
+import SessionProjectionRegistry from '@knyazevai/dsh-session-projection'
 import AgentRegistry from '@knyazevai/dsh-agent'
 import type { Agent, AgentStatus } from '@knyazevai/dsh-agent'
 import CommandRuntime from '@knyazevai/dsh-commands'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import * as CommandFeedback from '@knyazevai/dsh-command-feedback'
 import { getOrCreateAnonymousUserId } from '@knyazevai/dsh-anonymous-user-id'
-import { unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
+import { unsupportedModel, unsupportedInbox } from '@knyazevai/dsh-agent-loop-testkit'
+import { brandString } from '@knyazevai/dsh-brand'
 
 let root: string | undefined
 let context: Context | undefined
@@ -28,13 +30,14 @@ afterEach(async () => {
 /** Register one idle agent over a store-owned session, as an app's spine does. */
 async function agent(ctx: Context): Promise<Agent> {
   const scope = ctx.plugin(() => {})
-  const id = SessionId('feedback-loader-agent')
+  const id = brandString<SessionId>('feedback-loader-agent')
   const session = ctx.sessions.create(id)
   let status: AgentStatus = 'idle'
   const value: Agent = {
     id,
     options: {},
     session,
+    model: unsupportedModel(),
     inbox: unsupportedInbox(),
     ctx: scope.ctx,
     get status() { return status },
@@ -56,7 +59,9 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     vi.stubEnv('DSH_HOME', root)
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
+      "- name: '@knyazevai/dsh-session-projection'",
       "- name: '@knyazevai/dsh-agent'",
+      "- name: '@knyazevai/dsh-session-projection'",
       "- name: '@knyazevai/dsh-session'",
       "- name: '@knyazevai/dsh-commands'",
       "- name: '@knyazevai/dsh-command-feedback'",
@@ -68,7 +73,9 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     await context.plugin(Loader)
     context.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
+      ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
       ['@knyazevai/dsh-agent', AgentRegistry],
+      ['@knyazevai/dsh-session-projection', SessionProjectionRegistry],
       ['@knyazevai/dsh-session', SessionStore],
       ['@knyazevai/dsh-commands', CommandRuntime],
       ['@knyazevai/dsh-command-feedback', CommandFeedback],

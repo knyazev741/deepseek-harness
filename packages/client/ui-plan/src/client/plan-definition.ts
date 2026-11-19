@@ -1,5 +1,5 @@
 /** Per-invocation plans use resolved Conversation locations for final Turn artifacts. */
-import type {} from '@knyazevai/dsh-tools/types'
+import type {} from '@knyazevai/dsh-tool-executor-ptc/client'
 import type { ChatNode } from '@knyazevai/dsh-client-ui-chat/client'
 import type { ConversationNodeDefinition } from '@knyazevai/dsh-client-ui-conversation/client'
 import { submittedPlan, type SubmittedPlan } from './plan.ts'

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { SessionId } from '@knyazevai/dsh-session'
+import SessionStore, { type SessionId } from '@knyazevai/dsh-session'
 import TypertRegistry from '@knyazevai/dsh-typert-registry'
+import { brandString } from '@knyazevai/dsh-brand'
 
 describe('Session Typert provider', () => {
   it('contributes live Session lookup in either service load order', async () => {
@@ -9,7 +10,7 @@ describe('Session Typert provider', () => {
     const sessionFiber = ctx.plugin(SessionStore)
     await sessionFiber
     await ctx.plugin(TypertRegistry)
-    const session = ctx.sessions.create(SessionId('remote-session'))
+    const session = ctx.sessions.create(brandString<SessionId>('remote-session'))
 
     const lookup = ctx.typert.lookups.get('session')
     expect(lookup).toMatchObject({

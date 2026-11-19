@@ -1,9 +1,12 @@
 /** Opt-in native SDK compatibility check without screenshots, input, or permission prompts. */
+import { executeToolFixture } from '@knyazevai/dsh-tool-testkit'
 
+import * as NativeToolExecutor from '@knyazevai/dsh-tool-executor-native'
 import { expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import ComputerUseRegistry from '@knyazevai/dsh-computer-use'
-import { ToolCallId } from '@knyazevai/dsh-llm'
+import { brandString } from '@knyazevai/dsh-brand'
+import type { ToolCallId } from '@knyazevai/dsh-llm'
 import SystemPrompt from '@knyazevai/dsh-system-prompt'
 import ToolRuntime from '@knyazevai/dsh-tools'
 import * as NativeProvider from '../src/index.ts'
@@ -17,6 +20,7 @@ it.skipIf(process.env.DSH_COMPUTER_USE_NATIVE_E2E !== '1')(
       await ctx.plugin(ComputerUseRegistry)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
+      await ctx.plugin(NativeToolExecutor)
       const provider = ctx.plugin(NativeProvider)
       await provider
       expect(ctx.computerUse.providerName).toBe('cua-driver-native')
@@ -25,9 +29,9 @@ it.skipIf(process.env.DSH_COMPUTER_USE_NATIVE_E2E !== '1')(
       expect(names).toContain('cua_driver_native__get_window_state')
       expect(names.every(name => name.startsWith('cua_driver_native__'))).toBe(true)
 
-      const result = await ctx.tools.execute({
+      const result = await executeToolFixture(ctx, {
         name: 'cua_driver_native__check_permissions',
-        callId: ToolCallId('native-live-permissions'),
+        callId: brandString<ToolCallId>('native-live-permissions'),
         arguments: { prompt: false },
         signal,
       })

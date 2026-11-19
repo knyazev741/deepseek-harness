@@ -1,6 +1,6 @@
 {
   "name": "@knyazevai/dsh-client-ui-jobs",
-  "description": "Session-header background-job list with on-demand streaming record panels",
+  "description": "Session panel background-job list with on-demand streaming record panels",
   "version": "0.2.6",
   "type": "module",
   "main": "lib/index.js",
@@ -37,12 +37,14 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@knyazevai/dsh-api-job-controller": "workspace:*",
+    "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-client-locale": "workspace:*",
+    "@knyazevai/dsh-client-store": "workspace:*",
     "@knyazevai/dsh-client-test-runtime": "workspace:*",
-    "@knyazevai/dsh-client-ui-conversation": "workspace:*",
     "@knyazevai/dsh-client-ui-primitives": "workspace:*",
     "@knyazevai/dsh-client-ui-renderer": "workspace:*",
     "@knyazevai/dsh-client-ui-session": "workspace:*",
+    "@knyazevai/dsh-client-ui-session-panel": "workspace:*",
     "@knyazevai/dsh-client-ui-slots": "workspace:*",
     "@knyazevai/dsh-jobs": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",
@@ -53,15 +55,18 @@
     "locale/*.json",
     "lib/index.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "dsh": {
     "client": {
       "inject": [
         "@knyazevai/dsh-api-job-controller",
         "@knyazevai/dsh-client-locale",
-        "@knyazevai/dsh-client-ui-conversation",
-        "@knyazevai/dsh-client-ui-primitives"
+        "@knyazevai/dsh-client-ui-primitives",
+        "@knyazevai/dsh-client-ui-session-panel"
       ],
       "platform": "web"
     }

@@ -25,7 +25,10 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
-    "lib/types/**/*.d.ts"
+    "lib/types/**/*.d.ts",
+    "lib/types/**/*.d.ts.map",
+    "lib/**/*.js.map",
+    "src"
   ],
   "license": "MIT",
   "peerDependencies": {
@@ -34,7 +37,8 @@
     "@knyazevai/dsh-llm-deepseek": "workspace:*",
     "@knyazevai/dsh-launch-environment": "workspace:*",
     "@knyazevai/dsh-credentials": "workspace:*",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:~"
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
@@ -42,7 +46,8 @@
     "@knyazevai/dsh-llm-deepseek": "workspace:*",
     "@knyazevai/dsh-launch-environment": "workspace:*",
     "@knyazevai/dsh-credentials": "workspace:*",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:~"
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@knyazevai/dsh-deepseek-auth": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis-plugin-loader": {

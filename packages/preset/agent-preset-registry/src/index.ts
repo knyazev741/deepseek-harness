@@ -3,13 +3,14 @@ import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import { AGENT_PRESET_PATCH_CONTRIBUTOR, type AgentPresetPatchContribution, type AgentPresetPatchContributor } from './contributor.ts'
 export { AGENT_PRESET_PATCH_CONTRIBUTOR, type AgentPresetPatchContribution, type AgentPresetPatchContributor } from './contributor.ts'
 /** Declarative Agent capability sets, activation and session binding. */
-import { Context } from '@deepseek-ai/cordis'
+import type { ProjectionHandle } from '@knyazevai/dsh-session-projection'
+import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { Remote, RemoteError, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
 import { bindScopeParent, createScope, scopeOf, scopeParentOf, type Scope, type ScopeKey, type ScopeParentBinding } from '@knyazevai/dsh-scope'
-import { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-include'
-import { dump } from 'js-yaml'
+import { applyEntryPatches, stringifyEntryYaml } from '@deepseek-ai/cordis-plugin-include'
 import type { Agent } from '@knyazevai/dsh-agent'
+import type { Session } from '@knyazevai/dsh-session'
 // Type-only: the optional `settings` service this registry keeps off the generated pages.
 import type {} from '@knyazevai/dsh-settings'
 import type {} from '@knyazevai/dsh-tools'
@@ -54,11 +55,12 @@ interface Binding {
 
 /** Registry of YAML-declared presets and the revisions live Agents retain. */
 export class AgentPresetRegistry extends TypertRemoteService {
-  static inject = ['loader', 'sessionProjections']
+  static inject = ['loader', 'sessionProjections', 'agents']
   static Config = z.object({
     default: z.string().required(),
     selectedDefault: z.string().volatile(),
   })
+  private agentPresetProjectionHandle!: ProjectionHandle<string | null>
   private readonly owner: Context
   private readonly patchContributions = new Map<string, AgentPresetPatchContribution[]>()
   private readonly definitions = new Map<string, Definition>()
@@ -69,7 +71,11 @@ export class AgentPresetRegistry extends TypertRemoteService {
   constructor(ctx: Context, public config: Config) {
     super(ctx, 'agentPresets')
     this.owner = ctx
-    ctx.sessionProjections.register(agentPresetProjectionDefinition)
+  }
+
+  protected async [Service.init](): Promise<void> {
+    const ctx = this.owner
+    this.agentPresetProjectionHandle = await ctx.sessionProjections.register(agentPresetProjectionDefinition)
     ctx.inject(['settings'], (child) => { child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)) })
     ctx.on('session/event', (session, event) => {
       if (event.type === 'agent-preset/selected') ctx.emit('agent-preset/selected', session.id, event.data.agentPreset)
@@ -78,6 +84,15 @@ export class AgentPresetRegistry extends TypertRemoteService {
 
   /** Default preset for a subsequently created session. */
   get defaultId(): string { return this.config.selectedDefault.get() ?? this.config.default }
+
+  /**
+   * Read the preset recorded for a Session, including selections no longer in the roster.
+   * @param session - Session whose committed preset selection is read.
+   * @returns the recorded preset, or null when none was selected.
+   */
+  presetForSession(session: Session): string | null {
+    return this.agentPresetProjectionHandle.stateOf(session)
+  }
 
   /** Deployment patches affect new preset revisions while existing Agents retain theirs. */
   get [AGENT_PRESET_PATCH_CONTRIBUTOR](): AgentPresetPatchContributor {
@@ -162,7 +177,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
       if (problem !== undefined) throw new Error(problem)
       const context = scope.ctx.extend({ baseUrl: record.context.baseUrl })
       const patches = this.patchContributions.get(record.config.id)?.flatMap(entry => entry.patches) ?? []
-      const plugins = applyEntryPatches(record.config.plugins as EntryOptions[], [...patches] as PatchOptions[],
+      const { data: plugins } = applyEntryPatches(record.config.plugins as EntryOptions[], [...patches] as PatchOptions[],
         (message: string, ...args: unknown[]) => { this.owner.logger.warn(message, ...args) })
       const mount = await mountPreset(context, record.config.id, plugins)
       const generation: Generation = { scope, key, mount, users: 0, retired: false }
@@ -280,7 +295,7 @@ export class AgentPresetRegistry extends TypertRemoteService {
     }
     const { id, name, description, plugins } = record.config
     // The Loader's own dialect, so `!!js` conditions read as declared rather than as expression objects.
-    const content = dump(plugins, { schema: entryListSchema, noRefs: true, lineWidth: -1 })
+    const content = stringifyEntryYaml(plugins, { lineWidth: -1 })
     return Promise.resolve({
       agentPreset: id, content, ...(name === undefined ? {} : { name }), ...(description === undefined ? {} : { description }),
     })
@@ -405,13 +420,13 @@ export class AgentPresetRegistry extends TypertRemoteService {
   @Remote('select')
   async select(agent: Agent, agentPreset: string): Promise<string> {
     const turn = (this.switches.get(agent.id) ?? Promise.resolve()).then(async () => {
-      const boundary = this.owner.sessionProjections.stateOf(agent.session, 'turnBoundary')
-      if (boundary !== undefined && (boundary.openTurnStartSeq !== null || boundary.lastTurn > 0)) {
+      const boundary = this.owner.agents.turnBoundaryOf(agent.session)
+      if (boundary.openTurnStartSeq !== null || boundary.lastTurn > 0) {
         throw new RemoteError('agent-preset/locked', 'This session has already started', { sessionId: agent.id, agentPreset })
       }
       const current = this.definitions.get(agentPreset)?.generation
       if (current !== undefined && this.generationFor(agent.ctx) === current
-        && this.owner.sessionProjections.stateOf(agent.session, 'agentPreset') === agentPreset) return agentPreset
+        && this.agentPresetProjectionHandle.stateOf(agent.session) === agentPreset) return agentPreset
       const preset = await this.recompose(agent.ctx, agentPreset)
       agent.session.append('agent-preset/selected', { agentPreset: preset.id })
       return preset.id
