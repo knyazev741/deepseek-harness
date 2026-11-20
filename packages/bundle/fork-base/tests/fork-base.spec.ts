@@ -102,7 +102,7 @@ describe('dsh-fork-base bundle', () => {
       '@knyazevai/dsh-fork-llm-rate-limit-cooldown',
     ])
     expect(rows.find(row => row.id === 'fork-llm-first-chunk-timeout')?.config)
-      .toEqual({ firstChunkIdleTimeoutMs: 120000, maxFirstChunkCompactionRetries: 100 })
+      .toEqual({ firstChunkIdleTimeoutMs: 240000, maxFirstChunkCompactionRetries: 100 })
     expect(rows.find(row => row.id === 'fork-llm-rate-limit-cooldown')?.config)
       .toEqual({
         cooldownMs: 10000,
@@ -136,7 +136,7 @@ describe('dsh-fork-base bundle', () => {
           apiKeyEnv: 'KNYAZEV_AI_API_KEY',
           api: 'openai-completions',
           baseURL: 'https://knyazevai.work/v1',
-          streamIdleTimeoutMs: 120000,
+          streamIdleTimeoutMs: 300000,
           timeoutMs: 1800000,
           retryPolicy: {
             mode: 'always',
@@ -318,7 +318,7 @@ describe('dsh-fork-base bundle', () => {
             'knyazev-ai': {
               apiKeyEnv: 'KNYAZEV_AI_API_KEY',
               baseURL: 'https://settings.example/v1',
-              streamIdleTimeoutMs: 120000,
+              streamIdleTimeoutMs: 300000,
               timeoutMs: 1800000,
               models: [
                 { id: 'deepseek-v4-flash', contextWindow: 400000, maxTokens: 40000 },

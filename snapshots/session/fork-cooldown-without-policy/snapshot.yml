@@ -1,0 +1,7 @@
+version: 1
+scenario: fork-cooldown-without-policy
+profile: headless
+composition: fork-cooldown
+recording: authored
+header:
+  class: fork-cooldown

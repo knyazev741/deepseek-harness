@@ -27,7 +27,7 @@ Function plugin that bounds the idle wait for the first result of the `llm/strea
 - id: fork-llm-first-chunk-timeout
   name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'
   config:
-    firstChunkIdleTimeoutMs: 120000
+    firstChunkIdleTimeoutMs: 240000
     maxFirstChunkCompactionRetries: 100
 ```
 
@@ -36,7 +36,7 @@ The plugin requires `llm` and calls the zero-argument continuation exactly once 
 <a id="first-result-deadline"></a>
 ## First-result deadline
 
-`firstChunkIdleTimeoutMs` defaults to `120000` and must be a positive safe integer no greater than Node's reliable timer maximum, `2147483647`. The timer races only the first downstream `iterator.next()` result. A yielded value or normal `done` result clears the timer and forwards the iterator unchanged, so no inter-chunk deadline is imposed.
+`firstChunkIdleTimeoutMs` defaults to `240000` and must be a positive safe integer no greater than Node's reliable timer maximum, `2147483647`. The timer races only the first downstream `iterator.next()` result. A yielded value or normal `done` result clears the timer and forwards the iterator unchanged, so no inter-chunk deadline is imposed.
 
 When the timer wins, the wrapper yields one terminal `finish` chunk with a `FIRST_CHUNK_TIMEOUT` failure and starts downstream `return()` without awaiting it. A caller abort clears this plugin's timer and leaves the provider's cancellation outcome unchanged. A downstream rejection remains the same rejection. Consumer return and plugin disposal clear plugin state and close downstream on a best-effort basis. Consumer `throw(error)` delegates to downstream `throw` when present, preserving its result or rejection; otherwise it closes downstream best-effort and rejects with the caller error.
 

@@ -9,17 +9,17 @@
   en: 8c8dcb6731a4bf9a
   zh: 6747901b57835a01
 /knyazevai-dsh-fork-llm-rate-limit-cooldown/summary:
-  en: 07f90d698613f672
-  zh: 4427333c26d624b7
+  en: 5879c73f161f1ab3
+  zh: 7dc8e414d55da176
 /knyazevai-dsh-fork-llm-rate-limit-cooldown/table-of-contents:
-  en: c8f0732f321ae56a
-  zh: bd03f98fdbddaf2d
+  en: e7173ffe48f0f7c2
+  zh: ba99f46daa01b60a
 /knyazevai-dsh-fork-llm-rate-limit-cooldown/composition:
   en: ed4bfadfb2a24fdf
   zh: 0748f9811ef478ff
-/knyazevai-dsh-fork-llm-rate-limit-cooldown/escalation-after-the-bounded-budget:
-  en: bb0b92a037b22b9c
-  zh: 7e966619241b303d
+/knyazevai-dsh-fork-llm-rate-limit-cooldown/cooldown-retries:
+  en: aa83f55086938e61
+  zh: b1b0d6c93708e0c8
 /knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -27,8 +27,8 @@
   en: 19342267999c29bc
   zh: 38c05a88f8e47987
 /knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience/retry-recovery/what-the-model-sees:
-  en: 8d5ff7b441995697
-  zh: a0dcabcb0d1639fe
+  en: dbff88040a12f274
+  zh: 0ca0f0551f7bef8a
 /knyazevai-dsh-fork-llm-rate-limit-cooldown/model-experience/retry-recovery/token-effect:
   en: 63f29159f572742f
   zh: ccf36fb7ffb51f7c

@@ -1,11 +1,7 @@
 /**
- * Fork-owned escalation for a provider that stays rate-limited after its
- * bounded `dsh-llm-retry` budget is exhausted: wait a long cooldown, then
- * return one retry action so the agent loop re-attempts the same request.
- *
- * Matching failures enter cooldown after fast retries are exhausted, or when
- * their code or Retry-After cannot use fast backoff. Downstream recovery runs
- * first. Durable retry events expose the cancellable wait to clients.
+ * Cancellable cooldown retries for provider failures left unhandled by other
+ * recovery listeners. Provider `always` policies retain their own backoff.
+ * Durable retry events expose each scheduled wait to clients.
  *
  * @module @knyazevai/dsh-fork-llm-rate-limit-cooldown
  */
@@ -21,25 +17,18 @@ export const name = 'fork-llm-rate-limit-cooldown'
 /** The agent service whose `agent/request-error` waterfall this plugin extends. */
 export const inject = ['agents']
 
-/** Configuration for the long rate-limit cooldown escalation. */
+/** Configuration for provider failure cooldown retries. */
 export interface Config {
-  /** Cooldown before one retry of an exhausted rate-limited request, in ms (default 600000). */
+  /** Cooldown before retrying an unhandled provider failure, in ms (default 600000). */
   readonly cooldownMs?: number
   /** Failure codes eligible for cooldown; `*` includes every normalized provider failure. */
   readonly retryableCodes?: string[]
 }
 
-/** Default long cooldown before one post-budget retry. */
+/** Default delay before retrying an unhandled provider failure. */
 const DEFAULT_COOLDOWN_MS = 600_000
 
-/**
- * Trigger codes observed on live sessions as transient provider/upstream falls:
- * `RATE_LIMIT` (HTTP 429), `SERVER` (upstream 5xx such as 502/503), `QUOTA`,
- * `TIMEOUT`, `TRANSPORT` (stream/connection truncation), and `PI_AI_ERROR` (the
- * pi-ai provider catch-all). `PI_AI_ERROR` is opt-in by default even though it
- * can also carry a non-transient `Cannot find module` environment error, per
- * deployment preference for aggressive provider-outage coverage.
- */
+/** Provider failure codes eligible for cooldown when no list is configured. */
 const DEFAULT_RETRYABLE_CODES = ['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'TRANSPORT', 'PI_AI_ERROR', 'STREAM_CLOSED', 'EMPTY_RESPONSE']
 
 /** Loader schema for {@link Config}. */
@@ -49,7 +38,7 @@ export const Config: z<Config> = z.object({
 })
 
 /**
- * Install long-cooldown retry escalation after a provider's bounded retry budget.
+ * Install cooldown retries for matching provider failures.
  * @param ctx - plugin context that owns the listener and active waits.
  * @param config - cooldown configuration.
  */

@@ -282,7 +282,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 |---|---|---|
 | `@knyazevai/dsh-fork-external-session` | no | Provider-neutral external-session mode registry |
 | `@knyazevai/dsh-fork-llm-first-chunk-timeout` | yes | Fork-owned LLM stream plugin that bounds idle time before the first chunk |
-| `@knyazevai/dsh-fork-llm-rate-limit-cooldown` | yes | Fork-owned LLM plugin that waits a long cooldown and retries a rate-limited request whose bounded retry budget is exhausted |
+| `@knyazevai/dsh-fork-llm-rate-limit-cooldown` | yes | Fork-owned LLM plugin that retries unhandled provider failures after a cancellable cooldown |
 | `@knyazevai/dsh-fork-session-source` | yes | Plugin-owned GitHub Actions session-source event and projection |
 | `@knyazevai/dsh-fork-ui-workspace-overlay` | no | Fork-owned Background, pin, unread, source badge, and session-id actions for Workspace rows |
 | `@knyazevai/dsh-fork-workspace-session-state` | yes | Settings-backed global pin state for workspace sessions |

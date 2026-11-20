@@ -19,10 +19,9 @@ import type {
 } from '@knyazevai/dsh-llm'
 import type { Agent, RequestErrorAction } from '@knyazevai/dsh-agent'
 import AgentLoop from '@knyazevai/dsh-agent-loop'
-import type { SessionEvent } from '@knyazevai/dsh-session'
 import * as retry from '@knyazevai/dsh-llm-retry'
 import * as cooldown from '../src/index.ts'
-import { cancellableDelay, createEscalator, priorRetries } from '../src/escalator.ts'
+import { cancellableDelay, createEscalator } from '../src/escalator.ts'
 
 type ScriptEntry = Error | Iterable<StreamChunk> | AsyncIterable<StreamChunk>
 
@@ -324,35 +323,57 @@ describe('fork-llm-rate-limit-cooldown', () => {
     expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry')).toHaveLength(3)
   })
 
-  it('delegates while the bounded retry budget is not yet exhausted', async () => {
-    const adapter = new ScriptedAdapter([rateLimited()])
+  it('retries when the bounded retry executor is absent', async () => {
+    const adapter = new ScriptedAdapter([rateLimited(), textResponse('done')])
     const { ctx, disposeAdapter } = await harness(adapter, {
-      includeRetry: false,
+      cooldownMs: 1,
       retryPolicy: normalConfig({ retryableCodes: ['RATE_LIMIT'] }),
     })
     disposed = disposeAdapter
     context = ctx
-    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-delegate-budget'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-without-executor'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
 
-    expectTerminal(agent, 'RATE_LIMIT')
-    expect(adapter.requests).toHaveLength(1)
+    expect(adapter.requests).toHaveLength(2)
+    expect(agent.session.snapshotEvents().find(event => event.type === 'llm/retry')?.data)
+      .toMatchObject({ mode: 'always', retry: 1 })
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'done' }],
+    })
   })
 
-  it('delegates when the provider carries no bounded retry policy', async () => {
-    const adapter = new ScriptedAdapter([rateLimited()])
-    const { ctx, disposeAdapter } = await harness(adapter, {})
-    disposed = disposeAdapter
+  it('retries a middleware-served route without a provider retry policy', async () => {
+    const ctx = new Context()
     context = ctx
-    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-delegate-nopolicy'), { provider: 'mock', model: 'mock' })
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(retry)
+    await ctx.plugin(cooldown, { cooldownMs: 1, retryableCodes: ['*'] })
+    await ctx.plugin(AgentLoop, { agents: [] })
+    const responses: StreamChunk[][] = [
+      [{ type: 'finish', reason: { kind: 'error', failure: { code: 'INVALID_REQUEST', message: 'bad payload' } } }],
+      [{ type: 'finish', reason: { kind: 'error', failure: { code: 'RATE_LIMIT', message: 'rate limited' } } }],
+      textResponse('done'),
+    ]
+    const adapter = new ScriptedAdapter(responses)
+    disposed = ctx.on('llm/stream', options => adapter.stream(options))
+    const agent = await ctx.agentLoop.create(brandString<SessionId>('cooldown-without-policy'), { provider: 'custom', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await agent.whenIdle()
 
-    expectTerminal(agent, 'RATE_LIMIT')
-    expect(adapter.requests).toHaveLength(1)
+    expect(adapter.requests).toHaveLength(3)
+    expect(agent.session.snapshotEvents().filter(event => event.type === 'llm/retry').map(event => event.data))
+      .toMatchObject([
+        { provider: 'custom', mode: 'always', retry: 1, failure: { code: 'INVALID_REQUEST' } },
+        { provider: 'custom', mode: 'always', retry: 2, failure: { code: 'RATE_LIMIT' } },
+      ])
+    expect(agent.session.deriveMessages().at(-1)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'done' }],
+    })
   })
 
   it('aborts the cooldown wait and settles terminally when the turn is cancelled', async () => {
@@ -413,7 +434,7 @@ describe('fork-llm-rate-limit-cooldown', () => {
   })
 })
 
-describe('Gonka persistent recovery', () => {
+describe('Shared persistent recovery', () => {
   it.each(['RATE_LIMIT', 'SERVER', 'QUOTA', 'TIMEOUT', 'FIRST_CHUNK_TIMEOUT', 'TRANSPORT',
     'PI_AI_ERROR', 'STREAM_CLOSED', 'EMPTY_RESPONSE', 'AUTH', 'INVALID_REQUEST', 'CONTEXT_WINDOW_EXCEEDED'])(
     'finishes after repeated exhausted budgets for %s and records every cooldown', async (code) => {
@@ -498,16 +519,6 @@ describe('fork-llm-rate-limit-cooldown internals', () => {
     await expect(pending).resolves.toBe(false)
   })
 
-  it('counts only llm/retry records scoped to the same turn, step, and provider', () => {
-    const events = [
-      { type: 'llm/retry', data: { turn: 1, step: 1, provider: 'mock', retry: 1 } },
-      { type: 'llm/retry', data: { turn: 1, step: 1, provider: 'mock', retry: 2 } },
-      { type: 'llm/retry', data: { turn: 1, step: 2, provider: 'mock', retry: 1 } },
-      { type: 'turn/start', data: {} },
-    ] as unknown as SessionEvent[]
-    expect(priorRetries(events, 1, 1, 'mock')).toBe(2)
-  })
-
   it('delegates an unclaimed failure through the continuation', async () => {
     const escalator = createEscalator(new Context(), 100, ['RATE_LIMIT', 'SERVER'])
     const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
@@ -515,10 +526,10 @@ describe('fork-llm-rate-limit-cooldown internals', () => {
     expect(next).toHaveBeenCalledTimes(1)
   })
 
-  it('delegates when the provider exposes no bounded retry policy', async () => {
+  it('keeps a downstream retry decision for a provider without a retry policy', async () => {
     const escalator = createEscalator(new Context(), 100, ['RATE_LIMIT', 'SERVER'])
-    const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
-    await escalator.listener(makePayload({ retryPolicy: undefined }), next)
+    const next = vi.fn(async (): Promise<RequestErrorAction> => ({ kind: 'retry' }))
+    await expect(escalator.listener(makePayload({ retryPolicy: undefined }), next)).resolves.toEqual({ kind: 'retry' })
     expect(next).toHaveBeenCalledTimes(1)
   })
 
@@ -534,8 +545,6 @@ describe('fork-llm-rate-limit-cooldown internals', () => {
     const controller = new AbortController()
     controller.abort()
     const next = vi.fn(async (): Promise<RequestErrorAction> => undefined)
-    // A zero budget (with no recorded retries) passes the exhaustion gate and
-    // reaches the aborted-fused check directly.
     const result = await escalator.listener(
       makePayload({ signal: controller.signal, retryPolicy: { mode: 'normal', maxRetries: 0 } }),
       next,

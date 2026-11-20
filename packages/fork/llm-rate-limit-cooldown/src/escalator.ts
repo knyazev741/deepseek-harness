@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto'
 import { RetryId } from '@knyazevai/dsh-llm-retry'
 import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import type { Context, Events } from '@deepseek-ai/cordis'
-import type { SessionEvent } from '@knyazevai/dsh-session'
 import type { RequestErrorAction } from '@knyazevai/dsh-agent'
 import type {} from '@knyazevai/dsh-llm-retry/types'
 
@@ -31,22 +30,6 @@ export function cancellableDelay(delayMs: number, signal: AbortSignal): Promise<
   })
 }
 
-/**
- * Count the bounded retries already recorded for one open request step.
- * @param events - the session event log.
- * @param turn - the failing request's turn.
- * @param step - the failing request's step.
- * @param provider - the failing request's provider route.
- * @returns the number of `llm/retry` records scoped to this request.
- */
-export function priorRetries(events: readonly SessionEvent[], turn: number, step: number, provider: string): number {
-  return events.reduce((count, event) => count + (
-    event.type === 'llm/retry' && event.data.turn === turn && event.data.step === step && event.data.provider === provider
-      ? 1
-      : 0
-  ), 0)
-}
-
 /** The `agent/request-error` waterfall listener plus the state it owns. */
 export interface EscalatorHandle {
   /** Abort controller that terminates this instance's listener and waits. */
@@ -63,7 +46,7 @@ export interface EscalatorHandle {
 /**
  * Build a rate-limit cooldown escalator for one installed plugin instance.
  * @param ctx - context whose logger reports the escalation steps.
- * @param cooldownMs - delay before one post-budget retry.
+ * @param cooldownMs - delay before an unclaimed failure is retried.
  * @param retryableCodes - normalized failure codes that trigger escalation.
  * @returns the listener and the per-instance state it owns.
  */
@@ -100,17 +83,10 @@ async function recover(
   next: () => Promise<RequestErrorAction>,
 ): Promise<RequestErrorAction> {
   if (!retryableCodes.includes('*') && !retryableCodes.includes(failure.code)) return next()
-  if (retryPolicy === undefined || retryPolicy.mode !== 'normal') return next()
+  if (retryPolicy?.mode === 'always') return next()
   const fusedSignal = AbortSignal.any([signal, lifetimeSignal])
   const aborted = (): boolean => fusedSignal.aborted
   if (aborted()) return
-  // oxlint-disable-next-line typescript/no-deprecated -- Retry history is durable across cooldown attempts.
-  const count = priorRetries(agent.session.snapshotEvents(), turn, step, provider)
-  const retryAfter = failure.providerRetryAfterMs
-  const providerDelay = retryAfter !== undefined && Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 0
-  if (count < retryPolicy.maxRetries && retryPolicy.retryableCodes.includes(failure.code)
-    && providerDelay <= retryPolicy.maxDelayMs) return next()
-
   // Compaction and other recovery owners get the first chance to repair the request.
   try {
     const action = await next()
@@ -119,6 +95,8 @@ async function recover(
     ctx.logger.warn('fork cooldown: downstream recovery failed; retaining the request: %o', error)
   }
   if (aborted()) return
+  const retryAfter = failure.providerRetryAfterMs
+  const providerDelay = retryAfter !== undefined && Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 0
   const delayMs = Math.max(cooldownMs, providerDelay)
   const policyKey = JSON.stringify(['fork-cooldown', cooldownMs, retryableCodes])
   // oxlint-disable-next-line typescript/no-deprecated -- Reuse the persisted identity of this policy chain.

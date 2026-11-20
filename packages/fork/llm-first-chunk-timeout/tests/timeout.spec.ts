@@ -689,8 +689,8 @@ describe('first-chunk idle timeout waterfall', () => {
 })
 
 describe('first-chunk idle timeout configuration', () => {
-  it('defaults to 120000ms and 100 compaction follow-ups', () => {
-    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 120_000, maxFirstChunkCompactionRetries: 100 })
+  it('defaults to 240000ms and 100 compaction follow-ups', () => {
+    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 240_000, maxFirstChunkCompactionRetries: 100 })
   })
 
   it('resolves the default through plugin application when config is omitted', async () => {

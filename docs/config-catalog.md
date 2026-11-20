@@ -1744,7 +1744,7 @@ export interface Config {
 ```ts config-catalog
 /** Configuration for the first result deadline and its compaction recovery. */
 export interface Config {
-  /** Maximum idle time before the first iterator result, defaulting to 120000ms. */
+  /** Maximum idle time before the first iterator result, defaulting to 240000ms. */
   readonly firstChunkIdleTimeoutMs?: number
   /** Maximum first-chunk compaction follow-ups before delegating retry policy (default 100). */
   readonly maxFirstChunkCompactionRetries?: number
@@ -1758,12 +1758,12 @@ export interface Config {
 ## `@knyazevai/dsh-fork-llm-rate-limit-cooldown`
 
 - `inject`: `agents`
-- `source`: [`packages/fork/llm-rate-limit-cooldown/src/index.ts:25`](../packages/fork/llm-rate-limit-cooldown/src/index.ts)
+- `source`: [`packages/fork/llm-rate-limit-cooldown/src/index.ts:21`](../packages/fork/llm-rate-limit-cooldown/src/index.ts)
 
 ```ts config-catalog
-/** Configuration for the long rate-limit cooldown escalation. */
+/** Configuration for provider failure cooldown retries. */
 export interface Config {
-  /** Cooldown before one retry of an exhausted rate-limited request, in ms (default 600000). */
+  /** Cooldown before retrying an unhandled provider failure, in ms (default 600000). */
   readonly cooldownMs?: number
   /** Failure codes eligible for cooldown; `*` includes every normalized provider failure. */
   readonly retryableCodes?: string[]

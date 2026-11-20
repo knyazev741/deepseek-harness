@@ -1,0 +1,4 @@
+- id: llm-replay
+  name: '@knyazevai/dsh-llm-replay'
+  config:
+    providers: []
