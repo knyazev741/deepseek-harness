@@ -1,6 +1,6 @@
 import { extractTextContent } from '@knyazevai/dsh-llm/message'
 import type { Context } from '@deepseek-ai/cordis'
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FileAttachmentRef, ImageAttachmentRef } from '@knyazevai/dsh-attachment'
 import type { PropsLocale, PropsRenderFactories, PropsRuntime } from '@knyazevai/dsh-client-ui-slots'
 import type { SessionId } from '@knyazevai/dsh-session/types'
@@ -99,9 +99,9 @@ export type QueueDockProps = PropsRuntime<'conversation.input.dock'> & QueueDock
   & PropsRenderFactories
 
 /**
- * Queue strip: one item renders directly; multiple items default to a
- * collapsible count header; an empty queue renders nothing. Local queued submissions
- * show sending status and disabled actions until their Host queue rows arrive.
+ * Queue strip with a collapsible count header for multiple items. New queued
+ * input reveals the newest row while preserving focus. Local submissions show
+ * sending status and disabled actions until their Host queue rows arrive.
  */
 export function QueueDock({ useSession, useProjection, updateQueue, notify, loadImage, renderFactorySlot, t }: QueueDockProps) {
   const inbox = useProjection('inbox') as unknown as InboxState | undefined
@@ -128,17 +128,42 @@ export function QueueDock({ useSession, useProjection, updateQueue, notify, load
   const [busy, setBusy] = useState<MessageId | null>(null)
   const [collapsed, setCollapsed] = useState(true)
   const listId = useId()
-
-  useEffect(() => {
-    if (rowCount === 0 && !collapsed) setCollapsed(true)
-    if (editing !== null && (!queueMutable || !queue.some(row => row.id === editing.id))) setEditing(null)
-  }, [collapsed, editing, queue, queueMutable, rowCount])
-
-  if (rowCount === 0) return null
-
+  const listRef = useRef<HTMLUListElement>(null)
+  const queueIds = useMemo(() => [
+    ...queue.map(({ id, source }) => source.kind === 'user' && 'rpcId' in source ? source.rpcId : id),
+    ...pendingQueue.map(submission => submission.requestId),
+  ], [pendingQueue, queue])
+  const observedIds = useRef(new Set(queueIds))
+  const revealNewest = useRef(false)
   const interactionActive = queueMutable && (editing !== null || busy !== null)
   const expanded = !collapsed || interactionActive
   const listVisible = rowCount === 1 || expanded
+
+  useLayoutEffect(() => {
+    const added = queueIds.some(id => !observedIds.current.has(id))
+    observedIds.current = new Set(queueIds)
+    if (rowCount === 0) {
+      revealNewest.current = false
+      if (!collapsed) setCollapsed(true)
+      return
+    }
+    if (interactionActive) return
+    if (added) {
+      revealNewest.current = true
+      if (!listVisible) setCollapsed(false)
+    }
+    const list = listRef.current
+    if (revealNewest.current && listVisible && list !== null) {
+      list.scrollTop = list.scrollHeight
+      revealNewest.current = false
+    }
+  }, [collapsed, interactionActive, listVisible, queueIds, rowCount])
+
+  useEffect(() => {
+    if (editing !== null && (!queueMutable || !queue.some(row => row.id === editing.id))) setEditing(null)
+  }, [editing, queue, queueMutable])
+
+  if (rowCount === 0) return null
 
   const applyAction = async (
     itemId: MessageId,
@@ -188,7 +213,7 @@ export function QueueDock({ useSession, useProjection, updateQueue, notify, load
             </span>
           </button>
         )}
-        <ul id={listId} className={css.list} hidden={!listVisible}>
+        <ul id={listId} ref={listRef} className={css.list} hidden={!listVisible}>
           {listVisible && queue.map((row) => {
             const attachments = queueAttachments(row.content)
             const text = textOf(row.content)

@@ -138,7 +138,7 @@ Session 首次绑定或缓存的 Session 成为 current 时，shell 会在渲染
 
 每个已挂载的 composer（包括在右侧栏打开的子代理对话）都加入同一条文档级粘贴路由。焦点不在任何输入框、文本区域或可编辑元素内时，剪贴板带有文件的粘贴会进入最近一次获得焦点的 composer；在其他 composer 获得焦点之前，或最近聚焦的 composer 当前无法接收文件时，则进入主 Conversation 的 composer。已聚焦编辑器内的粘贴仍由该编辑器处理，不含文件的剪贴板文字不会经此插入。位于隐藏或 inert 子树中的 composer（例如折叠的侧栏或未选中的标签页）不会成为目标；打开模态对话框或菜单时，只有其中的 composer 可以成为目标。没有可作为目标的 composer 能接收文件时，粘贴保留浏览器的默认处理。
 
-排队提交的本地回显在禁用的编辑、删除、插话按钮旁显示“发送中…”；折叠后的队列在标题栏保留发送状态。匹配的 Host 队列行替换回显后，各操作按原有的纯文本内容和运行状态要求启用。仅收到提示词确认不会启用队列操作。被拒绝或失败的提交不会公开回显，草稿留在 composer 中并显示错误提示。Agent 接纳阶段的拒绝（`session/prompt-rejected`）显示它自带的文字；若 `presented` 表明拒绝它的插件会在自己的界面里说明，composer 不再提示。
+排队提交的本地回显在禁用的编辑、删除、插话按钮旁显示“发送中…”；折叠后的队列在标题栏保留发送状态。有新条目入队时，队列会展开并滚动到最新条目，焦点保持原位。匹配的 Host 队列行替换回显后，各操作按原有的纯文本内容和运行状态要求启用。仅收到提示词确认不会启用队列操作。被拒绝或失败的提交不会公开回显，草稿留在 composer 中并显示错误提示。Agent 接纳阶段的拒绝（`session/prompt-rejected`）显示它自带的文字；若 `presented` 表明拒绝它的插件会在自己的界面里说明，composer 不再提示。
 
 Send 和 Stop 按钮禁用时不显示提示气泡，轮次结束后由 Stop 切换成禁用 Send 的按钮也遵循此规则。普通 composer 运行时，如果草稿为空或输入不可用，主指针操作保持为 Stop。可提交的文字或附件会把同一位置切换为 Send；清空或成功提交草稿后恢复 Stop。消息等待 Host 接收期间，该位置显示发送进度，旁边另有独立的 Stop。繁忙态 Enter 设置为普通 Session 与可继续 child 选择 Queue 或 Steer 投递，运行中的 Send 按钮按 plain Enter 解析出的同一模式投递；当它在普通消息草稿上可用（没有待上传文件）时，其标签以该模式命名（排队发送或插话发送），因此该设置同时约束 Enter 与按钮，而 Cmd/Ctrl+Enter 仍使用另一模式；空闲会话、空草稿与 `/` 命令行保留普通的 Send 标签。它们的 QueueDock 行共享 Edit、Remove 与 Steer，空草稿也共享 steer-all 组合键。One-shot child 继续只读。Plan Mode 与 active goal 不改变附件入口。可继续 child 保留独立的 Send 与 Stop 操作，允许粘贴或拖入图片，但不提供「文件」菜单项；创建者的在线状态不禁用输入，Host 接收失败使用普通提示词错误反馈（[决策](../../../.agents/notes/archived/bug-fix/2026-08-20-running-draft-primary-send.md)、[inbox 控制](../../subagent/subagent/README.zh.md)）。
 

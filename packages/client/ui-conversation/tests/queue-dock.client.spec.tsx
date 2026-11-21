@@ -272,7 +272,7 @@ describe('QueueDock', () => {
     act(() => { source.push({ ...pending, pendingSubmissions: [...pending.pendingSubmissions, {
       requestId: 'queued-request' as never, placement: 'queued', time: 2, text: '新排队回显', attachments: [],
     }] }) })
-    fireEvent.click(view.getByRole('button', { name: '2 条排队消息发送中…' }))
+    expect(view.getByRole('button', { name: '2 条排队消息' }).getAttribute('aria-expanded')).toBe('true')
     expect(view.queryByText('留在正文')).toBeNull()
     expect(view.getByText('原有排队')).toBeTruthy()
     expect(view.getByText('新排队回显').closest('[data-submission-echo]')).not.toBeNull()
@@ -336,6 +336,38 @@ describe('QueueDock', () => {
     expect(view.queryByRole('status')).toBeNull()
   })
 
+  it('reveals new queued input and preserves a manual collapse through Host handoff', () => {
+    const one = row('first', 'first message')
+    const two = row('second', 'second message')
+    const initial = snapshotWith([one, two])
+    const source = liveSession(initial)
+    const view = render(<QueueDock {...kitFor(initial)} useSession={source.useSession} useProjection={source.useProjection} />)
+    expect(view.getByRole('button', { name: '2 条排队消息' }).getAttribute('aria-expanded')).toBe('false')
+
+    const requestId = 'req-third' as SessionSnapshot['pendingSubmissions'][number]['requestId']
+    act(() => {
+      source.push({ ...initial, pendingSubmissions: [{
+        requestId, placement: 'queued', time: 1000, text: 'third message', attachments: [],
+      }] })
+    })
+    const header = view.getByRole('button', { name: /3 条排队消息/ })
+    expect(header.getAttribute('aria-expanded')).toBe('true')
+    expect(view.getByText('third message')).toBeTruthy()
+
+    fireEvent.click(header)
+    const accepted: UserMessage = {
+      ...row('accepted-third', 'third message'), source: { kind: 'user', rpcId: requestId },
+    }
+    act(() => { source.push(snapshotWith([one, two, accepted])) })
+    expect(header.getAttribute('aria-expanded')).toBe('false')
+
+    act(() => {
+      source.push(snapshotWith([one, two, accepted, row('fourth', 'fourth message')]))
+    })
+    expect(view.getByRole('button', { name: '4 条排队消息' }).getAttribute('aria-expanded')).toBe('true')
+    expect(view.getByText('fourth message')).toBeTruthy()
+  })
+
   it('leaves pending steering to the conversation flow', () => {
     const snap = snapshotWith([], [row('s-1', 'interrupt')])
     const source = liveSession(snap)
@@ -343,7 +375,7 @@ describe('QueueDock', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('renders one row directly and defaults multiple rows to a collapsible count header', () => {
+  it('renders one row directly and expands when a second row arrives', () => {
     const single = snapshotWith([row('i-1', 'one')])
     const source = liveSession(single)
     const view = render(<QueueDock {...kitFor(single)} useSession={source.useSession} useProjection={source.useProjection} />)
@@ -352,15 +384,8 @@ describe('QueueDock', () => {
 
     act(() => { source.push(snapshotWith([row('i-1', 'one'), row('i-2', 'two')])) })
     const header = view.getByRole('button', { name: '2 条排队消息' })
-    expect(header.getAttribute('aria-expanded')).toBe('false')
-    expect(document.getElementById(header.getAttribute('aria-controls')!)).toBeTruthy()
-    // Collapsed exposes the count header only: the row actions are not rendered.
-    expect(view.getAllByRole('button')).toEqual([header])
-    expect(view.queryByText('one')).toBeNull()
-    expect(view.queryByText('two')).toBeNull()
-
-    fireEvent.click(header)
     expect(header.getAttribute('aria-expanded')).toBe('true')
+    expect(document.getElementById(header.getAttribute('aria-controls')!)).toBeTruthy()
     // Expanded renders one Edit/Remove/Steer group per row, plus the header.
     expect(view.getAllByRole('button')).toHaveLength(1 + 2 * 3)
     expect(view.getByText('one')).toBeTruthy()
@@ -442,7 +467,7 @@ describe('QueueDock', () => {
     })
   })
 
-  it('defaults a new multi-row queue to collapsed after the prior queue empties', () => {
+  it('reveals new rows after the prior queue empties', () => {
     const first = snapshotWith([row('i-1', 'one'), row('i-2', 'two')])
     const source = liveSession(first)
     const view = render(<QueueDock {...kitFor(first)} useSession={source.useSession} useProjection={source.useProjection} />)
@@ -456,8 +481,8 @@ describe('QueueDock', () => {
     })
 
     const header = view.getByRole('button', { name: '2 条排队消息' })
-    expect(header.getAttribute('aria-expanded')).toBe('false')
-    expect(view.queryByText('three')).toBeNull()
+    expect(header.getAttribute('aria-expanded')).toBe('true')
+    expect(view.getByText('four')).toBeTruthy()
   })
 
   it('displays complete previews with compressed whitespace and CSS ellipsis while preserving editable text', () => {
