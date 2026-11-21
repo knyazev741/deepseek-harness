@@ -90,6 +90,7 @@ kind: "package-reference"
 | `maxRequestImageBytes` | `20 MiB` | base64 图片载荷总上限，保留图片超过时请求以 `IMAGE_OFFLOAD_REQUIRED` 失败 |
 | `maxRequestImages` | `50` | 保留请求图片数量上限，保留图片超过时请求以 `IMAGE_OFFLOAD_REQUIRED` 失败。默认值取 Azure OpenAI 的 50 张上限；提供方接受更多图片的路由应调高 |
 | `imageOffloadCountQuantum` | `10`，不超过 `maxRequestImages` | 每次数量超限时省略的最老图片数 |
+| `streamIdleTimeoutMs` | `500,000` | 单次流读取未完成的最大提供方空闲时间 |
 | `retryPolicy` | normal，5 次重试 | 由 `dsh-llm-retry` 执行的提供方自有重试策略 |
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-llm-pi-ai)是每个受支持字段及其 JSDoc 的穷尽式真源。

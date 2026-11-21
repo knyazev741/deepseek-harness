@@ -1,7 +1,7 @@
 /** Shared provider limits and Chat Files API defaults. */
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
-export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000
+export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 500_000
 /** Default combined request/response context capacity. */
 export const DEFAULT_CONTEXT_WINDOW = 1_000_000
 /** Default per-request output-token cap. */

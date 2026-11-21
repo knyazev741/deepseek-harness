@@ -44,7 +44,7 @@ import type {
 import { buildProvider, supportedProtocols } from './provider.ts'
 
 /** Default maximum idle interval while an adapter stream read is outstanding. */
-export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000
+export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 500_000
 
 /**
  * Default request-level bound on base64-encoded image payload. Every image in
@@ -175,7 +175,7 @@ export interface PiAiProviderProfile {
   timeoutMs?: number
   /** WebSocket connection timeout in milliseconds. */
   websocketConnectTimeoutMs?: number
-  /** Maximum provider idle time while one stream read is outstanding. */
+  /** Maximum provider idle time per stream read (default 500000ms). */
   streamIdleTimeoutMs?: number
   /**
    * Maximum base64-encoded image payload per request. When a request's

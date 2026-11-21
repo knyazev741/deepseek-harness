@@ -270,7 +270,10 @@ describe('direct Messages HTTP', () => {
     expect(http.requests).toEqual([])
   })
 
-  it('times out an idle HTTP response and closes the connection', async () => {
+  it.each([
+    { overrides: {}, timeoutMs: 500_000 },
+    { overrides: { streamIdleTimeoutMs: 30 }, timeoutMs: 30 },
+  ])('closes the HTTP response after $timeoutMs ms of stream idleness', async ({ overrides, timeoutMs }) => {
     const stopped = Promise.withResolvers<undefined>()
     const http = await endpoint((response) => {
       response.once('close', () => { stopped.resolve(undefined) })
@@ -278,11 +281,16 @@ describe('direct Messages HTTP', () => {
     })
     // Advance the idle clock after the response is readable, independently of connection setup time.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const stream = adapter({ baseURL: http.url, streamIdleTimeoutMs: 30 }).stream(options())[Symbol.asyncIterator]()
+    const stream = adapter({ baseURL: http.url, ...overrides }).stream(options())[Symbol.asyncIterator]()
     try {
       expect((await stream.next()).value).toMatchObject({ type: 'block-start' })
-      const rejected = expect(stream.next()).rejects.toMatchObject({ code: 'TIMEOUT' })
-      await vi.advanceTimersByTimeAsync(30)
+      const settled = vi.fn()
+      const pending = stream.next()
+      void pending.then(settled, settled)
+      const rejected = expect(pending).rejects.toMatchObject({ code: 'TIMEOUT' })
+      await vi.advanceTimersByTimeAsync(timeoutMs - 1)
+      expect(settled).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
       await rejected
       await stopped.promise
     } finally {

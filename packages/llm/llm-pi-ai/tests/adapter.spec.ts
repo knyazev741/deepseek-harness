@@ -523,9 +523,12 @@ describe('PiAiAdapter provider routing', () => {
     })
   })
 
-  it('stops the SDK request when the adapter idle watchdog expires', async () => {
+  it.each([
+    { overrides: {}, timeoutMs: 500_000 },
+    { overrides: { streamIdleTimeoutMs: 20 }, timeoutMs: 20 },
+  ])('stops the SDK request after $timeoutMs ms of idle time', async ({ overrides, timeoutMs }) => {
     const server = await mockServer([{ holdOpen: true }])
-    const ctx = await harness(server.url, { streamIdleTimeoutMs: 20 })
+    const ctx = await harness(server.url, overrides)
     const controller = new AbortController()
     onTestFinished(async () => {
       controller.abort()
@@ -534,13 +537,20 @@ describe('PiAiAdapter provider routing', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 
     const pending = assemble(ctx, { model: 'deepseek-flash', messages: [], signal: controller.signal })
+    const settled = vi.fn()
+    void pending.then(settled)
     await server.requestReceived
+    await vi.advanceTimersByTimeAsync(timeoutMs - 1)
+    expect(settled).not.toHaveBeenCalled()
     expect(server.closedResponses).toBe(0)
-    await vi.advanceTimersByTimeAsync(20)
+    await vi.advanceTimersByTimeAsync(1)
     vi.useRealTimers()
 
     const result = await pending
-    expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
+    expect(result.finish).toMatchObject({
+      kind: 'error',
+      failure: { code: 'TIMEOUT', message: `pi-ai stream idle timeout after ${timeoutMs}ms` },
+    })
     await server.responseClosed
 
     expect(server.paths).toEqual(['/chat/completions'])
