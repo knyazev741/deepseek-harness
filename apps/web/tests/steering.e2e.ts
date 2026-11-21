@@ -460,6 +460,7 @@ describe.each(['reconnect', 'delayed-inbox'] as const)('web e2e: composer shortc
         const warningStart = tripwire.warnings.length
         await socket.close({ code: 1012, reason: 'steering reconnect checkpoint' })
         await expect.poll(() => remoteSocket !== socket, { timeout: 10_000 }).toBe(true)
+        await input.and(page.locator('[contenteditable="true"]')).waitFor({ timeout: 10_000 })
         await expect.poll(() => page.locator('[data-submission-echo]').count(), { timeout: 10_000 }).toBe(0)
         expect(await page.getByText(STEER, { exact: true }).count()).toBe(0)
         acknowledgeReloadConnectionLoss(tripwire, warningStart)

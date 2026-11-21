@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { syncedConfig } from '@knyazevai/dsh-client-test-runtime'
 import { apply as applyMenus, inject as injectMenus } from '@knyazevai/dsh-client-ui-context-menu/client'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   SlotTestRuntime, stubConfigForm, usePinnedBrowserLanguages,
 } from '@knyazevai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@knyazevai/dsh-client-locale/client'
 import { createSnapshotStore, type ObservableSnapshot } from '@knyazevai/dsh-client-store'
 import type { SessionId } from '@knyazevai/dsh-session/types'
-import { apply, inject, type ConversationShellInjected, type ViewTab } from '@knyazevai/dsh-client-ui-conversation/client'
+import { apply, ConversationController, inject, type ConversationShellInjected, type ViewTab } from '@knyazevai/dsh-client-ui-conversation/client'
 
 usePinnedBrowserLanguages('zh-CN')
 
@@ -122,6 +122,21 @@ describe('target-neutral Conversation apply wiring', () => {
     expect(b.runtime.ctx.get('uiConversation')).toBeDefined()
     expect(b.runtime.slots.entries('conversation.view')).toHaveLength(0)
     await b.runtime.dispose()
+  })
+
+  it('binds a fresh composer registration when the conversation service restarts', async () => {
+    const { runtime } = await bench()
+    onTestFinished(() => runtime.dispose())
+    const provider = [...runtime.ctx.registry.get(ConversationController)!.fibers][0]!
+    const original = runtime.slots.entries('conversation.composer.bar')[0]!
+    expect(original).toBeDefined()
+
+    await provider.restart()
+    await vi.waitFor(() => {
+      const registrations = runtime.slots.entries('conversation.composer.bar')
+      expect(registrations).toHaveLength(1)
+      expect(registrations[0]).not.toBe(original)
+    })
   })
 
   it('owns shell slots and shares only the Conversation store', async () => {

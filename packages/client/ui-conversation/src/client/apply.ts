@@ -461,7 +461,7 @@ export function apply(ctx: Context, config: SyncedConfig<ConversationConfig>): v
   }, ConversationSessionHeader)
 
   const fileIntake = createComposerFileIntake()
-  const registerComposerBar = () => slots.register({
+  const registerComposerBar = (scope: Context, conversation: ConversationController) => scope.slots.register({
     name: 'conversation.composer.bar',
     locale: NS,
     children: {
@@ -497,7 +497,6 @@ export function apply(ctx: Context, config: SyncedConfig<ConversationConfig>): v
           },
         }
       }
-      const conversation = concreteConversation(ctx)
       const shell = inputHub.shell(sessionId)
       const inputTriggers = inputHub.inputTriggers(sessionId)
       const bridge = hostPathBridge()
@@ -591,13 +590,16 @@ export function apply(ctx: Context, config: SyncedConfig<ConversationConfig>): v
     yield registerConversationSession()
     yield registerHeader()
     yield registerSessionHeader()
-    yield registerComposerBar()
   })
 
   ctx.plugin(ConversationController, {
     input: inputHub,
     blocks: composerBlocks,
     maxConcurrentFileUploads: fileUploadLimit,
+  })
+  ctx.inject(['conversation', 'slots'], (scope) => {
+    const conversation = concreteConversation(scope)
+    scope.slots.inject('conversation.composer.bar', () => registerComposerBar(scope, conversation))
   })
   ctx.plugin(todoDockEntry)
   ctx.plugin(queueDockEntry)
