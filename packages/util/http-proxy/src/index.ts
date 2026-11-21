@@ -9,15 +9,14 @@
  * This is a library, not a plugin: transport policy has one answer per process, so there is nothing
  * for a composition to mount, swap, or scope.
  *
- * Five functions, one per way a caller needs the policy — install it, build a dispatcher with its
- * own transport choices, ask how to send one request, build a child's environment, and strip the
- * ambient one for a replay.
+ * Streaming callers can extend Fetch transport deadlines through the current dispatcher.
  * @module @knyazevai/dsh-http-proxy
  */
 
 export {
   clearedProxyEnv,
   createRouteDispatcher,
+  fetchWithStreamTimeout,
   installProxyFromEnvironment,
   proxyEnvironmentForChild,
   proxyRouteFor,

@@ -53,6 +53,38 @@ export type ProxyRoute =
 /** A route that sends nothing through a proxy, shared because it carries no per-request state. */
 const DIRECT_ROUTE: ProxyRoute = { proxied: false }
 
+/**
+ * Send a streaming HTTP request with transport deadlines at least as long as
+ * the caller's stream watchdog. Keep the caller's dispatcher and its routing.
+ * @param input - Fetch request input.
+ * @param init - Fetch options, including the caller's cancellation signal.
+ * @param timeoutMs - idle deadline in milliseconds.
+ * @returns the streaming HTTP response.
+ */
+export async function fetchWithStreamTimeout(
+  input: RequestInfo | URL,
+  init: (RequestInit & { dispatcher?: Dispatcher }) | undefined,
+  timeoutMs: number,
+): Promise<Response> {
+  const { Dispatcher1Wrapper, getGlobalDispatcher } = await import('undici')
+  const ambient = getGlobalDispatcher()
+  const legacy = new Dispatcher1Wrapper(ambient)
+  const delay = Math.ceil(timeoutMs)
+  const dispatcher = {
+    dispatch(options: Dispatcher.DispatchOptions, handler: Dispatcher.DispatchHandler): boolean {
+      // Node Fetch can use a v1 handler even when the installed dispatcher uses v2.
+      const target = init?.dispatcher ?? (typeof handler.onRequestStart === 'function' ? ambient : legacy)
+      return target.dispatch({
+        ...options,
+        headersTimeout: Math.max(options.headersTimeout ?? 0, delay),
+        bodyTimeout: Math.max(options.bodyTimeout ?? 0, delay),
+      }, handler)
+    },
+  }
+  const requestInit = { ...init, dispatcher }
+  return fetch(input, requestInit)
+}
+
 /** Optional dispatcher transport choices shared by global installation and per-request construction. */
 export interface DispatcherOptions {
   /**

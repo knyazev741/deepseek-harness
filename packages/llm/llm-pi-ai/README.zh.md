@@ -93,6 +93,8 @@ kind: "package-reference"
 | `streamIdleTimeoutMs` | `500,000` | 单次流读取未完成的最大提供方空闲时间 |
 | `retryPolicy` | normal，5 次重试 | 由 `dsh-llm-retry` 执行的提供方自有重试策略 |
 
+对于接受自定义 Fetch 的 HTTP 传输，适配器将标头和正文的超时设置为至少与配置的流空闲超时一样长。请求仍由底层 dispatcher 路由。
+
 生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-llm-pi-ai)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 ### 登录提供方

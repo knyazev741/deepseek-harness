@@ -14976,6 +14976,9 @@ importers:
       '@knyazevai/dsh-brand':
         specifier: workspace:*
         version: link:../../util/brand
+      '@knyazevai/dsh-http-proxy':
+        specifier: workspace:*
+        version: link:../../util/http-proxy
       '@knyazevai/dsh-util-values':
         specifier: workspace:*
         version: link:../../util/values
@@ -15037,9 +15040,6 @@ importers:
       '@knyazevai/dsh-home-paths':
         specifier: workspace:*
         version: link:../../util/home-paths
-      '@knyazevai/dsh-http-proxy':
-        specifier: workspace:*
-        version: link:../../util/http-proxy
       '@knyazevai/dsh-launch-environment':
         specifier: workspace:*
         version: link:../../util/launch-environment
@@ -15168,6 +15168,9 @@ importers:
       '@knyazevai/dsh-brand':
         specifier: workspace:*
         version: link:../../util/brand
+      '@knyazevai/dsh-http-proxy':
+        specifier: workspace:*
+        version: link:../../util/http-proxy
       '@knyazevai/dsh-util-values':
         specifier: workspace:*
         version: link:../../util/values
@@ -15196,9 +15199,6 @@ importers:
       '@knyazevai/dsh-fs':
         specifier: workspace:*
         version: link:../../fs/fs
-      '@knyazevai/dsh-http-proxy':
-        specifier: workspace:*
-        version: link:../../util/http-proxy
       '@knyazevai/dsh-launch-environment':
         specifier: workspace:*
         version: link:../../util/launch-environment

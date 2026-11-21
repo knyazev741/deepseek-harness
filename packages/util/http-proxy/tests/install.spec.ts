@@ -5,6 +5,7 @@ import { afterEach, beforeAll, afterAll, describe, expect, it } from 'vitest'
 import { getGlobalDispatcher } from 'undici'
 import {
   clearedProxyEnv,
+  fetchWithStreamTimeout,
   installProxyFromEnvironment,
   proxyEnvironmentForChild,
   proxyRouteFor,
@@ -114,11 +115,14 @@ describe('installProxyFromEnvironment', () => {
       } finally { await outer.dispose() }
     })
   })
-  it('routes the built-in global fetch through the proxy', async () => {
+  it('routes ordinary and streaming Fetch through the installed proxy', async () => {
     const { dispose } = await install(proxyAll())
     try {
+      const dispatcher = getGlobalDispatcher()
       await expect((await fetch(proxyTarget)).text()).resolves.toBe('VIA-PROXY')
-      expect(proxied).toEqual([`GET ${proxyTarget}`])
+      await expect((await fetchWithStreamTimeout(proxyTarget, {}, 500_000)).text()).resolves.toBe('VIA-PROXY')
+      expect(getGlobalDispatcher()).toBe(dispatcher)
+      expect(proxied).toEqual([`GET ${proxyTarget}`, `GET ${proxyTarget}`])
     } finally {
       await dispose()
     }

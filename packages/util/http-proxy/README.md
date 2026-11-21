@@ -35,6 +35,7 @@ Plain `fetch()` is proxied, and so is any SDK that reaches `globalThis.fetch` �
 |---|---|
 | A plain request, or an SDK that reaches `globalThis.fetch` | nothing — the global dispatcher already routes it |
 | A call that needs its own transport choice, such as HTTP/1.1 only | `createRouteDispatcher(env, { allowH2: false })`, use it as `dispatcher`, close it when done |
+| A streaming request with an idle watchdog | `fetchWithStreamTimeout(input, init, timeoutMs)` extends the request’s header and body deadlines through the current dispatcher |
 | A call that must branch on whether this request is proxied | `proxyRouteFor(url)` |
 | An SDK that takes a proxy URL of its own | `proxyRouteFor(url)`, and pass `route.proxy` |
 | A spawn whose environment you build yourself | apply `proxyEnvironmentForChild()` to it (`undefined` means remove) |

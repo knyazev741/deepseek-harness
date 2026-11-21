@@ -93,6 +93,8 @@ Each profile may set a `retryPolicy`; omission uses normal mode with five retrie
 | `streamIdleTimeoutMs` | `500,000` | Maximum provider idle time per outstanding stream read |
 | `retryPolicy` | normal, 5 retries | Provider-owned retry policy executed by `dsh-llm-retry` |
 
+For HTTP transports that accept a Fetch override, the adapter sets the header and body deadlines to at least the configured stream idle timeout. The underlying dispatcher still routes the request.
+
 The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-llm-pi-ai) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Sign in to a provider

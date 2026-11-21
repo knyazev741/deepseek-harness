@@ -287,11 +287,10 @@ describe('direct Messages HTTP', () => {
       const settled = vi.fn()
       const pending = stream.next()
       void pending.then(settled, settled)
-      const rejected = expect(pending).rejects.toMatchObject({ code: 'TIMEOUT' })
       await vi.advanceTimersByTimeAsync(timeoutMs - 1)
       expect(settled).not.toHaveBeenCalled()
       await vi.advanceTimersByTimeAsync(1)
-      await rejected
+      await expect(pending).rejects.toMatchObject({ code: 'TIMEOUT' })
       await stopped.promise
     } finally {
       vi.useRealTimers()

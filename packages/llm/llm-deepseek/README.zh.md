@@ -76,6 +76,8 @@ kind: "package-reference"
 | `fileQuotaCleanupBatch` | `100` | 配额重试前删除的、归 harness 所有的最旧文件数 |
 | `retryPolicy` | normal，5 次重试 | 由 `dsh-llm-retry` 执行的提供方自有重试策略 |
 
+Messages 请求的 HTTP 响应标头和正文超时至少与配置的流空闲超时一样长。请求仍由底层 dispatcher 路由。
+
 生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-llm-deepseek-api-key)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 启用[主动压缩](../../compaction/compaction-basic/README.zh.md#use-this-package)时，`models[].contextWindow`（未声明时使用 `defaultContextWindow`）必须大于生效请求的 `maxTokens` 与压缩策略 `headroomTokens` 之和。请求未覆盖输出上限时，使用模型的 `maxTokens` 或适配器默认值。小窗口部署应在容量范围内配置余量；降低 `thresholdRatio` 可以提早压缩。

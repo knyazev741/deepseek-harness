@@ -35,6 +35,7 @@ kind: "package-reference"
 |---|---|
 | 普通请求，或最终落到 `globalThis.fetch` 的 SDK | 什么都不用——全局 dispatcher 已经在路由它 |
 | 需要自带传输选择的调用，例如只走 HTTP/1.1 | `createRouteDispatcher(env, { allowH2: false })`，作为 `dispatcher` 传入，用完关闭 |
+| 带空闲计时器的流式请求 | `fetchWithStreamTimeout(input, init, timeoutMs)`，沿用当前 dispatcher 并延长请求的标头与正文超时 |
 | 需要按“这次请求是否走代理”分支的调用 | `proxyRouteFor(url)` |
 | 接受自有代理 URL 的 SDK | `proxyRouteFor(url)`，把 `route.proxy` 传进去 |
 | 由你自己构造环境的 spawn | 把 `proxyEnvironmentForChild()` 应用到该 spawn（`undefined` 表示删除） |

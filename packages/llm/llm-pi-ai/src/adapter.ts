@@ -56,6 +56,7 @@ import type {
   ToolSchema,
 } from '@knyazevai/dsh-llm'
 import type { AttachmentStore, ImageAttachmentRef } from '@knyazevai/dsh-attachment'
+import { fetchWithStreamTimeout } from '@knyazevai/dsh-http-proxy'
 import { brandString } from '@knyazevai/dsh-brand'
 import { idleWatchdog, timeoutOf } from '@knyazevai/dsh-timeout'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
@@ -144,6 +145,12 @@ export interface PiAiAuthInjection {
   /** Ambient lookups a provider performs while resolving its own auth. */
   authContext: AuthContext
 }
+
+/** pi-ai protocols that pass per-request Fetch through to their HTTP transport. */
+const STREAM_FETCH_APIS: ReadonlySet<string> = new Set([
+  'openai-completions', 'openai-responses', 'anthropic-messages',
+  'azure-openai-responses', 'openai-codex-responses', 'pi-messages', 'mistral-conversations',
+])
 
 /** Copy profile stream knobs into pi-ai's common option vocabulary. */
 function profileOptions(
@@ -473,6 +480,9 @@ export class PiAiAdapter extends LlmAdapter {
         this.config.onThinkingOmitted?.({ provider: options.provider, model: options.model, count })
       })
       const events = snapshot.models.streamSimple(model, context, {
+        ...STREAM_FETCH_APIS.has(model.api)
+          ? { fetch: (input, init) => fetchWithStreamTimeout(input, init, streamIdleTimeoutMs) }
+          : {},
         ...profileOptions(profile, reasoning, apiKey),
         ...options.temperature === undefined ? {} : { temperature: options.temperature },
         ...options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens },

@@ -3,6 +3,7 @@
 import { attributionHeaders, LlmAdapter, LlmError } from '@knyazevai/dsh-llm'
 import type { GenerateOptions, ImageAttachmentAccessResolver, PreparedAdapterCall, StreamChunk } from '@knyazevai/dsh-llm'
 import type { DeepSeekLlmApiExtensionRequest, DeepSeekLlmApiJson } from '@knyazevai/dsh-deepseek-llm-api-extensions'
+import { fetchWithStreamTimeout } from '@knyazevai/dsh-http-proxy'
 import { idleWatchdog, timeoutOf } from '@knyazevai/dsh-timeout'
 import { modelInfo } from './model-info.ts'
 import type { DeepSeekAdapterOptions, DeepSeekConnectionOptions as Connection } from './types.ts'
@@ -147,7 +148,7 @@ export class DeepSeekAdapter<C extends Connection = Connection> extends LlmAdapt
             ? [MESSAGES_TOOL_CHANGES_BETA]
             : [],
         ]
-        const response = await fetch(`${messagesApiRoot(connection.baseURL)}/messages`, {
+        const response = await fetchWithStreamTimeout(`${messagesApiRoot(connection.baseURL)}/messages`, {
           method: 'POST', signal: live, body: extensions.payload, redirect: 'error',
           headers: {
             ...attributionHeaders(),
@@ -159,7 +160,7 @@ export class DeepSeekAdapter<C extends Connection = Connection> extends LlmAdapt
             ...options.sessionId === undefined ? {} : { 'x-deepseek-harness-session-id': String(options.sessionId) },
             ...requestIdentity.purpose === 'compaction' ? { 'x-deepseek-harness-compact': '1' } : {},
           },
-        })
+        }, connection.streamIdleTimeoutMs)
         if (!response.ok) {
           const text = await response.text()
           let raw: unknown

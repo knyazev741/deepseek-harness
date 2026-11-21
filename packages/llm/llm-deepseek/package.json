@@ -43,6 +43,7 @@
     "@deepseek-ai/cordis-plugin-loader": "workspace:~"
   },
   "dependencies": {
+    "@knyazevai/dsh-http-proxy": "workspace:*",
     "@deepseek-ai/cosmokit": "workspace:~",
     "@knyazevai/dsh-brand": "workspace:*",
     "@knyazevai/dsh-util-values": "workspace:*",
@@ -70,7 +71,6 @@
     "@knyazevai/dsh-session": "workspace:*",
     "@knyazevai/dsh-session-log-deepseek": "workspace:*",
     "@knyazevai/dsh-timeout": "workspace:*",
-    "@knyazevai/dsh-http-proxy": "workspace:*",
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/cordis-plugin-include": "workspace:~",
     "@knyazevai/dsh-agent-loop": "workspace:*",

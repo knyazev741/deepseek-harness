@@ -538,7 +538,7 @@ describe('PiAiAdapter provider routing', () => {
 
     const pending = assemble(ctx, { model: 'deepseek-flash', messages: [], signal: controller.signal })
     const settled = vi.fn()
-    void pending.then(settled)
+    void pending.then(settled, settled)
     await server.requestReceived
     await vi.advanceTimersByTimeAsync(timeoutMs - 1)
     expect(settled).not.toHaveBeenCalled()
