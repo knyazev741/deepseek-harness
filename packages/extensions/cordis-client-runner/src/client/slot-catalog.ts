@@ -6536,7 +6536,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     keyDomain: '',
     hookContext: '',
     slotInject: '',
-    declaredBy: 'the runtime itself (built in; always present)',
+    declaredBy: 'an entry in \'sidebar.workspaces\' (client-ui-workspace), so it exists while that entry is mounted',
     occupants: [
       'fork-ui-workspace-overlay WorkspaceRowActions id \'fork.session-menu-actions\'',
     ],

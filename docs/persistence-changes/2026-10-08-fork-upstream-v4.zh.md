@@ -27,20 +27,20 @@ id: 2026-10-08-fork-upstream-v4
 baseline: false
 changes:
   - root: "event:agent/inbox/spliced"
-    previous: "2026-10-13-user-rpc-principal"
-    after: "9308eeca974942d895e0f6a503fe3919331061373a87acd003ade30104ba462f"
+    previous: "2026-11-05-timeline-priority-notice"
+    after: "90dcd45ecda350667dc3953acba41c5f38230ea25d2ee06177532670fc94ade9"
     decision: same-version
   - root: "event:developer/message"
-    previous: "2026-10-13-user-rpc-principal"
-    after: "bd513c6a8a40609220d4e2ddc91e3752fbc67eff44a78255557893aadbe7d069"
+    previous: "2026-11-05-timeline-priority-notice"
+    after: "8f268993ffec91161407e2a63b52e4715921c5285691b5342082402334882d16"
     decision: same-version
   - root: "event:session/title-llm-request"
-    previous: "2026-10-13-user-rpc-principal"
-    after: "f5b9422088c2dcf7419b0e4df9cbb9ad12e1a36bcfeeee4dbb91349b7da86c5e"
+    previous: "2026-11-05-timeline-priority-notice"
+    after: "cae6d0333d8d52bc2290170c507ca2ea213d9e52a7540d6f94f51c2beadf8707"
     decision: same-version
   - root: "event:user/message"
-    previous: "2026-10-13-user-rpc-principal"
-    after: "57d2ce8a691e6ff2c23d362810a0dd25d9d48372e63801faf961ba8de21734f8"
+    previous: "2026-11-05-timeline-priority-notice"
+    after: "b700c65c16c32241dc947e69f0198ea7da16366a878eeb5c8db4e6885fd3d4c5"
     decision: same-version
 ```
 
