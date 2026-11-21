@@ -689,18 +689,32 @@ describe('first-chunk idle timeout waterfall', () => {
 })
 
 describe('first-chunk idle timeout configuration', () => {
-  it('defaults to 240000ms and 100 compaction follow-ups', () => {
-    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 240_000, maxFirstChunkCompactionRetries: 100 })
+  it('defaults to 500000ms and 100 compaction follow-ups', () => {
+    expect(FirstChunkTimeout.Config()).toEqual({ firstChunkIdleTimeoutMs: 500_000, maxFirstChunkCompactionRetries: 100 })
   })
 
-  it('resolves the default through plugin application when config is omitted', async () => {
+  it('times out at 500000ms when config is omitted', async () => {
+    vi.useFakeTimers()
     const ctx = new Context()
     contexts.push(ctx)
     await ctx.plugin(LlmRuntime)
     FirstChunkTimeout.apply(ctx)
-    const source = scriptedStream([{ result: { done: true, value: undefined } }])
+    const pending = deferred<IteratorResult<StreamChunk>>()
+    const source = scriptedStream([{ promise: pending.promise }])
+    const read = firstResult(waterfall(ctx, source))
 
-    await expect(firstResult(waterfall(ctx, source))).resolves.toEqual({ done: true, value: undefined })
+    await vi.advanceTimersByTimeAsync(499_999)
+    expect(source.returnCalls).toBe(0)
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(read).resolves.toMatchObject({
+      value: {
+        reason: {
+          kind: 'error',
+          failure: { code: 'FIRST_CHUNK_TIMEOUT', message: 'first LLM chunk idle timeout after 500000ms' },
+        },
+      },
+    })
+    pending.resolve({ done: true, value: undefined })
   })
 
   it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1, MAX_TIMER_DELAY_MS + 1])(

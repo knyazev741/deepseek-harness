@@ -1746,7 +1746,7 @@ export interface Config {
 ```ts config-catalog
 /** Configuration for the first result deadline and its compaction recovery. */
 export interface Config {
-  /** Maximum idle time before the first iterator result, defaulting to 240000ms. */
+  /** Maximum idle time before the first iterator result, defaulting to 500000ms. */
   readonly firstChunkIdleTimeoutMs?: number
   /** Maximum first-chunk compaction follow-ups before delegating retry policy (default 100). */
   readonly maxFirstChunkCompactionRetries?: number

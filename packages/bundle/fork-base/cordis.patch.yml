@@ -25,7 +25,7 @@
     - id: fork-llm-first-chunk-timeout
       name: '@knyazevai/dsh-fork-llm-first-chunk-timeout'
       config:
-        firstChunkIdleTimeoutMs: 240000
+        firstChunkIdleTimeoutMs: 500000
         maxFirstChunkCompactionRetries: 100
 
     # Provider failures left unhandled by recovery enter a cancellable cooldown.
@@ -46,7 +46,7 @@
         apiKeyEnv: KNYAZEV_AI_API_KEY
         api: openai-completions
         baseURL: https://knyazevai.work/v1
-        streamIdleTimeoutMs: 300000
+        streamIdleTimeoutMs: 600000
         timeoutMs: 1800000
         retryPolicy:
           mode: always

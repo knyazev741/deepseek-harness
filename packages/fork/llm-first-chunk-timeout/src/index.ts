@@ -22,14 +22,14 @@ export const inject = ['llm']
 
 /** Configuration for the first result deadline and its compaction recovery. */
 export interface Config {
-  /** Maximum idle time before the first iterator result, defaulting to 240000ms. */
+  /** Maximum idle time before the first iterator result, defaulting to 500000ms. */
   readonly firstChunkIdleTimeoutMs?: number
   /** Maximum first-chunk compaction follow-ups before delegating retry policy (default 100). */
   readonly maxFirstChunkCompactionRetries?: number
 }
 
 /** The default agent-facing first-result deadline. */
-const DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS = 240_000
+const DEFAULT_FIRST_CHUNK_IDLE_TIMEOUT_MS = 500_000
 
 /** The default ceiling on consecutive first-chunk compaction follow-ups. */
 const DEFAULT_MAX_FIRST_CHUNK_COMPACTION_RETRIES = 100
