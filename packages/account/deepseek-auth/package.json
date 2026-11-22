@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-deepseek-auth",
   "description": "DeepSeek request authentication (ctx.deepseekAuth): choose between the API key and the account sign-in for one DeepSeek API request and release its headers",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-ptc-runtime-node",
   "description": "Node PTC execution with async function, REPL, scoped REPL and VM Script evaluators and optional retained state",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "publishConfig": {
     "access": "public"
   },

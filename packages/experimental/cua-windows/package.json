@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-cua-windows",
   "description": "Windows C# computer use through shared application and window objects",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "publishConfig": {
     "access": "public"
   },

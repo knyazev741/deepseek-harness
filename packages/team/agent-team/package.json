@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-agent-team",
   "description": "Shared task DAG and change waits for subagent trees",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "publishConfig": {
     "access": "public"
   },
