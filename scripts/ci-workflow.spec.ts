@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import * as yaml from 'js-yaml'
+import { intersects, minVersion } from 'semver'
 import { describe, expect, it } from 'vitest'
 
 function evaluateRunsOn(selector: unknown, context: Record<string, unknown>): unknown {
@@ -1761,6 +1762,23 @@ describe('npm release workflows', () => {
       expect(publish.concurrency).toMatchObject({ group, 'cancel-in-progress': false })
       expect(publish.concurrency).toEqual(workflowJob(automatic, job).concurrency)
     }
+  })
+
+  it('installs the public CLI on its minimum supported Node version and excludes retired runtimes', () => {
+    const manifest: unknown = JSON.parse(readFileSync(resolve(root, 'apps/cli/package.json'), 'utf8'))
+    if (!isRecord(manifest) || !isRecord(manifest.engines) || typeof manifest.engines.node !== 'string') {
+      throw new TypeError('The CLI must declare its supported Node versions')
+    }
+    const release = workflowJob(loadWorkflow('.github/workflows/release-main.yml'), 'release')
+    if (!Array.isArray(release.steps)) throw new TypeError('The release job must define steps')
+    const versions = release.steps.flatMap((step) => {
+      if (!isRecord(step) || typeof step.uses !== 'string' || !step.uses.startsWith('actions/setup-node@')
+        || !isRecord(step.with) || typeof step.with['node-version'] !== 'string'
+        || step.with['node-version'].startsWith('${{')) return []
+      return [step.with['node-version']]
+    })
+    expect(versions).toContain(minVersion(manifest.engines.node)?.version)
+    for (const version of versions) expect(intersects(version, manifest.engines.node)).toBe(true)
   })
 
   it('runs dependency policy and npm layout checks in the DSH release workflow', () => {

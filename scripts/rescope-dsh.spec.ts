@@ -51,6 +51,10 @@ describe('DSH package rescope', () => {
     expect(() => parseDshRescopeMode(['--', '--', '--check'])).toThrow(/unknown option/u)
   })
 
+  it.each(['index.mts', 'index.cts', 'index.d.mts', 'index.d.cts'])('includes typed module declarations and sources: %s', (file) => {
+    expect(eligibleDshRescopePath(`packages/util/example/src/${file}`)).toBe(true)
+  })
+
   it('is idempotent', () => {
     const once = rescopeDshText("import '@deepseek-ai/dsh-session'")
     expect(rescopeDshText(once)).toBe(once)

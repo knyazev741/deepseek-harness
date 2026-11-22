@@ -66,6 +66,9 @@ jobs:
       - name: Test release tooling
         run: pnpm exec vitest run scripts/release
 
+      - name: Verify fork package scopes
+        run: pnpm run rescope-dsh:check
+
       - name: Reserve a release version on main
         id: version
         run: |
@@ -125,14 +128,14 @@ jobs:
 
       - uses: actions/setup-node@v7.0.0
         with:
-          node-version: '22.23.3'
+          node-version: '24.9.0'
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      - name: Install the public candidate and boot Web on Node 22
+      - name: Install the public candidate and boot Web on minimum Node 24.9
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: pnpm run release:smoke-web --version "$RELEASE_VERSION" --evidence dist/npm-smoke/public-node22
+        run: pnpm run release:smoke-web --version "$RELEASE_VERSION" --evidence dist/npm-smoke/public-node24-minimum
 
       - name: Promote the verified CLI to latest
         env:

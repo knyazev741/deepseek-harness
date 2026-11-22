@@ -109,7 +109,7 @@ async function setup(timeoutMs = 10): Promise<{ readonly ctx: Context; readonly 
 }
 
 function waterfall(ctx: Context, source: AsyncIterable<StreamChunk>, signal?: AbortSignal): AsyncIterable<StreamChunk> {
-  return ctx.waterfall(ctx as never, 'llm/stream', options(signal), () => source)
+  return ctx.waterfall(ctx.llm, 'llm/stream', options(signal), () => source)
 }
 
 async function firstResult(stream: AsyncIterable<StreamChunk>): Promise<IteratorResult<StreamChunk>> {
@@ -167,7 +167,7 @@ describe('first-chunk idle timeout waterfall', () => {
     const { ctx } = await setup(10)
     let continuationCalls = 0
     const request = options()
-    const stream = ctx.waterfall(ctx as never, 'llm/stream', request, () => {
+    const stream = ctx.waterfall(ctx.llm, 'llm/stream', request, () => {
       continuationCalls += 1
       return source
     })
@@ -816,7 +816,7 @@ describe('first-chunk compaction recovery (agent/request-error)', () => {
     signal: AbortSignal = new AbortController().signal,
     position: { readonly turn: number; readonly step: number } = { turn: 1, step: 1 },
   ): Promise<RequestErrorAction> {
-    return ctx.waterfall(ctx as never, 'agent/request-error', {
+    return ctx.waterfall('agent/request-error', {
       agent,
       turn: position.turn,
       step: position.step,

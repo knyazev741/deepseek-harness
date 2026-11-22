@@ -39,7 +39,8 @@ const consumer = process.env.INIT_CWD || process.cwd()
 const cache = path.join(consumer, '.npm-cache', '_cacache')
 const files = fs.existsSync(cache) ? fs.readdirSync(cache, { recursive: true }).filter(name => fs.statSync(path.join(cache, name)).isFile()) : []
 fs.writeFileSync(process.env.CACHE_EVIDENCE, JSON.stringify({ consumer, files,
-  installed: ['matching', 'wrong-os', 'wrong-cpu'].filter(name => fs.existsSync(path.join(consumer, 'node_modules', name))) }))
+  // npm may retain empty directories for omitted optional tarballs.
+  installed: ['matching', 'wrong-os', 'wrong-cpu'].filter(name => fs.existsSync(path.join(consumer, 'node_modules', name, 'package.json'))) }))
 `
       writeFileSync(join(source, 'probe.cjs'), probe + (outcome === 'install failure' ? '\nprocess.exit(37)\n' : ''))
       writeFileSync(join(source, 'lib/bin.js'), outcome === 'entry failure' ? 'process.exit(37)\n' : 'console.log(process.argv.includes("--version") ? "0.0.1" : "# == @knyazevai/dsh-fork-base\\n# == @knyazevai/dsh-fork-web")\n')

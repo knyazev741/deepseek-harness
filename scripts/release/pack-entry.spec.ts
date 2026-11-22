@@ -32,8 +32,15 @@ function fixture() {
     const directory = join(root, String(index))
     mkdirSync(join(directory, 'package', 'lib'), { recursive: true })
     writeFileSync(join(directory, 'package', 'lib', 'index.js'), 'export const fixture = true;\n')
+    if (manifest.name === cli) {
+      mkdirSync(join(directory, 'package', 'docs', 'upgrade-guide'), { recursive: true })
+      mkdirSync(join(directory, 'package', 'src'))
+      writeFileSync(join(directory, 'package', 'docs', 'upgrade-guide', 'README.md'), '# Upgrade guide\n')
+      writeFileSync(join(directory, 'package', 'src', 'bin.ts'), 'export const fixture = true;\n')
+    }
     writeFileSync(join(directory, 'package', 'package.json'), JSON.stringify({
-      ...manifest, files: ['lib'], scripts: { prepack: 'node missing-hook.cjs', prepare: 'node missing-hook.cjs' },
+      ...manifest, files: manifest.name === cli ? ['lib', 'docs', 'src'] : ['lib'],
+      scripts: { prepack: 'node missing-hook.cjs', prepare: 'node missing-hook.cjs' },
     }))
     const filename = `${manifest.name.slice(1).replace('/', '-')}-${version}.tgz`
     capture('tar', ['-czf', filename, '-C', directory, 'package'], { cwd: source })
@@ -77,6 +84,8 @@ it('packs every runtime file, including a production peer also declared as a roo
   expect(readPublishOrder(destination)).toEqual([filename])
   const archive = join(destination, filename)
   const files = tarballFiles(archive)
+  expect(files).toContain('package/docs/upgrade-guide/README.md')
+  expect(files).toContain('package/src/bin.ts')
   for (const name of [implementation, service]) {
     expect(files).toContain(`package/node_modules/${name}/package.json`)
     expect(files).toContain(`package/node_modules/${name}/lib/index.js`)

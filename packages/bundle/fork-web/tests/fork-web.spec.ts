@@ -49,7 +49,7 @@ function flattenInsertRows(patches: Patch[]): Row[] {
 
 function compose(bundlePaths: readonly string[]): Row[] {
   const layers = bundlePaths.map(path => readPatch(path))
-  return applyEntryPatches([], layers.flat(), () => {}).data as Row[]
+  return applyEntryPatches([], layers.flat(), () => {}).data
 }
 
 describe('dsh-fork-web bundle', () => {

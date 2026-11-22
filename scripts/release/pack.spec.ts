@@ -306,7 +306,7 @@ describe('release pack CLI', () => {
 
   it('validates every parallel tarball before recording the publish order', async () => {
     const root = fixture()
-    packageFixture(root, 'packages/util/alpha', '@deepseek-ai/alpha')
+    packageFixture(root, 'packages/util/alpha', '@knyazevai/dsh-alpha')
     packageFixture(root, 'apps/cli', '@knyazevai/dsh', { files: ['lib/index.js', 'src/bin.ts'] })
     packageFixture(root, 'packages/subagent/subagent-claude-code', '@knyazevai/dsh-subagent-claude-code')
     packageFixture(root, 'packages/subagent/subagent-codex', '@knyazevai/dsh-subagent-codex')

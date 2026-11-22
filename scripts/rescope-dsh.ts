@@ -16,7 +16,7 @@ const EXCLUDED_PREFIXES = [
 ] as const
 const EXCLUDED_SEGMENTS = ['/lib/', '/dist/', '/node_modules/'] as const
 const TEXT_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.mjs', '.cjs', '.json', '.jsonl', '.yml', '.yaml', '.md', '.py', '.snap',
+  '.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.json', '.jsonl', '.yml', '.yaml', '.md', '.py', '.snap',
 ])
 const EXCLUDED_FILES = [
   'scripts/rescope-dsh.ts',
