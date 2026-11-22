@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-script-realm",
   "description": "Direct-reference script environments and Cordis-owned provider registration",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "publishConfig": {
     "access": "public"
   },

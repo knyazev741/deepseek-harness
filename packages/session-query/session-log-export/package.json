@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-session-log-export",
   "description": "Web Session-log ZIP export and Session Markdown copy",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "publishConfig": {
     "access": "public"
   },

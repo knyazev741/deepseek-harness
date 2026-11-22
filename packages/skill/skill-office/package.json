@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-skill-office",
   "description": "Bundled Word, PowerPoint, and Excel workflows and Office operation guidance",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "publishConfig": {
     "access": "public"
   },
