@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-action-cards",
   "description": "Optional action cards below answers: card state, user actions and status notices",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publishConfig": {
     "access": "public"
   },

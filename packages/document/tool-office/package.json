@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-office",
   "description": "Model-facing Office tools for rendering, converting, and recalculating documents",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publishConfig": {
     "access": "public"
   },

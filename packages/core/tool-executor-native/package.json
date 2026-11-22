@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-executor-native",
   "description": "Native tool execution plugin",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publishConfig": {
     "access": "public"
   },

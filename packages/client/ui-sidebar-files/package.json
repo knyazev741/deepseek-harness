@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-sidebar-files",
   "description": "The workspace files page and one workspace directory tree per pane beside docked and floating file previews, listed lazily over the workspaceFiles Remote namespace",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publishConfig": {
     "access": "public"
   },

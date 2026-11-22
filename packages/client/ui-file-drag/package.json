@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-file-drag",
   "description": "Application-owned file drag transfers and localized failure feedback",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publishConfig": {
     "access": "public"
   },

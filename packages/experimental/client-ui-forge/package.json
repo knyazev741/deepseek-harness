@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-client-ui-forge",
   "description": "Session panel entries for a Session's change requests, with a worktree option for new Sessions and its Host Remote",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publishConfig": {
     "access": "public"
   },
