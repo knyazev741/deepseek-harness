@@ -1749,10 +1749,10 @@ describe('npm release workflows', () => {
     // Manual publishers share their registry lock with the matching automatic job.
     const automatic = loadWorkflow('.github/workflows/release-main.yml')
     const publishers = [
-      ['release-publish.yml', 'modules', 'Release-modular-publish'],
-      ['release-vendor-publish.yml', 'release', 'Release-publish'],
+      ['release-publish.yml', 'Release-modular-publish'],
+      ['release-vendor-publish.yml', 'Release-publish'],
     ] as const
-    for (const [file, job, group] of publishers) {
+    for (const [file, group] of publishers) {
       const workflow = loadWorkflow(`.github/workflows/${file}`)
       if (!isRecord(workflow.on) || !isRecord(workflow.jobs)) throw new TypeError(`${file} must define on and jobs`)
       expect(Object.keys(workflow.on)).toEqual(['workflow_dispatch'])
@@ -1760,7 +1760,8 @@ describe('npm release workflows', () => {
       if (!isRecord(publish)) throw new TypeError(`${file} must define a publish job`)
       expect(publish.environment).toBe('npm-publish')
       expect(publish.concurrency).toMatchObject({ group, 'cancel-in-progress': false })
-      expect(publish.concurrency).toEqual(workflowJob(automatic, job).concurrency)
+      expect(file === 'release-publish.yml' ? workflow.concurrency : publish.concurrency)
+        .toEqual(workflowJob(automatic, 'release').concurrency)
     }
   })
 
@@ -1781,14 +1782,30 @@ describe('npm release workflows', () => {
     for (const version of versions) expect(intersects(version, manifest.engines.node)).toBe(true)
   })
 
-  it('packs the source framework into the CLI before the isolated installation check', () => {
-    const release = workflowJob(loadWorkflow('.github/workflows/release-main.yml'), 'release')
+  it.each([
+    { file: 'release-main.yml', job: 'release' },
+    { file: 'release-publish.yml', job: 'pack' },
+  ])('packs the source framework into the CLI in $file', ({ file, job }) => {
+    const release = workflowJob(loadWorkflow(`.github/workflows/${file}`), job)
     if (!Array.isArray(release.steps)) throw new TypeError('The release job must define steps')
     const commands = release.steps.flatMap(step => isRecord(step) && typeof step.run === 'string' ? [step.run] : [])
-    const packing = commands.find(command => command.includes('release:pack-entry'))
+    const packing = commands.join('\n')
     expect(packing).toContain('release:pack --family vendor --out dist/npm-vendor')
     expect(packing).toContain('release:pack-entry --from dist/npm --vendor-from dist/npm-vendor')
-    expect(packing?.indexOf('release:pack --family vendor')).toBeLessThan(packing?.indexOf('release:pack-entry') ?? -1)
+    expect(packing.indexOf('release:pack --family vendor')).toBeLessThan(packing.indexOf('release:pack-entry'))
+  })
+
+  it('publishes only the bundled CLI automatically and keeps native plugin publication manual', () => {
+    const workflow = loadWorkflow('.github/workflows/release-main.yml')
+    if (!isRecord(workflow.jobs)) throw new TypeError('The main release must define jobs')
+    expect(Object.keys(workflow.jobs).sort()).toEqual(['npm-auth', 'release', 'windows-proxy'])
+    const release = workflowJob(workflow, 'release')
+    if (!Array.isArray(release.steps)) throw new TypeError('The release job must define steps')
+    const publications = release.steps.flatMap(step => isRecord(step) && typeof step.run === 'string'
+      && step.run.includes('release:publish') ? [step.run] : [])
+    expect(publications).toHaveLength(1)
+    expect(publications[0]).toContain('--from dist/npm-entry')
+    expect(workflowJob(loadWorkflow('.github/workflows/release-publish.yml'), 'pack').needs).toBe('cua-helper-macos')
   })
 
   it('checks the repository npm identity without requiring organization access or an environment secret override', () => {
@@ -1797,7 +1814,6 @@ describe('npm release workflows', () => {
     const release = workflowJob(workflow, 'release')
     expect(auth.environment).toBeUndefined()
     expect(release.environment).toBeUndefined()
-    expect(workflowJob(workflow, 'modules').environment).toBeUndefined()
     expect(release.needs).toContain('npm-auth')
     if (!Array.isArray(auth.steps)) throw new TypeError('npm access checks require steps')
     const check: unknown = auth.steps.find(step => isRecord(step) && typeof step.run === 'string' && step.run.includes('npm whoami'))

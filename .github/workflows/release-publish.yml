@@ -118,18 +118,13 @@ jobs:
             printf '需要重新打包时，可留空自动查找，或填写 `cua_macos_run_id=%s` 指定该 helper；源码和构建配置必须匹配。\n' "$CUA_MACOS_RUN_ID"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Pack the framework for CLI bundling and verification
+        run: pnpm run release:pack --family vendor --out dist/npm-vendor
+
       - name: Pack release tarballs
         run: |
           pnpm run release:pack --family dsh --out dist/npm
-          pnpm run release:pack-entry --from dist/npm --out dist/npm-entry
-
-      # The harness packages declare the vendored framework as a peer, and this
-      # verification must not depend on the registry already carrying matching
-      # versions — one pull request may bump both families before either
-      # publishes — so it installs that family's pack output too. Only dist/npm
-      # is published.
-      - name: Pack the vendored framework for verification
-        run: pnpm run release:pack --family vendor --out dist/npm-vendor
+          pnpm run release:pack-entry --from dist/npm --vendor-from dist/npm-vendor --out dist/npm-entry
 
       # dsh-sandbox-local declares the Landlock entry as a runtime dependency, so
       # the verification needs its tarball. Its platform packages stay out: they
