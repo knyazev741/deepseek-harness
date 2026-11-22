@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-host-authentication-desktop",
   "description": "Desktop private-channel authentication provider",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",
