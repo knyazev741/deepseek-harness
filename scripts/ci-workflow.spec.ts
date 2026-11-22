@@ -1781,6 +1781,16 @@ describe('npm release workflows', () => {
     for (const version of versions) expect(intersects(version, manifest.engines.node)).toBe(true)
   })
 
+  it('packs the source framework into the CLI before the isolated installation check', () => {
+    const release = workflowJob(loadWorkflow('.github/workflows/release-main.yml'), 'release')
+    if (!Array.isArray(release.steps)) throw new TypeError('The release job must define steps')
+    const commands = release.steps.flatMap(step => isRecord(step) && typeof step.run === 'string' ? [step.run] : [])
+    const packing = commands.find(command => command.includes('release:pack-entry'))
+    expect(packing).toContain('release:pack --family vendor --out dist/npm-vendor')
+    expect(packing).toContain('release:pack-entry --from dist/npm --vendor-from dist/npm-vendor')
+    expect(packing?.indexOf('release:pack --family vendor')).toBeLessThan(packing?.indexOf('release:pack-entry') ?? -1)
+  })
+
   it('runs dependency policy and npm layout checks in the DSH release workflow', () => {
     const workflow = loadWorkflow('.github/workflows/release.yml')
     const dependencies = workflowJob(workflow, 'dependencies')

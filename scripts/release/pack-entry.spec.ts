@@ -12,6 +12,12 @@ const cli = '@knyazevai/dsh'
 const implementation = '@knyazevai/dsh-implementation'
 const service = '@knyazevai/dsh-service'
 const version = '1.2.3'
+const framework = '@deepseek-ai/cordis'
+const foundation = '@deepseek-ai/cosmokit'
+const vendorManifests = [
+  { name: framework, version: '4.0.0', dependencies: { [foundation]: '^1.0.0' } },
+  { name: foundation, version: '1.5.0' },
+]
 
 function manifests() {
   return [
@@ -59,6 +65,16 @@ it('includes runtime peers, excludes development consumers, and lifts compatible
   expect(plan.manifest.dependencies).not.toHaveProperty('unused')
 })
 
+it('bundles the source framework and its dependencies at their independent exact versions', () => {
+  const selected = manifests().map(manifest => manifest.name === service ? {
+    ...manifest, peerDependencies: { [framework]: '^4.0.0' },
+  } : manifest)
+  const plan = planEntry(selected, vendorManifests)
+  expect(plan.bundled).toEqual([framework, foundation, implementation, service])
+  expect(plan.manifest.dependencies).toMatchObject({ [framework]: '4.0.0', [foundation]: '1.5.0' })
+  expect(() => planEntry(selected, vendorManifests.map(manifest => ({ ...manifest, version: '3.0.0' })))).toThrow('incompatible')
+})
+
 it('preserves optional external dependencies and install hooks while removing packing hooks', () => {
   const selected = manifests().map(manifest => manifest.name === cli ? {
     ...manifest, optionalDependencies: { 'platform-addon': '^1.0.0' },
@@ -95,4 +111,30 @@ it('packs every runtime file, including a production peer also declared as a roo
   expect(packedManifest(archive)).not.toHaveProperty('devDependencies')
   expect(readFileSync(join(source, filename))).toEqual(readFileSync(archive))
   expect(readFileSync(join(source, names[1]!))).toEqual(library)
+}, 30_000)
+
+it('carries the built framework inside the CLI without publishing a separate framework package', () => {
+  const { root, source, destination, names } = fixture()
+  const vendor = join(root, 'vendor')
+  mkdirSync(vendor)
+  const vendorNames: string[] = []
+  for (const [index, manifest] of vendorManifests.entries()) {
+    const directory = join(root, `vendor-${String(index)}`)
+    mkdirSync(join(directory, 'package', 'lib'), { recursive: true })
+    writeFileSync(join(directory, 'package', 'lib', 'index.js'), 'export const sourceFramework = true;\n')
+    writeFileSync(join(directory, 'package', 'package.json'), JSON.stringify({ ...manifest, files: ['lib'] }))
+    const filename = `${manifest.name.slice(1).replace('/', '-')}-${manifest.version}.tgz`
+    createTar({ file: join(vendor, filename), cwd: directory, sync: true, gzip: true }, ['package'])
+    vendorNames.push(filename)
+  }
+  writeFileSync(join(vendor, PUBLISH_ORDER_FILE), `${vendorNames.join('\n')}\n`)
+  const serviceDirectory = join(root, '2')
+  const serviceManifest = JSON.parse(readFileSync(join(serviceDirectory, 'package', 'package.json'), 'utf8')) as Record<string, unknown>
+  writeFileSync(join(serviceDirectory, 'package', 'package.json'), JSON.stringify({ ...serviceManifest, peerDependencies: { [framework]: '^4.0.0' } }))
+  createTar({ file: join(source, names[2]!), cwd: serviceDirectory, sync: true, gzip: true }, ['package'])
+  const filename = packEntry(source, destination, vendor)
+  expect(readPublishOrder(destination)).toEqual([filename])
+  const archive = join(destination, filename)
+  for (const name of [framework, foundation]) expect(tarballFiles(archive)).toContain(`package/node_modules/${name}/lib/index.js`)
+  expect(packedManifest(archive).dependencies).toMatchObject({ [framework]: '4.0.0', [foundation]: '1.5.0' })
 }, 30_000)

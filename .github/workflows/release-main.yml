@@ -99,7 +99,8 @@ jobs:
         run: |
           pnpm run release:verify --family dsh
           pnpm run release:pack --family dsh --out dist/npm --concurrency 8
-          pnpm run release:pack-entry --from dist/npm --out dist/npm-entry
+          pnpm run release:pack --family vendor --out dist/npm-vendor --concurrency 8
+          pnpm run release:pack-entry --from dist/npm --vendor-from dist/npm-vendor --out dist/npm-entry
 
       - name: Install Chromium
         run: pnpm exec playwright install chromium --with-deps
@@ -157,6 +158,7 @@ jobs:
           path: |
             dist/npm
             dist/npm-entry
+            dist/npm-vendor
             dist/npm-smoke
           if-no-files-found: ignore
           retention-days: 7

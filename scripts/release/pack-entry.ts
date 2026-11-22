@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { subset, valid, validRange } from 'semver'
+import { satisfies, subset, valid, validRange } from 'semver'
 import { releaseFamily, tarballName } from './families.ts'
 import { npmCliPath } from './npm.ts'
 import { capture, isEntry } from './process.ts'
@@ -13,7 +13,7 @@ const CLI = '@knyazevai/dsh'
 const ownPackage = (name: string): boolean => name === CLI || /^@knyazevai\/dsh-[a-z0-9-]+$/u.test(name)
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
 
-/** Production CLI manifest and the exact sibling packages carried in its archive. */
+/** Production CLI manifest and the exact runtime packages carried in its archive. */
 export interface EntryPlan {
   readonly version: string
   readonly manifest: Record<string, unknown>
@@ -49,15 +49,22 @@ function runtimeDependencies(manifest: Record<string, unknown>): { name: string;
 /**
  * Select declared runtime dependencies and required peers; lift foreign ranges for npm's normal resolver.
  * @param manifests - Thin, validated DSH family manifests from one release.
+ * @param vendored - Framework manifests built from the same source commit, with independent versions.
  * @returns A production manifest and its sibling package closure; incompatible ranges fail before packing.
  */
-export function planEntry(manifests: readonly Record<string, unknown>[]): EntryPlan {
+export function planEntry(manifests: readonly Record<string, unknown>[], vendored: readonly Record<string, unknown>[] = []): EntryPlan {
   const source = new Map<string, Record<string, unknown>>()
   const entry = manifests.find(manifest => manifest.name === CLI)
   if (entry === undefined || typeof entry.version !== 'string' || valid(entry.version) !== entry.version) throw new Error('Entry pack requires a versioned DSH CLI')
   const version = entry.version
   for (const manifest of manifests) {
     if (typeof manifest.name !== 'string' || !ownPackage(manifest.name) || manifest.version !== version) throw new Error('Entry pack requires one exact DSH version')
+    if (source.has(manifest.name)) throw new Error(`Duplicate runtime package ${manifest.name}`)
+    source.set(manifest.name, manifest)
+  }
+  for (const manifest of vendored) {
+    if (typeof manifest.name !== 'string' || !manifest.name.startsWith('@deepseek-ai/')
+      || typeof manifest.version !== 'string' || valid(manifest.version) !== manifest.version) throw new Error('Entry pack requires versioned framework packages')
     if (source.has(manifest.name)) throw new Error(`Duplicate runtime package ${manifest.name}`)
     source.set(manifest.name, manifest)
   }
@@ -68,8 +75,14 @@ export function planEntry(manifests: readonly Record<string, unknown>[]): EntryP
     const manifest = source.get(name)
     if (manifest === undefined) throw new Error(`Missing runtime package ${name}`)
     for (const dependency of runtimeDependencies(manifest)) {
+      const target = source.get(dependency.name)
       if (ownPackage(dependency.name)) {
         if (dependency.spec !== version) throw new Error(`${name} must declare ${dependency.name} at exact ${version}`)
+        selected.add(dependency.name)
+      } else if (target !== undefined) {
+        if (typeof target.version !== 'string' || !satisfies(target.version, dependency.spec, { includePrerelease: true })) {
+          throw new Error(`Entry pack has incompatible ${dependency.name} requirement ${dependency.spec}`)
+        }
         selected.add(dependency.name)
       } else {
         const constraint = external.get(dependency.name) ?? { specs: new Set<string>(), optional: true }
@@ -80,7 +93,8 @@ export function planEntry(manifests: readonly Record<string, unknown>[]): EntryP
     }
   }
   const bundled = [...selected].filter(name => name !== CLI).sort()
-  const required = Object.fromEntries(bundled.map(name => [name, version]))
+  const required = Object.fromEntries([...source].filter(([name]) => selected.has(name) && name !== CLI)
+    .map(([name, manifest]) => [name, String(manifest.version)]))
   const optional: Record<string, string> = {}
   for (const [name, constraint] of [...external].sort(([a], [b]) => a.localeCompare(b))) {
     const specs = [...constraint.specs].sort()
@@ -105,14 +119,18 @@ export function planEntry(manifests: readonly Record<string, unknown>[]): EntryP
  * Pack one self-contained DSH entry and replace the family's CLI with those same immutable bytes.
  * @param source - Validated thin family tarballs and their publish order.
  * @param destination - New output directory for the entry-only publish order.
+ * @param vendorSource - Optional validated framework tarballs built from the same commit.
  * @returns The CLI tarball filename, after every original runtime file is verified in the new archive.
  */
-export function packEntry(source: string, destination: string): string {
+export function packEntry(source: string, destination: string, vendorSource?: string): string {
   if (existsSync(destination)) throw new Error(`Entry output already exists: ${destination}`)
   const archives = new Map<string, { path: string; files: string[]; manifest: Record<string, unknown> }>()
-  for (const filename of readPublishOrder(source)) {
+  const inputs = [{ directory: source, family: releaseFamily('dsh') },
+    ...vendorSource === undefined ? [] : [{ directory: vendorSource, family: releaseFamily('vendor') }]]
+  const dsh: Record<string, unknown>[] = [], vendored: Record<string, unknown>[] = []
+  for (const { directory: input, family } of inputs) for (const filename of readPublishOrder(input)) {
     if (basename(filename) !== filename || !filename.endsWith('.tgz')) throw new Error(`Invalid packed filename ${filename}`)
-    const path = join(source, filename), manifest = packedManifest(path), files = tarballFiles(path)
+    const path = join(input, filename), manifest = packedManifest(path), files = tarballFiles(path)
     if (typeof manifest.name !== 'string' || archives.has(manifest.name)) throw new Error(`Invalid or duplicate packed identity ${filename}`)
     for (const file of files) {
       if (!file.startsWith('package/') || file.split('/').includes('..') || file.startsWith('package/node_modules/')) throw new Error(`Entry input contains unexpected member ${file}`)
@@ -121,10 +139,11 @@ export function packEntry(source: string, destination: string): string {
     const directory = isRecord(manifest.repository) && typeof manifest.repository.directory === 'string'
       ? manifest.repository.directory
       : ''
-    releaseFamily('dsh').validatePayload({ directory, name: manifest.name, version: manifest.version, manifest }, files)
+    family.validatePayload({ directory, name: manifest.name, version: manifest.version, manifest }, files)
     archives.set(manifest.name, { path, files, manifest })
+    ;(family.id === 'dsh' ? dsh : vendored).push(manifest)
   }
-  const plan = planEntry([...archives.values()].map(archive => archive.manifest))
+  const plan = planEntry(dsh, vendored)
   const entryArchive = archives.get(CLI)
   if (entryArchive === undefined) throw new Error('Entry pack requires a DSH CLI tarball')
   const filename = tarballName({ name: CLI, version: plan.version })
@@ -155,7 +174,7 @@ export function packEntry(source: string, destination: string): string {
     copyFileSync(packed, join(destination, filename))
     copyFileSync(packed, entryArchive.path)
     writeFileSync(join(destination, PUBLISH_ORDER_FILE), `${filename}\n`)
-    console.log(`release entry pack: ${String(plan.bundled.length)} bundled DSH runtime packages in ${filename}`)
+    console.log(`release entry pack: ${String(plan.bundled.length)} bundled runtime packages in ${filename}`)
     return filename
   } finally {
     rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
@@ -163,9 +182,9 @@ export function packEntry(source: string, destination: string): string {
 }
 
 function main(): void {
-  const { values } = parseArgs({ options: { from: { type: 'string' }, out: { type: 'string' } } })
+  const { values } = parseArgs({ options: { from: { type: 'string' }, out: { type: 'string' }, 'vendor-from': { type: 'string' } } })
   if (values.from === undefined || values.out === undefined) throw new Error('usage: pack-entry.ts --from <thin family directory> --out <new entry directory>')
-  packEntry(resolve(values.from), resolve(values.out))
+  packEntry(resolve(values.from), resolve(values.out), values['vendor-from'] === undefined ? undefined : resolve(values['vendor-from']))
 }
 
 if (isEntry(import.meta.url)) main()

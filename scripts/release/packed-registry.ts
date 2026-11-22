@@ -13,7 +13,7 @@ export interface PackedRegistry {
 
 /**
  * Serve only the packed DSH versions; resolve third-party metadata from the public registry.
- * No local vendor or native tarball substitutes for a public dependency.
+ * Bundled framework code travels inside the CLI; unbundled dependencies resolve from public npm.
  * @param directory - validated DSH pack output, including its publication order.
  * @param upstream - registry origin for external package metadata.
  * @returns an OS-assigned loopback URL and its awaited cleanup.
