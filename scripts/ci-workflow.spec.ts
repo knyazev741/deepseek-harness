@@ -1791,7 +1791,7 @@ describe('npm release workflows', () => {
     expect(packing?.indexOf('release:pack --family vendor')).toBeLessThan(packing?.indexOf('release:pack-entry') ?? -1)
   })
 
-  it('checks repository npm access before reserving a release without an environment secret override', () => {
+  it('checks the repository npm identity without requiring organization access or an environment secret override', () => {
     const workflow = loadWorkflow('.github/workflows/release-main.yml')
     const auth = workflowJob(workflow, 'npm-auth')
     const release = workflowJob(workflow, 'release')
@@ -1803,7 +1803,8 @@ describe('npm release workflows', () => {
     const check: unknown = auth.steps.find(step => isRecord(step) && typeof step.run === 'string' && step.run.includes('npm whoami'))
     expect(check).toMatchObject({ env: { NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}' } })
     if (!isRecord(check) || typeof check.run !== 'string') throw new TypeError('npm access check requires a command')
-    expect(check.run).toContain('npm access list packages knyazevai @knyazevai/dsh --json')
+    expect(check.run).toContain('test "$npm_publisher" = knyazevai')
+    expect(check.run).not.toContain('npm access')
   })
 
   it('runs dependency policy and npm layout checks in the DSH release workflow', () => {

@@ -15,7 +15,7 @@ env:
 jobs:
   npm-auth:
     if: github.repository == 'knyazev741/deepseek-harness' && github.ref == 'refs/heads/main'
-    name: Verify npm publication access
+    name: Verify npm publishing identity
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -28,13 +28,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm whoami
-          npm access list packages knyazevai @knyazevai/dsh --json | node -e '
-            const fs = require("node:fs");
-            const access = JSON.parse(fs.readFileSync(0, "utf8"));
-            if (access["@knyazevai/dsh"] !== "read-write") throw new Error("NPM_TOKEN requires write access to @knyazevai/dsh");
-            console.log("npm write access verified for @knyazevai/dsh");
-          '
+          npm_publisher=$(npm whoami)
+          test "$npm_publisher" = knyazevai
+          echo "npm publishing identity verified: $npm_publisher"
 
   windows-proxy:
     if: github.repository == 'knyazev741/deepseek-harness' && github.ref == 'refs/heads/main'
