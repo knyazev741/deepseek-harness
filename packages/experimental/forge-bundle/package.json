@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-forge-bundle",
   "description": "Experimental change request panel and worktree option for Sessions in Git repositories",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"

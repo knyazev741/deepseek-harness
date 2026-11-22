@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-executor-ptc",
   "description": "PTC program execution, tool bindings, and generated SDK prompts",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "publishConfig": {
     "access": "public"
   },

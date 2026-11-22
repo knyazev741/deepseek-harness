@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-file-actions",
   "description": "Original-file saving and image clipboard actions for Web and Desktop",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "publishConfig": {
     "access": "public"
   },

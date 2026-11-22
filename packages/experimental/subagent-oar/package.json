@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-subagent-oar",
   "description": "Experimental one-shot subagents through OAR runtimes",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "publishConfig": {
     "access": "public"
   },

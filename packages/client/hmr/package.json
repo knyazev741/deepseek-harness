@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-hmr",
   "description": "Web client graph and rebuilt-bundle delivery over an authenticated Remote stream",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "publishConfig": {
     "access": "public"
   },

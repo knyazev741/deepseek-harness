@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-session-status",
   "description": "Client Session status table over Host reading records: running state, the effective pending interaction, and read or unread reminders shared by clients of one Host",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "publishConfig": {
     "access": "public"
   },
