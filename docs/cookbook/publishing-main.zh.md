@@ -26,7 +26,7 @@ fork 必须启用 GitHub Actions；fork 工作流被停用时，Actions 页面�
 ## 发布生命周期
 
 1. 串行发布任务预留高于源码基线及所有已发布或已打标签版本的稳定版本。它提交包族 manifest 与 lockfile，将提交推送到 `main`，并创建对应的 `dsh-v` 标签。工作流自身使用 `GITHUB_TOKEN` 的推送不会启动另一轮工作流。
-2. 发布任务在预留版本前拒绝旧的 fork 包 scope，包括 ESM 和 CommonJS 声明文件，并在构建前及发布前将干净源码 SHA 与远端 `main` 核对。它构建完整官方产物、打包 DSH 包族，并将 CLI 的 DSH 运行时依赖包含在 CLI 归档内。外部依赖（包括 vendored 与原生包）仍通过公开 npm 正常安装。
+2. 发布任务在预留版本前拒绝旧的 fork 包 scope，包括 ESM 和 CommonJS 声明文件，并在构建前及发布前将干净源码 SHA 与远端 `main` 核对。它构建完整官方产物、打包 DSH 包族，并将 CLI 的 DSH 运行时依赖包含在 CLI 归档内。外部依赖（包括 vendored 与原生包）仍通过公开 npm 正常安装。归档文件列表直接从 tar 数据读取，不受子进程输出大小限制；无效归档会停止发布。
 3. 仅入口包冒烟检查只向临时消费方安装 CLI，并使用全新的 npm 缓存与 profile。回环 registry 仅提供包含依赖的 CLI，拒绝其他 DSH 包请求；外部依赖来自公开 npm。标准 npm resolver 使用 1536 MiB 的 Node heap 预算，Chromium 必须显示工作区选择器且没有客户端错误。
 4. 发布使用版本专属的 `candidate-` 标签上传不可变的 CLI。公开可用性检查会等待两种 registry 元数据中的校验和一致，且 tarball 可下载。它最多等待 60 分钟，容忍 npm 扫描、传播和临时网络故障，每 15 秒轮询一次，并为单个请求设置期限。公开 registry 冒烟检查在最新的 Node 24 和最低支持版本 Node 24.9.0 上重复安装及浏览器启动。晋升步骤核对 CLI integrity、拒绝标签降级，再更新其 `latest`。它最多等待两分钟，让公开标签反映此次写入，每两秒轮询一次；通过 `release:promote --tag-timeout-ms` 与 `--tag-poll-ms` 配置这些限制。
 5. 独立任务使用同一批保留产物发布并检查包族中的单独包。它绝不更改 CLI 标签。其 registry 延迟或失败不影响已验证 CLI 的安装，也不占用下一次 main 发布的 CLI 发布锁。

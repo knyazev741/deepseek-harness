@@ -8,6 +8,7 @@
 
 import { readFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
+import { list } from 'tar'
 import { capture } from './process.ts'
 
 /** Name of the file recording the order in which a packed family uploads. */
@@ -22,13 +23,14 @@ export interface PackedIdentity {
 }
 
 /**
- * List a tarball's members.
+ * List every tarball member without a subprocess output-size limit; reject invalid archives.
  * @param tarball - absolute tarball path.
  * @returns Every path inside the archive.
  */
 export function tarballFiles(tarball: string): string[] {
-  // GNU tar reads the colon in a Windows drive path as a remote-host separator, so tar runs beside the tarball.
-  return capture('tar', ['-tzf', basename(tarball)], { cwd: dirname(tarball) }).split(/\r?\n/u).filter(line => line !== '')
+  const files: string[] = []
+  list({ file: tarball, sync: true, strict: true, onReadEntry: (entry) => { files.push(entry.path) } })
+  return files
 }
 
 /**

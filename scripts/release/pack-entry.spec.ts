@@ -2,10 +2,10 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { create as createTar } from 'tar'
 import { expect, it, onTestFinished } from 'vitest'
 import { removeFixtureSafely } from '../test-fixture-cleanup.ts'
 import { planEntry, packEntry } from './pack-entry.ts'
-import { capture } from './process.ts'
 import { packedManifest, PUBLISH_ORDER_FILE, readPublishOrder, tarballFiles } from './tarball.ts'
 
 const cli = '@knyazevai/dsh'
@@ -43,7 +43,7 @@ function fixture() {
       scripts: { prepack: 'node missing-hook.cjs', prepare: 'node missing-hook.cjs' },
     }))
     const filename = `${manifest.name.slice(1).replace('/', '-')}-${version}.tgz`
-    capture('tar', ['-czf', filename, '-C', directory, 'package'], { cwd: source })
+    createTar({ file: join(source, filename), cwd: directory, sync: true, gzip: true }, ['package'])
     names.push(filename)
   }
   writeFileSync(join(source, PUBLISH_ORDER_FILE), `${names.join('\n')}\n`)
