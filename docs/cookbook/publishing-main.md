@@ -20,7 +20,7 @@ The fork's [Publish main to npm workflow](../../.github/workflows/release-main.y
 <a id="requirements"></a>
 ## Requirements
 
-GitHub must have Actions enabled for the fork; its Actions page provides the re-enable control when fork workflows are disabled. GitHub Actions needs permission to push version commits and tags. Branch protection remains authoritative: a refused push stops publication. The repository secret `NPM_TOKEN` must authorize public publication, new packages in the fork's npm scope, distribution-tag updates, and unattended publishing under the account's two-factor policy. Rotate that secret when its npm credential expires or changes. The `npm-publish` environment must admit `main` without required reviewers for unattended releases.
+GitHub must have Actions enabled for the fork; its Actions page provides the re-enable control when fork workflows are disabled. GitHub Actions needs permission to push version commits and tags. Branch protection remains authoritative: a refused push stops publication. The repository secret `NPM_TOKEN` must authorize public publication, new packages in the fork's npm scope, distribution-tag updates, and unattended publishing under the account's two-factor policy. Rotate that secret when its npm credential expires or changes. Automatic release jobs read the repository secret directly without a GitHub environment, so an environment secret cannot override that credential. A preflight checks the npm identity and CLI write access before reserving a version or building.
 
 <a id="release-lifecycle"></a>
 ## Release lifecycle

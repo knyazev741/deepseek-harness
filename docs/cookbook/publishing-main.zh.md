@@ -20,7 +20,7 @@ fork 的 [Publish main to npm 工作流](../../.github/workflows/release-main.ym
 <a id="requirements"></a>
 ## 前提条件
 
-fork 必须启用 GitHub Actions；fork 工作流被停用时，Actions 页面提供重新启用按钮。GitHub Actions 需要推送版本提交与标签的权限。分支保护仍然有效：推送被拒绝时，发布停止。仓库 secret `NPM_TOKEN` 必须允许公开发布、在 fork 的 npm scope 下创建新包、更新分发标签，以及符合账户双因素策略的无人值守发布。npm 凭据过期或变更时更新该 secret。无人值守发布还要求 `npm-publish` environment 接受 `main`，且不要求审核者批准。
+fork 必须启用 GitHub Actions；fork 工作流被停用时，Actions 页面提供重新启用按钮。GitHub Actions 需要推送版本提交与标签的权限。分支保护仍然有效：推送被拒绝时，发布停止。仓库 secret `NPM_TOKEN` 必须允许公开发布、在 fork 的 npm scope 下创建新包、更新分发标签，以及符合账户双因素策略的无人值守发布。npm 凭据过期或变更时更新该 secret。自动发布任务不使用 GitHub environment，直接读取仓库 secret，因此 environment secret 不会覆盖该凭据。预检在预留版本或构建前检查 npm 身份及 CLI 写入权限。
 
 <a id="release-lifecycle"></a>
 ## 发布生命周期
