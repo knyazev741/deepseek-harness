@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-personalized-recommendations",
   "description": "Personalized pages and built-in plugin recommendations offered as cards below answers",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"

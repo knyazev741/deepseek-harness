@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-mcp-account",
   "description": "MCP connector accounts on the Plugins page: each connector's OAuth server in the connector account registry, authorized through the MCP manager",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "publishConfig": {
     "access": "public"
   },

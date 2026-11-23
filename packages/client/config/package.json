@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-config",
   "description": "Types of browser-synced plugin configuration",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "publishConfig": {
     "access": "public"
   },

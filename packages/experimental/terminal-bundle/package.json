@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-terminal-bundle",
   "description": "Let the agent run long-lived commands in terminals you can watch in the sidebar.",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"

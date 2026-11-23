@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-script-realm-iframe",
   "description": "Optional iframe ScriptRealm provider",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "publishConfig": {
     "access": "public"
   },

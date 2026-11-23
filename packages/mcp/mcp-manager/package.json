@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-mcp-manager",
   "description": "MCP server manager: a settings-driven fleet of mcp-client instances with runtime status, restart, and probe",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "publishConfig": {
     "access": "public"
   },
