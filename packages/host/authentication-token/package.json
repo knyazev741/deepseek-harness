@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-host-authentication-token",
   "description": "Default token authentication provider and HTTP cookie exchange",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",

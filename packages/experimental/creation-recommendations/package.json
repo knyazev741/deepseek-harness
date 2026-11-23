@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-creation-recommendations",
   "description": "Create persistent removable interface plugins from explicit conversation needs",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "publishConfig": {
     "access": "public"
   },

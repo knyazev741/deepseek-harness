@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-util-time",
   "description": "Strict instant and IANA zone parsing, millisecond spans, and bounded Cron/RRULE recurrence arithmetic",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "publishConfig": {
     "access": "public"
   },

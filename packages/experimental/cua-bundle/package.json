@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-cua-bundle",
   "description": "Optional Computer Use for macOS and Windows",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"
