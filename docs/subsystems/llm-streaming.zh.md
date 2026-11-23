@@ -1199,7 +1199,8 @@ async prepareCall( config: LlmCallConfig, signal?: AbortSignal, configure?: Conf
  * asynchronous exact-model resolution and dispatch. Adapter selection,
  * dispatch, and iteration failures become terminal `error` or `aborted`
  * finish chunks; middleware, nested-call, cleanup, and consumer failures
- * remain thrown.
+ * remain thrown. Ending consumption or closing the iterator aborts this
+ * attempt's adapter signal without aborting the caller's signal.
  * @param options - the full request; `options.provider` selects the adapter.
  * @returns the chunk stream, possibly wrapped by `llm/stream` listeners.
  */

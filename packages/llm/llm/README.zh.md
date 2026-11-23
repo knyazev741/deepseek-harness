@@ -96,6 +96,8 @@ const configure = (maxTokens: number): ConfigureCall =>
 
 ### 失败与恢复
 
+每个流拥有自己的适配器取消信号。消费结束、失败或提前关闭时，运行时中止该次尝试的适配器信号，但不会中止调用方的信号、改变已报告的结束原因或安排重试。适配器必须在迭代器读取尚未完成时响应取消。
+
 每个流都恰好以一个终止 `finish` 分片结束：失败为 `{ kind: 'error', failure }`，取消为 `{ kind: 'aborted', failure }`。失败携带稳定 code，如 `NO_ADAPTER`、`MISSING_CREDENTIAL`、`AUTH`、`RATE_LIMIT` 与 `CONTEXT_WINDOW_EXCEEDED`；消费方依据 code 路由，绝不解析消息文本。`LLM_FAILURE_CODES` 定义内置提供方与本运行时会抛出的全部 code；`new LlmError` 只接受这些 code 或 `HTTP_<status>`，`LlmError.fromFailure` 用于重新抛出 code 由其他提供方决定的已观察失败。标记了 `retryChoice` 的 code 是提供方 `retryPolicy.retryableCodes` schema 向设置表单发布的选项；成为选项不会把它加入默认重试集合。`QUOTA` 表示提供方中立的额度耗尽，`ACCOUNT_QUOTA` 专用于当前产品能够充值的第一方账号余额不足。点名未注册提供方的请求会以 `NO_ADAPTER` 失败，格式错误的凭据会以 `INVALID_CREDENTIAL` 失败，而不是表现为不透明的 fetch 错误。本服务从不自行重跑请求：重试是 `dsh-llm-retry` 在 agent 失败步骤扩展点上的职责。
 
 -----

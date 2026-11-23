@@ -12,12 +12,14 @@ features:
   - id: stream-first-chunk-idle-timeout
     sourceCommits:
       - 3eb7008e09
-    requiredBehavior: A first streamed chunk gets its own idle deadline, later chunks use the inter-chunk deadline, and caller cancellation remains distinguishable.
+    requiredBehavior: A first streamed chunk gets its own idle deadline, later chunks use the inter-chunk deadline, and caller cancellation remains distinguishable. Ending or closing the outer stream aborts the attempt's adapter signal without aborting the caller's signal.
     evidence:
       - packages/fork/llm-first-chunk-timeout/tests/timeout.spec.ts
+      - packages/llm/llm/tests/stream-cancellation.spec.ts
+      - packages/llm/llm-pi-ai/tests/runtime-cancellation.spec.ts
       - packages/util/timeout/tests/timeout.spec.ts
     disposition: adapted
-    replacement: Fork-owned llm/stream waterfall plugin with a configurable first-chunk deadline.
+    replacement: Fork-owned llm/stream waterfall plugin with a configurable first-chunk deadline, plus runtime-owned cancellation for each provider attempt.
   - id: workspace-copy-session-id
     sourceCommits:
       - eb25108045

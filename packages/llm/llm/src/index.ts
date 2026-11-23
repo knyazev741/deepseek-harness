@@ -1058,8 +1058,12 @@ export class LlmRuntime extends TypertRemoteService {
    */
   private async * adapterStream(
     options: GenerateOptions,
+    ownedSignal: AbortSignal,
     prepared?: PreparedDispatch,
   ): AsyncGenerator<StreamChunk> {
+    const signal = options.signal === undefined
+      ? ownedSignal
+      : AbortSignal.any([options.signal, ownedSignal])
     let iterator: AsyncIterator<StreamChunk>
     try {
       const registration = prepared?.registration ?? this.registration(options.provider)
@@ -1068,7 +1072,7 @@ export class LlmRuntime extends TypertRemoteService {
       let resolvedConfig: LlmCallConfig
       let dispatch: (options: GenerateOptions) => AsyncIterable<StreamChunk>
       if (prepared === undefined) {
-        const adapterCall = await adapter.prepareCall(options.provider, options.model, options.signal)
+        const adapterCall = await adapter.prepareCall(options.provider, options.model, signal)
         modelInfo = this.normalizeModelInfo(registration, options.model, adapterCall.model)
         resolvedConfig = this.resolveCallWithInfo(options, modelInfo).config
         dispatch = options => adapterCall.stream(options)
@@ -1110,7 +1114,10 @@ export class LlmRuntime extends TypertRemoteService {
         }
         if (Object.isFrozen(resolvedOptions)) deepFreeze(projectedOptions)
       }
-      const stream = dispatch(this.forAdapter(projectedOptions, adapter))
+      const adapterOptions = this.forAdapter(projectedOptions, adapter)
+      const request = { ...adapterOptions, signal }
+      if (Object.isFrozen(adapterOptions)) Object.freeze(request)
+      const stream = dispatch(request)
       iterator = stream[Symbol.asyncIterator]()
     } catch (error: unknown) {
       yield adapterFailureChunk(error, options.signal)
@@ -1154,7 +1161,8 @@ export class LlmRuntime extends TypertRemoteService {
    * asynchronous exact-model resolution and dispatch. Adapter selection,
    * dispatch, and iteration failures become terminal `error` or `aborted`
    * finish chunks; middleware, nested-call, cleanup, and consumer failures
-   * remain thrown.
+   * remain thrown. Ending consumption or closing the iterator aborts this
+   * attempt's adapter signal without aborting the caller's signal.
    * @param options - the full request; `options.provider` selects the adapter.
    * @returns the chunk stream, possibly wrapped by `llm/stream` listeners.
    */
@@ -1166,6 +1174,7 @@ export class LlmRuntime extends TypertRemoteService {
     options: GenerateOptions,
     prepared?: PreparedDispatch,
   ): AsyncIterable<StreamChunk> {
+    const controller = new AbortController()
     const deadline = prepared?.modelInfo.firstChunkTimeoutMs
     let streamOptions: LlmStreamOptions = options
     if (deadline !== undefined) {
@@ -1173,12 +1182,65 @@ export class LlmRuntime extends TypertRemoteService {
       if (isAgentLoopRequest(options)) markAgentLoopRequest(captured)
       streamOptions = Object.freeze(captured)
     }
-    return this.ctx.waterfall(
-      this,
-      'llm/stream',
-      streamOptions,
-      () => this.adapterStream(options, prepared),
-    )
+    let source: AsyncIterable<StreamChunk>
+    try {
+      source = this.ctx.waterfall(
+        this,
+        'llm/stream',
+        streamOptions,
+        () => this.adapterStream(options, controller.signal, prepared),
+      )
+    } catch (error) {
+      controller.abort()
+      throw error
+    }
+    return cancelOnStreamEnd(source, controller)
+  }
+}
+
+/** Cancel pending adapter work even when an outer middleware ends its stream first. */
+function cancelOnStreamEnd(
+  source: AsyncIterable<StreamChunk>,
+  controller: AbortController,
+): AsyncIterableIterator<StreamChunk> {
+  let iterator: AsyncIterator<StreamChunk> | undefined
+  let closed = false
+  const done = (): IteratorReturnResult<undefined> => ({ done: true, value: undefined })
+  return {
+    [Symbol.asyncIterator]() { return this },
+    async next() {
+      if (closed) return done()
+      try {
+        iterator ??= source[Symbol.asyncIterator]()
+        const result = await iterator.next()
+        // oxlint-disable-next-line typescript/no-unnecessary-condition -- Consumer return can close this stream during the read.
+        if (closed) return done()
+        if (result.done) {
+          closed = true
+          controller.abort()
+        }
+        return result
+      } catch (error) {
+        closed = true
+        controller.abort()
+        throw error
+      }
+    },
+    async return() {
+      if (closed) return done()
+      closed = true
+      controller.abort()
+      return iterator?.return === undefined ? done() : iterator.return()
+    },
+    async throw(error?: unknown) {
+      if (!closed) {
+        closed = true
+        controller.abort()
+        if (iterator?.throw !== undefined) return iterator.throw(error)
+        await iterator?.return?.()
+      }
+      throw error
+    },
   }
 }
 

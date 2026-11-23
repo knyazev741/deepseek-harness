@@ -1168,7 +1168,10 @@ describe('LlmRuntime', () => {
     })
     expect(prepared.adapterDefaults).toEqual({})
     await collect(prepared.stream({ ...prepared.config, messages: [] }))
-    expect(adapter.lastOptions).toEqual({ ...prepared.config, messages: [] })
+    if (adapter.lastOptions === undefined) throw new Error('missing dispatched request')
+    const { signal, ...dispatched } = adapter.lastOptions
+    expect(dispatched).toEqual({ ...prepared.config, messages: [] })
+    expect(signal).toBeInstanceOf(AbortSignal)
     expect(calls).toBe(1)
   })
 

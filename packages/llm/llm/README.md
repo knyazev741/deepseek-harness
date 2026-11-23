@@ -96,6 +96,8 @@ const configure = (maxTokens: number): ConfigureCall =>
 
 ### Failures and recovery
 
+Each stream owns its adapter cancellation. When consumption ends, fails, or closes early, the runtime aborts that attempt's adapter signal. It does not abort the caller's signal, change the reported finish reason, or schedule a retry. Adapters must honor cancellation while an iterator read is pending.
+
 Every stream ends in exactly one terminal `finish` chunk: `{ kind: 'error', failure }` on failure, `{ kind: 'aborted', failure }` on cancellation. Failures carry stable codes such as `NO_ADAPTER`, `MISSING_CREDENTIAL`, `AUTH`, `RATE_LIMIT`, and `CONTEXT_WINDOW_EXCEEDED`; consumers route on the code, never on message text. `LLM_FAILURE_CODES` defines every code the built-in providers and this runtime raise; `new LlmError` accepts only those codes or `HTTP_<status>`, and `LlmError.fromFailure` re-raises an observed failure whose code another provider chose. Codes marked `retryChoice` are the choices a provider `retryPolicy.retryableCodes` schema publishes to settings forms; being a choice does not add a code to the default retried set. `QUOTA` is provider-neutral exhaustion, while `ACCOUNT_QUOTA` is reserved for a first-party account balance that the current product can replenish. A request naming an unregistered provider fails with `NO_ADAPTER`, and a malformed credential fails with `INVALID_CREDENTIAL` instead of surfacing as an opaque fetch error. This service never re-runs a request: retrying is the job of `dsh-llm-retry` at the agent's failed-step extension point.
 
 -----

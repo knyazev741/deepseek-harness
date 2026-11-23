@@ -122,6 +122,49 @@ function emitAgentStatus(ctx: Context, agent: object, status: 'idle' | 'running'
 }
 
 describe('first-chunk idle timeout waterfall', () => {
+  it('cancels a real pending adapter read after its timeout without cancelling the caller', async () => {
+    vi.useFakeTimers()
+    const started = Promise.withResolvers<AbortSignal>()
+    const stopped = Promise.withResolvers<undefined>()
+    const caller = new AbortController()
+    const { ctx } = await setup(10)
+    ctx.llm.registerAdapter(['test-provider'], new class extends LlmAdapter {
+      async * stream(request: GenerateOptions): AsyncIterable<StreamChunk> {
+        const signal = request.signal
+        if (signal === undefined) throw new Error('missing adapter cancellation')
+        started.resolve(signal)
+        try {
+          await new Promise<void>((resolve) => {
+            if (signal.aborted) resolve()
+            else signal.addEventListener('abort', () => { resolve() }, { once: true })
+          })
+          yield ABORTED
+        } finally {
+          stopped.resolve(undefined)
+        }
+      }
+    }())
+    const iterator = ctx.llm.stream(options(caller.signal))[Symbol.asyncIterator]()
+    const first = iterator.next()
+    try {
+      const providerSignal = await started.promise
+      await vi.advanceTimersByTimeAsync(10)
+      await expect(first).resolves.toMatchObject({
+        done: false,
+        value: { type: 'finish', reason: { kind: 'error', failure: { code: 'FIRST_CHUNK_TIMEOUT' } } },
+      })
+      await expect(iterator.next()).resolves.toEqual({ done: true, value: undefined })
+      expect(providerSignal.aborted).toBe(true)
+      expect(caller.signal.aborted).toBe(false)
+      await stopped.promise
+    } finally {
+      caller.abort()
+      await first
+      await iterator.return?.()
+      await stopped.promise
+    }
+  })
+
   it('uses a prepared provider deadline while preserving the ordinary timeout', async () => {
     vi.useFakeTimers()
     const pending = deferred<IteratorResult<StreamChunk>>()
