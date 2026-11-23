@@ -46,6 +46,11 @@ import { buildProvider, supportedProtocols } from './provider.ts'
 /** Default maximum idle interval while an adapter stream read is outstanding. */
 export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 500_000
 
+/** Default deadline for a completion buffered by the provider rather than streamed. */
+export const DEFAULT_COMPLETE_RESPONSE_TIMEOUT_MS = 1_800_000
+/** Maximum buffered JSON response before decoding (16 MiB by default). */
+export const DEFAULT_MAX_COMPLETE_RESPONSE_BYTES = 16 * 1024 * 1024
+
 /**
  * Default request-level bound on base64-encoded image payload. Every image in
  * history is re-encoded into every request body, so an unbounded conversation
@@ -177,6 +182,12 @@ export interface PiAiProviderProfile {
   websocketConnectTimeoutMs?: number
   /** Maximum provider idle time per stream read (default 500000ms). */
   streamIdleTimeoutMs?: number
+  /** Stream incremental deltas by default; `false` requests complete Chat Completions JSON with strict finish validation. */
+  streamResponses?: boolean
+  /** Provider-buffered response deadline in milliseconds (default 1800000); captured with a prepared call. */
+  completeResponseTimeoutMs?: number
+  /** Maximum buffered response bytes (default 16 MiB). */
+  maxCompleteResponseBytes?: number
   /**
    * Maximum base64-encoded image payload per request. When a request's
    * accumulated images exceed it, the oldest images are replaced by text
@@ -218,6 +229,12 @@ export interface ResolvedPiAiProviderProfile
   apiKeyEnv?: CredentialRef
   /** Positive finite provider-idle interval after defaulting. */
   streamIdleTimeoutMs: number
+  /** Whether this route requests incremental provider responses. */
+  streamResponses: boolean
+  /** Validated deadline for a provider-buffered response. */
+  completeResponseTimeoutMs: number
+  /** Validated buffered response byte limit. */
+  maxCompleteResponseBytes: number
   /** Positive request-level base64 image payload bound after defaulting. */
   maxRequestImageBytes: number
   /** Positive request-level retained image count bound after defaulting. */
@@ -371,6 +388,9 @@ const profile = z.object({
   timeoutMs: z.natural(),
   websocketConnectTimeoutMs: z.natural(),
   streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STREAM_IDLE_TIMEOUT_MS),
+  streamResponses: z.boolean().default(true),
+  completeResponseTimeoutMs: z.number().step(1).min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_COMPLETE_RESPONSE_TIMEOUT_MS),
+  maxCompleteResponseBytes: z.number().step(1).min(1).default(DEFAULT_MAX_COMPLETE_RESPONSE_BYTES),
   maxRequestImageBytes: z.number().step(1).min(1).default(DEFAULT_MAX_REQUEST_IMAGE_BYTES),
   maxRequestImages: z.number().step(1).min(1).default(DEFAULT_MAX_REQUEST_IMAGES),
   imageOffloadCountQuantum: z.number().step(1).min(1),
@@ -457,6 +477,16 @@ export function resolveProfiles(
       throw new Error(`llm-pi-ai: provider "${provider}" has an empty displayName`)
     }
     assertValidHeaders(provider, source.headers)
+    const streamResponses = source.streamResponses ?? true
+    const completeResponseTimeoutMs = source.completeResponseTimeoutMs ?? DEFAULT_COMPLETE_RESPONSE_TIMEOUT_MS
+    const maxCompleteResponseBytes = source.maxCompleteResponseBytes ?? DEFAULT_MAX_COMPLETE_RESPONSE_BYTES
+    if (!Number.isSafeInteger(completeResponseTimeoutMs) || completeResponseTimeoutMs <= 0
+      || completeResponseTimeoutMs > MAX_TIMER_DELAY_MS) {
+      throw new Error(`llm-pi-ai: provider "${provider}" completeResponseTimeoutMs must be a positive timer-safe integer`)
+    }
+    if (!Number.isSafeInteger(maxCompleteResponseBytes) || maxCompleteResponseBytes <= 0) {
+      throw new Error(`llm-pi-ai: provider "${provider}" maxCompleteResponseBytes must be a positive safe integer`)
+    }
     const streamIdleTimeoutMs = source.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS
     if (!Number.isFinite(streamIdleTimeoutMs)
       || streamIdleTimeoutMs <= 0
@@ -513,6 +543,9 @@ export function resolveProfiles(
         defaultContextWindow: source.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
         defaultMaxTokens: source.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
       }, validation)
+      if (!streamResponses && catalog.models.some(model => model.api !== 'openai-completions')) {
+        throw new PiAiCatalogError(`llm-pi-ai: provider "${provider}" complete responses require openai-completions for every model`)
+      }
       catalogError = catalog.modelErrors.values().next().value
       piProvider = buildProvider({
         provider,
@@ -533,6 +566,9 @@ export function resolveProfiles(
       displayName,
       ...apiKeyEnv === undefined ? {} : { apiKeyEnv: credentialRef(apiKeyEnv) },
       streamIdleTimeoutMs,
+      streamResponses,
+      completeResponseTimeoutMs,
+      maxCompleteResponseBytes,
       maxRequestImageBytes,
       maxRequestImages,
       imageOffloadCountQuantum,

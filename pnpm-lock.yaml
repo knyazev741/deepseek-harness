@@ -15211,6 +15211,9 @@ importers:
       '@knyazevai/dsh-llm-deepseek-api-key':
         specifier: workspace:*
         version: link:../llm-deepseek-api-key
+      '@knyazevai/dsh-llm-retry':
+        specifier: workspace:*
+        version: link:../llm-retry
       '@knyazevai/dsh-session':
         specifier: workspace:*
         version: link:../../core/session

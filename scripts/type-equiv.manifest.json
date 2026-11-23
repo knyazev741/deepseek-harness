@@ -148,6 +148,11 @@
     },
     {
       "doc": "docs/subsystems/llm-streaming.md",
+      "symbol": "LlmStreamOptions",
+      "source": "packages/llm/llm/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/llm-streaming.md",
       "symbol": "ToolSchema",
       "source": "packages/llm/llm/src/types.ts"
     },

@@ -613,6 +613,8 @@ interface LlmModelReasoningInfo {
 ```ts type-equiv
 /** Exact-route model metadata resolved by its owning adapter. */
 interface LlmResolvedModelInfo extends LlmModelInfo {
+  /** Provider-owned first-result deadline for a prepared call that buffers its response. Omission keeps middleware defaults. */
+  firstChunkTimeoutMs?: number
   /** Provider-owned context capacity when known. */
   context?: LlmModelContext
   /** Adapter-configured per-request output cap materialized when callers omit one. */
@@ -700,6 +702,14 @@ interface GenerateOptions<Purpose extends string = LlmRequestPurpose> {
    * requests leave it unset.
    */
   purpose?: Purpose
+}
+```
+
+```ts type-equiv
+/** A middleware request with transport timing captured from its prepared adapter generation. */
+interface LlmStreamOptions extends GenerateOptions {
+  /** Prepared provider's first-result deadline; absent on ordinary and unprepared streams. */
+  readonly firstChunkTimeoutMs?: number
 }
 ```
 
@@ -1255,7 +1265,7 @@ Waterfall around every streaming model call (retry, replay, routing). Bound to t
  *   inputs and must keep them unchanged until the stream settles.
  * @mode waterfall
  */
-'llm/stream'(this: LlmRuntime, options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>
+'llm/stream'(this: LlmRuntime, options: LlmStreamOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>
 ```
 
 Source: [`packages/llm/llm/src/index.ts`](../../packages/llm/llm/src/index.ts)

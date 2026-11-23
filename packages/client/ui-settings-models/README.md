@@ -27,6 +27,8 @@ Desktop product events use the optional [product analytics service](../product-a
 <a id="use-this-package"></a>
 ## Use this package
 
+Custom OpenAI Chat Completions providers offer **Receive complete responses (NVIDIA)** when creating or editing a route. The opt-in stores `streamResponses: false` only for that provider. Answers appear after generation finishes; strict completion checks, cancellation, and the existing retry policy remain enabled. Other protocols hide this control; switching an edited route to another protocol restores streaming.
+
 The section title and introduction form one group above the provider list. Expanded model fields separate adjacent field groups more than labels from their controls, and model-list actions follow the shared control-radius scale.
 
 Saving credentials or a custom provider preserves the selected model. The user can select an available model from the composer.

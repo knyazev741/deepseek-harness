@@ -90,10 +90,15 @@ Each profile may set a `retryPolicy`; omission uses normal mode with five retrie
 | `maxRequestImageBytes` | `20 MiB` | Aggregate base64 image-payload bound; a request whose retained images exceed it fails with `IMAGE_OFFLOAD_REQUIRED` |
 | `maxRequestImages` | `50` | Retained request-image count bound; a request whose retained images exceed it fails with `IMAGE_OFFLOAD_REQUIRED`. The default follows Azure OpenAI's 50-image limit; raise it on routes whose provider accepts more images |
 | `imageOffloadCountQuantum` | `10`, capped at `maxRequestImages` | Oldest images offloaded per count overflow |
+| `streamResponses` | `true` | Set `false` for OpenAI Chat Completions endpoints with broken streaming; other protocols reject this mode |
+| `completeResponseTimeoutMs` | `1,800,000` | First-result and HTTP idle deadline in complete-response mode |
+| `maxCompleteResponseBytes` | `16 MiB` | Maximum buffered JSON response bytes |
 | `streamIdleTimeoutMs` | `500,000` | Maximum provider idle time per outstanding stream read |
 | `retryPolicy` | normal, 5 retries | Provider-owned retry policy executed by `dsh-llm-retry` |
 
 For HTTP transports that accept a Fetch override, the adapter sets the header and body deadlines to at least the configured stream idle timeout. The underlying dispatcher still routes the request.
+
+Complete-response mode sends `stream: false` without `stream_options`. Text appears only after the full response arrives. The response must contain a terminal `finish_reason`; missing reasons, malformed JSON, oversized bodies, and invalid tool arguments fail without dispatching tools. Cancellation and the route's retry policy remain active, including `mode: always`; this mode does not infer successful completion from a disconnected stream. Prepared calls expose the captured response deadline to first-result middleware. Direct unprepared calls retain that middleware's deployment deadline. An explicit shorter `timeoutMs` can still end the provider request earlier.
 
 The generated [configuration catalog](../../../docs/config-catalog.md#knyazevaidsh-llm-pi-ai) is the exhaustive source for every accepted field and its JSDoc.
 

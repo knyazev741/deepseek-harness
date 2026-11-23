@@ -17,6 +17,8 @@ import LlmRuntime, {
   createMessage,
   createDeveloperMessage,
   createUserMessage,
+  isAgentLoopRequest,
+  markAgentLoopRequest,
 } from '@knyazevai/dsh-llm'
 import type {
   LlmCallConfig,
@@ -26,6 +28,7 @@ import type {
   LlmModelReasoningInfo,
   LlmProviderInfo,
   LlmResolvedModelInfo,
+  LlmStreamOptions,
   SystemPromptUpdate,
 } from '@knyazevai/dsh-llm'
 
@@ -1003,6 +1006,46 @@ describe('LlmRuntime', () => {
 
     expect(first.lastOptions?.reasoningEffort).toBe(brandString<ReasoningEffortId>('high'))
     expect(second.lastOptions).toBeUndefined()
+  })
+
+  it('binds the first-result deadline to the prepared adapter generation', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    let deadline = 1000
+    const adapter = new class extends RecordingAdapter {
+      override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
+        return Promise.resolve({ provider, id: model, name: model, firstChunkTimeoutMs: deadline })
+      }
+    }(SCRIPT)
+    ctx.llm.registerAdapter(['route'], adapter)
+    const prepared = await ctx.llm.prepareCall({ provider: 'route', model: 'model' })
+    deadline = 2000
+    const seen: LlmStreamOptions[] = []
+    ctx.on('llm/stream', (options, next) => { seen.push(options); return next() })
+    const request = { ...prepared.config, messages: [] }
+    markAgentLoopRequest(request)
+    Object.freeze(request)
+    await collect(prepared.stream(request))
+    expect(seen[0]?.firstChunkTimeoutMs).toBe(1000)
+    expect(Object.isFrozen(seen[0])).toBe(true)
+    expect(isAgentLoopRequest(seen[0]!)).toBe(true)
+    expect(request).not.toHaveProperty('firstChunkTimeoutMs')
+    expect(adapter.lastOptions).not.toHaveProperty('firstChunkTimeoutMs')
+    const ordinary = { provider: 'route', model: 'model', messages: [] }
+    await collect(ctx.llm.stream(ordinary))
+    expect(seen[1]).toBe(ordinary)
+  })
+
+  it.each([0, -1, 1.5, Number.NaN, 2 ** 31])('rejects invalid first-result deadline %s', async (deadline) => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    const adapter = new class extends RecordingAdapter {
+      override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
+        return Promise.resolve({ provider, id: model, name: model, firstChunkTimeoutMs: deadline })
+      }
+    }(SCRIPT)
+    ctx.llm.registerAdapter(['route'], adapter)
+    await expect(ctx.llm.prepareCall({ provider: 'route', model: 'model' })).rejects.toMatchObject({ code: 'INVALID_MODEL_INFO' })
   })
 
   it('prepares a one-shot registration-bound call and rejects config drift', async () => {

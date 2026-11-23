@@ -33,6 +33,7 @@ const PiAiConfig = Schema.object({
     displayName: Schema.string(),
     api: Schema.union(PROTOCOLS),
     baseURL: Schema.string(),
+    streamResponses: Schema.boolean(),
     models: Schema.array(Schema.object({
       id: Schema.string().required(),
       name: Schema.string(),
@@ -1014,6 +1015,44 @@ describe('hand-declared providers', () => {
     return { ...scripted, onClose }
   }
 
+  it('opts one custom Chat Completions provider into complete responses', async () => {
+    const { mutate, onClose } = mountCard()
+    fireEvent.change(screen.getByLabelText(en.customRoute), { target: { value: 'nvidia-custom' } })
+    fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://integrate.api.nvidia.com/v1' } })
+    fireEvent.click(screen.getByRole('button', { name: en.addModel }))
+    fireEvent.change(screen.getByLabelText(`${en.modelId} 1`), { target: { value: 'moonshotai/kimi-k3.1-pro' } })
+    const checkbox = screen.getByRole<HTMLInputElement>('checkbox', { name: en.completeResponses })
+    expect(checkbox.checked).toBe(false)
+    fireEvent.click(checkbox)
+    fireEvent.click(screen.getByText(en.create))
+    await waitFor(() => { expect(onClose).toHaveBeenCalledWith(true) })
+    expect(firstMutate(mutate).ops[0]?.value).toMatchObject({ api: 'openai-completions', streamResponses: false })
+  })
+
+  it('does not apply complete responses after changing to an incompatible protocol', () => {
+    mountCard()
+    fireEvent.click(screen.getByRole('checkbox', { name: en.completeResponses }))
+    fireEvent.change(screen.getByLabelText(en.customApi), { target: { value: 'anthropic-messages' } })
+    expect(screen.queryByRole('checkbox', { name: en.completeResponses })).toBeNull()
+    fireEvent.change(screen.getByLabelText(en.customApi), { target: { value: 'openai-completions' } })
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: en.completeResponses }).checked).toBe(true)
+  })
+
+  it('edits the response mode without replacing other provider settings', async () => {
+    const { mutate } = await mountSection({
+      providers: { custom: { api: 'openai-completions', streamResponses: false, baseURL: 'https://example.test/v1' } },
+      declaredRoutes: ['custom'],
+    })
+    openEditor('custom')
+    const checkbox = screen.getByRole<HTMLInputElement>('checkbox', { name: en.completeResponses })
+    expect(checkbox.checked).toBe(true)
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(false)
+    fireEvent.click(screen.getByText(en.apply))
+    await waitFor(() => { expect(mutate).toHaveBeenCalledOnce() })
+    expect(firstMutate(mutate).ops).toEqual([{ op: 'set', path: ['providers', 'custom', 'streamResponses'], value: true }])
+  })
+
   it('creates a custom provider without changing the default model', async () => {
     const { face, mutate, set, onClose } = mountCard()
     const initialize = vi.spyOn(ctxWith(face).remote.session, 'initializeDefaultModel')
@@ -1311,6 +1350,7 @@ describe('hand-declared providers', () => {
     // The provider exists now, so the fields describing it are settled and
     // only the key can still be corrected.
     expect(screen.getByLabelText<HTMLInputElement>(en.customRoute).disabled).toBe(true)
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: en.completeResponses }).disabled).toBe(true)
     expect(screen.getByLabelText<HTMLInputElement>(en.baseUrl).disabled).toBe(true)
     expect(screen.getByLabelText<HTMLInputElement>(en.keyInput).disabled).toBe(false)
 
@@ -1666,6 +1706,7 @@ describe('hand-declared providers', () => {
 
     mountCard({ readOnly: true })
     expect(screen.getByLabelText<HTMLInputElement>(en.customRoute).disabled).toBe(true)
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: en.completeResponses }).disabled).toBe(true)
     expect(buttonNamed(en.create).disabled).toBe(true)
   })
 

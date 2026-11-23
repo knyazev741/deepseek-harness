@@ -11,6 +11,14 @@
   color: var(--dsw-alias-label-primary);
 }
 
+.completeResponseToggle {
+  align-items: flex-start;
+}
+
+.completeResponseToggle > span:first-child {
+  margin-top: 2px;
+}
+
 .title {
   margin: 0;
   font-size: 16px;

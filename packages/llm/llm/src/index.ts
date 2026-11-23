@@ -9,6 +9,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import { Remote, RemoteError, TypertRemoteService } from '@knyazevai/dsh-typert-protocol'
 import { deepFreeze } from '@knyazevai/dsh-util-values'
+import { MAX_TIMER_DELAY_MS } from '@knyazevai/dsh-timeout'
 import type {
   GenerateOptions,
   RequestMessage,
@@ -20,6 +21,7 @@ import type {
   LlmModelDiscoveryRequest,
   LlmModelInfo,
   LlmResolvedModelInfo,
+  LlmStreamOptions,
   LlmProviderInfo,
   ModelModality,
   StreamChunk,
@@ -31,7 +33,7 @@ import { freezeMessage } from './message.ts'
 import { resolveRetryPolicy } from './retry-policy.ts'
 import type { ResolvedRetryPolicy } from './retry-policy.ts'
 import type { ProviderRequestId } from './brand.ts'
-import { callConfigEquals } from './call-config.ts'
+import { callConfigEquals, isAgentLoopRequest, markAgentLoopRequest } from './call-config.ts'
 import type { ConfigureCall, LlmCallConfig, LlmCallConfigAdapterDefaults } from './call-config.ts'
 import { HarnessError } from './error.ts'
 import type { BuiltinLlmFailureCode } from './error.ts'
@@ -75,7 +77,7 @@ declare module '@deepseek-ai/cordis' {
      *   inputs and must keep them unchanged until the stream settles.
      * @mode waterfall
      */
-    'llm/stream'(this: LlmRuntime, options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>
+    'llm/stream'(this: LlmRuntime, options: LlmStreamOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>
 
   }
 }
@@ -812,6 +814,11 @@ export class LlmRuntime extends TypertRemoteService {
         'INVALID_MODEL_MAX_TOKENS',
       )
     }
+    const firstChunkTimeoutMs = resolved.firstChunkTimeoutMs
+    if (firstChunkTimeoutMs !== undefined
+      && (!Number.isSafeInteger(firstChunkTimeoutMs) || firstChunkTimeoutMs <= 0 || firstChunkTimeoutMs > MAX_TIMER_DELAY_MS)) {
+      throw new LlmError(`adapter returned invalid first-result deadline for provider "${provider}" model "${model}"`, 'INVALID_MODEL_INFO')
+    }
     const info: LlmResolvedModelInfo = {
       provider,
       id: model,
@@ -820,6 +827,7 @@ export class LlmRuntime extends TypertRemoteService {
       ...inputModalities === undefined ? {} : { inputModalities },
       ...context === undefined ? {} : { context: { contextWindow: context.contextWindow } },
       ...defaultMaxTokens === undefined ? {} : { defaultMaxTokens },
+      ...firstChunkTimeoutMs === undefined ? {} : { firstChunkTimeoutMs },
       ...resolved.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: resolved.systemPromptUpdate },
       ...resolved.toolUpdate === undefined ? {} : { toolUpdate: resolved.toolUpdate },
     }
@@ -1158,10 +1166,17 @@ export class LlmRuntime extends TypertRemoteService {
     options: GenerateOptions,
     prepared?: PreparedDispatch,
   ): AsyncIterable<StreamChunk> {
+    const deadline = prepared?.modelInfo.firstChunkTimeoutMs
+    let streamOptions: LlmStreamOptions = options
+    if (deadline !== undefined) {
+      const captured = { ...options, firstChunkTimeoutMs: deadline }
+      if (isAgentLoopRequest(options)) markAgentLoopRequest(captured)
+      streamOptions = Object.freeze(captured)
+    }
     return this.ctx.waterfall(
       this,
       'llm/stream',
-      options,
+      streamOptions,
       () => this.adapterStream(options, prepared),
     )
   }

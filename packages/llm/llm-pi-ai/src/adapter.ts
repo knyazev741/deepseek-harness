@@ -66,6 +66,7 @@ import { toStreamChunks } from './stream.ts'
 import { bindThinkingToPrefix } from './prefix-binding.ts'
 import type { PrefixDigests } from './prefix-binding.ts'
 import type { PiAiRequestHeaderContext } from './types.ts'
+import { fetchCompleteResponse } from './complete-response.ts'
 
 /**
  * Initially active declaration added to an Anthropic request whose projected
@@ -394,6 +395,7 @@ export class PiAiAdapter extends LlmAdapter {
       inputModalities: [...resolvedModel.input],
       context: { contextWindow: resolvedModel.contextWindow },
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
+      ...profile.streamResponses ? {} : { firstChunkTimeoutMs: profile.completeResponseTimeoutMs },
       ...reasoningInfo(resolvedModel, defaultLevel),
       ...conversationUpdates(resolvedModel),
     }
@@ -445,7 +447,7 @@ export class PiAiAdapter extends LlmAdapter {
     const upstream = options.signal === undefined
       ? consumer.signal
       : AbortSignal.any([options.signal, consumer.signal])
-    const streamIdleTimeoutMs = profile.streamIdleTimeoutMs
+    const streamIdleTimeoutMs = profile.streamResponses ? profile.streamIdleTimeoutMs : profile.completeResponseTimeoutMs
     using watchdog = idleWatchdog(upstream, streamIdleTimeoutMs, 'LLM_STREAM_IDLE_TIMEOUT')
 
     try {
@@ -479,9 +481,18 @@ export class PiAiAdapter extends LlmAdapter {
       const { context, digest } = bindThinkingToPrefix(converted, model.api, prefixDigests, manualThinking, (count) => {
         this.config.onThinkingOmitted?.({ provider: options.provider, model: options.model, count })
       })
+      let completionFailure: LlmError | undefined
       const events = snapshot.models.streamSimple(model, context, {
         ...STREAM_FETCH_APIS.has(model.api)
-          ? { fetch: (input, init) => fetchWithStreamTimeout(input, init, streamIdleTimeoutMs) }
+          ? { fetch: async (input, init) => {
+            completionFailure = undefined
+            if (profile.streamResponses) return fetchWithStreamTimeout(input, init, streamIdleTimeoutMs)
+            try { return await fetchCompleteResponse(input, init, streamIdleTimeoutMs, profile.maxCompleteResponseBytes) }
+            catch (error) {
+              if (error instanceof LlmError) completionFailure = error
+              throw error
+            }
+          } }
           : {},
         ...profileOptions(profile, reasoning, apiKey),
         ...options.temperature === undefined ? {} : { temperature: options.temperature },
@@ -499,7 +510,10 @@ export class PiAiAdapter extends LlmAdapter {
             exhausted = true
             return
           }
-          yield result.value
+          const chunk = result.value
+          yield completionFailure !== undefined && chunk.type === 'finish' && chunk.reason.kind === 'error'
+            ? { ...chunk, reason: { kind: 'error', failure: completionFailure.failure } }
+            : chunk
         }
       } finally {
         if (!exhausted) {

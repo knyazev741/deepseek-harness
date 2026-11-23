@@ -457,6 +457,8 @@ export type ToolUpdate = 'in-history' | 'addition-only'
 
 /** Exact-route model metadata resolved by its owning adapter. */
 export interface LlmResolvedModelInfo extends LlmModelInfo {
+  /** Provider-owned first-result deadline for a prepared call that buffers its response. Omission keeps middleware defaults. */
+  firstChunkTimeoutMs?: number
   /** Provider-owned context capacity when known. */
   context?: LlmModelContext
   /** Adapter-configured per-request output cap materialized when callers omit one. */
@@ -608,6 +610,12 @@ export interface GenerateOptions<Purpose extends string = LlmRequestPurpose> {
    * requests leave it unset.
    */
   purpose?: Purpose
+}
+
+/** A middleware request with transport timing captured from its prepared adapter generation. */
+export interface LlmStreamOptions extends GenerateOptions {
+  /** Prepared provider's first-result deadline; absent on ordinary and unprepared streams. */
+  readonly firstChunkTimeoutMs?: number
 }
 
 export type { MessageId, ToolCallId, ProviderRequestId, LlmAttemptId, ReasoningEffortId } from './brand.ts'

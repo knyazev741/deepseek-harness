@@ -36,6 +36,8 @@ The plugin requires `llm` and calls the zero-argument continuation exactly once 
 <a id="first-result-deadline"></a>
 ## First-result deadline
 
+A prepared provider call may supply `firstChunkTimeoutMs`; this captured deadline replaces the deployment default for that call. Complete-response pi-ai routes use their longer `completeResponseTimeoutMs` because no content is available during generation. Ordinary streaming routes retain the deployment default. This deadline does not change provider retry limits or recovery policy.
+
 `firstChunkIdleTimeoutMs` defaults to `500000` and must be a positive safe integer no greater than Node's reliable timer maximum, `2147483647`. The timer races only the first downstream `iterator.next()` result. A yielded value or normal `done` result clears the timer and forwards the iterator unchanged, so no inter-chunk deadline is imposed.
 
 When the timer wins, the wrapper yields one terminal `finish` chunk with a `FIRST_CHUNK_TIMEOUT` failure and starts downstream `return()` without awaiting it. A caller abort clears this plugin's timer and leaves the provider's cancellation outcome unchanged. A downstream rejection remains the same rejection. Consumer return and plugin disposal clear plugin state and close downstream on a best-effort basis. Consumer `throw(error)` delegates to downstream `throw` when present, preserving its result or rejection; otherwise it closes downstream best-effort and rejects with the caller error.

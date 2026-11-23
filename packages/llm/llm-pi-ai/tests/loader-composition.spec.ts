@@ -90,6 +90,26 @@ async function loadComposition(): Promise<{ ctx: Context; settingsPath: string }
 }
 
 describe('llm-pi-ai real dormant composition', () => {
+  it('loads complete-response mode from the same provider patch written by Models settings', async () => {
+    const server = await mockServer([{ body: JSON.stringify({
+      id: 'complete-loader', model: 'kimi', choices: [{ index: 0,
+        message: { role: 'assistant', content: 'confirmed' }, finish_reason: 'stop',
+      }], usage: { prompt_tokens: 2, completion_tokens: 1, total_tokens: 3 },
+    }) }])
+    const { ctx, settingsPath } = await loadComposition()
+    await writeFile(settingsPath, [
+      '- id: llm-pi-ai', '  config:', '    providers:', '      nvda:',
+      '        api: openai-completions', '        apiKeyEnv: PI_COMPOSITION_KEY',
+      `        baseURL: ${server.url}`, '        streamResponses: false',
+      '        models:', '          - id: kimi', '',
+    ].join('\n'))
+    await vi.waitFor(() => { expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(['nvda']) }, { timeout: 5000 })
+    const result = await assemble(ctx, { provider: 'nvda', model: 'kimi', messages: [] })
+    expect(server.requests[0]).toMatchObject({ stream: false })
+    expect(result.finish).toEqual({ kind: 'stop' })
+    expect(result.message.content).toEqual([{ type: 'text', text: 'confirmed' }])
+  })
+
   it('dispatches header contributors through the Loader-mounted adapter', async () => {
     const server = await mockServer([{ events: textEvents }])
     const { ctx, settingsPath } = await loadComposition()

@@ -338,7 +338,7 @@ export function apply(ctx: Context, config?: Config): void {
   const active = new Set<FirstChunkStream>()
   const disposeListener = ctx.on('llm/stream', (options, next) => {
     const source = next()
-    return wrapStream(source, options, timeoutMs, active)
+    return wrapStream(source, options, options.firstChunkTimeoutMs ?? timeoutMs, active)
   })
   // The recovery listener is prepended so it claims the first-chunk timeout
   // before `dsh-llm-retry`'s fast backoff, which cannot fix a stalled first

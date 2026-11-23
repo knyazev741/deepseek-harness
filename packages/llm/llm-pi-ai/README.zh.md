@@ -90,10 +90,15 @@ kind: "package-reference"
 | `maxRequestImageBytes` | `20 MiB` | base64 图片载荷总上限，保留图片超过时请求以 `IMAGE_OFFLOAD_REQUIRED` 失败 |
 | `maxRequestImages` | `50` | 保留请求图片数量上限，保留图片超过时请求以 `IMAGE_OFFLOAD_REQUIRED` 失败。默认值取 Azure OpenAI 的 50 张上限；提供方接受更多图片的路由应调高 |
 | `imageOffloadCountQuantum` | `10`，不超过 `maxRequestImages` | 每次数量超限时省略的最老图片数 |
+| `streamResponses` | `true` | 对流式响应异常的 OpenAI Chat Completions 端点设为 `false`；其他协议拒绝此模式 |
+| `completeResponseTimeoutMs` | `1,800,000` | 完整响应模式下的首个结果与 HTTP 空闲期限 |
+| `maxCompleteResponseBytes` | `16 MiB` | 缓冲 JSON 响应的最大字节数 |
 | `streamIdleTimeoutMs` | `500,000` | 单次流读取未完成的最大提供方空闲时间 |
 | `retryPolicy` | normal，5 次重试 | 由 `dsh-llm-retry` 执行的提供方自有重试策略 |
 
 对于接受自定义 Fetch 的 HTTP 传输，适配器将标头和正文的超时设置为至少与配置的流空闲超时一样长。请求仍由底层 dispatcher 路由。
+
+完整响应模式发送 `stream: false`，不发送 `stream_options`。完整响应到达后才显示文本。响应必须包含终止用的 `finish_reason`；缺少原因、JSON 格式错误、响应体过大或工具参数无效时，请求失败且不派发工具。取消与路由重试策略仍然生效，包括 `mode: always`；此模式不会根据流断开推断成功完成。已准备调用向首个结果中间件提供捕获的响应期限。直接的未准备调用沿用该中间件的部署期限。显式设置的更短 `timeoutMs` 仍可更早结束提供方请求。
 
 生成的[配置目录](../../../docs/config-catalog.zh.md#knyazevaidsh-llm-pi-ai)是每个受支持字段及其 JSDoc 的穷尽式真源。
 

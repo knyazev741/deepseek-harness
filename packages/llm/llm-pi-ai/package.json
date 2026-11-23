@@ -59,6 +59,7 @@
     "@knyazevai/dsh-fs": "workspace:*",
     "@knyazevai/dsh-launch-environment": "workspace:*",
     "@knyazevai/dsh-llm": "workspace:*",
+    "@knyazevai/dsh-llm-retry": "workspace:*",
     "@knyazevai/dsh-llm-deepseek": "workspace:*",
     "@knyazevai/dsh-llm-deepseek-api-key": "workspace:*",
     "@knyazevai/dsh-session": "workspace:*",

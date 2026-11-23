@@ -122,6 +122,23 @@ function emitAgentStatus(ctx: Context, agent: object, status: 'idle' | 'running'
 }
 
 describe('first-chunk idle timeout waterfall', () => {
+  it('uses a prepared provider deadline while preserving the ordinary timeout', async () => {
+    vi.useFakeTimers()
+    const pending = deferred<IteratorResult<StreamChunk>>()
+    const source = scriptedStream([{ promise: pending.promise }])
+    const { ctx } = await setup(10)
+    const iterator = ctx.waterfall(ctx.llm, 'llm/stream', {
+      ...options(), firstChunkTimeoutMs: 100,
+    }, () => source)[Symbol.asyncIterator]()
+    const read = iterator.next()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(source.returnCalls).toBe(0)
+    pending.resolve({ done: false, value: FIRST })
+    await expect(read).resolves.toEqual({ done: false, value: FIRST })
+    await iterator.return?.()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('leaves the upstream waterfall unchanged when the plugin is absent', async () => {
     const ctx = new Context()
     contexts.push(ctx)

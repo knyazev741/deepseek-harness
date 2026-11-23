@@ -37,6 +37,7 @@ import { validateReasoningEfforts } from './ModelReasoningEfforts.tsx'
 import { deriveKeyRef } from './store.ts'
 import { protocolLabel } from './protocol-label.ts'
 import { protocolNeedsKey, protocolReasoningLevels } from './protocol-rules.ts'
+import { CompleteResponseControl } from './CompleteResponseControl.tsx'
 import type { ModelsOperations } from './operations.ts'
 import type { en, ModelsKey } from './locales.ts'
 import styles from './ModelsSection.module.css'
@@ -115,6 +116,7 @@ export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
   const [displayName, setDisplayName] = useState('')
   const [baseURL, setBaseURL] = useState('')
   const [protocol, setProtocol] = useState(protocols[0] ?? '')
+  const [completeResponses, setCompleteResponses] = useState(false)
   const [keyDraft, setKeyDraft] = useState('')
   const [models, setModels] = useState<readonly ModelDraft[]>([])
   const [busy, setBusy] = useState(false)
@@ -183,6 +185,7 @@ export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
         // chain, ADC) instead of resolving a reference nothing ever sets.
         ...storesKey ? { apiKeyEnv: keyRef } : {},
         api: protocol,
+        ...protocol === 'openai-completions' && completeResponses ? { streamResponses: false } : {},
         baseURL: normalizedBaseURL,
         models: models.map(model => ({ ...model })),
       }
@@ -284,6 +287,10 @@ export function CustomProviderCard(props: CustomProviderCardProps): ReactNode {
           {protocols.map(choice => <option key={choice} value={choice}>{protocolLabel(t, choice)}</option>)}
         </select>
       </div>
+      {protocol === 'openai-completions'
+        ? <CompleteResponseControl checked={completeResponses} disabled={profileDisabled}
+          onChange={setCompleteResponses} t={t} />
+        : null}
       <div className={styles['field']}>
         <span className={styles['fieldLabel']}>{t('keyInput')}</span>
         <ApiKeyInput
