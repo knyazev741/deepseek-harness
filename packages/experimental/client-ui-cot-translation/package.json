@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-experimental-client-ui-cot-translation",
   "description": "Optional machine translation of expanded reasoning, preserving original Session text",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

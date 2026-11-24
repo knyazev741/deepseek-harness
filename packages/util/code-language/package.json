@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-util-code-language",
   "description": "Single file-extension to syntax-highlighting language table shared by Client code surfaces and the Host read card",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

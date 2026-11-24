@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-api-workspace-controller",
   "description": "Workspace Remote commands and reconnect-safe state transport",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

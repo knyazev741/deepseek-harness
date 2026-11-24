@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-subagent-control",
   "description": "Shared messaging, interruption, and child discovery tools for subagents",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-file-upload",
   "description": "Agent-scoped browser file upload, streaming intake, and staged receipt service",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-client-ui-agent-team",
   "description": "Web shared task board for a subagent tree",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

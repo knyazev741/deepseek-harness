@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-util-ripgrep",
   "description": "Packaged ripgrep resolution and subprocess streaming helpers",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

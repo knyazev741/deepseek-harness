@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-deepseek-chat-import",
   "description": "Import DeepSeek chat exports as stored Sessions in a chosen Workspace",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"

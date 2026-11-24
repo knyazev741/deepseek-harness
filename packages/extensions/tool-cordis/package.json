@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-tool-cordis",
   "description": "Read-only runtime API inspection for Harness plugin development",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },

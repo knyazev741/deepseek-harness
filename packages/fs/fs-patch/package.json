@@ -1,7 +1,7 @@
 {
   "name": "@knyazevai/dsh-fs-patch",
   "description": "Pure Codex-style patch parser and LF text updater with structured match failures",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "publishConfig": {
     "access": "public"
   },
