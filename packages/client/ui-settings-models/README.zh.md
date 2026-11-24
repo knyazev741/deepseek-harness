@@ -27,7 +27,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-创建或编辑自定义 OpenAI Chat Completions 路由时，可勾选 **Receive complete responses (NVIDIA)**。此选项仅为该提供方保存 `streamResponses: false`。生成结束后才显示答案；严格完成检查、取消与现有重试策略保持启用。其他协议隐藏此控件；将已编辑路由切换到其他协议时恢复流式响应。
+新的自定义提供方使用适配器的默认响应模式。编辑接入点时会保留部署配置的响应模式。将现有路由切换到 OpenAI Chat Completions 以外的协议时，若协议要求则恢复流式响应。响应模式配置由 [pi-ai 适配器](../../llm/llm-pi-ai/README.zh.md) 管理。
 
 分区标题与说明在提供商列表上方组成一组。模型展开字段的组间距大于标签与控件间距，模型列表操作沿用统一的控件圆角尺度。
 

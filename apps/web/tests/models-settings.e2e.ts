@@ -302,6 +302,7 @@ describe('web e2e: Models settings page configures a dormant provider', () => {
     // The third-party panel stays mounted, hidden, beside this one, so the
     // form is addressed through its own panel.
     const custom = dialog.getByRole('tabpanel', { name: '自定义模型 API' })
+    expect(await custom.getByRole('checkbox', { name: /NVIDIA/i }).count()).toBe(0)
     await custom.getByLabel('Provider ID').fill('acme-gateway')
     await custom.getByLabel('显示名称').fill('Acme Gateway')
     await custom.getByLabel('API 地址').fill('https://gateway.acme.example/v1')
@@ -359,6 +360,7 @@ describe('web e2e: Models settings page configures a dormant provider', () => {
     const protocol = dialog.getByLabel('API 协议')
     await protocol.waitFor({ timeout: 10_000 })
     expect(await protocol.inputValue()).toBe('openai-completions')
+    expect(await dialog.getByRole('checkbox', { name: /NVIDIA/i }).count()).toBe(0)
     const name = dialog.getByLabel('显示名称', { exact: true })
     expect(await name.inputValue()).toBe('Acme Gateway')
     await dialog.getByRole('button', { name: '模型选项 1' }).click()

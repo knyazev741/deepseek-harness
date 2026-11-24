@@ -38,7 +38,6 @@ import type { ReasoningEffortsFailure } from './ModelReasoningEfforts.tsx'
 import { deriveKeyRef, protocolChoices, reasoningLevelChoices } from './store.ts'
 import { protocolLabel } from './protocol-label.ts'
 import { protocolNeedsKey, protocolReasoningLevels } from './protocol-rules.ts'
-import { CompleteResponseControl } from './CompleteResponseControl.tsx'
 import type { ModelsOperations } from './operations.ts'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
 import type { en } from './locales.ts'
@@ -601,14 +600,6 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
                   </select>
                 </div>
               )
-              : null}
-            {family === 'pi-ai' && props.declared === true && probeApi === 'openai-completions'
-              ? <CompleteResponseControl
-                checked={(schema.getPath(draft, ['streamResponses']) ?? schema.getPath(fallback, ['streamResponses'])) === false}
-                disabled={disabled}
-                t={t}
-                onChange={(checked) => { setDraft(current => schema.setPath(current, ['streamResponses'], !checked)) }}
-              />
               : null}
             {retryDefaults === undefined
               ? null

@@ -27,7 +27,7 @@ Desktop product events use the optional [product analytics service](../product-a
 <a id="use-this-package"></a>
 ## Use this package
 
-Custom OpenAI Chat Completions providers offer **Receive complete responses (NVIDIA)** when creating or editing a route. The opt-in stores `streamResponses: false` only for that provider. Answers appear after generation finishes; strict completion checks, cancellation, and the existing retry policy remain enabled. Other protocols hide this control; switching an edited route to another protocol restores streaming.
+New custom providers use the adapter's default response mode. Editing an endpoint preserves any response mode configured by the deployment. Switching an existing route to a protocol other than OpenAI Chat Completions restores streaming when required by that protocol. Response-mode configuration belongs to the [pi-ai adapter](../../llm/llm-pi-ai/README.md).
 
 The section title and introduction form one group above the provider list. Expanded model fields separate adjacent field groups more than labels from their controls, and model-list actions follow the shared control-radius scale.
 
